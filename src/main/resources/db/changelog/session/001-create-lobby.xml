@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+            https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.29.xsd">
+
+  <changeSet id="001-create-lobby" author="game-service">
+    <createTable tableName="lobby">
+      <column name="id" type="uuid">
+        <constraints primaryKey="true" nullable="false"/>
+      </column>
+      <column name="host_player_id" type="uuid">
+        <constraints nullable="false"/>
+      </column>
+      <column name="join_code" type="TEXT">
+        <constraints nullable="false"/>
+      </column>
+    </createTable>
+
+    <createIndex tableName="lobby" indexName="lobby_join_code_idx" unique="true">
+      <column name="join_code"/>
+    </createIndex>
+  </changeSet>
+
+</databaseChangeLog>
+

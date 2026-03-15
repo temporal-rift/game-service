@@ -1,0 +1,25 @@
+spring:
+  application:
+    name: game-service
+  datasource:
+    url: jdbc:postgresql://localhost:5432/temporal_rift
+    username: temporal_rift
+    password: temporal_rift
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+  kafka:
+    bootstrap-servers: localhost:9092
+    consumer:
+      group-id: game-service
+      auto-offset-reset: earliest
+  modulith:
+    events:
+      externalization:
+        enabled: true
+
+logging:
+  level:
+    com.temporalrift: DEBUG
+    org.springframework.modulith: DEBUG
