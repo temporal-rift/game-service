@@ -28,9 +28,6 @@ spring:
     events:
       externalization:
         enabled: true
-      jdbc:
-        schema-initialization:
-          enabled: true
       republish-outstanding-events-on-restart: true
 
 game:

@@ -1,12 +1,15 @@
 package com.temporalrift.game.session.domain.lobby;
 
-import com.temporalrift.events.shared.Faction;
-import org.junit.jupiter.api.Test;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
+import static org.assertj.core.api.Assertions.assertThatNullPointerException;
 
 import java.util.ArrayList;
 import java.util.UUID;
 
-import static org.assertj.core.api.Assertions.*;
+import org.junit.jupiter.api.Test;
+
+import com.temporalrift.events.shared.Faction;
 
 class LobbyTest {
 
@@ -14,7 +17,7 @@ class LobbyTest {
     static final int MIN_PLAYERS = 3;
     static final int MAX_PLAYERS = 5;
     static final String[] PLAYER_NAMES = {"Alice", "Bob", "Charlie", "Diana", "Eve"};
-    
+
     int playerIndex = 0;
 
     Lobby emptyLobby() {
@@ -83,7 +86,9 @@ class LobbyTest {
     @Test
     void join_lobbyFull_throws() {
         var lobby = emptyLobby();
-        for (int i = 0; i < MAX_PLAYERS; i++) lobby.join(player());
+        for (int i = 0; i < MAX_PLAYERS; i++) {
+            lobby.join(player());
+        }
         assertThatExceptionOfType(LobbyFullException.class).isThrownBy(() -> lobby.join(player()));
     }
 

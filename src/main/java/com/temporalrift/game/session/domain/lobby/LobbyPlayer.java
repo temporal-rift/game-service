@@ -1,10 +1,11 @@
 package com.temporalrift.game.session.domain.lobby;
 
-import com.temporalrift.events.shared.Faction;
-import org.apache.commons.lang3.StringUtils;
-
 import java.util.Objects;
 import java.util.UUID;
+
+import org.apache.commons.lang3.StringUtils;
+
+import com.temporalrift.events.shared.Faction;
 
 public record LobbyPlayer(UUID playerId, String playerName, boolean isHost, Faction faction) {
 

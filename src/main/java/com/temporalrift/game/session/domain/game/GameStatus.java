@@ -6,4 +6,3 @@ public enum GameStatus {
     ENDED_BY_COLLAPSE,
     ENDED_BY_STABILIZATION
 }
-

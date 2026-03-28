@@ -1,43 +1,59 @@
 package com.temporalrift.game.session.domain.game;
 
-import org.junit.jupiter.api.Test;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
+import static org.assertj.core.api.Assertions.assertThatNullPointerException;
 
 import java.util.ArrayList;
 import java.util.UUID;
 import java.util.stream.IntStream;
 
-import static org.assertj.core.api.Assertions.*;
+import org.junit.jupiter.api.Test;
 
 class GameTest {
 
     static final int MAX_ERAS = 5;
     static final int MAX_CASCADED_PARADOXES = 3;
     static final int EVENTS_PER_ERA = 3;
+    static final int NUMBER_OF_EVENTS = 30;
 
     Game newGame() {
-        var eventIds = IntStream.range(0, 30).mapToObj(_ -> UUID.randomUUID()).toList();
-        return new Game(UUID.randomUUID(), UUID.randomUUID(), new ArrayList<>(eventIds),
-                MAX_ERAS, MAX_CASCADED_PARADOXES, EVENTS_PER_ERA);
+        var eventIds = IntStream.range(0, NUMBER_OF_EVENTS)
+                .mapToObj(ignored -> UUID.randomUUID())
+                .toList();
+        return new Game(
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                new ArrayList<>(eventIds),
+                MAX_ERAS,
+                MAX_CASCADED_PARADOXES,
+                EVENTS_PER_ERA);
     }
 
     // --- Constructor ---
 
     @Test
     void constructor_nullId_throws() {
-        assertThatNullPointerException().isThrownBy(() ->
-                new Game(null, UUID.randomUUID(), new ArrayList<>(), MAX_ERAS, MAX_CASCADED_PARADOXES, EVENTS_PER_ERA));
+        var lobbyId = UUID.randomUUID();
+        var eventIds = new ArrayList<UUID>();
+        assertThatNullPointerException()
+                .isThrownBy(() -> new Game(null, lobbyId, eventIds, MAX_ERAS, MAX_CASCADED_PARADOXES, EVENTS_PER_ERA));
     }
 
     @Test
     void constructor_nullLobbyId_throws() {
-        assertThatNullPointerException().isThrownBy(() ->
-                new Game(UUID.randomUUID(), null, new ArrayList<>(), MAX_ERAS, MAX_CASCADED_PARADOXES, EVENTS_PER_ERA));
+        var id = UUID.randomUUID();
+        var eventIds = new ArrayList<UUID>();
+        assertThatNullPointerException()
+                .isThrownBy(() -> new Game(id, null, eventIds, MAX_ERAS, MAX_CASCADED_PARADOXES, EVENTS_PER_ERA));
     }
 
     @Test
     void constructor_nullAvailableEventIds_throws() {
-        assertThatNullPointerException().isThrownBy(() ->
-                new Game(UUID.randomUUID(), UUID.randomUUID(), null, MAX_ERAS, MAX_CASCADED_PARADOXES, EVENTS_PER_ERA));
+        var id = UUID.randomUUID();
+        var lobbyId = UUID.randomUUID();
+        assertThatNullPointerException()
+                .isThrownBy(() -> new Game(id, lobbyId, null, MAX_ERAS, MAX_CASCADED_PARADOXES, EVENTS_PER_ERA));
     }
 
     @Test
@@ -81,8 +97,13 @@ class GameTest {
 
     @Test
     void startEra_notEnoughEvents_throws() {
-        var game = new Game(UUID.randomUUID(), UUID.randomUUID(), new ArrayList<>(),
-                MAX_ERAS, MAX_CASCADED_PARADOXES, EVENTS_PER_ERA);
+        var game = new Game(
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                new ArrayList<>(),
+                MAX_ERAS,
+                MAX_CASCADED_PARADOXES,
+                EVENTS_PER_ERA);
         assertThatExceptionOfType(InsufficientDeckException.class).isThrownBy(() -> game.startEra(0));
     }
 
@@ -124,7 +145,9 @@ class GameTest {
     @Test
     void endEra_fifthEra_statusBecomesEndedByStabilization() {
         var game = newGame();
-        for (int i = 0; i < MAX_ERAS; i++) game.startEra(0);
+        for (int i = 0; i < MAX_ERAS; i++) {
+            game.startEra(0);
+        }
         game.endEra();
         assertThat(game.status()).isEqualTo(GameStatus.ENDED_BY_STABILIZATION);
     }

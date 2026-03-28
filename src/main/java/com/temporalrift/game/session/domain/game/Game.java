@@ -9,13 +9,21 @@ import java.util.UUID;
 public class Game {
 
     private final UUID id;
+
     private final UUID lobbyId;
+
     private final List<UUID> availableEventIds;
+
     private final int maxEras;
+
     private final int maxCascadedParadoxes;
+
     private final int eventsPerEra;
+
     private int eraCounter;
+
     private int cascadedParadoxCounter;
+
     private GameStatus status;
 
     public Game(
@@ -68,11 +76,15 @@ public class Game {
     }
 
     private void requireInProgress() {
-        if (status != GameStatus.IN_PROGRESS) throw new GameAlreadyOverException();
+        if (status != GameStatus.IN_PROGRESS) {
+            throw new GameAlreadyOverException();
+        }
     }
 
     private void requireDeckCapacity(int eventsNeeded) {
-        if (availableEventIds.size() < eventsNeeded) throw new InsufficientDeckException();
+        if (availableEventIds.size() < eventsNeeded) {
+            throw new InsufficientDeckException();
+        }
     }
 
     public UUID id() {

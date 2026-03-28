@@ -4,8 +4,7 @@ import java.util.UUID;
 
 public interface LeaveLobbyUseCase {
 
-    record Command(UUID lobbyId, UUID playerId) {}
-
     void execute(Command command);
-}
 
+    record Command(UUID lobbyId, UUID playerId) {}
+}

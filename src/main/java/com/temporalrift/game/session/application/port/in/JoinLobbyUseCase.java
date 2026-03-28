@@ -5,12 +5,11 @@ import java.util.UUID;
 
 public interface JoinLobbyUseCase {
 
+    Result execute(Command command);
+
     record Command(UUID lobbyId, UUID playerId, String playerName) {}
 
     record PlayerSummary(UUID playerId, String playerName, boolean isHost) {}
 
     record Result(UUID lobbyId, UUID playerId, List<PlayerSummary> currentPlayers) {}
-
-    Result execute(Command command);
 }
-

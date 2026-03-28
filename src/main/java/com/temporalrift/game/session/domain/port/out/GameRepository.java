@@ -1,9 +1,9 @@
 package com.temporalrift.game.session.domain.port.out;
 
-import com.temporalrift.game.session.domain.game.Game;
-
 import java.util.Optional;
 import java.util.UUID;
+
+import com.temporalrift.game.session.domain.game.Game;
 
 public interface GameRepository {
 
@@ -11,4 +11,3 @@ public interface GameRepository {
 
     Optional<Game> findById(UUID id);
 }
-

@@ -11,6 +11,4 @@ public record SessionRulesProperties(
         @Min(2) int maxPlayers,
         @Min(1) int maxEras,
         @Min(1) int maxCascadedParadoxes,
-        @Min(1) int eventsPerEra
-) {}
-
+        @Min(1) int eventsPerEra) {}

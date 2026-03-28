@@ -10,19 +10,31 @@ import java.util.stream.Collectors;
 public class Lobby {
 
     private final UUID id;
+
     private final UUID hostPlayerId;
+
     private final String joinCode;
+
     private final List<LobbyPlayer> currentPlayers;
+
     private final int minPlayers;
+
     private final int maxPlayers;
+
     private LobbyStatus status;
 
-    public Lobby(UUID id, UUID hostPlayerId, String joinCode, List<LobbyPlayer> currentPlayers,
-                 int minPlayers, int maxPlayers) {
+    public Lobby(
+            UUID id,
+            UUID hostPlayerId,
+            String joinCode,
+            List<LobbyPlayer> currentPlayers,
+            int minPlayers,
+            int maxPlayers) {
         this.id = Objects.requireNonNull(id, "id must not be null");
         this.hostPlayerId = Objects.requireNonNull(hostPlayerId, "hostPlayerId must not be null");
         this.joinCode = Objects.requireNonNull(joinCode, "joinCode must not be null");
-        this.currentPlayers = new ArrayList<>(Objects.requireNonNull(currentPlayers, "currentPlayers must not be null"));
+        this.currentPlayers =
+                new ArrayList<>(Objects.requireNonNull(currentPlayers, "currentPlayers must not be null"));
         this.minPlayers = minPlayers;
         this.maxPlayers = maxPlayers;
         this.status = LobbyStatus.WAITING;
@@ -38,7 +50,9 @@ public class Lobby {
     public void leave(UUID leavingPlayerId) {
         Objects.requireNonNull(leavingPlayerId, "Player id must not be null");
         requireWaiting();
-        if (leavingPlayerId.equals(hostPlayerId)) throw new HostCannotLeaveException();
+        if (leavingPlayerId.equals(hostPlayerId)) {
+            throw new HostCannotLeaveException();
+        }
         currentPlayers.removeIf(player -> player.playerId().equals(leavingPlayerId));
     }
 
@@ -51,22 +65,31 @@ public class Lobby {
     }
 
     private void requireWaiting() {
-        if (status != LobbyStatus.WAITING) throw new LobbyAlreadyStartedException();
+        if (status != LobbyStatus.WAITING) {
+            throw new LobbyAlreadyStartedException();
+        }
     }
 
     private void requireMinPlayers() {
-        if (currentPlayers.size() < minPlayers) throw new NotEnoughPlayersException();
+        if (currentPlayers.size() < minPlayers) {
+            throw new NotEnoughPlayersException();
+        }
     }
 
     private void requireMaxPlayers() {
-        if (currentPlayers.size() >= maxPlayers) throw new LobbyFullException();
+        if (currentPlayers.size() >= maxPlayers) {
+            throw new LobbyFullException();
+        }
     }
 
     private void requireFactionAssignments() {
-        if (currentPlayers.stream().map(LobbyPlayer::faction).anyMatch(Objects::isNull))
+        if (currentPlayers.stream().map(LobbyPlayer::faction).anyMatch(Objects::isNull)) {
             throw new FactionNotAssignedException();
+        }
         var factions = currentPlayers.stream().map(LobbyPlayer::faction).collect(Collectors.toSet());
-        if (factions.size() != currentPlayers.size()) throw new DuplicateFactionException();
+        if (factions.size() != currentPlayers.size()) {
+            throw new DuplicateFactionException();
+        }
     }
 
     public UUID id() {

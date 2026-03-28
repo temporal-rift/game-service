@@ -3,16 +3,16 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
   <parent>
-    <groupId>org.springframework.boot</groupId>
-    <artifactId>spring-boot-starter-parent</artifactId>
-    <version>4.0.3</version>
-    <relativePath/> <!-- lookup parent from repository -->
+    <groupId>com.temporalrift</groupId>
+    <artifactId>temporal-rift-bom</artifactId>
+    <version>1.0.3</version>
+    <relativePath/>
   </parent>
-  <groupId>com.temporalrift</groupId>
+
   <artifactId>game-service</artifactId>
   <version>0.0.1-SNAPSHOT</version>
-  <name>game-service</name>
-  <description>game-service</description>
+  <name>Temporal Rift Game Orchestration Service</name>
+  <description>Temporal Rift game orchestration service</description>
   <url/>
 
   <licenses>
@@ -45,9 +45,7 @@
   </scm>
 
   <properties>
-    <java.version>25</java.version>
     <spring-modulith.version>2.0.3</spring-modulith.version>
-    <openapi-generator.version>7.20.0</openapi-generator.version>
     <swagger-annotations.version>2.2.45</swagger-annotations.version>
   </properties>
 
@@ -194,7 +192,12 @@
       <plugin>
         <groupId>org.openapitools</groupId>
         <artifactId>openapi-generator-maven-plugin</artifactId>
-        <version>${openapi-generator.version}</version>
+        <configuration>
+          <!-- importMappings common to all executions in this service -->
+          <importMappings>
+            <importMapping>ProblemDetail=org.springframework.http.ProblemDetail</importMapping>
+          </importMappings>
+        </configuration>
         <executions>
           <execution>
             <id>generate-session-api</id>
@@ -202,24 +205,10 @@
               <goal>generate</goal>
             </goals>
             <configuration>
-              <inputSpec>${project.basedir}/src/main/resources/openapi/session.yaml</inputSpec>
-              <generatorName>spring</generatorName>
+              <inputSpec>${project.basedir}/src/main/resources/openapi/session.yml</inputSpec>
               <output>${project.build.directory}/generated-sources/openapi/session</output>
               <apiPackage>com.temporalrift.game.session.infrastructure.adapter.in.rest</apiPackage>
               <modelPackage>com.temporalrift.game.session.infrastructure.adapter.in.rest.model</modelPackage>
-              <generateApiTests>false</generateApiTests>
-              <generateModelTests>false</generateModelTests>
-              <generateSupportingFiles>false</generateSupportingFiles>
-              <importMappings>
-                <importMapping>ProblemDetail=org.springframework.http.ProblemDetail</importMapping>
-              </importMappings>
-              <configOptions>
-                <interfaceOnly>true</interfaceOnly>
-                <useSpringBoot4>true</useSpringBoot4>
-                <useTags>true</useTags>
-                <skipDefaultInterface>true</skipDefaultInterface>
-                <openApiNullable>false</openApiNullable>
-              </configOptions>
             </configuration>
           </execution>
           <execution>
@@ -228,24 +217,10 @@
               <goal>generate</goal>
             </goals>
             <configuration>
-              <inputSpec>${project.basedir}/src/main/resources/openapi/action.yaml</inputSpec>
-              <generatorName>spring</generatorName>
+              <inputSpec>${project.basedir}/src/main/resources/openapi/action.yml</inputSpec>
               <output>${project.build.directory}/generated-sources/openapi/action</output>
               <apiPackage>com.temporalrift.game.action.infrastructure.adapter.in.rest</apiPackage>
               <modelPackage>com.temporalrift.game.action.infrastructure.adapter.in.rest.model</modelPackage>
-              <generateApiTests>false</generateApiTests>
-              <generateModelTests>false</generateModelTests>
-              <generateSupportingFiles>false</generateSupportingFiles>
-              <importMappings>
-                <importMapping>ProblemDetail=org.springframework.http.ProblemDetail</importMapping>
-              </importMappings>
-              <configOptions>
-                <interfaceOnly>true</interfaceOnly>
-                <useSpringBoot4>true</useSpringBoot4>
-                <useTags>true</useTags>
-                <skipDefaultInterface>true</skipDefaultInterface>
-                <openApiNullable>false</openApiNullable>
-              </configOptions>
             </configuration>
           </execution>
           <execution>
@@ -254,24 +229,10 @@
               <goal>generate</goal>
             </goals>
             <configuration>
-              <inputSpec>${project.basedir}/src/main/resources/openapi/scoring.yaml</inputSpec>
-              <generatorName>spring</generatorName>
+              <inputSpec>${project.basedir}/src/main/resources/openapi/scoring.yml</inputSpec>
               <output>${project.build.directory}/generated-sources/openapi/scoring</output>
               <apiPackage>com.temporalrift.game.scoring.infrastructure.adapter.in.rest</apiPackage>
               <modelPackage>com.temporalrift.game.scoring.infrastructure.adapter.in.rest.model</modelPackage>
-              <generateApiTests>false</generateApiTests>
-              <generateModelTests>false</generateModelTests>
-              <generateSupportingFiles>false</generateSupportingFiles>
-              <importMappings>
-                <importMapping>ProblemDetail=org.springframework.http.ProblemDetail</importMapping>
-              </importMappings>
-              <configOptions>
-                <interfaceOnly>true</interfaceOnly>
-                <useSpringBoot4>true</useSpringBoot4>
-                <useTags>true</useTags>
-                <skipDefaultInterface>true</skipDefaultInterface>
-                <openApiNullable>false</openApiNullable>
-              </configOptions>
             </configuration>
           </execution>
         </executions>

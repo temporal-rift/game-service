@@ -1,9 +1,9 @@
 package com.temporalrift.game.session.domain.port.out;
 
-import com.temporalrift.game.session.domain.lobby.Lobby;
-
 import java.util.Optional;
 import java.util.UUID;
+
+import com.temporalrift.game.session.domain.lobby.Lobby;
 
 public interface LobbyRepository {
 
@@ -13,4 +13,3 @@ public interface LobbyRepository {
 
     Optional<Lobby> findByJoinCode(String joinCode);
 }
-
