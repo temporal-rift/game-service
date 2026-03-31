@@ -11,6 +11,8 @@ public class Lobby {
 
     private final UUID id;
 
+    private final UUID gameId;
+
     private final UUID hostPlayerId;
 
     private final String joinCode;
@@ -25,12 +27,14 @@ public class Lobby {
 
     public Lobby(
             UUID id,
+            UUID gameId,
             UUID hostPlayerId,
             String joinCode,
             List<LobbyPlayer> currentPlayers,
             int minPlayers,
             int maxPlayers) {
         this.id = Objects.requireNonNull(id, "id must not be null");
+        this.gameId = Objects.requireNonNull(gameId, "gameId must not be null");
         this.hostPlayerId = Objects.requireNonNull(hostPlayerId, "hostPlayerId must not be null");
         this.joinCode = Objects.requireNonNull(joinCode, "joinCode must not be null");
         this.currentPlayers =
@@ -94,6 +98,10 @@ public class Lobby {
 
     public UUID id() {
         return id;
+    }
+
+    public UUID gameId() {
+        return gameId;
     }
 
     public UUID hostPlayerId() {

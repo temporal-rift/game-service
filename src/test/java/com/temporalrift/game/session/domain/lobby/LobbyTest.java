@@ -21,7 +21,14 @@ class LobbyTest {
     int playerIndex = 0;
 
     Lobby emptyLobby() {
-        return new Lobby(UUID.randomUUID(), UUID.randomUUID(), JOIN_CODE, new ArrayList<>(), MIN_PLAYERS, MAX_PLAYERS);
+        return new Lobby(
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                JOIN_CODE,
+                new ArrayList<>(),
+                MIN_PLAYERS,
+                MAX_PLAYERS);
     }
 
     LobbyPlayer player(Faction faction) {
@@ -37,29 +44,66 @@ class LobbyTest {
     @Test
     void constructor_nullId_throws() {
         assertThatNullPointerException()
-                .isThrownBy(() ->
-                        new Lobby(null, UUID.randomUUID(), "ABC123", new ArrayList<>(), MIN_PLAYERS, MAX_PLAYERS));
+                .isThrownBy(() -> new Lobby(
+                        null,
+                        UUID.randomUUID(),
+                        UUID.randomUUID(),
+                        "ABC123",
+                        new ArrayList<>(),
+                        MIN_PLAYERS,
+                        MAX_PLAYERS));
+    }
+
+    @Test
+    void constructor_nullGameId_throws() {
+        assertThatNullPointerException()
+                .isThrownBy(() -> new Lobby(
+                        UUID.randomUUID(),
+                        null,
+                        UUID.randomUUID(),
+                        "ABC123",
+                        new ArrayList<>(),
+                        MIN_PLAYERS,
+                        MAX_PLAYERS));
     }
 
     @Test
     void constructor_nullHostPlayerId_throws() {
         assertThatNullPointerException()
-                .isThrownBy(() ->
-                        new Lobby(UUID.randomUUID(), null, "ABC123", new ArrayList<>(), MIN_PLAYERS, MAX_PLAYERS));
+                .isThrownBy(() -> new Lobby(
+                        UUID.randomUUID(),
+                        UUID.randomUUID(),
+                        null,
+                        "ABC123",
+                        new ArrayList<>(),
+                        MIN_PLAYERS,
+                        MAX_PLAYERS));
     }
 
     @Test
     void constructor_nullJoinCode_throws() {
         assertThatNullPointerException()
                 .isThrownBy(() -> new Lobby(
-                        UUID.randomUUID(), UUID.randomUUID(), null, new ArrayList<>(), MIN_PLAYERS, MAX_PLAYERS));
+                        UUID.randomUUID(),
+                        UUID.randomUUID(),
+                        UUID.randomUUID(),
+                        null,
+                        new ArrayList<>(),
+                        MIN_PLAYERS,
+                        MAX_PLAYERS));
     }
 
     @Test
     void constructor_nullPlayers_throws() {
         assertThatNullPointerException()
-                .isThrownBy(() ->
-                        new Lobby(UUID.randomUUID(), UUID.randomUUID(), "ABC123", null, MIN_PLAYERS, MAX_PLAYERS));
+                .isThrownBy(() -> new Lobby(
+                        UUID.randomUUID(),
+                        UUID.randomUUID(),
+                        UUID.randomUUID(),
+                        "ABC123",
+                        null,
+                        MIN_PLAYERS,
+                        MAX_PLAYERS));
     }
 
     @Test
