@@ -13,6 +13,7 @@
   <include file="db/changelog/session/001-create-lobby.xml"/>
   <include file="db/changelog/session/002-create-lobby-player.xml"/>
   <include file="db/changelog/session/003-create-game.xml"/>
+  <include file="db/changelog/session/004-create-game-available-event.xml"/>
 
   <!-- Action module -->
 

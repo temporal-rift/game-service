@@ -9,45 +9,56 @@ import java.util.UUID;
 public class Game {
 
     private final UUID id;
-
     private final UUID lobbyId;
-
     private final List<UUID> availableEventIds;
-
-    private final int maxEras;
-
-    private final int maxCascadedParadoxes;
-
-    private final int eventsPerEra;
-
     private int eraCounter;
-
     private int cascadedParadoxCounter;
-
     private GameStatus status;
 
-    public Game(
-            UUID id,
-            UUID lobbyId,
-            List<UUID> availableEventIds,
-            int maxEras,
-            int maxCascadedParadoxes,
-            int eventsPerEra) {
+    public Game(UUID id, UUID lobbyId, List<UUID> availableEventIds) {
         this.id = Objects.requireNonNull(id, "id must not be null");
         this.lobbyId = Objects.requireNonNull(lobbyId, "lobbyId must not be null");
         this.availableEventIds =
                 new ArrayList<>(Objects.requireNonNull(availableEventIds, "availableEventIds must not be null"));
-        this.maxEras = maxEras;
-        this.maxCascadedParadoxes = maxCascadedParadoxes;
-        this.eventsPerEra = eventsPerEra;
         this.eraCounter = 0;
         this.cascadedParadoxCounter = 0;
         this.status = GameStatus.IN_PROGRESS;
     }
 
-    public List<UUID> startEra(int carryOverCount) {
+    private Game(
+            UUID id,
+            UUID lobbyId,
+            List<UUID> availableEventIds,
+            int eraCounter,
+            int cascadedParadoxCounter,
+            GameStatus status) {
+        this.id = id;
+        this.lobbyId = lobbyId;
+        this.availableEventIds = new ArrayList<>(availableEventIds);
+        this.eraCounter = eraCounter;
+        this.cascadedParadoxCounter = cascadedParadoxCounter;
+        this.status = status;
+    }
+
+    public static Game reconstitute(
+            UUID id,
+            UUID lobbyId,
+            List<UUID> availableEventIds,
+            int eraCounter,
+            int cascadedParadoxCounter,
+            GameStatus status) {
+        return new Game(
+                Objects.requireNonNull(id, "id must not be null"),
+                Objects.requireNonNull(lobbyId, "lobbyId must not be null"),
+                Objects.requireNonNull(availableEventIds, "availableEventIds must not be null"),
+                eraCounter,
+                cascadedParadoxCounter,
+                Objects.requireNonNull(status, "status must not be null"));
+    }
+
+    public List<UUID> startEra(int carryOverCount, int eventsPerEra) {
         requireInProgress();
-        int eventsNeeded = eventsPerEra - carryOverCount;
+        var eventsNeeded = eventsPerEra - carryOverCount;
         requireDeckCapacity(eventsNeeded);
         eraCounter++;
         var drawn = new ArrayList<>(availableEventIds.subList(0, eventsNeeded));
@@ -55,7 +66,7 @@ public class Game {
         return Collections.unmodifiableList(drawn);
     }
 
-    public void recordCascadedParadox() {
+    public void recordCascadedParadox(int maxCascadedParadoxes) {
         requireInProgress();
         cascadedParadoxCounter++;
         if (cascadedParadoxCounter == maxCascadedParadoxes) {
@@ -63,7 +74,7 @@ public class Game {
         }
     }
 
-    public void endEra() {
+    public void endEra(int maxEras) {
         requireInProgress();
         if (eraCounter == maxEras) {
             status = GameStatus.ENDED_BY_STABILIZATION;

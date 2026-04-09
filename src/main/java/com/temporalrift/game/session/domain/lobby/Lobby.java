@@ -19,35 +19,36 @@ public class Lobby {
 
     private final List<LobbyPlayer> currentPlayers;
 
-    private final int minPlayers;
-
-    private final int maxPlayers;
-
     private LobbyStatus status;
 
-    public Lobby(
-            UUID id,
-            UUID gameId,
-            UUID hostPlayerId,
-            String joinCode,
-            List<LobbyPlayer> currentPlayers,
-            int minPlayers,
-            int maxPlayers) {
+    public Lobby(UUID id, UUID gameId, UUID hostPlayerId, String joinCode, List<LobbyPlayer> currentPlayers) {
         this.id = Objects.requireNonNull(id, "id must not be null");
         this.gameId = Objects.requireNonNull(gameId, "gameId must not be null");
         this.hostPlayerId = Objects.requireNonNull(hostPlayerId, "hostPlayerId must not be null");
         this.joinCode = Objects.requireNonNull(joinCode, "joinCode must not be null");
         this.currentPlayers =
                 new ArrayList<>(Objects.requireNonNull(currentPlayers, "currentPlayers must not be null"));
-        this.minPlayers = minPlayers;
-        this.maxPlayers = maxPlayers;
         this.status = LobbyStatus.WAITING;
     }
 
-    public void join(LobbyPlayer player) {
+    public static Lobby reconstitute(
+            UUID id,
+            UUID gameId,
+            UUID hostPlayerId,
+            String joinCode,
+            List<LobbyPlayer> currentPlayers,
+            LobbyStatus status) {
+        var lobby = new Lobby(id, gameId, hostPlayerId, joinCode, currentPlayers);
+        lobby.status = status;
+        return lobby;
+    }
+
+    public void join(LobbyPlayer player, int maxPlayers) {
         Objects.requireNonNull(player, "Player must not be null");
         requireWaiting();
-        requireMaxPlayers();
+        if (currentPlayers.size() >= maxPlayers) {
+            throw new LobbyFullException();
+        }
         currentPlayers.add(player);
     }
 
@@ -60,10 +61,11 @@ public class Lobby {
         currentPlayers.removeIf(player -> player.playerId().equals(leavingPlayerId));
     }
 
-    public void start() {
+    public void start(int minPlayers) {
         requireWaiting();
-        requireMinPlayers();
-        requireMaxPlayers();
+        if (currentPlayers.size() < minPlayers) {
+            throw new NotEnoughPlayersException();
+        }
         requireFactionAssignments();
         status = LobbyStatus.STARTED;
     }
@@ -71,18 +73,6 @@ public class Lobby {
     private void requireWaiting() {
         if (status != LobbyStatus.WAITING) {
             throw new LobbyAlreadyStartedException();
-        }
-    }
-
-    private void requireMinPlayers() {
-        if (currentPlayers.size() < minPlayers) {
-            throw new NotEnoughPlayersException();
-        }
-    }
-
-    private void requireMaxPlayers() {
-        if (currentPlayers.size() >= maxPlayers) {
-            throw new LobbyFullException();
         }
     }
 

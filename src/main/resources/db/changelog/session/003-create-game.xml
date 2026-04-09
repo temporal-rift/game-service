@@ -10,21 +10,10 @@
       <column name="id" type="UUID">
         <constraints primaryKey="true" nullable="false"/>
       </column>
-      <column name="status" type="TEXT">
-        <constraints nullable="false"/>
-      </column>
-      <column name="era" type="INT">
-        <constraints nullable="false"/>
-      </column>
-      <column name="player_count" type="INT">
-        <constraints nullable="false"/>
-      </column>
-      <column name="cascaded_paradox_count" type="INT">
+      <column name="cascaded_paradox_counter" type="INT">
         <constraints nullable="false"/>
       </column>
     </createTable>
-
   </changeSet>
 
 </databaseChangeLog>
-
