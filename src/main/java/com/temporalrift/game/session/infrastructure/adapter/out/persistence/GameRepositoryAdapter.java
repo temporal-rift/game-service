@@ -32,7 +32,6 @@ class GameRepositoryAdapter implements GameRepository {
         return jpaRepository.findById(id).map(this::toDomain);
     }
 
-    //noinspection ClassReferencedRepeatedly
     private Game toDomain(GameJpaEntity entity) {
         return Game.reconstitute(
                 entity.getId(),
