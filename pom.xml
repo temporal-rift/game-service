@@ -5,7 +5,7 @@
   <parent>
     <groupId>com.temporalrift</groupId>
     <artifactId>temporal-rift-bom</artifactId>
-    <version>1.0.3</version>
+    <version>1.0.4</version>
     <relativePath/>
   </parent>
 
@@ -54,6 +54,11 @@
       <groupId>com.temporalrift</groupId>
       <artifactId>domain-events</artifactId>
       <version>1.0.0</version>
+    </dependency>
+
+    <dependency>
+      <groupId>org.mapstruct</groupId>
+      <artifactId>mapstruct</artifactId>
     </dependency>
 
     <dependency>
