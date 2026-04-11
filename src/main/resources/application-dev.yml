@@ -10,5 +10,5 @@ spring:
 
 logging:
   level:
-    com.temporalrift: DEBUG
+    io.github.temporalrift: DEBUG
     org.springframework.modulith: DEBUG

@@ -10,6 +10,15 @@
       <column name="id" type="UUID">
         <constraints primaryKey="true" nullable="false"/>
       </column>
+      <column name="lobby_id" type="UUID">
+        <constraints nullable="false"/>
+      </column>
+      <column name="status" type="VARCHAR(50)">
+        <constraints nullable="false"/>
+      </column>
+      <column name="era_counter" type="INT">
+        <constraints nullable="false"/>
+      </column>
       <column name="cascaded_paradox_counter" type="INT">
         <constraints nullable="false"/>
       </column>

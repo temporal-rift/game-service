@@ -16,8 +16,7 @@
         <emptyLine />
         <package name="" withSubpackages="true" static="false" />
         <emptyLine />
-        <package name="" withSubpackages="true" static="false" module="true" />
-        <package name="com.temporalrift" withSubpackages="true" static="false" />
+        <package name="io.github.temporalrift" withSubpackages="true" static="false" />
       </value>
     </option>
   </JavaCodeStyleSettings>
@@ -25,6 +24,8 @@
     <option name="KEEP_SIMPLE_METHODS_IN_ONE_LINE" value="true" />
     <option name="KEEP_SIMPLE_LAMBDAS_IN_ONE_LINE" value="true" />
     <indentOptions>
+      <option name="USE_TAB_CHARACTER" value="false" />
+      <option name="INDENT_SIZE" value="4" />
       <option name="CONTINUATION_INDENT_SIZE" value="0" />
     </indentOptions>
   </codeStyleSettings>

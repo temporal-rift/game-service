@@ -2,10 +2,11 @@
 <project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://maven.apache.org/POM/4.0.0"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
+
   <parent>
-    <groupId>com.temporalrift</groupId>
+    <groupId>io.github.temporal-rift</groupId>
     <artifactId>temporal-rift-bom</artifactId>
-    <version>1.0.4</version>
+    <version>1.0.7</version>
     <relativePath/>
   </parent>
 
@@ -44,16 +45,12 @@
     <tag>HEAD</tag>
   </scm>
 
-  <properties>
-    <spring-modulith.version>2.0.3</spring-modulith.version>
-    <swagger-annotations.version>2.2.45</swagger-annotations.version>
-  </properties>
+  <properties/>
 
   <dependencies>
     <dependency>
-      <groupId>com.temporalrift</groupId>
+      <groupId>io.github.temporal-rift</groupId>
       <artifactId>domain-events</artifactId>
-      <version>1.0.0</version>
     </dependency>
 
     <dependency>
@@ -100,7 +97,6 @@
     <dependency>
       <groupId>io.swagger.core.v3</groupId>
       <artifactId>swagger-annotations-jakarta</artifactId>
-      <version>${swagger-annotations.version}</version>
     </dependency>
 
     <dependency>
@@ -175,19 +171,6 @@
       <scope>test</scope>
     </dependency>
   </dependencies>
-  <dependencyManagement>
-    <dependencies>
-      <dependency>
-        <groupId>org.springframework.modulith</groupId>
-        <artifactId>spring-modulith-bom</artifactId>
-        <version>${spring-modulith.version}</version>
-        <type>pom</type>
-        <scope>import</scope>
-      </dependency>
-    </dependencies>
-
-  </dependencyManagement>
-
   <build>
     <plugins>
       <plugin>
@@ -212,8 +195,8 @@
             <configuration>
               <inputSpec>${project.basedir}/src/main/resources/openapi/session.yml</inputSpec>
               <output>${project.build.directory}/generated-sources/openapi/session</output>
-              <apiPackage>com.temporalrift.game.session.infrastructure.adapter.in.rest</apiPackage>
-              <modelPackage>com.temporalrift.game.session.infrastructure.adapter.in.rest.model</modelPackage>
+              <apiPackage>io.github.temporalrift.game.session.infrastructure.adapter.in.rest</apiPackage>
+              <modelPackage>io.github.temporalrift.game.session.infrastructure.adapter.in.rest.model</modelPackage>
             </configuration>
           </execution>
           <execution>
@@ -224,8 +207,8 @@
             <configuration>
               <inputSpec>${project.basedir}/src/main/resources/openapi/action.yml</inputSpec>
               <output>${project.build.directory}/generated-sources/openapi/action</output>
-              <apiPackage>com.temporalrift.game.action.infrastructure.adapter.in.rest</apiPackage>
-              <modelPackage>com.temporalrift.game.action.infrastructure.adapter.in.rest.model</modelPackage>
+              <apiPackage>io.github.temporalrift.game.action.infrastructure.adapter.in.rest</apiPackage>
+              <modelPackage>io.github.temporalrift.game.action.infrastructure.adapter.in.rest.model</modelPackage>
             </configuration>
           </execution>
           <execution>
@@ -236,8 +219,8 @@
             <configuration>
               <inputSpec>${project.basedir}/src/main/resources/openapi/scoring.yml</inputSpec>
               <output>${project.build.directory}/generated-sources/openapi/scoring</output>
-              <apiPackage>com.temporalrift.game.scoring.infrastructure.adapter.in.rest</apiPackage>
-              <modelPackage>com.temporalrift.game.scoring.infrastructure.adapter.in.rest.model</modelPackage>
+              <apiPackage>io.github.temporalrift.game.scoring.infrastructure.adapter.in.rest</apiPackage>
+              <modelPackage>io.github.temporalrift.game.scoring.infrastructure.adapter.in.rest.model</modelPackage>
             </configuration>
           </execution>
         </executions>
