@@ -45,7 +45,11 @@
     <tag>HEAD</tag>
   </scm>
 
-  <properties/>
+  <properties>
+    <sonar.organization>temporal-rift</sonar.organization>
+    <sonar.projectKey>temporal-rift_game-service</sonar.projectKey>
+    <sonar.host.url>https://sonarcloud.io</sonar.host.url>
+  </properties>
 
   <dependencies>
     <dependency>
