@@ -76,9 +76,9 @@ jobs:
       - restore_cache:
           key: deps-{{ checksum "pom.xml" }}
       - snyk/scan:
-          file: game-service/pom.xml
           fail-on-issues: true
           monitor-on-build: true
+          additional-arguments: --file=game-service/pom.xml --package-manager=maven
 
 workflows:
   pipeline:
