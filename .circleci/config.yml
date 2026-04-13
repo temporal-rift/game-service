@@ -81,7 +81,8 @@ jobs:
       - snyk/scan:
           fail-on-issues: true
           monitor-on-build: true
-          additional-arguments: --file=pom.xml --package-manager=maven
+          severity-threshold: high
+          additional-arguments: --file=pom.xml --package-manager=maven --fail-on=upgradable
 
 workflows:
   pipeline:
