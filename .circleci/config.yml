@@ -75,6 +75,9 @@ jobs:
       - checkout
       - restore_cache:
           key: deps-{{ checksum "pom.xml" }}
+      - run:
+          name: Install sudo
+          command: apt-get update -qq && apt-get install -y sudo
       - snyk/scan:
           fail-on-issues: true
           monitor-on-build: true
