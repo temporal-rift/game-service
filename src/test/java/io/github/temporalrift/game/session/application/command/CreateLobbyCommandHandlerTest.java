@@ -105,8 +105,10 @@ class CreateLobbyCommandHandlerTest {
         var eventCaptor = ArgumentCaptor.forClass(EventEnvelope.class);
         then(lobbyRepository).should().save(lobbyCaptor.capture());
         then(eventPublisher).should().publish(eventCaptor.capture());
-        assertThat(eventCaptor.getValue().gameId()).isEqualTo(lobbyCaptor.getValue().gameId());
-        assertThat(eventCaptor.getValue().gameId()).isNotEqualTo(lobbyCaptor.getValue().id());
+        assertThat(eventCaptor.getValue().gameId())
+                .isEqualTo(lobbyCaptor.getValue().gameId());
+        assertThat(eventCaptor.getValue().gameId())
+                .isNotEqualTo(lobbyCaptor.getValue().id());
     }
 
     @Test

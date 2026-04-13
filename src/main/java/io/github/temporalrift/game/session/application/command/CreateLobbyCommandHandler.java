@@ -38,7 +38,12 @@ class CreateLobbyCommandHandler implements CreateLobbyUseCase {
 
         lobbyRepository.save(lobby);
 
-        eventPublisher.publish(EventEnvelope.create("session.LobbyCreated", lobbyId, "Lobby", gameId, 1,
+        eventPublisher.publish(EventEnvelope.create(
+                "session.LobbyCreated",
+                lobbyId,
+                "Lobby",
+                gameId,
+                1,
                 new LobbyCreated(lobbyId, command.playerId(), Instant.now())));
 
         return new Result(lobbyId, command.playerId(), joinCode);
@@ -46,11 +51,14 @@ class CreateLobbyCommandHandler implements CreateLobbyUseCase {
 
     private String generateUniqueJoinCode() {
         while (true) {
-            var joinCode = UUID.randomUUID().toString().replace("-", "").substring(0, 6).toUpperCase();
+            var joinCode = UUID.randomUUID()
+                    .toString()
+                    .replace("-", "")
+                    .substring(0, 6)
+                    .toUpperCase();
             if (lobbyRepository.findByJoinCode(joinCode).isEmpty()) {
                 return joinCode;
             }
         }
     }
-
 }
