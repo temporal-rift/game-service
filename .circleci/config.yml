@@ -13,7 +13,7 @@ jobs:
           key: deps-{{ checksum "pom.xml" }}
       - run:
           name: Format and Checkstyle
-          command: mvn -f game-service/pom.xml validate --batch-mode
+          command: mvn -f pom.xml validate --batch-mode
       - save_cache:
           key: deps-{{ checksum "pom.xml" }}
           paths:
@@ -28,13 +28,13 @@ jobs:
           key: deps-{{ checksum "pom.xml" }}
       - run:
           name: Build and unit tests
-          command: mvn -f game-service/pom.xml test -Dexcludes="**/*IT.java" --batch-mode
+          command: mvn -f pom.xml test -Dexcludes="**/*IT.java" --batch-mode
       - store_test_results:
-          path: game-service/target/surefire-reports
+          path: target/surefire-reports
       - persist_to_workspace:
           root: .
           paths:
-            - game-service/target
+            - target
       - save_cache:
           key: deps-{{ checksum "pom.xml" }}
           paths:
@@ -51,9 +51,9 @@ jobs:
           key: deps-{{ checksum "pom.xml" }}
       - run:
           name: Integration tests
-          command: mvn -f game-service/pom.xml test -Dtest="*IT" --batch-mode
+          command: mvn -f pom.xml test -Dtest="*IT" --batch-mode
       - store_test_results:
-          path: game-service/target/surefire-reports
+          path: target/surefire-reports
 
   sonar:
     docker:
@@ -66,7 +66,7 @@ jobs:
           at: .
       - run:
           name: SonarCloud analysis
-          command: mvn -f game-service/pom.xml sonar:sonar --batch-mode
+          command: mvn -f pom.xml sonar:sonar --batch-mode
 
   snyk:
     docker:
@@ -78,7 +78,7 @@ jobs:
       - snyk/scan:
           fail-on-issues: true
           monitor-on-build: true
-          additional-arguments: --file=game-service/pom.xml --package-manager=maven
+          additional-arguments: --file=pom.xml --package-manager=maven
 
 workflows:
   pipeline:
