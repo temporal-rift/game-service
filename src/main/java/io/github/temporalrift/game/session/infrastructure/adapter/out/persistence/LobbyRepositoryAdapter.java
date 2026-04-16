@@ -38,6 +38,11 @@ class LobbyRepositoryAdapter implements LobbyRepository {
         return jpaRepository.findByJoinCode(joinCode).map(this::toDomain);
     }
 
+    @Override
+    public boolean existsByJoinCode(String joinCode) {
+        return jpaRepository.existsByJoinCode(joinCode);
+    }
+
     private LobbyJpaEntity toEntity(Lobby lobby) {
         var entity = new LobbyJpaEntity();
         entity.setId(lobby.id());
@@ -62,7 +67,6 @@ class LobbyRepositoryAdapter implements LobbyRepository {
         entity.setLobby(lobbyEntity);
         entity.setPlayerId(player.playerId());
         entity.setPlayerName(player.playerName());
-        entity.setHost(player.isHost());
         entity.setFaction(player.faction() != null ? player.faction().name() : null);
         entity.setJoinedAt(Instant.now());
         return entity;
@@ -73,7 +77,6 @@ class LobbyRepositoryAdapter implements LobbyRepository {
                 .map(p -> new LobbyPlayer(
                         p.getPlayerId(),
                         p.getPlayerName(),
-                        p.isHost(),
                         p.getFaction() != null ? Faction.valueOf(p.getFaction()) : null))
                 .collect(java.util.stream.Collectors.toCollection(ArrayList::new));
 

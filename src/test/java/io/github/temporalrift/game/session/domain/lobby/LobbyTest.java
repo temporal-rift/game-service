@@ -32,7 +32,7 @@ class LobbyTest {
     }
 
     LobbyPlayer player(Faction faction) {
-        return new LobbyPlayer(UUID.randomUUID(), PLAYER_NAMES[playerIndex++ % PLAYER_NAMES.length], false, faction);
+        return new LobbyPlayer(UUID.randomUUID(), PLAYER_NAMES[playerIndex++ % PLAYER_NAMES.length], faction);
     }
 
     LobbyPlayer player() {
@@ -46,7 +46,8 @@ class LobbyTest {
         var gameId = UUID.randomUUID();
         var hostPlayerId = UUID.randomUUID();
         var players = new ArrayList<LobbyPlayer>();
-        assertThatNullPointerException().isThrownBy(() -> new Lobby(null, gameId, hostPlayerId, "ABC123", players));
+        assertThatNullPointerException()
+                .isThrownBy(() -> new Lobby(null, gameId, hostPlayerId, "ABC123", players, MIN_PLAYERS, MAX_PLAYERS));
     }
 
     @Test
@@ -54,7 +55,8 @@ class LobbyTest {
         var id = UUID.randomUUID();
         var hostPlayerId = UUID.randomUUID();
         var players = new ArrayList<LobbyPlayer>();
-        assertThatNullPointerException().isThrownBy(() -> new Lobby(id, null, hostPlayerId, "ABC123", players));
+        assertThatNullPointerException()
+                .isThrownBy(() -> new Lobby(id, null, hostPlayerId, "ABC123", players, MIN_PLAYERS, MAX_PLAYERS));
     }
 
     @Test
@@ -62,7 +64,8 @@ class LobbyTest {
         var id = UUID.randomUUID();
         var gameId = UUID.randomUUID();
         var players = new ArrayList<LobbyPlayer>();
-        assertThatNullPointerException().isThrownBy(() -> new Lobby(id, gameId, null, "ABC123", players));
+        assertThatNullPointerException()
+                .isThrownBy(() -> new Lobby(id, gameId, null, "ABC123", players, MIN_PLAYERS, MAX_PLAYERS));
     }
 
     @Test
@@ -71,7 +74,8 @@ class LobbyTest {
         var gameId = UUID.randomUUID();
         var hostPlayerId = UUID.randomUUID();
         var players = new ArrayList<LobbyPlayer>();
-        assertThatNullPointerException().isThrownBy(() -> new Lobby(id, gameId, hostPlayerId, null, players));
+        assertThatNullPointerException()
+                .isThrownBy(() -> new Lobby(id, gameId, hostPlayerId, null, players, MIN_PLAYERS, MAX_PLAYERS));
     }
 
     @Test
@@ -79,7 +83,8 @@ class LobbyTest {
         var id = UUID.randomUUID();
         var gameId = UUID.randomUUID();
         var hostPlayerId = UUID.randomUUID();
-        assertThatNullPointerException().isThrownBy(() -> new Lobby(id, gameId, hostPlayerId, "ABC123", null));
+        assertThatNullPointerException()
+                .isThrownBy(() -> new Lobby(id, gameId, hostPlayerId, "ABC123", null, MIN_PLAYERS, MAX_PLAYERS));
     }
 
     @Test
@@ -101,7 +106,7 @@ class LobbyTest {
         var lobby = lobbyReadyToStart();
         lobby.start();
         var extra = player();
-        assertThatExceptionOfType(LobbyAlreadyStartedException.class).isThrownBy(() -> lobby.join(extra, MAX_PLAYERS));
+        assertThatExceptionOfType(LobbyAlreadyStartedException.class).isThrownBy(() -> lobby.join(extra));
     }
 
     @Test
@@ -111,7 +116,7 @@ class LobbyTest {
             lobby.join(player());
         }
         var extra = player();
-        assertThatExceptionOfType(LobbyFullException.class).isThrownBy(() -> lobby.join(extra, MAX_PLAYERS));
+        assertThatExceptionOfType(LobbyFullException.class).isThrownBy(() -> lobby.join(extra));
     }
 
     // --- leave() ---
@@ -120,7 +125,7 @@ class LobbyTest {
     void leave_removesPlayer() {
         var lobby = emptyLobby();
         var p = player();
-        lobby.join(p, MAX_PLAYERS);
+        lobby.join(p);
         lobby.leave(p.playerId());
         assertThat(lobby.currentPlayers()).isEmpty();
     }

@@ -28,9 +28,6 @@ class LobbyPlayerJpaEntity {
     @Column(name = "player_name", nullable = false)
     private String playerName;
 
-    @Column(name = "is_host", nullable = false)
-    private boolean isHost;
-
     @Column(name = "faction")
     private String faction;
 
@@ -69,14 +66,6 @@ class LobbyPlayerJpaEntity {
 
     void setPlayerName(String playerName) {
         this.playerName = playerName;
-    }
-
-    boolean isHost() {
-        return isHost;
-    }
-
-    void setHost(boolean isHost) {
-        this.isHost = isHost;
     }
 
     String getFaction() {

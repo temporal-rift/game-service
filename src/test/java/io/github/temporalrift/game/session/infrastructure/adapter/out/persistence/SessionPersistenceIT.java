@@ -41,13 +41,13 @@ class SessionPersistenceIT {
         var id = UUID.randomUUID();
         var gameId = UUID.randomUUID();
         var hostPlayerId = UUID.randomUUID();
-        var player1 = new LobbyPlayer(hostPlayerId, "Alice", true, Faction.ERASERS);
-        var player2 = new LobbyPlayer(UUID.randomUUID(), "Bob", false, Faction.PROPHETS);
+        var player1 = new LobbyPlayer(hostPlayerId, "Alice", Faction.ERASERS);
+        var player2 = new LobbyPlayer(UUID.randomUUID(), "Bob", Faction.PROPHETS);
         var players = new ArrayList<LobbyPlayer>();
         players.add(player1);
         players.add(player2);
 
-        var lobby = new Lobby(id, gameId, hostPlayerId, "SAVE01", players);
+        var lobby = new Lobby(id, gameId, hostPlayerId, "SAVE01", players, 2, 5);
         lobbyRepository.save(lobby);
 
         var loaded = lobbyRepository.findById(id);
@@ -66,7 +66,7 @@ class SessionPersistenceIT {
                 .findFirst();
         assertThat(loadedPlayer).isPresent();
         assertThat(loadedPlayer.get().playerName()).isEqualTo("Alice");
-        assertThat(loadedPlayer.get().isHost()).isTrue();
+        assertThat(result.hostPlayerId()).isEqualTo(hostPlayerId);
         assertThat(loadedPlayer.get().faction()).isEqualTo(Faction.ERASERS);
     }
 
@@ -74,7 +74,7 @@ class SessionPersistenceIT {
     void lobby_findByJoinCode_returnsCorrectLobby() {
         var id = UUID.randomUUID();
         var hostPlayerId = UUID.randomUUID();
-        var lobby = new Lobby(id, UUID.randomUUID(), hostPlayerId, "FIND01", new ArrayList<>());
+        var lobby = new Lobby(id, UUID.randomUUID(), hostPlayerId, "FIND01", new ArrayList<>(), 2, 5);
         lobbyRepository.save(lobby);
 
         var found = lobbyRepository.findByJoinCode("FIND01");

@@ -7,7 +7,7 @@ import org.apache.commons.lang3.StringUtils;
 
 import io.github.temporalrift.events.shared.Faction;
 
-public record LobbyPlayer(UUID playerId, String playerName, boolean isHost, Faction faction) {
+public record LobbyPlayer(UUID playerId, String playerName, Faction faction) {
 
     public LobbyPlayer {
         Objects.requireNonNull(playerId, "playerId cannot be null");

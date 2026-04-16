@@ -8,4 +8,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 interface LobbyJpaRepository extends JpaRepository<LobbyJpaEntity, UUID> {
 
     Optional<LobbyJpaEntity> findByJoinCode(String joinCode);
+
+    boolean existsByJoinCode(String joinCode);
 }

@@ -25,11 +25,17 @@ class CreateLobbyCommandHandler implements CreateLobbyUseCase {
 
     private final GameRulesPort gameRules;
 
+    private final JoinCodeGenerator joinCodeGenerator;
+
     CreateLobbyCommandHandler(
-            LobbyRepository lobbyRepository, SessionEventPublisher eventPublisher, GameRulesPort gameRules) {
+            LobbyRepository lobbyRepository,
+            SessionEventPublisher eventPublisher,
+            GameRulesPort gameRules,
+            JoinCodeGenerator joinCodeGenerator) {
         this.lobbyRepository = lobbyRepository;
         this.eventPublisher = eventPublisher;
         this.gameRules = gameRules;
+        this.joinCodeGenerator = joinCodeGenerator;
     }
 
     @Override
@@ -37,8 +43,8 @@ class CreateLobbyCommandHandler implements CreateLobbyUseCase {
     public Result execute(Command command) {
         var lobbyId = UUID.randomUUID();
         var gameId = UUID.randomUUID();
-        var joinCode = generateUniqueJoinCode();
-        var host = new LobbyPlayer(command.playerId(), command.playerName(), true, null);
+        var joinCode = joinCodeGenerator.generate();
+        var host = new LobbyPlayer(command.playerId(), command.playerName(), null);
         var lobby = new Lobby(
                 lobbyId,
                 gameId,
@@ -59,18 +65,5 @@ class CreateLobbyCommandHandler implements CreateLobbyUseCase {
                 new LobbyCreated(lobbyId, command.playerId(), Instant.now())));
 
         return new Result(lobbyId, command.playerId(), joinCode);
-    }
-
-    private String generateUniqueJoinCode() {
-        while (true) {
-            var joinCode = UUID.randomUUID()
-                    .toString()
-                    .replace("-", "")
-                    .substring(0, 6)
-                    .toUpperCase();
-            if (lobbyRepository.findByJoinCode(joinCode).isEmpty()) {
-                return joinCode;
-            }
-        }
     }
 }

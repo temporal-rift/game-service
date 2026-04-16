@@ -4,9 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
-import static org.mockito.Mockito.mock;
 
-import java.util.Optional;
 import java.util.UUID;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -38,15 +36,20 @@ class CreateLobbyCommandHandlerTest {
     @Mock
     GameRulesPort gameRules;
 
+    @Mock
+    JoinCodeGenerator joinCodeGenerator;
+
     @InjectMocks
     CreateLobbyCommandHandler handler;
 
+    static final String JOIN_CODE = "X7K2P9";
+
     @BeforeEach
     void setUp() {
-        given(lobbyRepository.findByJoinCode(any())).willReturn(Optional.empty());
         given(lobbyRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
         given(gameRules.minPlayers()).willReturn(2);
         given(gameRules.maxPlayers()).willReturn(5);
+        given(joinCodeGenerator.generate()).willReturn(JOIN_CODE);
     }
 
     @Test
@@ -77,9 +80,9 @@ class CreateLobbyCommandHandlerTest {
         var captor = ArgumentCaptor.forClass(Lobby.class);
         then(lobbyRepository).should().save(captor.capture());
         var host = captor.getValue().currentPlayers().getFirst();
-        assertThat(host.isHost()).isTrue();
         assertThat(host.playerId()).isEqualTo(command.playerId());
         assertThat(host.playerName()).isEqualTo(command.playerName());
+        assertThat(captor.getValue().hostPlayerId()).isEqualTo(host.playerId());
     }
 
     @Test
@@ -139,8 +142,8 @@ class CreateLobbyCommandHandlerTest {
     }
 
     @Test
-    @DisplayName("returns lobbyId, hostPlayerId and a 6-character join code")
-    void execute_returnsLobbyIdHostPlayerIdAndJoinCode() {
+    @DisplayName("returns the join code produced by JoinCodeGenerator")
+    void execute_returnsJoinCodeFromGenerator() {
         // given
         var command = new CreateLobbyUseCase.Command(UUID.randomUUID(), "Alice");
 
@@ -150,22 +153,6 @@ class CreateLobbyCommandHandlerTest {
         // then
         assertThat(result.lobbyId()).isNotNull();
         assertThat(result.hostPlayerId()).isEqualTo(command.playerId());
-        assertThat(result.joinCode()).isNotNull().hasSize(6);
-    }
-
-    @Test
-    @DisplayName("retries join code generation until a unique code is found")
-    void execute_joinCodeCollision_retriesUntilUnique() {
-        // given
-        given(lobbyRepository.findByJoinCode(any()))
-                .willReturn(Optional.of(mock(Lobby.class)))
-                .willReturn(Optional.empty());
-        var command = new CreateLobbyUseCase.Command(UUID.randomUUID(), "Alice");
-
-        // when
-        var result = handler.execute(command);
-
-        // then
-        assertThat(result.joinCode()).isNotNull().hasSize(6);
+        assertThat(result.joinCode()).isEqualTo(JOIN_CODE);
     }
 }

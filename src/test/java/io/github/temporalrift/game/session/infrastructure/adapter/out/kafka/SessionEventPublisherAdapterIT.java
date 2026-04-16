@@ -47,7 +47,7 @@ class SessionEventPublisherAdapterIT {
         final var lobbyId = UUID.randomUUID();
         final var gameId = UUID.randomUUID();
         final var hostId = UUID.randomUUID();
-        final var lobby = new Lobby(lobbyId, gameId, hostId, "OUTBOX1", new ArrayList<>());
+        final var lobby = new Lobby(lobbyId, gameId, hostId, "OUTBOX1", new ArrayList<>(), 2, 5);
         final var envelope = EventEnvelope.create(
                 "session.LobbyCreated", lobbyId, "Lobby", gameId, 1, new LobbyCreated(lobbyId, hostId, Instant.now()));
 
@@ -66,7 +66,7 @@ class SessionEventPublisherAdapterIT {
         final var lobbyId = UUID.randomUUID();
         final var gameId = UUID.randomUUID();
         final var hostId = UUID.randomUUID();
-        final var lobby = new Lobby(lobbyId, gameId, hostId, "OUTBOX2", new ArrayList<>());
+        final var lobby = new Lobby(lobbyId, gameId, hostId, "OUTBOX2", new ArrayList<>(), 2, 5);
         final var envelope = EventEnvelope.create(
                 "session.LobbyCreated", lobbyId, "Lobby", gameId, 1, new LobbyCreated(lobbyId, hostId, Instant.now()));
 
