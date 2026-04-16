@@ -31,6 +31,12 @@ class LobbyJpaEntity {
     @Column(name = "status", nullable = false)
     private String status;
 
+    @Column(name = "min_players", nullable = false)
+    private int minPlayers;
+
+    @Column(name = "max_players", nullable = false)
+    private int maxPlayers;
+
     @OneToMany(mappedBy = "lobby", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     private List<LobbyPlayerJpaEntity> players = new ArrayList<>();
 
@@ -83,5 +89,21 @@ class LobbyJpaEntity {
     void setPlayers(List<LobbyPlayerJpaEntity> players) {
         this.players.clear();
         this.players.addAll(players);
+    }
+
+    int getMinPlayers() {
+        return minPlayers;
+    }
+
+    void setMinPlayers(int minPlayers) {
+        this.minPlayers = minPlayers;
+    }
+
+    int getMaxPlayers() {
+        return maxPlayers;
+    }
+
+    void setMaxPlayers(int maxPlayers) {
+        this.maxPlayers = maxPlayers;
     }
 }

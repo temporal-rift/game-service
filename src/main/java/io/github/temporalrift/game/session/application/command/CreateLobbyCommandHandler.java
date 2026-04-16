@@ -12,6 +12,7 @@ import io.github.temporalrift.events.session.LobbyCreated;
 import io.github.temporalrift.game.session.application.port.in.CreateLobbyUseCase;
 import io.github.temporalrift.game.session.domain.lobby.Lobby;
 import io.github.temporalrift.game.session.domain.lobby.LobbyPlayer;
+import io.github.temporalrift.game.session.domain.port.out.GameRulesPort;
 import io.github.temporalrift.game.session.domain.port.out.LobbyRepository;
 import io.github.temporalrift.game.session.domain.port.out.SessionEventPublisher;
 
@@ -22,9 +23,13 @@ class CreateLobbyCommandHandler implements CreateLobbyUseCase {
 
     private final SessionEventPublisher eventPublisher;
 
-    CreateLobbyCommandHandler(LobbyRepository lobbyRepository, SessionEventPublisher eventPublisher) {
+    private final GameRulesPort gameRules;
+
+    CreateLobbyCommandHandler(
+            LobbyRepository lobbyRepository, SessionEventPublisher eventPublisher, GameRulesPort gameRules) {
         this.lobbyRepository = lobbyRepository;
         this.eventPublisher = eventPublisher;
+        this.gameRules = gameRules;
     }
 
     @Override
@@ -34,7 +39,14 @@ class CreateLobbyCommandHandler implements CreateLobbyUseCase {
         var gameId = UUID.randomUUID();
         var joinCode = generateUniqueJoinCode();
         var host = new LobbyPlayer(command.playerId(), command.playerName(), true, null);
-        var lobby = new Lobby(lobbyId, gameId, command.playerId(), joinCode, List.of(host));
+        var lobby = new Lobby(
+                lobbyId,
+                gameId,
+                command.playerId(),
+                joinCode,
+                List.of(host),
+                gameRules.minPlayers(),
+                gameRules.maxPlayers());
 
         lobbyRepository.save(lobby);
 

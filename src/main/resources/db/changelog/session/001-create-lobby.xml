@@ -22,6 +22,12 @@
       <column name="status" type="TEXT">
         <constraints nullable="false"/>
       </column>
+      <column name="min_players" type="INT">
+        <constraints nullable="false"/>
+      </column>
+      <column name="max_players" type="INT">
+        <constraints nullable="false"/>
+      </column>
     </createTable>
 
     <createIndex tableName="lobby" indexName="lobby_join_code_idx" unique="true">

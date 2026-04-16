@@ -21,7 +21,14 @@ class LobbyTest {
     int playerIndex = 0;
 
     Lobby emptyLobby() {
-        return new Lobby(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), JOIN_CODE, new ArrayList<>());
+        return new Lobby(
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                JOIN_CODE,
+                new ArrayList<>(),
+                MIN_PLAYERS,
+                MAX_PLAYERS);
     }
 
     LobbyPlayer player(Faction faction) {
@@ -85,14 +92,14 @@ class LobbyTest {
     @Test
     void join_addsPlayer() {
         var lobby = emptyLobby();
-        lobby.join(player(), MAX_PLAYERS);
+        lobby.join(player());
         assertThat(lobby.currentPlayers()).hasSize(1);
     }
 
     @Test
     void join_lobbyAlreadyStarted_throws() {
         var lobby = lobbyReadyToStart();
-        lobby.start(MIN_PLAYERS);
+        lobby.start();
         var extra = player();
         assertThatExceptionOfType(LobbyAlreadyStartedException.class).isThrownBy(() -> lobby.join(extra, MAX_PLAYERS));
     }
@@ -101,7 +108,7 @@ class LobbyTest {
     void join_lobbyFull_throws() {
         var lobby = emptyLobby();
         for (int i = 0; i < MAX_PLAYERS; i++) {
-            lobby.join(player(), MAX_PLAYERS);
+            lobby.join(player());
         }
         var extra = player();
         assertThatExceptionOfType(LobbyFullException.class).isThrownBy(() -> lobby.join(extra, MAX_PLAYERS));
@@ -127,7 +134,7 @@ class LobbyTest {
     @Test
     void leave_lobbyAlreadyStarted_throws() {
         var lobby = lobbyReadyToStart();
-        lobby.start(MIN_PLAYERS);
+        lobby.start();
         var nonHost = lobby.currentPlayers().get(1).playerId();
         assertThatExceptionOfType(LobbyAlreadyStartedException.class).isThrownBy(() -> lobby.leave(nonHost));
     }
@@ -137,48 +144,48 @@ class LobbyTest {
     @Test
     void start_happyPath_statusBecomesStarted() {
         var lobby = lobbyReadyToStart();
-        lobby.start(MIN_PLAYERS);
+        lobby.start();
         assertThat(lobby.status()).isEqualTo(LobbyStatus.STARTED);
     }
 
     @Test
     void start_tooFewPlayers_throws() {
         var lobby = emptyLobby();
-        lobby.join(player(Faction.ERASERS), MAX_PLAYERS);
-        lobby.join(player(Faction.PROPHETS), MAX_PLAYERS);
-        assertThatExceptionOfType(NotEnoughPlayersException.class).isThrownBy(() -> lobby.start(MIN_PLAYERS));
+        lobby.join(player(Faction.ERASERS));
+        lobby.join(player(Faction.PROPHETS));
+        assertThatExceptionOfType(NotEnoughPlayersException.class).isThrownBy(() -> lobby.start());
     }
 
     @Test
     void start_factionNotAssigned_throws() {
         var lobby = emptyLobby();
-        lobby.join(player(Faction.ERASERS), MAX_PLAYERS);
-        lobby.join(player(Faction.PROPHETS), MAX_PLAYERS);
-        lobby.join(player(null), MAX_PLAYERS);
-        assertThatExceptionOfType(FactionNotAssignedException.class).isThrownBy(() -> lobby.start(MIN_PLAYERS));
+        lobby.join(player(Faction.ERASERS));
+        lobby.join(player(Faction.PROPHETS));
+        lobby.join(player(null));
+        assertThatExceptionOfType(FactionNotAssignedException.class).isThrownBy(() -> lobby.start());
     }
 
     @Test
     void start_duplicateFaction_throws() {
         var lobby = emptyLobby();
-        lobby.join(player(Faction.ERASERS), MAX_PLAYERS);
-        lobby.join(player(Faction.ERASERS), MAX_PLAYERS);
-        lobby.join(player(Faction.PROPHETS), MAX_PLAYERS);
-        assertThatExceptionOfType(DuplicateFactionException.class).isThrownBy(() -> lobby.start(MIN_PLAYERS));
+        lobby.join(player(Faction.ERASERS));
+        lobby.join(player(Faction.ERASERS));
+        lobby.join(player(Faction.PROPHETS));
+        assertThatExceptionOfType(DuplicateFactionException.class).isThrownBy(() -> lobby.start());
     }
 
     @Test
     void start_alreadyStarted_throws() {
         var lobby = lobbyReadyToStart();
-        lobby.start(MIN_PLAYERS);
-        assertThatExceptionOfType(LobbyAlreadyStartedException.class).isThrownBy(() -> lobby.start(MIN_PLAYERS));
+        lobby.start();
+        assertThatExceptionOfType(LobbyAlreadyStartedException.class).isThrownBy(() -> lobby.start());
     }
 
     Lobby lobbyReadyToStart() {
         var lobby = emptyLobby();
-        lobby.join(player(Faction.ERASERS), MAX_PLAYERS);
-        lobby.join(player(Faction.PROPHETS), MAX_PLAYERS);
-        lobby.join(player(Faction.REVISIONISTS), MAX_PLAYERS);
+        lobby.join(player(Faction.ERASERS));
+        lobby.join(player(Faction.PROPHETS));
+        lobby.join(player(Faction.REVISIONISTS));
         return lobby;
     }
 }

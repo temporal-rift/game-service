@@ -45,6 +45,8 @@ class LobbyRepositoryAdapter implements LobbyRepository {
         entity.setHostPlayerId(lobby.hostPlayerId());
         entity.setJoinCode(lobby.joinCode());
         entity.setStatus(lobby.status().name());
+        entity.setMinPlayers(lobby.minPlayers());
+        entity.setMaxPlayers(lobby.maxPlayers());
 
         var players = lobby.currentPlayers().stream()
                 .map(p -> toPlayerEntity(p, entity))
@@ -81,6 +83,8 @@ class LobbyRepositoryAdapter implements LobbyRepository {
                 entity.getHostPlayerId(),
                 entity.getJoinCode(),
                 players,
-                LobbyStatus.valueOf(entity.getStatus()));
+                LobbyStatus.valueOf(entity.getStatus()),
+                entity.getMinPlayers(),
+                entity.getMaxPlayers());
     }
 }

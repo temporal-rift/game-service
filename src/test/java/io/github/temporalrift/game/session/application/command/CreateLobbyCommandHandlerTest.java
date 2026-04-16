@@ -22,6 +22,7 @@ import io.github.temporalrift.events.envelope.EventEnvelope;
 import io.github.temporalrift.events.session.LobbyCreated;
 import io.github.temporalrift.game.session.application.port.in.CreateLobbyUseCase;
 import io.github.temporalrift.game.session.domain.lobby.Lobby;
+import io.github.temporalrift.game.session.domain.port.out.GameRulesPort;
 import io.github.temporalrift.game.session.domain.port.out.LobbyRepository;
 import io.github.temporalrift.game.session.domain.port.out.SessionEventPublisher;
 
@@ -34,6 +35,9 @@ class CreateLobbyCommandHandlerTest {
     @Mock
     SessionEventPublisher eventPublisher;
 
+    @Mock
+    GameRulesPort gameRules;
+
     @InjectMocks
     CreateLobbyCommandHandler handler;
 
@@ -41,6 +45,8 @@ class CreateLobbyCommandHandlerTest {
     void setUp() {
         given(lobbyRepository.findByJoinCode(any())).willReturn(Optional.empty());
         given(lobbyRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
+        given(gameRules.minPlayers()).willReturn(2);
+        given(gameRules.maxPlayers()).willReturn(5);
     }
 
     @Test
