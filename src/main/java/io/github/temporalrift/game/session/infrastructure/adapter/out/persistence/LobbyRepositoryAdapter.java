@@ -1,6 +1,6 @@
 package io.github.temporalrift.game.session.infrastructure.adapter.out.persistence;
 
-import java.time.Instant;
+import java.time.Clock;
 import java.util.ArrayList;
 import java.util.Optional;
 import java.util.UUID;
@@ -18,8 +18,11 @@ class LobbyRepositoryAdapter implements LobbyRepository {
 
     private final LobbyJpaRepository jpaRepository;
 
-    LobbyRepositoryAdapter(LobbyJpaRepository jpaRepository) {
+    private final Clock clock;
+
+    LobbyRepositoryAdapter(LobbyJpaRepository jpaRepository, Clock clock) {
         this.jpaRepository = jpaRepository;
+        this.clock = clock;
     }
 
     @Override
@@ -67,7 +70,7 @@ class LobbyRepositoryAdapter implements LobbyRepository {
         entity.setLobby(lobbyEntity);
         entity.setPlayerName(player.playerName());
         entity.setFaction(player.faction() != null ? player.faction().name() : null);
-        entity.setJoinedAt(Instant.now());
+        entity.setJoinedAt(player.joinedAt());
         return entity;
     }
 
@@ -76,7 +79,8 @@ class LobbyRepositoryAdapter implements LobbyRepository {
                 .map(p -> new LobbyPlayer(
                         p.getId().getPlayerId(),
                         p.getPlayerName(),
-                        p.getFaction() != null ? Faction.valueOf(p.getFaction()) : null))
+                        p.getFaction() != null ? Faction.valueOf(p.getFaction()) : null,
+                        p.getJoinedAt()))
                 .collect(java.util.stream.Collectors.toCollection(ArrayList::new));
 
         return Lobby.reconstitute(
@@ -87,6 +91,7 @@ class LobbyRepositoryAdapter implements LobbyRepository {
                 players,
                 LobbyStatus.valueOf(entity.getStatus()),
                 entity.getMinPlayers(),
-                entity.getMaxPlayers());
+                entity.getMaxPlayers(),
+                clock);
     }
 }

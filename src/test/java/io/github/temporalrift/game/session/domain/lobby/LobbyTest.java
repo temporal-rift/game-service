@@ -4,6 +4,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.assertj.core.api.Assertions.assertThatNullPointerException;
 
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.UUID;
 
@@ -17,6 +20,8 @@ class LobbyTest {
     static final int MIN_PLAYERS = 3;
     static final int MAX_PLAYERS = 5;
     static final String[] PLAYER_NAMES = {"Alice", "Bob", "Charlie", "Diana", "Eve"};
+    static final Instant FIXED_NOW = Instant.parse("2025-01-01T12:00:00Z");
+    static final Clock FIXED_CLOCK = Clock.fixed(FIXED_NOW, ZoneOffset.UTC);
 
     int playerIndex = 0;
 
@@ -28,11 +33,12 @@ class LobbyTest {
                 JOIN_CODE,
                 new ArrayList<>(),
                 MIN_PLAYERS,
-                MAX_PLAYERS);
+                MAX_PLAYERS,
+                FIXED_CLOCK);
     }
 
     LobbyPlayer player(Faction faction) {
-        return new LobbyPlayer(UUID.randomUUID(), PLAYER_NAMES[playerIndex++ % PLAYER_NAMES.length], faction);
+        return new LobbyPlayer(UUID.randomUUID(), PLAYER_NAMES[playerIndex++ % PLAYER_NAMES.length], faction, null);
     }
 
     LobbyPlayer player() {
@@ -47,7 +53,8 @@ class LobbyTest {
         var hostPlayerId = UUID.randomUUID();
         var players = new ArrayList<LobbyPlayer>();
         assertThatNullPointerException()
-                .isThrownBy(() -> new Lobby(null, gameId, hostPlayerId, "ABC123", players, MIN_PLAYERS, MAX_PLAYERS));
+                .isThrownBy(() -> new Lobby(
+                        null, gameId, hostPlayerId, "ABC123", players, MIN_PLAYERS, MAX_PLAYERS, FIXED_CLOCK));
     }
 
     @Test
@@ -56,7 +63,8 @@ class LobbyTest {
         var hostPlayerId = UUID.randomUUID();
         var players = new ArrayList<LobbyPlayer>();
         assertThatNullPointerException()
-                .isThrownBy(() -> new Lobby(id, null, hostPlayerId, "ABC123", players, MIN_PLAYERS, MAX_PLAYERS));
+                .isThrownBy(() ->
+                        new Lobby(id, null, hostPlayerId, "ABC123", players, MIN_PLAYERS, MAX_PLAYERS, FIXED_CLOCK));
     }
 
     @Test
@@ -65,7 +73,8 @@ class LobbyTest {
         var gameId = UUID.randomUUID();
         var players = new ArrayList<LobbyPlayer>();
         assertThatNullPointerException()
-                .isThrownBy(() -> new Lobby(id, gameId, null, "ABC123", players, MIN_PLAYERS, MAX_PLAYERS));
+                .isThrownBy(
+                        () -> new Lobby(id, gameId, null, "ABC123", players, MIN_PLAYERS, MAX_PLAYERS, FIXED_CLOCK));
     }
 
     @Test
@@ -75,7 +84,8 @@ class LobbyTest {
         var hostPlayerId = UUID.randomUUID();
         var players = new ArrayList<LobbyPlayer>();
         assertThatNullPointerException()
-                .isThrownBy(() -> new Lobby(id, gameId, hostPlayerId, null, players, MIN_PLAYERS, MAX_PLAYERS));
+                .isThrownBy(() ->
+                        new Lobby(id, gameId, hostPlayerId, null, players, MIN_PLAYERS, MAX_PLAYERS, FIXED_CLOCK));
     }
 
     @Test
@@ -84,7 +94,8 @@ class LobbyTest {
         var gameId = UUID.randomUUID();
         var hostPlayerId = UUID.randomUUID();
         assertThatNullPointerException()
-                .isThrownBy(() -> new Lobby(id, gameId, hostPlayerId, "ABC123", null, MIN_PLAYERS, MAX_PLAYERS));
+                .isThrownBy(() ->
+                        new Lobby(id, gameId, hostPlayerId, "ABC123", null, MIN_PLAYERS, MAX_PLAYERS, FIXED_CLOCK));
     }
 
     @Test
@@ -99,6 +110,13 @@ class LobbyTest {
         var lobby = emptyLobby();
         lobby.join(player());
         assertThat(lobby.currentPlayers()).hasSize(1);
+    }
+
+    @Test
+    void join_stampsJoinedAtFromClock() {
+        var lobby = emptyLobby();
+        lobby.join(player());
+        assertThat(lobby.currentPlayers().getFirst().joinedAt()).isEqualTo(FIXED_NOW);
     }
 
     @Test

@@ -1,5 +1,6 @@
 package io.github.temporalrift.game.session.domain.lobby;
 
+import java.time.Instant;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -7,7 +8,7 @@ import org.apache.commons.lang3.StringUtils;
 
 import io.github.temporalrift.events.shared.Faction;
 
-public record LobbyPlayer(UUID playerId, String playerName, Faction faction) {
+public record LobbyPlayer(UUID playerId, String playerName, Faction faction, Instant joinedAt) {
 
     public LobbyPlayer {
         Objects.requireNonNull(playerId, "playerId cannot be null");

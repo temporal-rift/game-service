@@ -1,5 +1,6 @@
 package io.github.temporalrift.game.session.domain.lobby;
 
+import java.time.Clock;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -23,6 +24,8 @@ public class Lobby {
 
     private final int maxPlayers;
 
+    private final Clock clock;
+
     private LobbyStatus status;
 
     public Lobby(
@@ -32,7 +35,8 @@ public class Lobby {
             String joinCode,
             List<LobbyPlayer> currentPlayers,
             int minPlayers,
-            int maxPlayers) {
+            int maxPlayers,
+            Clock clock) {
         this.id = Objects.requireNonNull(id, "id must not be null");
         this.gameId = Objects.requireNonNull(gameId, "gameId must not be null");
         this.hostPlayerId = Objects.requireNonNull(hostPlayerId, "hostPlayerId must not be null");
@@ -41,6 +45,7 @@ public class Lobby {
                 new ArrayList<>(Objects.requireNonNull(currentPlayers, "currentPlayers must not be null"));
         this.minPlayers = minPlayers;
         this.maxPlayers = maxPlayers;
+        this.clock = Objects.requireNonNull(clock, "clock must not be null");
         this.status = LobbyStatus.WAITING;
     }
 
@@ -52,8 +57,9 @@ public class Lobby {
             List<LobbyPlayer> currentPlayers,
             LobbyStatus status,
             int minPlayers,
-            int maxPlayers) {
-        var lobby = new Lobby(id, gameId, hostPlayerId, joinCode, currentPlayers, minPlayers, maxPlayers);
+            int maxPlayers,
+            Clock clock) {
+        var lobby = new Lobby(id, gameId, hostPlayerId, joinCode, currentPlayers, minPlayers, maxPlayers, clock);
         lobby.status = status;
         return lobby;
     }
@@ -64,7 +70,7 @@ public class Lobby {
         if (currentPlayers.size() >= maxPlayers) {
             throw new LobbyFullException();
         }
-        currentPlayers.add(player);
+        currentPlayers.add(new LobbyPlayer(player.playerId(), player.playerName(), player.faction(), clock.instant()));
     }
 
     public void leave(UUID leavingPlayerId) {

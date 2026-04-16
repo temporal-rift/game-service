@@ -2,6 +2,7 @@ package io.github.temporalrift.game.session.infrastructure.adapter.out.kafka;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.time.Clock;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.UUID;
@@ -32,6 +33,9 @@ class SessionEventPublisherAdapterIT {
     LobbyRepository lobbyRepository;
 
     @Autowired
+    Clock clock;
+
+    @Autowired
     JdbcTemplate jdbcTemplate;
 
     @Autowired
@@ -47,7 +51,7 @@ class SessionEventPublisherAdapterIT {
         final var lobbyId = UUID.randomUUID();
         final var gameId = UUID.randomUUID();
         final var hostId = UUID.randomUUID();
-        final var lobby = new Lobby(lobbyId, gameId, hostId, "OUTBOX1", new ArrayList<>(), 2, 5);
+        final var lobby = new Lobby(lobbyId, gameId, hostId, "OUTBOX1", new ArrayList<>(), 2, 5, clock);
         final var envelope = EventEnvelope.create(
                 "session.LobbyCreated", lobbyId, "Lobby", gameId, 1, new LobbyCreated(lobbyId, hostId, Instant.now()));
 
@@ -66,7 +70,7 @@ class SessionEventPublisherAdapterIT {
         final var lobbyId = UUID.randomUUID();
         final var gameId = UUID.randomUUID();
         final var hostId = UUID.randomUUID();
-        final var lobby = new Lobby(lobbyId, gameId, hostId, "OUTBOX2", new ArrayList<>(), 2, 5);
+        final var lobby = new Lobby(lobbyId, gameId, hostId, "OUTBOX2", new ArrayList<>(), 2, 5, clock);
         final var envelope = EventEnvelope.create(
                 "session.LobbyCreated", lobbyId, "Lobby", gameId, 1, new LobbyCreated(lobbyId, hostId, Instant.now()));
 

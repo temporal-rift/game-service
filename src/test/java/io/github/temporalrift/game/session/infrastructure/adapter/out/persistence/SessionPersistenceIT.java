@@ -2,6 +2,8 @@ package io.github.temporalrift.game.session.infrastructure.adapter.out.persisten
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.time.Clock;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.UUID;
 import java.util.stream.IntStream;
@@ -36,18 +38,21 @@ class SessionPersistenceIT {
     @Autowired
     GameRepository gameRepository;
 
+    @Autowired
+    Clock clock;
+
     @Test
     void lobby_save_and_findById_roundTripsAllFields() {
         var id = UUID.randomUUID();
         var gameId = UUID.randomUUID();
         var hostPlayerId = UUID.randomUUID();
-        var player1 = new LobbyPlayer(hostPlayerId, "Alice", Faction.ERASERS);
-        var player2 = new LobbyPlayer(UUID.randomUUID(), "Bob", Faction.PROPHETS);
+        var player1 = new LobbyPlayer(hostPlayerId, "Alice", Faction.ERASERS, Instant.now());
+        var player2 = new LobbyPlayer(UUID.randomUUID(), "Bob", Faction.PROPHETS, Instant.now());
         var players = new ArrayList<LobbyPlayer>();
         players.add(player1);
         players.add(player2);
 
-        var lobby = new Lobby(id, gameId, hostPlayerId, "SAVE01", players, 2, 5);
+        var lobby = new Lobby(id, gameId, hostPlayerId, "SAVE01", players, 2, 5, clock);
         lobbyRepository.save(lobby);
 
         var loaded = lobbyRepository.findById(id);
@@ -74,7 +79,7 @@ class SessionPersistenceIT {
     void lobby_findByJoinCode_returnsCorrectLobby() {
         var id = UUID.randomUUID();
         var hostPlayerId = UUID.randomUUID();
-        var lobby = new Lobby(id, UUID.randomUUID(), hostPlayerId, "FIND01", new ArrayList<>(), 2, 5);
+        var lobby = new Lobby(id, UUID.randomUUID(), hostPlayerId, "FIND01", new ArrayList<>(), 2, 5, clock);
         lobbyRepository.save(lobby);
 
         var found = lobbyRepository.findByJoinCode("FIND01");
