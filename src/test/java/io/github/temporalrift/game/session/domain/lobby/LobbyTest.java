@@ -131,6 +131,12 @@ class LobbyTest {
     }
 
     @Test
+    void leave_playerNotInLobby_throws() {
+        var lobby = emptyLobby();
+        assertThatExceptionOfType(PlayerNotInLobbyException.class).isThrownBy(() -> lobby.leave(UUID.randomUUID()));
+    }
+
+    @Test
     void leave_hostLeaves_throws() {
         var lobby = emptyLobby();
         assertThatExceptionOfType(HostCannotLeaveException.class).isThrownBy(() -> lobby.leave(lobby.hostPlayerId()));

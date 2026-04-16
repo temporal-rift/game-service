@@ -73,7 +73,10 @@ public class Lobby {
         if (leavingPlayerId.equals(hostPlayerId)) {
             throw new HostCannotLeaveException();
         }
-        currentPlayers.removeIf(player -> player.playerId().equals(leavingPlayerId));
+        var removed = currentPlayers.removeIf(player -> player.playerId().equals(leavingPlayerId));
+        if (!removed) {
+            throw new PlayerNotInLobbyException(leavingPlayerId);
+        }
     }
 
     public void start() {
