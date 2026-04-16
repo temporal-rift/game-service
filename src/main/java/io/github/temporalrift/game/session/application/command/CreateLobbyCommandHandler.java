@@ -62,8 +62,8 @@ class CreateLobbyCommandHandler implements CreateLobbyUseCase {
 
         lobbyRepository.save(lobby);
 
-        eventPublisher.publish(
-                EventEnvelope.create(lobbyId, "Lobby", gameId, 1, new LobbyCreated(lobbyId, command.playerId(), now)));
+        eventPublisher.publish(EventEnvelope.create(
+                lobbyId, Lobby.AGGREGATE_TYPE, gameId, 1, new LobbyCreated(lobbyId, command.playerId(), now)));
 
         return new Result(lobbyId, command.playerId(), joinCode);
     }

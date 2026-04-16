@@ -10,6 +10,8 @@ import java.util.stream.Collectors;
 
 public class Lobby {
 
+    public static final String AGGREGATE_TYPE = "Lobby";
+
     private final UUID id;
 
     private final UUID gameId;
