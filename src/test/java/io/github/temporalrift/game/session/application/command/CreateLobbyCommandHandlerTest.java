@@ -5,6 +5,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 
+import java.time.Clock;
+import java.time.Instant;
 import java.util.UUID;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -39,10 +41,14 @@ class CreateLobbyCommandHandlerTest {
     @Mock
     JoinCodeGenerator joinCodeGenerator;
 
+    @Mock
+    Clock clock;
+
     @InjectMocks
     CreateLobbyCommandHandler handler;
 
     static final String JOIN_CODE = "X7K2P9";
+    static final Instant NOW = Instant.parse("2026-04-16T12:00:00Z");
 
     @BeforeEach
     void setUp() {
@@ -50,6 +56,7 @@ class CreateLobbyCommandHandlerTest {
         given(gameRules.minPlayers()).willReturn(2);
         given(gameRules.maxPlayers()).willReturn(5);
         given(joinCodeGenerator.generate()).willReturn(JOIN_CODE);
+        given(clock.instant()).willReturn(NOW);
     }
 
     @Test
