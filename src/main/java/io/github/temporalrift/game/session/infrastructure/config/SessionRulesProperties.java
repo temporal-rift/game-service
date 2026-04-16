@@ -7,6 +7,8 @@ import jakarta.validation.constraints.NotEmpty;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.validation.annotation.Validated;
 
+import io.github.temporalrift.game.session.domain.port.out.GameRulesPort;
+
 @ConfigurationProperties("game.rules")
 @Validated
 public record SessionRulesProperties(
@@ -15,4 +17,13 @@ public record SessionRulesProperties(
         @Min(1) int maxEras,
         @Min(1) int maxCascadedParadoxes,
         @Min(1) int eventsPerEra,
-        @NotEmpty Map<Integer, Integer> actionRoundTimerSeconds) {}
+        @NotEmpty Map<Integer, Integer> actionRoundTimerSeconds)
+        implements GameRulesPort {
+
+    private static final int DEFAULT_ACTION_ROUND_TIMER_SECONDS = 60;
+
+    @Override
+    public int actionRoundTimerSeconds(int playerCount) {
+        return actionRoundTimerSeconds.getOrDefault(playerCount, DEFAULT_ACTION_ROUND_TIMER_SECONDS);
+    }
+}
