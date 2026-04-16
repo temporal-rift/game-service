@@ -7,14 +7,11 @@
 
   <changeSet id="002-create-lobby-player" author="game-service">
     <createTable tableName="lobby_player">
-      <column name="id" type="UUID">
-        <constraints primaryKey="true" nullable="false"/>
-      </column>
       <column name="lobby_id" type="UUID">
-        <constraints nullable="false" foreignKeyName="fk_lobby_player_lobby" references="lobby(id)"/>
+        <constraints primaryKey="true" nullable="false" foreignKeyName="fk_lobby_player_lobby" references="lobby(id)"/>
       </column>
       <column name="player_id" type="UUID">
-        <constraints nullable="false"/>
+        <constraints primaryKey="true" nullable="false"/>
       </column>
       <column name="player_name" type="TEXT">
         <constraints nullable="false"/>
@@ -24,10 +21,6 @@
         <constraints nullable="false"/>
       </column>
     </createTable>
-
-    <createIndex tableName="lobby_player" indexName="lobby_player_lobby_id_idx">
-      <column name="lobby_id"/>
-    </createIndex>
   </changeSet>
 
 </databaseChangeLog>

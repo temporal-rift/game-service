@@ -1,29 +1,27 @@
 package io.github.temporalrift.game.session.infrastructure.adapter.out.persistence;
 
 import java.time.Instant;
-import java.util.UUID;
 
 import jakarta.persistence.Column;
+import jakarta.persistence.EmbeddedId;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
-import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.MapsId;
 import jakarta.persistence.Table;
 
 @Entity
 @Table(name = "lobby_player")
 class LobbyPlayerJpaEntity {
 
-    @Id
-    private UUID id;
+    @EmbeddedId
+    private LobbyPlayerPk id;
 
     @ManyToOne(fetch = FetchType.LAZY)
+    @MapsId("lobbyId")
     @JoinColumn(name = "lobby_id", nullable = false)
     private LobbyJpaEntity lobby;
-
-    @Column(name = "player_id", nullable = false)
-    private UUID playerId;
 
     @Column(name = "player_name", nullable = false)
     private String playerName;
@@ -36,11 +34,11 @@ class LobbyPlayerJpaEntity {
 
     protected LobbyPlayerJpaEntity() {}
 
-    UUID getId() {
+    LobbyPlayerPk getId() {
         return id;
     }
 
-    void setId(UUID id) {
+    void setId(LobbyPlayerPk id) {
         this.id = id;
     }
 
@@ -50,14 +48,6 @@ class LobbyPlayerJpaEntity {
 
     void setLobby(LobbyJpaEntity lobby) {
         this.lobby = lobby;
-    }
-
-    UUID getPlayerId() {
-        return playerId;
-    }
-
-    void setPlayerId(UUID playerId) {
-        this.playerId = playerId;
     }
 
     String getPlayerName() {

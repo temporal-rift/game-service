@@ -63,9 +63,8 @@ class LobbyRepositoryAdapter implements LobbyRepository {
 
     private LobbyPlayerJpaEntity toPlayerEntity(LobbyPlayer player, LobbyJpaEntity lobbyEntity) {
         var entity = new LobbyPlayerJpaEntity();
-        entity.setId(player.playerId());
+        entity.setId(new LobbyPlayerPk(lobbyEntity.getId(), player.playerId()));
         entity.setLobby(lobbyEntity);
-        entity.setPlayerId(player.playerId());
         entity.setPlayerName(player.playerName());
         entity.setFaction(player.faction() != null ? player.faction().name() : null);
         entity.setJoinedAt(Instant.now());
@@ -75,7 +74,7 @@ class LobbyRepositoryAdapter implements LobbyRepository {
     private Lobby toDomain(LobbyJpaEntity entity) {
         var players = entity.getPlayers().stream()
                 .map(p -> new LobbyPlayer(
-                        p.getPlayerId(),
+                        p.getId().getPlayerId(),
                         p.getPlayerName(),
                         p.getFaction() != null ? Faction.valueOf(p.getFaction()) : null))
                 .collect(java.util.stream.Collectors.toCollection(ArrayList::new));
