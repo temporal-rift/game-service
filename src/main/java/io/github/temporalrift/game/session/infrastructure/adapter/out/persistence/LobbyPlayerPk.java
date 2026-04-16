@@ -37,8 +37,12 @@ class LobbyPlayerPk implements Serializable {
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (!(o instanceof LobbyPlayerPk that)) return false;
+        if (this == o) {
+            return true;
+        }
+        if (!(o instanceof LobbyPlayerPk that)) {
+            return false;
+        }
         return Objects.equals(lobbyId, that.lobbyId) && Objects.equals(playerId, that.playerId);
     }
 

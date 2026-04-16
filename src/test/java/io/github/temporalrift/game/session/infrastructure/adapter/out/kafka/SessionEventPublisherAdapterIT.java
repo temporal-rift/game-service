@@ -52,8 +52,8 @@ class SessionEventPublisherAdapterIT {
         final var gameId = UUID.randomUUID();
         final var hostId = UUID.randomUUID();
         final var lobby = new Lobby(lobbyId, gameId, hostId, "OUTBOX1", new ArrayList<>(), 2, 5, clock);
-        final var envelope = EventEnvelope.create(
-                "session.LobbyCreated", lobbyId, "Lobby", gameId, 1, new LobbyCreated(lobbyId, hostId, Instant.now()));
+        final var envelope =
+                EventEnvelope.create(lobbyId, "Lobby", gameId, 1, new LobbyCreated(lobbyId, hostId, Instant.now()));
 
         transactionTemplate.executeWithoutResult(_ -> {
             lobbyRepository.save(lobby);
@@ -71,8 +71,8 @@ class SessionEventPublisherAdapterIT {
         final var gameId = UUID.randomUUID();
         final var hostId = UUID.randomUUID();
         final var lobby = new Lobby(lobbyId, gameId, hostId, "OUTBOX2", new ArrayList<>(), 2, 5, clock);
-        final var envelope = EventEnvelope.create(
-                "session.LobbyCreated", lobbyId, "Lobby", gameId, 1, new LobbyCreated(lobbyId, hostId, Instant.now()));
+        final var envelope =
+                EventEnvelope.create(lobbyId, "Lobby", gameId, 1, new LobbyCreated(lobbyId, hostId, Instant.now()));
 
         transactionTemplate.executeWithoutResult(status -> {
             lobbyRepository.save(lobby);
