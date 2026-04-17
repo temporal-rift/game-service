@@ -29,6 +29,8 @@ spring:
       externalization:
         enabled: true
       republish-outstanding-events-on-restart: true
+    runtime:
+      verification-enabled: true
 
 game:
   rules:
