@@ -3,6 +3,7 @@ package io.github.temporalrift.game.session.domain.lobby;
 import java.time.Clock;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -16,7 +17,7 @@ public class Lobby {
 
     private final UUID gameId;
 
-    private final UUID hostPlayerId;
+    private UUID hostPlayerId;
 
     private final String joinCode;
 
@@ -75,16 +76,25 @@ public class Lobby {
         currentPlayers.add(new LobbyPlayer(player.playerId(), player.playerName(), player.faction(), clock.instant()));
     }
 
-    public void leave(UUID leavingPlayerId) {
+    public LeaveOutcome leave(UUID leavingPlayerId) {
         Objects.requireNonNull(leavingPlayerId, "Player id must not be null");
         requireWaiting();
-        if (leavingPlayerId.equals(hostPlayerId)) {
-            throw new HostCannotLeaveException();
-        }
         var removed = currentPlayers.removeIf(player -> player.playerId().equals(leavingPlayerId));
         if (!removed) {
             throw new PlayerNotInLobbyException(leavingPlayerId);
         }
+        if (!leavingPlayerId.equals(hostPlayerId)) {
+            return new LeaveOutcome.NonHostLeft();
+        }
+        if (currentPlayers.isEmpty()) {
+            status = LobbyStatus.CLOSED;
+            return new LeaveOutcome.LobbyClosed();
+        }
+        var newHost = currentPlayers.stream()
+                .min(Comparator.comparing(LobbyPlayer::joinedAt))
+                .orElseThrow();
+        hostPlayerId = newHost.playerId();
+        return new LeaveOutcome.HostTransferred(newHost.playerId());
     }
 
     public void start() {

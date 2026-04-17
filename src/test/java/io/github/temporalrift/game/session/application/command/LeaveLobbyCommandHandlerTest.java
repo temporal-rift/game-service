@@ -2,10 +2,10 @@ package io.github.temporalrift.game.session.application.command;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
+import static org.mockito.ArgumentCaptor.forClass;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
-import static org.mockito.BDDMockito.willThrow;
 
 import java.util.NoSuchElementException;
 import java.util.Optional;
@@ -20,9 +20,11 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import io.github.temporalrift.events.envelope.EventEnvelope;
+import io.github.temporalrift.events.session.HostTransferred;
+import io.github.temporalrift.events.session.LobbyClosed;
 import io.github.temporalrift.events.session.PlayerLeftLobby;
 import io.github.temporalrift.game.session.application.port.in.LeaveLobbyUseCase;
-import io.github.temporalrift.game.session.domain.lobby.HostCannotLeaveException;
+import io.github.temporalrift.game.session.domain.lobby.LeaveOutcome;
 import io.github.temporalrift.game.session.domain.lobby.Lobby;
 import io.github.temporalrift.game.session.domain.port.out.LobbyRepository;
 import io.github.temporalrift.game.session.domain.port.out.SessionEventPublisher;
@@ -42,88 +44,107 @@ class LeaveLobbyCommandHandlerTest {
     @InjectMocks
     LeaveLobbyCommandHandler handler;
 
-    static final UUID lobbyId = UUID.randomUUID();
-    static final UUID gameId = UUID.randomUUID();
-    static final UUID playerId = UUID.randomUUID();
+    static final UUID LOBBY_ID = UUID.randomUUID();
+    static final UUID GAME_ID = UUID.randomUUID();
+    static final UUID PLAYER_ID = UUID.randomUUID();
 
-    /** Stubs needed when the handler runs to completion (leave succeeds). */
-    private void stubSuccessfulLeave() {
-        given(lobbyRepository.findById(lobbyId)).willReturn(Optional.of(lobby));
+    private void stubLobby(LeaveOutcome outcome) {
+        given(lobbyRepository.findById(LOBBY_ID)).willReturn(Optional.of(lobby));
         given(lobbyRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
-        given(lobby.id()).willReturn(lobbyId);
-        given(lobby.gameId()).willReturn(gameId);
+        given(lobby.id()).willReturn(LOBBY_ID);
+        given(lobby.gameId()).willReturn(GAME_ID);
+        given(lobby.leave(PLAYER_ID)).willReturn(outcome);
     }
 
     @Test
-    @DisplayName("calls leave on the lobby with the playerId from the command")
-    void execute_callsLeaveWithPlayerIdFromCommand() {
+    @DisplayName("non-host leaves — publishes PlayerLeftLobby")
+    void execute_nonHostLeaves_publishesPlayerLeftLobby() {
         // given
-        stubSuccessfulLeave();
-        var command = new LeaveLobbyUseCase.Command(lobbyId, playerId);
+        stubLobby(new LeaveOutcome.NonHostLeft());
+        var command = new LeaveLobbyUseCase.Command(LOBBY_ID, PLAYER_ID);
 
         // when
         handler.execute(command);
 
         // then
-        var captor = ArgumentCaptor.forClass(UUID.class);
-        then(lobby).should().leave(captor.capture());
-        assertThat(captor.getValue()).isEqualTo(playerId);
-    }
-
-    @Test
-    @DisplayName("saves the lobby after the player leaves")
-    void execute_savesLobbyAfterLeave() {
-        // given
-        stubSuccessfulLeave();
-        var command = new LeaveLobbyUseCase.Command(lobbyId, playerId);
-
-        // when
-        handler.execute(command);
-
-        // then
-        then(lobbyRepository).should().save(lobby);
-    }
-
-    @Test
-    @DisplayName("publishes PlayerLeftLobby with correct lobbyId and playerId")
-    void execute_publishesPlayerLeftLobbyEvent() {
-        // given
-        stubSuccessfulLeave();
-        var command = new LeaveLobbyUseCase.Command(lobbyId, playerId);
-
-        // when
-        handler.execute(command);
-
-        // then
-        var captor = ArgumentCaptor.forClass(EventEnvelope.class);
+        var captor = forClass(EventEnvelope.class);
         then(eventPublisher).should().publish(captor.capture());
         assertThat(captor.getValue().eventType()).isEqualTo("session.PlayerLeftLobby");
-        assertThat(captor.getValue().gameId()).isEqualTo(gameId);
         var payload = (PlayerLeftLobby) captor.getValue().payload();
-        assertThat(payload.lobbyId()).isEqualTo(lobbyId);
-        assertThat(payload.playerId()).isEqualTo(playerId);
+        assertThat(payload.lobbyId()).isEqualTo(LOBBY_ID);
+        assertThat(payload.playerId()).isEqualTo(PLAYER_ID);
     }
 
     @Test
-    @DisplayName("throws NoSuchElementException when lobby does not exist")
+    @DisplayName("host leaves with others present — publishes HostTransferred then PlayerLeftLobby")
+    void execute_hostLeavesWithOthers_publishesHostTransferredAndPlayerLeftLobby() {
+        // given
+        var newHostId = UUID.randomUUID();
+        stubLobby(new LeaveOutcome.HostTransferred(newHostId));
+        var command = new LeaveLobbyUseCase.Command(LOBBY_ID, PLAYER_ID);
+
+        // when
+        handler.execute(command);
+
+        // then
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<EventEnvelope> captor = forClass(EventEnvelope.class);
+        then(eventPublisher).should(org.mockito.BDDMockito.times(2)).publish(captor.capture());
+        var published = captor.getAllValues();
+
+        assertThat(published.get(0).eventType()).isEqualTo("session.HostTransferred");
+        var transfer = (HostTransferred) published.get(0).payload();
+        assertThat(transfer.lobbyId()).isEqualTo(LOBBY_ID);
+        assertThat(transfer.previousHostId()).isEqualTo(PLAYER_ID);
+        assertThat(transfer.newHostId()).isEqualTo(newHostId);
+
+        assertThat(published.get(1).eventType()).isEqualTo("session.PlayerLeftLobby");
+        var left = (PlayerLeftLobby) published.get(1).payload();
+        assertThat(left.lobbyId()).isEqualTo(LOBBY_ID);
+        assertThat(left.playerId()).isEqualTo(PLAYER_ID);
+    }
+
+    @Test
+    @DisplayName("host leaves as sole player — publishes LobbyClosed")
+    void execute_hostLeavesSolePlayer_publishesLobbyClosed() {
+        // given
+        stubLobby(new LeaveOutcome.LobbyClosed());
+        var command = new LeaveLobbyUseCase.Command(LOBBY_ID, PLAYER_ID);
+
+        // when
+        handler.execute(command);
+
+        // then
+        var captor = forClass(EventEnvelope.class);
+        then(eventPublisher).should().publish(captor.capture());
+        assertThat(captor.getValue().eventType()).isEqualTo("session.LobbyClosed");
+        var payload = (LobbyClosed) captor.getValue().payload();
+        assertThat(payload.lobbyId()).isEqualTo(LOBBY_ID);
+        assertThat(payload.gameId()).isEqualTo(GAME_ID);
+    }
+
+    @Test
+    @DisplayName("lobby not found — throws NoSuchElementException")
     void execute_lobbyNotFound_throwsNoSuchElementException() {
         // given
         given(lobbyRepository.findById(any())).willReturn(Optional.empty());
-        var command = new LeaveLobbyUseCase.Command(UUID.randomUUID(), playerId);
+        var command = new LeaveLobbyUseCase.Command(UUID.randomUUID(), PLAYER_ID);
 
         // when / then
         assertThatExceptionOfType(NoSuchElementException.class).isThrownBy(() -> handler.execute(command));
     }
 
     @Test
-    @DisplayName("propagates HostCannotLeaveException thrown by the aggregate")
-    void execute_hostLeaves_propagatesHostCannotLeaveException() {
+    @DisplayName("saves lobby after leave regardless of outcome")
+    void execute_savesLobbyAfterLeave() {
         // given
-        given(lobbyRepository.findById(lobbyId)).willReturn(Optional.of(lobby));
-        willThrow(new HostCannotLeaveException()).given(lobby).leave(any());
-        var command = new LeaveLobbyUseCase.Command(lobbyId, playerId);
+        stubLobby(new LeaveOutcome.NonHostLeft());
+        var command = new LeaveLobbyUseCase.Command(LOBBY_ID, PLAYER_ID);
 
-        // when / then
-        assertThatExceptionOfType(HostCannotLeaveException.class).isThrownBy(() -> handler.execute(command));
+        // when
+        handler.execute(command);
+
+        // then
+        then(lobbyRepository).should().save(lobby);
     }
 }

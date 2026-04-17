@@ -8,8 +8,10 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import io.github.temporalrift.events.shared.Faction;
@@ -140,27 +142,64 @@ class LobbyTest {
     // --- leave() ---
 
     @Test
-    void leave_removesPlayer() {
-        var lobby = emptyLobby();
-        var p = player();
-        lobby.join(p);
-        lobby.leave(p.playerId());
-        assertThat(lobby.currentPlayers()).isEmpty();
+    @DisplayName("non-host player leaves — removed from list and NonHostLeft returned")
+    void leave_nonHost_removesPlayerAndReturnsNonHostLeft() {
+        // given
+        var host = player();
+        var other = player();
+        var lobby = lobbyWith(host, other);
+
+        // when
+        var outcome = lobby.leave(other.playerId());
+
+        // then
+        assertThat(lobby.currentPlayers()).doesNotContain(other);
+        assertThat(outcome).isInstanceOf(LeaveOutcome.NonHostLeft.class);
     }
 
     @Test
+    @DisplayName("host leaves with others present — transfers to earliest-joined and returns HostTransferred")
+    void leave_hostLeavesWithOthersPresent_transfersHostAndReturnsHostTransferred() {
+        // given
+        var host = playerWithJoinedAt(Instant.parse("2025-01-01T10:00:00Z"));
+        var earliest = playerWithJoinedAt(Instant.parse("2025-01-01T10:01:00Z"));
+        var later = playerWithJoinedAt(Instant.parse("2025-01-01T10:02:00Z"));
+        var lobby = lobbyWithHost(host, List.of(host, earliest, later));
+
+        // when
+        var outcome = lobby.leave(host.playerId());
+
+        // then
+        assertThat(lobby.currentPlayers()).doesNotContain(host);
+        assertThat(lobby.hostPlayerId()).isEqualTo(earliest.playerId());
+        assertThat(outcome).isEqualTo(new LeaveOutcome.HostTransferred(earliest.playerId()));
+    }
+
+    @Test
+    @DisplayName("host leaves as sole player — lobby closed and LobbyClosed returned")
+    void leave_hostLeavesSolePlayer_closesLobbyAndReturnsLobbyClosed() {
+        // given
+        var host = player();
+        var lobby = lobbyWith(host);
+
+        // when
+        var outcome = lobby.leave(host.playerId());
+
+        // then
+        assertThat(lobby.currentPlayers()).isEmpty();
+        assertThat(lobby.status()).isEqualTo(LobbyStatus.CLOSED);
+        assertThat(outcome).isInstanceOf(LeaveOutcome.LobbyClosed.class);
+    }
+
+    @Test
+    @DisplayName("player not in lobby — throws PlayerNotInLobbyException")
     void leave_playerNotInLobby_throws() {
         var lobby = emptyLobby();
         assertThatExceptionOfType(PlayerNotInLobbyException.class).isThrownBy(() -> lobby.leave(UUID.randomUUID()));
     }
 
     @Test
-    void leave_hostLeaves_throws() {
-        var lobby = emptyLobby();
-        assertThatExceptionOfType(HostCannotLeaveException.class).isThrownBy(() -> lobby.leave(lobby.hostPlayerId()));
-    }
-
-    @Test
+    @DisplayName("leave after lobby started — throws LobbyAlreadyStartedException")
     void leave_lobbyAlreadyStarted_throws() {
         var lobby = lobbyReadyToStart();
         lobby.start();
@@ -216,5 +255,29 @@ class LobbyTest {
         lobby.join(player(Faction.PROPHETS));
         lobby.join(player(Faction.REVISIONISTS));
         return lobby;
+    }
+
+    /** Lobby whose first player is the host. */
+    Lobby lobbyWith(LobbyPlayer... players) {
+        var hostId = players[0].playerId();
+        return lobbyWithHost(players[0], List.of(players));
+    }
+
+    /** Lobby with an explicit host and a pre-populated player list (no join() stamps applied). */
+    Lobby lobbyWithHost(LobbyPlayer host, List<LobbyPlayer> players) {
+        return Lobby.reconstitute(
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                host.playerId(),
+                JOIN_CODE,
+                new ArrayList<>(players),
+                LobbyStatus.WAITING,
+                MIN_PLAYERS,
+                MAX_PLAYERS,
+                FIXED_CLOCK);
+    }
+
+    LobbyPlayer playerWithJoinedAt(Instant joinedAt) {
+        return new LobbyPlayer(UUID.randomUUID(), PLAYER_NAMES[playerIndex++ % PLAYER_NAMES.length], null, joinedAt);
     }
 }
