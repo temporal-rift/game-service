@@ -1,9 +1,10 @@
-package io.github.temporalrift.game.session.application.command;
+package io.github.temporalrift.game.session.infrastructure.adapter.out.persistence;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
+import static org.mockito.BDDMockito.times;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -15,13 +16,13 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import io.github.temporalrift.game.session.domain.port.out.LobbyRepository;
 
 @ExtendWith(MockitoExtension.class)
-class JoinCodeGeneratorTest {
+class JoinCodeAdapterTest {
 
     @Mock
     LobbyRepository lobbyRepository;
 
     @InjectMocks
-    JoinCodeGenerator generator;
+    JoinCodeAdapter adapter;
 
     @Test
     @DisplayName("returns a 6-character uppercase alphanumeric code")
@@ -30,7 +31,7 @@ class JoinCodeGeneratorTest {
         given(lobbyRepository.existsByJoinCode(anyString())).willReturn(false);
 
         // when
-        var code = generator.generate();
+        var code = adapter.generate();
 
         // then
         assertThat(code).hasSize(6).isUpperCase();
@@ -46,10 +47,10 @@ class JoinCodeGeneratorTest {
                 .willReturn(false);
 
         // when
-        var code = generator.generate();
+        var code = adapter.generate();
 
         // then
         assertThat(code).hasSize(6);
-        then(lobbyRepository).should(org.mockito.BDDMockito.times(3)).existsByJoinCode(anyString());
+        then(lobbyRepository).should(times(3)).existsByJoinCode(anyString());
     }
 }

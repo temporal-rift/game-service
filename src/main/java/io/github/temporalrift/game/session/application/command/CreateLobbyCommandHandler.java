@@ -13,6 +13,7 @@ import io.github.temporalrift.game.session.application.port.in.CreateLobbyUseCas
 import io.github.temporalrift.game.session.domain.lobby.Lobby;
 import io.github.temporalrift.game.session.domain.lobby.LobbyPlayer;
 import io.github.temporalrift.game.session.domain.port.out.GameRulesPort;
+import io.github.temporalrift.game.session.domain.port.out.JoinCodePort;
 import io.github.temporalrift.game.session.domain.port.out.LobbyRepository;
 import io.github.temporalrift.game.session.domain.port.out.SessionEventPublisher;
 
@@ -25,7 +26,7 @@ class CreateLobbyCommandHandler implements CreateLobbyUseCase {
 
     private final GameRulesPort gameRules;
 
-    private final JoinCodeGenerator joinCodeGenerator;
+    private final JoinCodePort joinCodePort;
 
     private final Clock clock;
 
@@ -33,12 +34,12 @@ class CreateLobbyCommandHandler implements CreateLobbyUseCase {
             LobbyRepository lobbyRepository,
             SessionEventPublisher eventPublisher,
             GameRulesPort gameRules,
-            JoinCodeGenerator joinCodeGenerator,
+            JoinCodePort joinCodePort,
             Clock clock) {
         this.lobbyRepository = lobbyRepository;
         this.eventPublisher = eventPublisher;
         this.gameRules = gameRules;
-        this.joinCodeGenerator = joinCodeGenerator;
+        this.joinCodePort = joinCodePort;
         this.clock = clock;
     }
 
@@ -48,7 +49,7 @@ class CreateLobbyCommandHandler implements CreateLobbyUseCase {
         var lobbyId = UUID.randomUUID();
         var gameId = UUID.randomUUID();
         var now = clock.instant();
-        var joinCode = joinCodeGenerator.generate();
+        var joinCode = joinCodePort.generate();
         var host = new LobbyPlayer(command.playerId(), command.playerName(), null, now);
         var lobby = new Lobby(
                 lobbyId,

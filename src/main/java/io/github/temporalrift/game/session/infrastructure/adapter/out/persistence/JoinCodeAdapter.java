@@ -1,22 +1,24 @@
-package io.github.temporalrift.game.session.application.command;
+package io.github.temporalrift.game.session.infrastructure.adapter.out.persistence;
 
 import java.util.UUID;
 import java.util.stream.Stream;
 
 import org.springframework.stereotype.Component;
 
+import io.github.temporalrift.game.session.domain.port.out.JoinCodePort;
 import io.github.temporalrift.game.session.domain.port.out.LobbyRepository;
 
 @Component
-class JoinCodeGenerator {
+class JoinCodeAdapter implements JoinCodePort {
 
     private final LobbyRepository lobbyRepository;
 
-    JoinCodeGenerator(LobbyRepository lobbyRepository) {
+    JoinCodeAdapter(LobbyRepository lobbyRepository) {
         this.lobbyRepository = lobbyRepository;
     }
 
-    String generate() {
+    @Override
+    public String generate() {
         return Stream.generate(() -> UUID.randomUUID()
                         .toString()
                         .replace("-", "")

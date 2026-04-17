@@ -23,6 +23,7 @@ import io.github.temporalrift.events.session.LobbyCreated;
 import io.github.temporalrift.game.session.application.port.in.CreateLobbyUseCase;
 import io.github.temporalrift.game.session.domain.lobby.Lobby;
 import io.github.temporalrift.game.session.domain.port.out.GameRulesPort;
+import io.github.temporalrift.game.session.domain.port.out.JoinCodePort;
 import io.github.temporalrift.game.session.domain.port.out.LobbyRepository;
 import io.github.temporalrift.game.session.domain.port.out.SessionEventPublisher;
 
@@ -39,7 +40,7 @@ class CreateLobbyCommandHandlerTest {
     GameRulesPort gameRules;
 
     @Mock
-    JoinCodeGenerator joinCodeGenerator;
+    JoinCodePort joinCodePort;
 
     @Mock
     Clock clock;
@@ -55,7 +56,7 @@ class CreateLobbyCommandHandlerTest {
         given(lobbyRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
         given(gameRules.minPlayers()).willReturn(2);
         given(gameRules.maxPlayers()).willReturn(5);
-        given(joinCodeGenerator.generate()).willReturn(JOIN_CODE);
+        given(joinCodePort.generate()).willReturn(JOIN_CODE);
         given(clock.instant()).willReturn(NOW);
     }
 
