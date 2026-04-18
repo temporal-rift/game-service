@@ -50,7 +50,7 @@ class CreateLobbyCommandHandler implements CreateLobbyUseCase {
         var gameId = UUID.randomUUID();
         var now = clock.instant();
         var joinCode = joinCodePort.generate();
-        var host = new LobbyPlayer(command.playerId(), command.playerName(), null, now);
+        var host = new LobbyPlayer(command.playerId(), command.playerName(), null, now, true);
         var lobby = new Lobby(
                 lobbyId,
                 gameId,

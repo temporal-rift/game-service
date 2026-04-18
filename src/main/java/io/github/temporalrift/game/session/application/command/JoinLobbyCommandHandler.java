@@ -32,7 +32,7 @@ class JoinLobbyCommandHandler implements JoinLobbyUseCase {
                 .findById(command.lobbyId())
                 .orElseThrow(() -> new NoSuchElementException("Lobby not found: " + command.lobbyId()));
 
-        var player = new LobbyPlayer(command.playerId(), command.playerName(), null, null);
+        var player = new LobbyPlayer(command.playerId(), command.playerName(), null, null, true);
         lobby.join(player);
 
         lobbyRepository.save(lobby);

@@ -40,11 +40,16 @@ class LobbyTest {
     }
 
     LobbyPlayer player(Faction faction) {
-        return new LobbyPlayer(UUID.randomUUID(), PLAYER_NAMES[playerIndex++ % PLAYER_NAMES.length], faction, null);
+        return new LobbyPlayer(
+                UUID.randomUUID(), PLAYER_NAMES[playerIndex++ % PLAYER_NAMES.length], faction, null, true);
     }
 
     LobbyPlayer player() {
         return player(null);
+    }
+
+    LobbyPlayer disconnectedPlayer() {
+        return new LobbyPlayer(UUID.randomUUID(), PLAYER_NAMES[playerIndex++ % PLAYER_NAMES.length], null, null, false);
     }
 
     // --- Constructor ---
@@ -278,6 +283,72 @@ class LobbyTest {
     }
 
     LobbyPlayer playerWithJoinedAt(Instant joinedAt) {
-        return new LobbyPlayer(UUID.randomUUID(), PLAYER_NAMES[playerIndex++ % PLAYER_NAMES.length], null, joinedAt);
+        return new LobbyPlayer(
+                UUID.randomUUID(), PLAYER_NAMES[playerIndex++ % PLAYER_NAMES.length], null, joinedAt, true);
+    }
+
+    // --- requestStart() ---
+
+    @Test
+    @DisplayName("host requests start with 3+ connected players — returns GameStarted")
+    void requestStart_hostWithEnoughConnectedPlayers_returnsGameStarted() {
+        // given
+        var lobby = lobbyReadyToStart();
+        var hostId = lobby.hostPlayerId();
+
+        // when
+        var outcome = lobby.requestStart(hostId);
+
+        // then
+        assertThat(outcome).isInstanceOf(StartOutcome.GameStarted.class);
+    }
+
+    @Test
+    @DisplayName("non-host requests start — returns NotHost")
+    void requestStart_nonHost_returnsNotHost() {
+        // given
+        var lobby = lobbyReadyToStart();
+        var nonHostId = lobby.currentPlayers().stream()
+                .filter(p -> !p.playerId().equals(lobby.hostPlayerId()))
+                .findFirst()
+                .orElseThrow()
+                .playerId();
+
+        // when
+        var outcome = lobby.requestStart(nonHostId);
+
+        // then
+        assertThat(outcome).isInstanceOf(StartOutcome.NotHost.class);
+    }
+
+    @Test
+    @DisplayName("host requests start with fewer than min players — returns NotEnoughPlayers")
+    void requestStart_tooFewPlayers_returnsNotEnoughPlayers() {
+        // given
+        var host = player();
+        var lobby = lobbyWith(host, player());
+
+        // when
+        var outcome = lobby.requestStart(host.playerId());
+
+        // then
+        assertThat(outcome).isInstanceOf(StartOutcome.NotEnoughPlayers.class);
+    }
+
+    @Test
+    @DisplayName("host requests start but a player is disconnected — returns HasDisconnectedPlayers")
+    void requestStart_disconnectedPlayer_returnsHasDisconnectedPlayers() {
+        // given
+        var host = player();
+        var disconnected = disconnectedPlayer();
+        var lobby = lobbyWith(host, player(), disconnected);
+
+        // when
+        var outcome = lobby.requestStart(host.playerId());
+
+        // then
+        assertThat(outcome).isInstanceOf(StartOutcome.HasDisconnectedPlayers.class);
+        assertThat(((StartOutcome.HasDisconnectedPlayers) outcome).disconnectedPlayerIds())
+                .containsExactly(disconnected.playerId());
     }
 }

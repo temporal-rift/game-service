@@ -16,19 +16,12 @@ public class Lobby {
     private final UUID id;
 
     private final UUID gameId;
-
-    private UUID hostPlayerId;
-
     private final String joinCode;
-
     private final List<LobbyPlayer> currentPlayers;
-
     private final int minPlayers;
-
     private final int maxPlayers;
-
     private final Clock clock;
-
+    private UUID hostPlayerId;
     private LobbyStatus status;
 
     public Lobby(
@@ -73,7 +66,8 @@ public class Lobby {
         if (currentPlayers.size() >= maxPlayers) {
             throw new LobbyFullException();
         }
-        currentPlayers.add(new LobbyPlayer(player.playerId(), player.playerName(), player.faction(), clock.instant()));
+        currentPlayers.add(
+                new LobbyPlayer(player.playerId(), player.playerName(), player.faction(), clock.instant(), true));
     }
 
     public LeaveOutcome leave(UUID leavingPlayerId) {
@@ -95,6 +89,25 @@ public class Lobby {
                 .orElseThrow();
         hostPlayerId = newHost.playerId();
         return new LeaveOutcome.HostTransferred(newHost.playerId());
+    }
+
+    public StartOutcome requestStart(UUID requestingPlayerId) {
+        Objects.requireNonNull(requestingPlayerId, "Requesting player id must not be null");
+        requireWaiting();
+        if (!requestingPlayerId.equals(hostPlayerId)) {
+            return new StartOutcome.NotHost();
+        }
+        if (currentPlayers.size() < minPlayers) {
+            return new StartOutcome.NotEnoughPlayers(currentPlayers.size(), minPlayers);
+        }
+        var disconnectedIds = currentPlayers.stream()
+                .filter(p -> !p.connected())
+                .map(LobbyPlayer::playerId)
+                .toList();
+        if (!disconnectedIds.isEmpty()) {
+            return new StartOutcome.HasDisconnectedPlayers(disconnectedIds);
+        }
+        return new StartOutcome.GameStarted();
     }
 
     public void start() {

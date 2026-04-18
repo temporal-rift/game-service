@@ -32,6 +32,9 @@ class LobbyPlayerJpaEntity {
     @Column(name = "joined_at", nullable = false)
     private Instant joinedAt;
 
+    @Column(name = "connected", nullable = false)
+    private boolean connected;
+
     protected LobbyPlayerJpaEntity() {}
 
     LobbyPlayerPk getId() {
@@ -72,5 +75,13 @@ class LobbyPlayerJpaEntity {
 
     void setJoinedAt(Instant joinedAt) {
         this.joinedAt = joinedAt;
+    }
+
+    boolean isConnected() {
+        return connected;
+    }
+
+    void setConnected(boolean connected) {
+        this.connected = connected;
     }
 }

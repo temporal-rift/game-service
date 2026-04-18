@@ -8,12 +8,20 @@ import org.apache.commons.lang3.StringUtils;
 
 import io.github.temporalrift.events.shared.Faction;
 
-public record LobbyPlayer(UUID playerId, String playerName, Faction faction, Instant joinedAt) {
+public record LobbyPlayer(UUID playerId, String playerName, Faction faction, Instant joinedAt, boolean connected) {
 
     public LobbyPlayer {
         Objects.requireNonNull(playerId, "playerId cannot be null");
         if (StringUtils.isBlank(playerName)) {
             throw new IllegalArgumentException("playerName cannot be null or blank");
         }
+    }
+
+    public LobbyPlayer withFaction(Faction newFaction) {
+        return new LobbyPlayer(playerId, playerName, newFaction, joinedAt, connected);
+    }
+
+    public LobbyPlayer withConnected(boolean newConnected) {
+        return new LobbyPlayer(playerId, playerName, faction, joinedAt, newConnected);
     }
 }

@@ -134,7 +134,7 @@ class JoinLobbyCommandHandlerTest {
     void execute_returnsCurrentPlayersFromLobbyAfterJoin() {
         // given
         stubSuccessfulJoin();
-        var existingPlayer = new LobbyPlayer(hostPlayerId, "Bob", null, null);
+        var existingPlayer = new LobbyPlayer(hostPlayerId, "Bob", null, null, true);
         given(lobby.currentPlayers()).willReturn(List.of(existingPlayer));
         given(lobby.hostPlayerId()).willReturn(hostPlayerId);
         var command = new JoinLobbyUseCase.Command(lobbyId, playerId, "Alice");

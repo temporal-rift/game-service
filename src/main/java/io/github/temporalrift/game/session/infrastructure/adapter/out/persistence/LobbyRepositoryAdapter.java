@@ -71,6 +71,7 @@ class LobbyRepositoryAdapter implements LobbyRepository {
         entity.setPlayerName(player.playerName());
         entity.setFaction(player.faction() != null ? player.faction().name() : null);
         entity.setJoinedAt(player.joinedAt());
+        entity.setConnected(player.connected());
         return entity;
     }
 
@@ -80,7 +81,8 @@ class LobbyRepositoryAdapter implements LobbyRepository {
                         p.getId().getPlayerId(),
                         p.getPlayerName(),
                         p.getFaction() != null ? Faction.valueOf(p.getFaction()) : null,
-                        p.getJoinedAt()))
+                        p.getJoinedAt(),
+                        p.isConnected()))
                 .collect(java.util.stream.Collectors.toCollection(ArrayList::new));
 
         return Lobby.reconstitute(
