@@ -4,7 +4,7 @@ import java.util.UUID;
 
 public interface CreateLobbyUseCase {
 
-    Result execute(Command command);
+    Result handle(Command command);
 
     record Command(UUID playerId, String playerName) {}
 

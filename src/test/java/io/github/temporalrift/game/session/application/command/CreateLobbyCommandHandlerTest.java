@@ -30,6 +30,9 @@ import io.github.temporalrift.game.session.domain.port.out.SessionEventPublisher
 @ExtendWith(MockitoExtension.class)
 class CreateLobbyCommandHandlerTest {
 
+    static final String JOIN_CODE = "X7K2P9";
+    static final Instant NOW = Instant.parse("2026-04-16T12:00:00Z");
+
     @Mock
     LobbyRepository lobbyRepository;
 
@@ -48,9 +51,6 @@ class CreateLobbyCommandHandlerTest {
     @InjectMocks
     CreateLobbyCommandHandler handler;
 
-    static final String JOIN_CODE = "X7K2P9";
-    static final Instant NOW = Instant.parse("2026-04-16T12:00:00Z");
-
     @BeforeEach
     void setUp() {
         given(lobbyRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
@@ -62,12 +62,12 @@ class CreateLobbyCommandHandlerTest {
 
     @Test
     @DisplayName("saves lobby with the host player from the command")
-    void execute_savesLobbyWithCorrectHostPlayer() {
+    void handle_savesLobbyWithCorrectHostPlayer() {
         // given
         var command = new CreateLobbyUseCase.Command(UUID.randomUUID(), "Alice");
 
         // when
-        handler.execute(command);
+        handler.handle(command);
 
         // then
         var captor = ArgumentCaptor.forClass(Lobby.class);
@@ -77,12 +77,12 @@ class CreateLobbyCommandHandlerTest {
 
     @Test
     @DisplayName("marks the first player as host with correct id and name")
-    void execute_hostPlayerIsMarkedAsHost() {
+    void handle_hostPlayerIsMarkedAsHost() {
         // given
         var command = new CreateLobbyUseCase.Command(UUID.randomUUID(), "Alice");
 
         // when
-        handler.execute(command);
+        handler.handle(command);
 
         // then
         var captor = ArgumentCaptor.forClass(Lobby.class);
@@ -95,12 +95,12 @@ class CreateLobbyCommandHandlerTest {
 
     @Test
     @DisplayName("lobbyId and gameId are always different UUIDs")
-    void execute_lobbyIdAndGameIdAreDifferent() {
+    void handle_lobbyIdAndGameIdAreDifferent() {
         // given
         var command = new CreateLobbyUseCase.Command(UUID.randomUUID(), "Alice");
 
         // when
-        handler.execute(command);
+        handler.handle(command);
 
         // then
         var captor = ArgumentCaptor.forClass(Lobby.class);
@@ -110,12 +110,12 @@ class CreateLobbyCommandHandlerTest {
 
     @Test
     @DisplayName("envelope carries pre-assigned gameId as partition key, not lobbyId")
-    void execute_envelopeCarriesGameIdNotLobbyId() {
+    void handle_envelopeCarriesGameIdNotLobbyId() {
         // given
         var command = new CreateLobbyUseCase.Command(UUID.randomUUID(), "Alice");
 
         // when
-        handler.execute(command);
+        handler.handle(command);
 
         // then
         var lobbyCaptor = ArgumentCaptor.forClass(Lobby.class);
@@ -130,12 +130,12 @@ class CreateLobbyCommandHandlerTest {
 
     @Test
     @DisplayName("publishes LobbyCreated with correct lobbyId, hostPlayerId and createdAt")
-    void execute_publishesLobbyCreatedPayload() {
+    void handle_publishesLobbyCreatedPayload() {
         // given
         var command = new CreateLobbyUseCase.Command(UUID.randomUUID(), "Alice");
 
         // when
-        handler.execute(command);
+        handler.handle(command);
 
         // then
         var lobbyCaptor = ArgumentCaptor.forClass(Lobby.class);
@@ -151,12 +151,12 @@ class CreateLobbyCommandHandlerTest {
 
     @Test
     @DisplayName("returns the join code produced by JoinCodeGenerator")
-    void execute_returnsJoinCodeFromGenerator() {
+    void handle_returnsJoinCodeFromGenerator() {
         // given
         var command = new CreateLobbyUseCase.Command(UUID.randomUUID(), "Alice");
 
         // when
-        var result = handler.execute(command);
+        var result = handler.handle(command);
 
         // then
         assertThat(result.lobbyId()).isNotNull();

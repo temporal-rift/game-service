@@ -5,7 +5,7 @@ import java.util.UUID;
 
 public interface JoinLobbyUseCase {
 
-    Result execute(Command command);
+    Result handle(Command command);
 
     record Command(UUID lobbyId, UUID playerId, String playerName) {}
 

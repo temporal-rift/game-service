@@ -6,7 +6,7 @@ import io.github.temporalrift.game.session.domain.game.GameStatus;
 
 public interface GetGameStateUseCase {
 
-    Result execute(Query query);
+    Result handle(Query query);
 
     record Query(UUID gameId) {}
 

@@ -29,6 +29,10 @@ import io.github.temporalrift.game.session.domain.port.out.LobbyRepository;
 @ExtendWith(MockitoExtension.class)
 class StartGameCommandHandlerTest {
 
+    static final UUID LOBBY_ID = UUID.randomUUID();
+    static final UUID GAME_ID = UUID.randomUUID();
+    static final UUID REQUESTING_PLAYER_ID = UUID.randomUUID();
+
     @Mock
     LobbyRepository lobbyRepository;
 
@@ -41,13 +45,9 @@ class StartGameCommandHandlerTest {
     @InjectMocks
     StartGameCommandHandler handler;
 
-    static final UUID LOBBY_ID = UUID.randomUUID();
-    static final UUID GAME_ID = UUID.randomUUID();
-    static final UUID REQUESTING_PLAYER_ID = UUID.randomUUID();
-
     @Test
     @DisplayName("host starts game — invokes saga and returns pre-assigned gameId")
-    void execute_hostStartsGame_invokesSagaAndReturnsGameId() {
+    void handle_hostStartsGame_invokesSagaAndReturnsGameId() {
         // given
         given(lobbyRepository.findById(LOBBY_ID)).willReturn(Optional.of(lobby));
         given(lobby.requestStart(REQUESTING_PLAYER_ID)).willReturn(new StartOutcome.GameStarted());
@@ -55,7 +55,7 @@ class StartGameCommandHandlerTest {
         var command = new StartGameUseCase.Command(LOBBY_ID, REQUESTING_PLAYER_ID);
 
         // when
-        var result = handler.execute(command);
+        var result = handler.handle(command);
 
         // then
         assertThat(result.gameId()).isEqualTo(GAME_ID);
@@ -64,45 +64,45 @@ class StartGameCommandHandlerTest {
 
     @Test
     @DisplayName("lobby not found — throws NoSuchElementException")
-    void execute_lobbyNotFound_throwsNoSuchElementException() {
+    void handle_lobbyNotFound_throwsNoSuchElementException() {
         // given
         given(lobbyRepository.findById(LOBBY_ID)).willReturn(Optional.empty());
         var command = new StartGameUseCase.Command(LOBBY_ID, REQUESTING_PLAYER_ID);
 
         // when / then
-        assertThatExceptionOfType(NoSuchElementException.class).isThrownBy(() -> handler.execute(command));
+        assertThatExceptionOfType(NoSuchElementException.class).isThrownBy(() -> handler.handle(command));
         then(gameStartSaga).shouldHaveNoInteractions();
     }
 
     @Test
     @DisplayName("requesting player is not host — throws NotHostException")
-    void execute_notHost_throwsNotHostException() {
+    void handle_notHost_throwsNotHostException() {
         // given
         given(lobbyRepository.findById(LOBBY_ID)).willReturn(Optional.of(lobby));
         given(lobby.requestStart(REQUESTING_PLAYER_ID)).willReturn(new StartOutcome.NotHost());
         var command = new StartGameUseCase.Command(LOBBY_ID, REQUESTING_PLAYER_ID);
 
         // when / then
-        assertThatExceptionOfType(NotHostException.class).isThrownBy(() -> handler.execute(command));
+        assertThatExceptionOfType(NotHostException.class).isThrownBy(() -> handler.handle(command));
         then(gameStartSaga).shouldHaveNoInteractions();
     }
 
     @Test
     @DisplayName("not enough players — throws NotEnoughPlayersException")
-    void execute_notEnoughPlayers_throwsNotEnoughPlayersException() {
+    void handle_notEnoughPlayers_throwsNotEnoughPlayersException() {
         // given
         given(lobbyRepository.findById(LOBBY_ID)).willReturn(Optional.of(lobby));
         given(lobby.requestStart(REQUESTING_PLAYER_ID)).willReturn(new StartOutcome.NotEnoughPlayers(2, 3));
         var command = new StartGameUseCase.Command(LOBBY_ID, REQUESTING_PLAYER_ID);
 
         // when / then
-        assertThatExceptionOfType(NotEnoughPlayersException.class).isThrownBy(() -> handler.execute(command));
+        assertThatExceptionOfType(NotEnoughPlayersException.class).isThrownBy(() -> handler.handle(command));
         then(gameStartSaga).shouldHaveNoInteractions();
     }
 
     @Test
     @DisplayName("lobby has disconnected players — throws DisconnectedPlayersException")
-    void execute_disconnectedPlayers_throwsDisconnectedPlayersException() {
+    void handle_disconnectedPlayers_throwsDisconnectedPlayersException() {
         // given
         var disconnectedId = UUID.randomUUID();
         given(lobbyRepository.findById(LOBBY_ID)).willReturn(Optional.of(lobby));
@@ -111,7 +111,7 @@ class StartGameCommandHandlerTest {
         var command = new StartGameUseCase.Command(LOBBY_ID, REQUESTING_PLAYER_ID);
 
         // when / then
-        assertThatExceptionOfType(DisconnectedPlayersException.class).isThrownBy(() -> handler.execute(command));
+        assertThatExceptionOfType(DisconnectedPlayersException.class).isThrownBy(() -> handler.handle(command));
         then(gameStartSaga).shouldHaveNoInteractions();
     }
 }

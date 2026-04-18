@@ -45,7 +45,7 @@ class CreateLobbyCommandHandler implements CreateLobbyUseCase {
 
     @Override
     @Transactional
-    public Result execute(Command command) {
+    public Result handle(Command command) {
         var lobbyId = UUID.randomUUID();
         var gameId = UUID.randomUUID();
         var now = clock.instant();

@@ -32,6 +32,10 @@ import io.github.temporalrift.game.session.domain.port.out.SessionEventPublisher
 @ExtendWith(MockitoExtension.class)
 class LeaveLobbyCommandHandlerTest {
 
+    static final UUID LOBBY_ID = UUID.randomUUID();
+    static final UUID GAME_ID = UUID.randomUUID();
+    static final UUID PLAYER_ID = UUID.randomUUID();
+
     @Mock
     LobbyRepository lobbyRepository;
 
@@ -44,10 +48,6 @@ class LeaveLobbyCommandHandlerTest {
     @InjectMocks
     LeaveLobbyCommandHandler handler;
 
-    static final UUID LOBBY_ID = UUID.randomUUID();
-    static final UUID GAME_ID = UUID.randomUUID();
-    static final UUID PLAYER_ID = UUID.randomUUID();
-
     private void stubLobby(LeaveOutcome outcome) {
         given(lobbyRepository.findById(LOBBY_ID)).willReturn(Optional.of(lobby));
         given(lobbyRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
@@ -58,13 +58,13 @@ class LeaveLobbyCommandHandlerTest {
 
     @Test
     @DisplayName("non-host leaves — publishes PlayerLeftLobby")
-    void execute_nonHostLeaves_publishesPlayerLeftLobby() {
+    void handle_nonHostLeaves_publishesPlayerLeftLobby() {
         // given
         stubLobby(new LeaveOutcome.NonHostLeft());
         var command = new LeaveLobbyUseCase.Command(LOBBY_ID, PLAYER_ID);
 
         // when
-        handler.execute(command);
+        handler.handle(command);
 
         // then
         var captor = forClass(EventEnvelope.class);
@@ -77,14 +77,14 @@ class LeaveLobbyCommandHandlerTest {
 
     @Test
     @DisplayName("host leaves with others present — publishes HostTransferred then PlayerLeftLobby")
-    void execute_hostLeavesWithOthers_publishesHostTransferredAndPlayerLeftLobby() {
+    void handle_hostLeavesWithOthers_publishesHostTransferredAndPlayerLeftLobby() {
         // given
         var newHostId = UUID.randomUUID();
         stubLobby(new LeaveOutcome.HostTransferred(newHostId));
         var command = new LeaveLobbyUseCase.Command(LOBBY_ID, PLAYER_ID);
 
         // when
-        handler.execute(command);
+        handler.handle(command);
 
         // then
         @SuppressWarnings("unchecked")
@@ -106,13 +106,13 @@ class LeaveLobbyCommandHandlerTest {
 
     @Test
     @DisplayName("host leaves as sole player — publishes LobbyClosed")
-    void execute_hostLeavesSolePlayer_publishesLobbyClosed() {
+    void handle_hostLeavesSolePlayer_publishesLobbyClosed() {
         // given
         stubLobby(new LeaveOutcome.LobbyClosed());
         var command = new LeaveLobbyUseCase.Command(LOBBY_ID, PLAYER_ID);
 
         // when
-        handler.execute(command);
+        handler.handle(command);
 
         // then
         var captor = forClass(EventEnvelope.class);
@@ -125,24 +125,24 @@ class LeaveLobbyCommandHandlerTest {
 
     @Test
     @DisplayName("lobby not found — throws NoSuchElementException")
-    void execute_lobbyNotFound_throwsNoSuchElementException() {
+    void handle_lobbyNotFound_throwsNoSuchElementException() {
         // given
         given(lobbyRepository.findById(any())).willReturn(Optional.empty());
         var command = new LeaveLobbyUseCase.Command(UUID.randomUUID(), PLAYER_ID);
 
         // when / then
-        assertThatExceptionOfType(NoSuchElementException.class).isThrownBy(() -> handler.execute(command));
+        assertThatExceptionOfType(NoSuchElementException.class).isThrownBy(() -> handler.handle(command));
     }
 
     @Test
     @DisplayName("saves lobby after leave regardless of outcome")
-    void execute_savesLobbyAfterLeave() {
+    void handle_savesLobbyAfterLeave() {
         // given
         stubLobby(new LeaveOutcome.NonHostLeft());
         var command = new LeaveLobbyUseCase.Command(LOBBY_ID, PLAYER_ID);
 
         // when
-        handler.execute(command);
+        handler.handle(command);
 
         // then
         then(lobbyRepository).should().save(lobby);

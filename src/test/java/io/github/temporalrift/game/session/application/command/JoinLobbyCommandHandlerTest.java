@@ -33,6 +33,11 @@ import io.github.temporalrift.game.session.domain.port.out.SessionEventPublisher
 @ExtendWith(MockitoExtension.class)
 class JoinLobbyCommandHandlerTest {
 
+    static final UUID lobbyId = UUID.randomUUID();
+    static final UUID gameId = UUID.randomUUID();
+    static final UUID playerId = UUID.randomUUID();
+    static final UUID hostPlayerId = UUID.randomUUID();
+
     @Mock
     LobbyRepository lobbyRepository;
 
@@ -45,12 +50,9 @@ class JoinLobbyCommandHandlerTest {
     @InjectMocks
     JoinLobbyCommandHandler handler;
 
-    static final UUID lobbyId = UUID.randomUUID();
-    static final UUID gameId = UUID.randomUUID();
-    static final UUID playerId = UUID.randomUUID();
-    static final UUID hostPlayerId = UUID.randomUUID();
-
-    /** Stubs needed when the handler runs to completion (join succeeds). */
+    /**
+     * Stubs needed when the handler runs to completion (join succeeds).
+     */
     private void stubSuccessfulJoin() {
         given(lobbyRepository.findById(lobbyId)).willReturn(Optional.of(lobby));
         given(lobbyRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
@@ -60,14 +62,14 @@ class JoinLobbyCommandHandlerTest {
 
     @Test
     @DisplayName("saves the lobby after the player joins")
-    void execute_savesLobbyAfterJoin() {
+    void handle_savesLobbyAfterJoin() {
         // given
         stubSuccessfulJoin();
         given(lobby.currentPlayers()).willReturn(List.of());
         var command = new JoinLobbyUseCase.Command(lobbyId, playerId, "Alice");
 
         // when
-        handler.execute(command);
+        handler.handle(command);
 
         // then
         then(lobbyRepository).should().save(lobby);
@@ -75,14 +77,14 @@ class JoinLobbyCommandHandlerTest {
 
     @Test
     @DisplayName("joins the player with name and playerId from the command")
-    void execute_joinsPlayerWithDetailsFromCommand() {
+    void handle_joinsPlayerWithDetailsFromCommand() {
         // given
         stubSuccessfulJoin();
         given(lobby.currentPlayers()).willReturn(List.of());
         var command = new JoinLobbyUseCase.Command(lobbyId, playerId, "Alice");
 
         // when
-        handler.execute(command);
+        handler.handle(command);
 
         // then
         var captor = ArgumentCaptor.forClass(LobbyPlayer.class);
@@ -93,14 +95,14 @@ class JoinLobbyCommandHandlerTest {
 
     @Test
     @DisplayName("publishes PlayerJoinedLobby with correct lobbyId, playerId, and playerName")
-    void execute_publishesPlayerJoinedLobbyEvent() {
+    void handle_publishesPlayerJoinedLobbyEvent() {
         // given
         stubSuccessfulJoin();
         given(lobby.currentPlayers()).willReturn(List.of());
         var command = new JoinLobbyUseCase.Command(lobbyId, playerId, "Alice");
 
         // when
-        handler.execute(command);
+        handler.handle(command);
 
         // then
         var captor = ArgumentCaptor.forClass(EventEnvelope.class);
@@ -115,14 +117,14 @@ class JoinLobbyCommandHandlerTest {
 
     @Test
     @DisplayName("returns result with lobbyId and playerId from command")
-    void execute_returnsResultWithLobbyIdAndPlayerId() {
+    void handle_returnsResultWithLobbyIdAndPlayerId() {
         // given
         stubSuccessfulJoin();
         given(lobby.currentPlayers()).willReturn(List.of());
         var command = new JoinLobbyUseCase.Command(lobbyId, playerId, "Alice");
 
         // when
-        var result = handler.execute(command);
+        var result = handler.handle(command);
 
         // then
         assertThat(result.lobbyId()).isEqualTo(lobbyId);
@@ -131,7 +133,7 @@ class JoinLobbyCommandHandlerTest {
 
     @Test
     @DisplayName("result currentPlayers reflects the lobby state after join")
-    void execute_returnsCurrentPlayersFromLobbyAfterJoin() {
+    void handle_returnsCurrentPlayersFromLobbyAfterJoin() {
         // given
         stubSuccessfulJoin();
         var existingPlayer = new LobbyPlayer(hostPlayerId, "Bob", null, null, true);
@@ -140,7 +142,7 @@ class JoinLobbyCommandHandlerTest {
         var command = new JoinLobbyUseCase.Command(lobbyId, playerId, "Alice");
 
         // when
-        var result = handler.execute(command);
+        var result = handler.handle(command);
 
         // then
         assertThat(result.currentPlayers()).hasSize(1);
@@ -150,36 +152,36 @@ class JoinLobbyCommandHandlerTest {
 
     @Test
     @DisplayName("throws NoSuchElementException when lobby does not exist")
-    void execute_lobbyNotFound_throwsNoSuchElementException() {
+    void handle_lobbyNotFound_throwsNoSuchElementException() {
         // given
         given(lobbyRepository.findById(any())).willReturn(Optional.empty());
         var command = new JoinLobbyUseCase.Command(UUID.randomUUID(), playerId, "Alice");
 
         // when / then
-        assertThatExceptionOfType(NoSuchElementException.class).isThrownBy(() -> handler.execute(command));
+        assertThatExceptionOfType(NoSuchElementException.class).isThrownBy(() -> handler.handle(command));
     }
 
     @Test
     @DisplayName("propagates LobbyFullException thrown by the aggregate")
-    void execute_lobbyFull_propagatesLobbyFullException() {
+    void handle_lobbyFull_propagatesLobbyFullException() {
         // given
         given(lobbyRepository.findById(lobbyId)).willReturn(Optional.of(lobby));
         willThrow(new LobbyFullException()).given(lobby).join(any());
         var command = new JoinLobbyUseCase.Command(lobbyId, playerId, "Alice");
 
         // when / then
-        assertThatExceptionOfType(LobbyFullException.class).isThrownBy(() -> handler.execute(command));
+        assertThatExceptionOfType(LobbyFullException.class).isThrownBy(() -> handler.handle(command));
     }
 
     @Test
     @DisplayName("propagates LobbyAlreadyStartedException thrown by the aggregate")
-    void execute_lobbyAlreadyStarted_propagatesLobbyAlreadyStartedException() {
+    void handle_lobbyAlreadyStarted_propagatesLobbyAlreadyStartedException() {
         // given
         given(lobbyRepository.findById(lobbyId)).willReturn(Optional.of(lobby));
         willThrow(new LobbyAlreadyStartedException()).given(lobby).join(any());
         var command = new JoinLobbyUseCase.Command(lobbyId, playerId, "Alice");
 
         // when / then
-        assertThatExceptionOfType(LobbyAlreadyStartedException.class).isThrownBy(() -> handler.execute(command));
+        assertThatExceptionOfType(LobbyAlreadyStartedException.class).isThrownBy(() -> handler.handle(command));
     }
 }

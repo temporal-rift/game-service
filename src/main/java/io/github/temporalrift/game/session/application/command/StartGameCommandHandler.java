@@ -26,7 +26,7 @@ class StartGameCommandHandler implements StartGameUseCase {
 
     @Override
     @Transactional
-    public Result execute(Command command) {
+    public Result handle(Command command) {
         var lobby = lobbyRepository
                 .findById(command.lobbyId())
                 .orElseThrow(() -> new NoSuchElementException("Lobby not found: " + command.lobbyId()));

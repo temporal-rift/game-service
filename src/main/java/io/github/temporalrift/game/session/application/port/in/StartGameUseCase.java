@@ -4,7 +4,7 @@ import java.util.UUID;
 
 public interface StartGameUseCase {
 
-    Result execute(Command command);
+    Result handle(Command command);
 
     record Command(UUID lobbyId, UUID requestingPlayerId) {}
 

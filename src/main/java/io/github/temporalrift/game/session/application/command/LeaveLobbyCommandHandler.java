@@ -29,7 +29,7 @@ class LeaveLobbyCommandHandler implements LeaveLobbyUseCase {
 
     @Override
     @Transactional
-    public void execute(Command command) {
+    public void handle(Command command) {
         var lobby = lobbyRepository
                 .findById(command.lobbyId())
                 .orElseThrow(() -> new NoSuchElementException("Lobby not found: " + command.lobbyId()));
