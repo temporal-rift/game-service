@@ -8,6 +8,8 @@ import java.util.UUID;
 
 public class Game {
 
+    public static final String AGGREGATE_TYPE = "Game";
+
     private final UUID id;
     private final UUID lobbyId;
     private final List<UUID> availableEventIds;

@@ -351,4 +351,66 @@ class LobbyTest {
         assertThat(((StartOutcome.HasDisconnectedPlayers) outcome).disconnectedPlayerIds())
                 .containsExactly(disconnected.playerId());
     }
+
+    // --- assignFaction() ---
+
+    @Test
+    @DisplayName("assign faction to player — faction stored on the correct player")
+    void assignFaction_validPlayer_factionAssigned() {
+        // given
+        var lobby = emptyLobby();
+        var p = player();
+        lobby.join(p);
+        var playerId = lobby.currentPlayers().getFirst().playerId();
+
+        // when
+        lobby.assignFaction(playerId, Faction.ERASERS);
+
+        // then
+        assertThat(lobby.currentPlayers().getFirst().faction()).isEqualTo(Faction.ERASERS);
+    }
+
+    @Test
+    @DisplayName("assign faction to unknown player — throws PlayerNotInLobbyException")
+    void assignFaction_unknownPlayer_throws() {
+        // given
+        var lobby = emptyLobby();
+
+        // when / then
+        assertThatExceptionOfType(PlayerNotInLobbyException.class)
+                .isThrownBy(() -> lobby.assignFaction(UUID.randomUUID(), Faction.ERASERS));
+    }
+
+    // --- markPlayerDisconnected() / markPlayerReconnected() ---
+
+    @Test
+    @DisplayName("mark connected player as disconnected — connected becomes false")
+    void markPlayerDisconnected_connectedPlayer_connectedFalse() {
+        // given
+        var lobby = emptyLobby();
+        lobby.join(player());
+        var playerId = lobby.currentPlayers().getFirst().playerId();
+
+        // when
+        lobby.markPlayerDisconnected(playerId);
+
+        // then
+        assertThat(lobby.currentPlayers().getFirst().connected()).isFalse();
+    }
+
+    @Test
+    @DisplayName("mark disconnected player as reconnected — connected becomes true")
+    void markPlayerReconnected_disconnectedPlayer_connectedTrue() {
+        // given
+        var lobby = emptyLobby();
+        lobby.join(player());
+        var playerId = lobby.currentPlayers().getFirst().playerId();
+        lobby.markPlayerDisconnected(playerId);
+
+        // when
+        lobby.markPlayerReconnected(playerId);
+
+        // then
+        assertThat(lobby.currentPlayers().getFirst().connected()).isTrue();
+    }
 }

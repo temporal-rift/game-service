@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 public class Lobby {
 
@@ -68,6 +69,29 @@ public class Lobby {
         }
         currentPlayers.add(
                 new LobbyPlayer(player.playerId(), player.playerName(), player.faction(), clock.instant(), true));
+    }
+
+    public void assignFaction(UUID playerId, io.github.temporalrift.events.shared.Faction faction) {
+        requireWaiting();
+        var index = playerIndex(playerId);
+        currentPlayers.set(index, currentPlayers.get(index).withFaction(faction));
+    }
+
+    public void markPlayerDisconnected(UUID playerId) {
+        var index = playerIndex(playerId);
+        currentPlayers.set(index, currentPlayers.get(index).withConnected(false));
+    }
+
+    public void markPlayerReconnected(UUID playerId) {
+        var index = playerIndex(playerId);
+        currentPlayers.set(index, currentPlayers.get(index).withConnected(true));
+    }
+
+    private int playerIndex(UUID playerId) {
+        return IntStream.range(0, currentPlayers.size())
+                .filter(i -> currentPlayers.get(i).playerId().equals(playerId))
+                .findFirst()
+                .orElseThrow(() -> new PlayerNotInLobbyException(playerId));
     }
 
     public LeaveOutcome leave(UUID leavingPlayerId) {
