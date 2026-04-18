@@ -7,7 +7,6 @@ import static org.mockito.BDDMockito.then;
 
 import java.time.Instant;
 import java.util.List;
-import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -20,6 +19,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import io.github.temporalrift.game.session.application.port.in.GetGameStateUseCase;
 import io.github.temporalrift.game.session.domain.game.Game;
+import io.github.temporalrift.game.session.domain.game.GameNotFoundException;
 import io.github.temporalrift.game.session.domain.game.GameStatus;
 import io.github.temporalrift.game.session.domain.lobby.Lobby;
 import io.github.temporalrift.game.session.domain.lobby.LobbyPlayer;
@@ -77,14 +77,14 @@ class GetGameStateQueryHandlerTest {
     }
 
     @Test
-    @DisplayName("game not found — throws NoSuchElementException without touching lobby repository")
-    void handle_gameNotFound_throwsNoSuchElementException() {
+    @DisplayName("game not found — throws GameNotFoundException without touching lobby repository")
+    void handle_gameNotFound_throwsGameNotFoundException() {
         // given
         given(gameRepository.findById(GAME_ID)).willReturn(Optional.empty());
         var query = new GetGameStateUseCase.Query(GAME_ID);
 
         // when / then
-        assertThatExceptionOfType(NoSuchElementException.class).isThrownBy(() -> handler.handle(query));
+        assertThatExceptionOfType(GameNotFoundException.class).isThrownBy(() -> handler.handle(query));
         then(lobbyRepository).shouldHaveNoInteractions();
     }
 }

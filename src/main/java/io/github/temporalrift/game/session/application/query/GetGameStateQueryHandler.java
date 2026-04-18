@@ -1,11 +1,11 @@
 package io.github.temporalrift.game.session.application.query;
 
-import java.util.NoSuchElementException;
-
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import io.github.temporalrift.game.session.application.port.in.GetGameStateUseCase;
+import io.github.temporalrift.game.session.domain.game.GameNotFoundException;
+import io.github.temporalrift.game.session.domain.lobby.LobbyNotFoundException;
 import io.github.temporalrift.game.session.domain.port.out.GameRepository;
 import io.github.temporalrift.game.session.domain.port.out.LobbyRepository;
 
@@ -23,12 +23,9 @@ class GetGameStateQueryHandler implements GetGameStateUseCase {
     @Override
     @Transactional(readOnly = true)
     public Result handle(Query query) {
-        var game = gameRepository
-                .findById(query.gameId())
-                .orElseThrow(() -> new NoSuchElementException("Game not found: " + query.gameId()));
-        var lobby = lobbyRepository
-                .findById(game.lobbyId())
-                .orElseThrow(() -> new NoSuchElementException("Lobby not found: " + game.lobbyId()));
+        var game = gameRepository.findById(query.gameId()).orElseThrow(() -> new GameNotFoundException(query.gameId()));
+        var lobby =
+                lobbyRepository.findById(game.lobbyId()).orElseThrow(() -> new LobbyNotFoundException(game.lobbyId()));
         return new Result(
                 game.id(),
                 game.status(),

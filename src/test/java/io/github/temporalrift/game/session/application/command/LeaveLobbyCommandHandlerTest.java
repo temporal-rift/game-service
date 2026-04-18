@@ -7,7 +7,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 
-import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -26,6 +25,7 @@ import io.github.temporalrift.events.session.PlayerLeftLobby;
 import io.github.temporalrift.game.session.application.port.in.LeaveLobbyUseCase;
 import io.github.temporalrift.game.session.domain.lobby.LeaveOutcome;
 import io.github.temporalrift.game.session.domain.lobby.Lobby;
+import io.github.temporalrift.game.session.domain.lobby.LobbyNotFoundException;
 import io.github.temporalrift.game.session.domain.port.out.LobbyRepository;
 import io.github.temporalrift.game.session.domain.port.out.SessionEventPublisher;
 
@@ -124,14 +124,14 @@ class LeaveLobbyCommandHandlerTest {
     }
 
     @Test
-    @DisplayName("lobby not found — throws NoSuchElementException")
-    void handle_lobbyNotFound_throwsNoSuchElementException() {
+    @DisplayName("lobby not found — throws LobbyNotFoundException")
+    void handle_lobbyNotFound_throwsLobbyNotFoundException() {
         // given
         given(lobbyRepository.findById(any())).willReturn(Optional.empty());
         var command = new LeaveLobbyUseCase.Command(UUID.randomUUID(), PLAYER_ID);
 
         // when / then
-        assertThatExceptionOfType(NoSuchElementException.class).isThrownBy(() -> handler.handle(command));
+        assertThatExceptionOfType(LobbyNotFoundException.class).isThrownBy(() -> handler.handle(command));
     }
 
     @Test

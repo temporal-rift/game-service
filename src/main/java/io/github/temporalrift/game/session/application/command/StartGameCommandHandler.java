@@ -1,13 +1,12 @@
 package io.github.temporalrift.game.session.application.command;
 
-import java.util.NoSuchElementException;
-
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import io.github.temporalrift.game.session.application.port.in.StartGameUseCase;
 import io.github.temporalrift.game.session.application.saga.GameStartSaga;
 import io.github.temporalrift.game.session.domain.lobby.DisconnectedPlayersException;
+import io.github.temporalrift.game.session.domain.lobby.LobbyNotFoundException;
 import io.github.temporalrift.game.session.domain.lobby.NotEnoughPlayersException;
 import io.github.temporalrift.game.session.domain.lobby.NotHostException;
 import io.github.temporalrift.game.session.domain.lobby.StartOutcome;
@@ -29,7 +28,7 @@ class StartGameCommandHandler implements StartGameUseCase {
     public Result handle(Command command) {
         var lobby = lobbyRepository
                 .findById(command.lobbyId())
-                .orElseThrow(() -> new NoSuchElementException("Lobby not found: " + command.lobbyId()));
+                .orElseThrow(() -> new LobbyNotFoundException(command.lobbyId()));
 
         return switch (lobby.requestStart(command.requestingPlayerId())) {
             case StartOutcome.GameStarted ignored -> {

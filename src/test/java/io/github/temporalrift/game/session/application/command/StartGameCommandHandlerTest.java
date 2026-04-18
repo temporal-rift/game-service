@@ -6,7 +6,6 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 
 import java.util.List;
-import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -21,6 +20,7 @@ import io.github.temporalrift.game.session.application.port.in.StartGameUseCase;
 import io.github.temporalrift.game.session.application.saga.GameStartSaga;
 import io.github.temporalrift.game.session.domain.lobby.DisconnectedPlayersException;
 import io.github.temporalrift.game.session.domain.lobby.Lobby;
+import io.github.temporalrift.game.session.domain.lobby.LobbyNotFoundException;
 import io.github.temporalrift.game.session.domain.lobby.NotEnoughPlayersException;
 import io.github.temporalrift.game.session.domain.lobby.NotHostException;
 import io.github.temporalrift.game.session.domain.lobby.StartOutcome;
@@ -63,14 +63,14 @@ class StartGameCommandHandlerTest {
     }
 
     @Test
-    @DisplayName("lobby not found — throws NoSuchElementException")
-    void handle_lobbyNotFound_throwsNoSuchElementException() {
+    @DisplayName("lobby not found — throws LobbyNotFoundException")
+    void handle_lobbyNotFound_throwsLobbyNotFoundException() {
         // given
         given(lobbyRepository.findById(LOBBY_ID)).willReturn(Optional.empty());
         var command = new StartGameUseCase.Command(LOBBY_ID, REQUESTING_PLAYER_ID);
 
         // when / then
-        assertThatExceptionOfType(NoSuchElementException.class).isThrownBy(() -> handler.handle(command));
+        assertThatExceptionOfType(LobbyNotFoundException.class).isThrownBy(() -> handler.handle(command));
         then(gameStartSaga).shouldHaveNoInteractions();
     }
 

@@ -8,7 +8,6 @@ import static org.mockito.BDDMockito.then;
 import static org.mockito.BDDMockito.willThrow;
 
 import java.util.List;
-import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -26,6 +25,7 @@ import io.github.temporalrift.game.session.application.port.in.JoinLobbyUseCase;
 import io.github.temporalrift.game.session.domain.lobby.Lobby;
 import io.github.temporalrift.game.session.domain.lobby.LobbyAlreadyStartedException;
 import io.github.temporalrift.game.session.domain.lobby.LobbyFullException;
+import io.github.temporalrift.game.session.domain.lobby.LobbyNotFoundException;
 import io.github.temporalrift.game.session.domain.lobby.LobbyPlayer;
 import io.github.temporalrift.game.session.domain.port.out.LobbyRepository;
 import io.github.temporalrift.game.session.domain.port.out.SessionEventPublisher;
@@ -151,14 +151,14 @@ class JoinLobbyCommandHandlerTest {
     }
 
     @Test
-    @DisplayName("throws NoSuchElementException when lobby does not exist")
-    void handle_lobbyNotFound_throwsNoSuchElementException() {
+    @DisplayName("throws LobbyNotFoundException when lobby does not exist")
+    void handle_lobbyNotFound_throwsLobbyNotFoundException() {
         // given
         given(lobbyRepository.findById(any())).willReturn(Optional.empty());
         var command = new JoinLobbyUseCase.Command(UUID.randomUUID(), playerId, "Alice");
 
         // when / then
-        assertThatExceptionOfType(NoSuchElementException.class).isThrownBy(() -> handler.handle(command));
+        assertThatExceptionOfType(LobbyNotFoundException.class).isThrownBy(() -> handler.handle(command));
     }
 
     @Test
