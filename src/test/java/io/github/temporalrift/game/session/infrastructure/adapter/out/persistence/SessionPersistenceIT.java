@@ -18,6 +18,7 @@ import io.github.temporalrift.game.TestcontainersConfiguration;
 import io.github.temporalrift.game.session.domain.game.Game;
 import io.github.temporalrift.game.session.domain.game.GameStatus;
 import io.github.temporalrift.game.session.domain.lobby.Lobby;
+import io.github.temporalrift.game.session.domain.lobby.LobbyConfig;
 import io.github.temporalrift.game.session.domain.lobby.LobbyPlayer;
 import io.github.temporalrift.game.session.domain.lobby.LobbyStatus;
 import io.github.temporalrift.game.session.domain.port.out.GameRepository;
@@ -52,7 +53,7 @@ class SessionPersistenceIT {
         players.add(player1);
         players.add(player2);
 
-        var lobby = new Lobby(id, gameId, hostPlayerId, "SAVE01", players, 2, 5, clock);
+        var lobby = new Lobby(id, gameId, hostPlayerId, players, new LobbyConfig("SAVE01", 2, 5, clock));
         lobbyRepository.save(lobby);
 
         var loaded = lobbyRepository.findById(id);
@@ -79,7 +80,8 @@ class SessionPersistenceIT {
     void lobby_findByJoinCode_returnsCorrectLobby() {
         var id = UUID.randomUUID();
         var hostPlayerId = UUID.randomUUID();
-        var lobby = new Lobby(id, UUID.randomUUID(), hostPlayerId, "FIND01", new ArrayList<>(), 2, 5, clock);
+        var lobby = new Lobby(
+                id, UUID.randomUUID(), hostPlayerId, new ArrayList<>(), new LobbyConfig("FIND01", 2, 5, clock));
         lobbyRepository.save(lobby);
 
         var found = lobbyRepository.findByJoinCode("FIND01");

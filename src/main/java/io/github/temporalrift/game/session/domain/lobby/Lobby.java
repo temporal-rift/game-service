@@ -1,6 +1,5 @@
 package io.github.temporalrift.game.session.domain.lobby;
 
-import java.time.Clock;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -23,78 +22,59 @@ public class Lobby extends AggregateRoot {
 
     private final UUID id;
     private final UUID gameId;
-    private final String joinCode;
+    private final LobbyConfig config;
     private final List<LobbyPlayer> currentPlayers;
-    private final int minPlayers;
-    private final int maxPlayers;
-    private final Clock clock;
     private UUID hostPlayerId;
     private LobbyStatus status;
 
-    public Lobby(
-            UUID id,
-            UUID gameId,
-            UUID hostPlayerId,
-            String joinCode,
-            List<LobbyPlayer> currentPlayers,
-            int minPlayers,
-            int maxPlayers,
-            Clock clock) {
+    public Lobby(UUID id, UUID gameId, UUID hostPlayerId, List<LobbyPlayer> currentPlayers, LobbyConfig config) {
         this.id = Objects.requireNonNull(id, "id must not be null");
         this.gameId = Objects.requireNonNull(gameId, "gameId must not be null");
         this.hostPlayerId = Objects.requireNonNull(hostPlayerId, "hostPlayerId must not be null");
-        this.joinCode = Objects.requireNonNull(joinCode, "joinCode must not be null");
+        this.config = Objects.requireNonNull(config, "config must not be null");
         this.currentPlayers =
                 new ArrayList<>(Objects.requireNonNull(currentPlayers, "currentPlayers must not be null"));
-        this.minPlayers = minPlayers;
-        this.maxPlayers = maxPlayers;
-        this.clock = Objects.requireNonNull(clock, "clock must not be null");
         this.status = LobbyStatus.WAITING;
-        registerEvent(new LobbyCreated(id, hostPlayerId, clock.instant()));
+        registerEvent(new LobbyCreated(id, hostPlayerId, config.clock().instant()));
     }
 
     private Lobby(
             UUID id,
             UUID gameId,
             UUID hostPlayerId,
-            String joinCode,
             List<LobbyPlayer> currentPlayers,
             LobbyStatus status,
-            int minPlayers,
-            int maxPlayers,
-            Clock clock) {
+            LobbyConfig config) {
         this.id = id;
         this.gameId = gameId;
         this.hostPlayerId = hostPlayerId;
-        this.joinCode = joinCode;
+        this.config = config;
         this.currentPlayers = new ArrayList<>(currentPlayers);
         this.status = status;
-        this.minPlayers = minPlayers;
-        this.maxPlayers = maxPlayers;
-        this.clock = clock;
     }
 
     public static Lobby reconstitute(
             UUID id,
             UUID gameId,
             UUID hostPlayerId,
-            String joinCode,
             List<LobbyPlayer> currentPlayers,
             LobbyStatus status,
-            int minPlayers,
-            int maxPlayers,
-            Clock clock) {
-        return new Lobby(id, gameId, hostPlayerId, joinCode, currentPlayers, status, minPlayers, maxPlayers, clock);
+            LobbyConfig config) {
+        return new Lobby(id, gameId, hostPlayerId, currentPlayers, status, config);
     }
 
     public void join(LobbyPlayer player) {
         Objects.requireNonNull(player, "Player must not be null");
         requireWaiting();
-        if (currentPlayers.size() >= maxPlayers) {
+        if (currentPlayers.size() >= config.maxPlayers()) {
             throw new LobbyFullException();
         }
-        currentPlayers.add(
-                new LobbyPlayer(player.playerId(), player.playerName(), player.faction(), clock.instant(), true));
+        currentPlayers.add(new LobbyPlayer(
+                player.playerId(),
+                player.playerName(),
+                player.faction(),
+                config.clock().instant(),
+                true));
         registerEvent(new PlayerJoinedLobby(id, player.playerId(), player.playerName()));
     }
 
@@ -151,8 +131,8 @@ public class Lobby extends AggregateRoot {
         if (!requestingPlayerId.equals(hostPlayerId)) {
             return new StartOutcome.NotHost();
         }
-        if (currentPlayers.size() < minPlayers) {
-            return new StartOutcome.NotEnoughPlayers(currentPlayers.size(), minPlayers);
+        if (currentPlayers.size() < config.minPlayers()) {
+            return new StartOutcome.NotEnoughPlayers(currentPlayers.size(), config.minPlayers());
         }
         var disconnectedIds = currentPlayers.stream()
                 .filter(p -> !p.connected())
@@ -166,7 +146,7 @@ public class Lobby extends AggregateRoot {
 
     public void start() {
         requireWaiting();
-        if (currentPlayers.size() < minPlayers) {
+        if (currentPlayers.size() < config.minPlayers()) {
             throw new NotEnoughPlayersException();
         }
         requireFactionAssignments();
@@ -202,7 +182,7 @@ public class Lobby extends AggregateRoot {
     }
 
     public String joinCode() {
-        return joinCode;
+        return config.joinCode();
     }
 
     public LobbyStatus status() {
@@ -210,11 +190,11 @@ public class Lobby extends AggregateRoot {
     }
 
     public int minPlayers() {
-        return minPlayers;
+        return config.minPlayers();
     }
 
     public int maxPlayers() {
-        return maxPlayers;
+        return config.maxPlayers();
     }
 
     public List<LobbyPlayer> currentPlayers() {

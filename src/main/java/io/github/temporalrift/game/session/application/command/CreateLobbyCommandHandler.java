@@ -9,6 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import io.github.temporalrift.game.session.application.port.in.CreateLobbyUseCase;
 import io.github.temporalrift.game.session.domain.lobby.Lobby;
+import io.github.temporalrift.game.session.domain.lobby.LobbyConfig;
 import io.github.temporalrift.game.session.domain.lobby.LobbyPlayer;
 import io.github.temporalrift.game.session.domain.port.out.GameRulesPort;
 import io.github.temporalrift.game.session.domain.port.out.JoinCodePort;
@@ -41,15 +42,8 @@ class CreateLobbyCommandHandler implements CreateLobbyUseCase {
         var now = clock.instant();
         var joinCode = joinCodePort.generate();
         var host = new LobbyPlayer(command.playerId(), command.playerName(), null, now, true);
-        var lobby = new Lobby(
-                lobbyId,
-                gameId,
-                command.playerId(),
-                joinCode,
-                List.of(host),
-                gameRules.minPlayers(),
-                gameRules.maxPlayers(),
-                clock);
+        var config = new LobbyConfig(joinCode, gameRules.minPlayers(), gameRules.maxPlayers(), clock);
+        var lobby = new Lobby(lobbyId, gameId, command.playerId(), List.of(host), config);
 
         lobbyRepository.save(lobby);
 

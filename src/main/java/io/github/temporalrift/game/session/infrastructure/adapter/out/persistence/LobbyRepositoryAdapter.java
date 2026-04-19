@@ -10,6 +10,7 @@ import org.springframework.stereotype.Component;
 import io.github.temporalrift.events.envelope.EventEnvelope;
 import io.github.temporalrift.events.shared.Faction;
 import io.github.temporalrift.game.session.domain.lobby.Lobby;
+import io.github.temporalrift.game.session.domain.lobby.LobbyConfig;
 import io.github.temporalrift.game.session.domain.lobby.LobbyPlayer;
 import io.github.temporalrift.game.session.domain.lobby.LobbyStatus;
 import io.github.temporalrift.game.session.domain.port.out.LobbyRepository;
@@ -93,15 +94,13 @@ class LobbyRepositoryAdapter implements LobbyRepository {
                         p.isConnected()))
                 .collect(java.util.stream.Collectors.toCollection(ArrayList::new));
 
+        var config = new LobbyConfig(entity.getJoinCode(), entity.getMinPlayers(), entity.getMaxPlayers(), clock);
         return Lobby.reconstitute(
                 entity.getId(),
                 entity.getGameId(),
                 entity.getHostPlayerId(),
-                entity.getJoinCode(),
                 players,
                 LobbyStatus.valueOf(entity.getStatus()),
-                entity.getMinPlayers(),
-                entity.getMaxPlayers(),
-                clock);
+                config);
     }
 }

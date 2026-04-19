@@ -8,5 +8,6 @@ public interface LeaveLobbyUseCase {
 
     record Command(UUID lobbyId, UUID playerId) {}
 
+    @SuppressWarnings("java:S2094")
     record Result() {}
 }

@@ -27,6 +27,6 @@ class LeaveLobbyCommandHandler implements LeaveLobbyUseCase {
 
         lobbyRepository.save(lobby);
 
-        return new Result();
+        return new LeaveLobbyUseCase.Result();
     }
 }

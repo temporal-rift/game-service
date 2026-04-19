@@ -31,11 +31,11 @@ class StartGameCommandHandler implements StartGameUseCase {
                 .orElseThrow(() -> new LobbyNotFoundException(command.lobbyId()));
 
         return switch (lobby.requestStart(command.requestingPlayerId())) {
-            case StartOutcome.GameStarted ignored -> {
+            case StartOutcome.GameStarted() -> {
                 gameStartSaga.start(lobby.gameId(), lobby);
                 yield new Result(lobby.gameId());
             }
-            case StartOutcome.NotHost ignored -> throw new NotHostException();
+            case StartOutcome.NotHost() -> throw new NotHostException();
             case StartOutcome.NotEnoughPlayers(var count, var min) -> throw new NotEnoughPlayersException(count, min);
             case StartOutcome.HasDisconnectedPlayers(var ids) -> throw new DisconnectedPlayersException(ids);
         };

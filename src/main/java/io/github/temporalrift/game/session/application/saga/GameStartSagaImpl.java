@@ -1,7 +1,6 @@
 package io.github.temporalrift.game.session.application.saga;
 
 import java.security.SecureRandom;
-import java.time.Clock;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -18,8 +17,8 @@ import io.github.temporalrift.events.session.GameStarted;
 import io.github.temporalrift.events.shared.Faction;
 import io.github.temporalrift.game.session.domain.game.Game;
 import io.github.temporalrift.game.session.domain.lobby.Lobby;
+import io.github.temporalrift.game.session.domain.lobby.LobbyPlayer;
 import io.github.temporalrift.game.session.domain.port.out.GameRepository;
-import io.github.temporalrift.game.session.domain.port.out.GameRulesPort;
 import io.github.temporalrift.game.session.domain.port.out.LobbyRepository;
 import io.github.temporalrift.game.session.domain.port.out.SessionEventPublisher;
 
@@ -32,21 +31,13 @@ class GameStartSagaImpl implements GameStartSaga {
     private final LobbyRepository lobbyRepository;
     private final GameRepository gameRepository;
     private final SessionEventPublisher eventPublisher;
-    private final GameRulesPort gameRules;
-    private final Clock clock;
     private final SecureRandom random;
 
     GameStartSagaImpl(
-            LobbyRepository lobbyRepository,
-            GameRepository gameRepository,
-            SessionEventPublisher eventPublisher,
-            GameRulesPort gameRules,
-            Clock clock) {
+            LobbyRepository lobbyRepository, GameRepository gameRepository, SessionEventPublisher eventPublisher) {
         this.lobbyRepository = lobbyRepository;
         this.gameRepository = gameRepository;
         this.eventPublisher = eventPublisher;
-        this.gameRules = gameRules;
-        this.clock = clock;
         this.random = new SecureRandom();
     }
 
@@ -74,7 +65,7 @@ class GameStartSagaImpl implements GameStartSaga {
         lobby.start();
         lobbyRepository.save(lobby);
 
-        var playerIds = players.stream().map(p -> p.playerId()).toList();
+        var playerIds = players.stream().map(LobbyPlayer::playerId).toList();
         var game = new Game(gameId, lobby.id(), buildDeck());
         gameRepository.save(game);
 

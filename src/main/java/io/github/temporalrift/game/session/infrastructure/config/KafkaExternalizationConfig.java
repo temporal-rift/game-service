@@ -20,7 +20,7 @@ class KafkaExternalizationConfig {
     @Bean
     EventExternalizationConfiguration eventExternalizationConfiguration() {
         return EventExternalizationConfiguration.externalizing()
-                .select(event -> event instanceof EventEnvelope)
+                .select(EventEnvelope.class::isInstance)
                 .route(
                         EventEnvelope.class,
                         envelope -> RoutingTarget.forTarget("game.events")
