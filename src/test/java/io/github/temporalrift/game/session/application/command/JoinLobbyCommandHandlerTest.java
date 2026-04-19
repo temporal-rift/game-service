@@ -19,8 +19,6 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import io.github.temporalrift.events.envelope.EventEnvelope;
-import io.github.temporalrift.events.session.PlayerJoinedLobby;
 import io.github.temporalrift.game.session.application.port.in.JoinLobbyUseCase;
 import io.github.temporalrift.game.session.domain.lobby.Lobby;
 import io.github.temporalrift.game.session.domain.lobby.LobbyAlreadyStartedException;
@@ -28,21 +26,16 @@ import io.github.temporalrift.game.session.domain.lobby.LobbyFullException;
 import io.github.temporalrift.game.session.domain.lobby.LobbyNotFoundException;
 import io.github.temporalrift.game.session.domain.lobby.LobbyPlayer;
 import io.github.temporalrift.game.session.domain.port.out.LobbyRepository;
-import io.github.temporalrift.game.session.domain.port.out.SessionEventPublisher;
 
 @ExtendWith(MockitoExtension.class)
 class JoinLobbyCommandHandlerTest {
 
     static final UUID lobbyId = UUID.randomUUID();
-    static final UUID gameId = UUID.randomUUID();
     static final UUID playerId = UUID.randomUUID();
     static final UUID hostPlayerId = UUID.randomUUID();
 
     @Mock
     LobbyRepository lobbyRepository;
-
-    @Mock
-    SessionEventPublisher eventPublisher;
 
     @Mock
     Lobby lobby;
@@ -57,7 +50,6 @@ class JoinLobbyCommandHandlerTest {
         given(lobbyRepository.findById(lobbyId)).willReturn(Optional.of(lobby));
         given(lobbyRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
         given(lobby.id()).willReturn(lobbyId);
-        given(lobby.gameId()).willReturn(gameId);
     }
 
     @Test
@@ -91,28 +83,6 @@ class JoinLobbyCommandHandlerTest {
         then(lobby).should().join(captor.capture());
         assertThat(captor.getValue().playerId()).isEqualTo(playerId);
         assertThat(captor.getValue().playerName()).isEqualTo("Alice");
-    }
-
-    @Test
-    @DisplayName("publishes PlayerJoinedLobby with correct lobbyId, playerId, and playerName")
-    void handle_publishesPlayerJoinedLobbyEvent() {
-        // given
-        stubSuccessfulJoin();
-        given(lobby.currentPlayers()).willReturn(List.of());
-        var command = new JoinLobbyUseCase.Command(lobbyId, playerId, "Alice");
-
-        // when
-        handler.handle(command);
-
-        // then
-        var captor = ArgumentCaptor.forClass(EventEnvelope.class);
-        then(eventPublisher).should().publish(captor.capture());
-        assertThat(captor.getValue().eventType()).isEqualTo("session.PlayerJoinedLobby");
-        assertThat(captor.getValue().gameId()).isEqualTo(gameId);
-        var payload = (PlayerJoinedLobby) captor.getValue().payload();
-        assertThat(payload.lobbyId()).isEqualTo(lobbyId);
-        assertThat(payload.playerId()).isEqualTo(playerId);
-        assertThat(payload.playerName()).isEqualTo("Alice");
     }
 
     @Test

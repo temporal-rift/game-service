@@ -6,7 +6,9 @@ import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 
-public class Game {
+import io.github.temporalrift.game.shared.AggregateRoot;
+
+public class Game extends AggregateRoot {
 
     public static final String AGGREGATE_TYPE = "Game";
 

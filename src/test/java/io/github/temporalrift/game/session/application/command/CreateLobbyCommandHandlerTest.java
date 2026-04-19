@@ -18,14 +18,11 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import io.github.temporalrift.events.envelope.EventEnvelope;
-import io.github.temporalrift.events.session.LobbyCreated;
 import io.github.temporalrift.game.session.application.port.in.CreateLobbyUseCase;
 import io.github.temporalrift.game.session.domain.lobby.Lobby;
 import io.github.temporalrift.game.session.domain.port.out.GameRulesPort;
 import io.github.temporalrift.game.session.domain.port.out.JoinCodePort;
 import io.github.temporalrift.game.session.domain.port.out.LobbyRepository;
-import io.github.temporalrift.game.session.domain.port.out.SessionEventPublisher;
 
 @ExtendWith(MockitoExtension.class)
 class CreateLobbyCommandHandlerTest {
@@ -35,9 +32,6 @@ class CreateLobbyCommandHandlerTest {
 
     @Mock
     LobbyRepository lobbyRepository;
-
-    @Mock
-    SessionEventPublisher eventPublisher;
 
     @Mock
     GameRulesPort gameRules;
@@ -106,47 +100,6 @@ class CreateLobbyCommandHandlerTest {
         var captor = ArgumentCaptor.forClass(Lobby.class);
         then(lobbyRepository).should().save(captor.capture());
         assertThat(captor.getValue().id()).isNotEqualTo(captor.getValue().gameId());
-    }
-
-    @Test
-    @DisplayName("envelope carries pre-assigned gameId as partition key, not lobbyId")
-    void handle_envelopeCarriesGameIdNotLobbyId() {
-        // given
-        var command = new CreateLobbyUseCase.Command(UUID.randomUUID(), "Alice");
-
-        // when
-        handler.handle(command);
-
-        // then
-        var lobbyCaptor = ArgumentCaptor.forClass(Lobby.class);
-        var eventCaptor = ArgumentCaptor.forClass(EventEnvelope.class);
-        then(lobbyRepository).should().save(lobbyCaptor.capture());
-        then(eventPublisher).should().publish(eventCaptor.capture());
-        assertThat(eventCaptor.getValue().gameId())
-                .isEqualTo(lobbyCaptor.getValue().gameId());
-        assertThat(eventCaptor.getValue().gameId())
-                .isNotEqualTo(lobbyCaptor.getValue().id());
-    }
-
-    @Test
-    @DisplayName("publishes LobbyCreated with correct lobbyId, hostPlayerId and createdAt")
-    void handle_publishesLobbyCreatedPayload() {
-        // given
-        var command = new CreateLobbyUseCase.Command(UUID.randomUUID(), "Alice");
-
-        // when
-        handler.handle(command);
-
-        // then
-        var lobbyCaptor = ArgumentCaptor.forClass(Lobby.class);
-        var eventCaptor = ArgumentCaptor.forClass(EventEnvelope.class);
-        then(lobbyRepository).should().save(lobbyCaptor.capture());
-        then(eventPublisher).should().publish(eventCaptor.capture());
-        assertThat(eventCaptor.getValue().eventType()).isEqualTo("session.LobbyCreated");
-        var payload = (LobbyCreated) eventCaptor.getValue().payload();
-        assertThat(payload.lobbyId()).isEqualTo(lobbyCaptor.getValue().id());
-        assertThat(payload.hostPlayerId()).isEqualTo(command.playerId());
-        assertThat(payload.createdAt()).isNotNull();
     }
 
     @Test

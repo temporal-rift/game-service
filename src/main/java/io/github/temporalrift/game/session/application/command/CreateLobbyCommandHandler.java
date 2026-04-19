@@ -7,22 +7,17 @@ import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import io.github.temporalrift.events.envelope.EventEnvelope;
-import io.github.temporalrift.events.session.LobbyCreated;
 import io.github.temporalrift.game.session.application.port.in.CreateLobbyUseCase;
 import io.github.temporalrift.game.session.domain.lobby.Lobby;
 import io.github.temporalrift.game.session.domain.lobby.LobbyPlayer;
 import io.github.temporalrift.game.session.domain.port.out.GameRulesPort;
 import io.github.temporalrift.game.session.domain.port.out.JoinCodePort;
 import io.github.temporalrift.game.session.domain.port.out.LobbyRepository;
-import io.github.temporalrift.game.session.domain.port.out.SessionEventPublisher;
 
 @Service
 class CreateLobbyCommandHandler implements CreateLobbyUseCase {
 
     private final LobbyRepository lobbyRepository;
-
-    private final SessionEventPublisher eventPublisher;
 
     private final GameRulesPort gameRules;
 
@@ -31,13 +26,8 @@ class CreateLobbyCommandHandler implements CreateLobbyUseCase {
     private final Clock clock;
 
     CreateLobbyCommandHandler(
-            LobbyRepository lobbyRepository,
-            SessionEventPublisher eventPublisher,
-            GameRulesPort gameRules,
-            JoinCodePort joinCodePort,
-            Clock clock) {
+            LobbyRepository lobbyRepository, GameRulesPort gameRules, JoinCodePort joinCodePort, Clock clock) {
         this.lobbyRepository = lobbyRepository;
-        this.eventPublisher = eventPublisher;
         this.gameRules = gameRules;
         this.joinCodePort = joinCodePort;
         this.clock = clock;
@@ -62,9 +52,6 @@ class CreateLobbyCommandHandler implements CreateLobbyUseCase {
                 clock);
 
         lobbyRepository.save(lobby);
-
-        eventPublisher.publish(EventEnvelope.create(
-                lobbyId, Lobby.AGGREGATE_TYPE, gameId, 1, new LobbyCreated(lobbyId, command.playerId(), now)));
 
         return new Result(lobbyId, command.playerId(), joinCode);
     }

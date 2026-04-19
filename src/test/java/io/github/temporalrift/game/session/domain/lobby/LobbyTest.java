@@ -14,6 +14,11 @@ import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import io.github.temporalrift.events.session.HostTransferred;
+import io.github.temporalrift.events.session.LobbyClosed;
+import io.github.temporalrift.events.session.LobbyCreated;
+import io.github.temporalrift.events.session.PlayerJoinedLobby;
+import io.github.temporalrift.events.session.PlayerLeftLobby;
 import io.github.temporalrift.events.shared.Faction;
 
 class LobbyTest {
@@ -110,6 +115,31 @@ class LobbyTest {
         assertThat(emptyLobby().status()).isEqualTo(LobbyStatus.WAITING);
     }
 
+    @Test
+    @DisplayName("constructor registers LobbyCreated with correct lobbyId and hostPlayerId")
+    void constructor_registersLobbyCreatedEvent() {
+        // given
+        var id = UUID.randomUUID();
+        var hostId = UUID.randomUUID();
+
+        // when
+        var lobby = new Lobby(
+                id, UUID.randomUUID(), hostId, "ABC123", new ArrayList<>(), MIN_PLAYERS, MAX_PLAYERS, FIXED_CLOCK);
+
+        // then
+        var events = lobby.pullEvents();
+        assertThat(events).singleElement().isInstanceOf(LobbyCreated.class);
+        var event = (LobbyCreated) events.getFirst();
+        assertThat(event.lobbyId()).isEqualTo(id);
+        assertThat(event.hostPlayerId()).isEqualTo(hostId);
+    }
+
+    @Test
+    @DisplayName("reconstitute does not register any events")
+    void reconstitute_doesNotRegisterEvents() {
+        assertThat(lobbyWith(player()).pullEvents()).isEmpty();
+    }
+
     // --- join() ---
 
     @Test
@@ -144,10 +174,29 @@ class LobbyTest {
         assertThatExceptionOfType(LobbyFullException.class).isThrownBy(() -> lobby.join(extra));
     }
 
+    @Test
+    @DisplayName("join registers PlayerJoinedLobby with correct playerId and playerName")
+    void join_registersPlayerJoinedLobbyEvent() {
+        // given
+        var lobby = emptyLobby();
+        lobby.pullEvents(); // discard LobbyCreated
+        var p = player();
+
+        // when
+        lobby.join(p);
+
+        // then
+        var events = lobby.pullEvents();
+        assertThat(events).singleElement().isInstanceOf(PlayerJoinedLobby.class);
+        var event = (PlayerJoinedLobby) events.getFirst();
+        assertThat(event.playerId()).isEqualTo(p.playerId());
+        assertThat(event.playerName()).isEqualTo(p.playerName());
+    }
+
     // --- leave() ---
 
     @Test
-    @DisplayName("non-host player leaves — removed from list and NonHostLeft returned")
+    @DisplayName("non-host player leaves — removed from list and PlayerLeftLobby registered")
     void leave_nonHost_removesPlayerAndReturnsNonHostLeft() {
         // given
         var host = player();
@@ -155,15 +204,15 @@ class LobbyTest {
         var lobby = lobbyWith(host, other);
 
         // when
-        var outcome = lobby.leave(other.playerId());
+        lobby.leave(other.playerId());
 
         // then
         assertThat(lobby.currentPlayers()).doesNotContain(other);
-        assertThat(outcome).isInstanceOf(LeaveOutcome.NonHostLeft.class);
+        assertThat(lobby.pullEvents()).singleElement().isInstanceOf(PlayerLeftLobby.class);
     }
 
     @Test
-    @DisplayName("host leaves with others present — transfers to earliest-joined and returns HostTransferred")
+    @DisplayName("host leaves with others present — transfers to earliest-joined; two events registered")
     void leave_hostLeavesWithOthersPresent_transfersHostAndReturnsHostTransferred() {
         // given
         var host = playerWithJoinedAt(Instant.parse("2025-01-01T10:00:00Z"));
@@ -172,28 +221,32 @@ class LobbyTest {
         var lobby = lobbyWithHost(host, List.of(host, earliest, later));
 
         // when
-        var outcome = lobby.leave(host.playerId());
+        lobby.leave(host.playerId());
 
         // then
         assertThat(lobby.currentPlayers()).doesNotContain(host);
         assertThat(lobby.hostPlayerId()).isEqualTo(earliest.playerId());
-        assertThat(outcome).isEqualTo(new LeaveOutcome.HostTransferred(earliest.playerId()));
+        var events = lobby.pullEvents();
+        assertThat(events).hasSize(2);
+        assertThat(events.get(0)).isInstanceOf(HostTransferred.class);
+        assertThat(((HostTransferred) events.get(0)).newHostId()).isEqualTo(earliest.playerId());
+        assertThat(events.get(1)).isInstanceOf(PlayerLeftLobby.class);
     }
 
     @Test
-    @DisplayName("host leaves as sole player — lobby closed and LobbyClosed returned")
+    @DisplayName("host leaves as sole player — lobby closed and LobbyClosed registered")
     void leave_hostLeavesSolePlayer_closesLobbyAndReturnsLobbyClosed() {
         // given
         var host = player();
         var lobby = lobbyWith(host);
 
         // when
-        var outcome = lobby.leave(host.playerId());
+        lobby.leave(host.playerId());
 
         // then
         assertThat(lobby.currentPlayers()).isEmpty();
         assertThat(lobby.status()).isEqualTo(LobbyStatus.CLOSED);
-        assertThat(outcome).isInstanceOf(LeaveOutcome.LobbyClosed.class);
+        assertThat(lobby.pullEvents()).singleElement().isInstanceOf(LobbyClosed.class);
     }
 
     @Test

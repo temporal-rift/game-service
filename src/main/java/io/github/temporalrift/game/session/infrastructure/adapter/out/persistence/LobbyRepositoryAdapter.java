@@ -7,27 +7,35 @@ import java.util.UUID;
 
 import org.springframework.stereotype.Component;
 
+import io.github.temporalrift.events.envelope.EventEnvelope;
 import io.github.temporalrift.events.shared.Faction;
 import io.github.temporalrift.game.session.domain.lobby.Lobby;
 import io.github.temporalrift.game.session.domain.lobby.LobbyPlayer;
 import io.github.temporalrift.game.session.domain.lobby.LobbyStatus;
 import io.github.temporalrift.game.session.domain.port.out.LobbyRepository;
+import io.github.temporalrift.game.session.domain.port.out.SessionEventPublisher;
 
 @Component
 class LobbyRepositoryAdapter implements LobbyRepository {
 
     private final LobbyJpaRepository jpaRepository;
 
+    private final SessionEventPublisher eventPublisher;
+
     private final Clock clock;
 
-    LobbyRepositoryAdapter(LobbyJpaRepository jpaRepository, Clock clock) {
+    LobbyRepositoryAdapter(LobbyJpaRepository jpaRepository, SessionEventPublisher eventPublisher, Clock clock) {
         this.jpaRepository = jpaRepository;
+        this.eventPublisher = eventPublisher;
         this.clock = clock;
     }
 
     @Override
     public Lobby save(Lobby lobby) {
         jpaRepository.save(toEntity(lobby));
+        lobby.pullEvents()
+                .forEach(event -> eventPublisher.publish(
+                        EventEnvelope.create(lobby.id(), Lobby.AGGREGATE_TYPE, lobby.gameId(), 1, event)));
         return lobby;
     }
 

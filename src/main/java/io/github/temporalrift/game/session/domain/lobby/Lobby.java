@@ -10,12 +10,18 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-public class Lobby {
+import io.github.temporalrift.events.session.HostTransferred;
+import io.github.temporalrift.events.session.LobbyClosed;
+import io.github.temporalrift.events.session.LobbyCreated;
+import io.github.temporalrift.events.session.PlayerJoinedLobby;
+import io.github.temporalrift.events.session.PlayerLeftLobby;
+import io.github.temporalrift.game.shared.AggregateRoot;
+
+public class Lobby extends AggregateRoot {
 
     public static final String AGGREGATE_TYPE = "Lobby";
 
     private final UUID id;
-
     private final UUID gameId;
     private final String joinCode;
     private final List<LobbyPlayer> currentPlayers;
@@ -44,6 +50,28 @@ public class Lobby {
         this.maxPlayers = maxPlayers;
         this.clock = Objects.requireNonNull(clock, "clock must not be null");
         this.status = LobbyStatus.WAITING;
+        registerEvent(new LobbyCreated(id, hostPlayerId, clock.instant()));
+    }
+
+    private Lobby(
+            UUID id,
+            UUID gameId,
+            UUID hostPlayerId,
+            String joinCode,
+            List<LobbyPlayer> currentPlayers,
+            LobbyStatus status,
+            int minPlayers,
+            int maxPlayers,
+            Clock clock) {
+        this.id = id;
+        this.gameId = gameId;
+        this.hostPlayerId = hostPlayerId;
+        this.joinCode = joinCode;
+        this.currentPlayers = new ArrayList<>(currentPlayers);
+        this.status = status;
+        this.minPlayers = minPlayers;
+        this.maxPlayers = maxPlayers;
+        this.clock = clock;
     }
 
     public static Lobby reconstitute(
@@ -56,9 +84,7 @@ public class Lobby {
             int minPlayers,
             int maxPlayers,
             Clock clock) {
-        var lobby = new Lobby(id, gameId, hostPlayerId, joinCode, currentPlayers, minPlayers, maxPlayers, clock);
-        lobby.status = status;
-        return lobby;
+        return new Lobby(id, gameId, hostPlayerId, joinCode, currentPlayers, status, minPlayers, maxPlayers, clock);
     }
 
     public void join(LobbyPlayer player) {
@@ -69,6 +95,7 @@ public class Lobby {
         }
         currentPlayers.add(
                 new LobbyPlayer(player.playerId(), player.playerName(), player.faction(), clock.instant(), true));
+        registerEvent(new PlayerJoinedLobby(id, player.playerId(), player.playerName()));
     }
 
     public void assignFaction(UUID playerId, io.github.temporalrift.events.shared.Faction faction) {
@@ -94,7 +121,7 @@ public class Lobby {
                 .orElseThrow(() -> new PlayerNotInLobbyException(playerId));
     }
 
-    public LeaveOutcome leave(UUID leavingPlayerId) {
+    public void leave(UUID leavingPlayerId) {
         Objects.requireNonNull(leavingPlayerId, "Player id must not be null");
         requireWaiting();
         var removed = currentPlayers.removeIf(player -> player.playerId().equals(leavingPlayerId));
@@ -102,17 +129,20 @@ public class Lobby {
             throw new PlayerNotInLobbyException(leavingPlayerId);
         }
         if (!leavingPlayerId.equals(hostPlayerId)) {
-            return new LeaveOutcome.NonHostLeft();
+            registerEvent(new PlayerLeftLobby(id, leavingPlayerId));
+            return;
         }
         if (currentPlayers.isEmpty()) {
             status = LobbyStatus.CLOSED;
-            return new LeaveOutcome.LobbyClosed();
+            registerEvent(new LobbyClosed(id, gameId));
+            return;
         }
         var newHost = currentPlayers.stream()
                 .min(Comparator.comparing(LobbyPlayer::joinedAt))
                 .orElseThrow();
         hostPlayerId = newHost.playerId();
-        return new LeaveOutcome.HostTransferred(newHost.playerId());
+        registerEvent(new HostTransferred(id, leavingPlayerId, newHost.playerId()));
+        registerEvent(new PlayerLeftLobby(id, leavingPlayerId));
     }
 
     public StartOutcome requestStart(UUID requestingPlayerId) {
