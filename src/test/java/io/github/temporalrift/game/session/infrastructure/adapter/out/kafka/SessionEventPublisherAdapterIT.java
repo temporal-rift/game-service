@@ -19,6 +19,7 @@ import io.github.temporalrift.events.envelope.EventEnvelope;
 import io.github.temporalrift.events.session.LobbyCreated;
 import io.github.temporalrift.game.TestcontainersConfiguration;
 import io.github.temporalrift.game.session.domain.lobby.Lobby;
+import io.github.temporalrift.game.session.domain.lobby.LobbyStatus;
 import io.github.temporalrift.game.session.domain.port.out.LobbyRepository;
 import io.github.temporalrift.game.session.domain.port.out.SessionEventPublisher;
 
@@ -51,7 +52,8 @@ class SessionEventPublisherAdapterIT {
         final var lobbyId = UUID.randomUUID();
         final var gameId = UUID.randomUUID();
         final var hostId = UUID.randomUUID();
-        final var lobby = new Lobby(lobbyId, gameId, hostId, "OUTBOX1", new ArrayList<>(), 2, 5, clock);
+        final var lobby = Lobby.reconstitute(
+                lobbyId, gameId, hostId, "OUTBOX1", new ArrayList<>(), LobbyStatus.WAITING, 2, 5, clock);
         final var envelope =
                 EventEnvelope.create(lobbyId, "Lobby", gameId, 1, new LobbyCreated(lobbyId, hostId, Instant.now()));
 
@@ -70,7 +72,8 @@ class SessionEventPublisherAdapterIT {
         final var lobbyId = UUID.randomUUID();
         final var gameId = UUID.randomUUID();
         final var hostId = UUID.randomUUID();
-        final var lobby = new Lobby(lobbyId, gameId, hostId, "OUTBOX2", new ArrayList<>(), 2, 5, clock);
+        final var lobby = Lobby.reconstitute(
+                lobbyId, gameId, hostId, "OUTBOX2", new ArrayList<>(), LobbyStatus.WAITING, 2, 5, clock);
         final var envelope =
                 EventEnvelope.create(lobbyId, "Lobby", gameId, 1, new LobbyCreated(lobbyId, hostId, Instant.now()));
 
