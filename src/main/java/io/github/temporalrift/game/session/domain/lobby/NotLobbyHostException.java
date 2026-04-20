@@ -1,8 +1,8 @@
 package io.github.temporalrift.game.session.domain.lobby;
 
-public class NotHostException extends RuntimeException {
+public class NotLobbyHostException extends RuntimeException {
 
-    public NotHostException() {
+    public NotLobbyHostException() {
         super("Only the host can start the game");
     }
 }

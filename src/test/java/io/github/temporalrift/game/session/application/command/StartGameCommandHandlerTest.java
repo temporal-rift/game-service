@@ -22,7 +22,7 @@ import io.github.temporalrift.game.session.domain.lobby.DisconnectedPlayersExcep
 import io.github.temporalrift.game.session.domain.lobby.Lobby;
 import io.github.temporalrift.game.session.domain.lobby.LobbyNotFoundException;
 import io.github.temporalrift.game.session.domain.lobby.NotEnoughPlayersException;
-import io.github.temporalrift.game.session.domain.lobby.NotHostException;
+import io.github.temporalrift.game.session.domain.lobby.NotLobbyHostException;
 import io.github.temporalrift.game.session.domain.lobby.StartOutcome;
 import io.github.temporalrift.game.session.domain.port.out.LobbyRepository;
 
@@ -75,15 +75,15 @@ class StartGameCommandHandlerTest {
     }
 
     @Test
-    @DisplayName("requesting player is not host — throws NotHostException")
-    void handle_notHost_throwsNotHostException() {
+    @DisplayName("requesting player is not host — throws NotLobbyHostException")
+    void handle_notHost_throwsNotLobbyHostException() {
         // given
         given(lobbyRepository.findById(LOBBY_ID)).willReturn(Optional.of(lobby));
         given(lobby.requestStart(REQUESTING_PLAYER_ID)).willReturn(new StartOutcome.NotHost());
         var command = new StartGameUseCase.Command(LOBBY_ID, REQUESTING_PLAYER_ID);
 
         // when / then
-        assertThatExceptionOfType(NotHostException.class).isThrownBy(() -> handler.handle(command));
+        assertThatExceptionOfType(NotLobbyHostException.class).isThrownBy(() -> handler.handle(command));
         then(gameStartSaga).shouldHaveNoInteractions();
     }
 

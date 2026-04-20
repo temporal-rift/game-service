@@ -92,13 +92,6 @@ paths:
       responses:
         '204':
           description: Left lobby
-        '403':
-          description: |
-            Host cannot leave without transferring host role (`code: 403-01`).
-          content:
-            application/problem+json:
-              schema:
-                $ref: '#/components/schemas/ProblemDetail'
         '404':
           description: |
             Lobby not found (`code: 404-01`).
