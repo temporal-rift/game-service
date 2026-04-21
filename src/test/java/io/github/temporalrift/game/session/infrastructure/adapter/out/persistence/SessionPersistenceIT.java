@@ -116,7 +116,7 @@ class SessionPersistenceIT {
         assertThat(result.status()).isEqualTo(GameStatus.IN_PROGRESS);
         assertThat(result.eraCounter()).isZero();
         assertThat(result.cascadedParadoxCounter()).isZero();
-        assertThat(result.availableEventIds()).containsExactlyElementsOf(eventIds);
+        assertThat(result.eventDeck()).containsExactlyElementsOf(eventIds);
     }
 
     @Test
@@ -133,7 +133,7 @@ class SessionPersistenceIT {
         var loaded = gameRepository.findById(id).orElseThrow();
 
         assertThat(loaded.eraCounter()).isEqualTo(1);
-        assertThat(loaded.availableEventIds()).hasSize(EVENT_COUNT - EVENTS_PER_ERA);
-        assertThat(loaded.availableEventIds()).containsExactlyElementsOf(game.availableEventIds());
+        assertThat(loaded.eventDeck()).hasSize(EVENT_COUNT - EVENTS_PER_ERA);
+        assertThat(loaded.eventDeck()).containsExactlyElementsOf(game.eventDeck());
     }
 }

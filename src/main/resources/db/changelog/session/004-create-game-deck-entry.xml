@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+            https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.29.xsd">
+
+    <changeSet id="004-create-game-deck-entry" author="game-service">
+        <createTable tableName="game_deck_entry">
+            <column name="game_id" type="UUID">
+                <constraints nullable="false" foreignKeyName="fk_game_deck_entry_game" references="game(id)"/>
+            </column>
+            <column name="event_id" type="UUID">
+                <constraints nullable="false"/>
+            </column>
+            <column name="list_order" type="INT">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <addPrimaryKey tableName="game_deck_entry" columnNames="game_id, list_order"
+                       constraintName="pk_game_deck_entry"/>
+    </changeSet>
+
+</databaseChangeLog>

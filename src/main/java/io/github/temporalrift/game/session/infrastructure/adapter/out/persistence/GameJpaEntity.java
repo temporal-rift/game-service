@@ -34,10 +34,10 @@ class GameJpaEntity {
     private int cascadedParadoxCounter;
 
     @ElementCollection(fetch = FetchType.EAGER)
-    @CollectionTable(name = "game_available_event_id", joinColumns = @JoinColumn(name = "game_id"))
+    @CollectionTable(name = "game_deck_entry", joinColumns = @JoinColumn(name = "game_id"))
     @Column(name = "event_id", nullable = false)
     @OrderColumn(name = "list_order")
-    private List<UUID> availableEventIds = new ArrayList<>();
+    private List<UUID> eventDeck = new ArrayList<>();
 
     protected GameJpaEntity() {}
 
@@ -81,11 +81,11 @@ class GameJpaEntity {
         this.cascadedParadoxCounter = cascadedParadoxCounter;
     }
 
-    List<UUID> getAvailableEventIds() {
-        return availableEventIds;
+    List<UUID> getEventDeck() {
+        return eventDeck;
     }
 
-    void setAvailableEventIds(List<UUID> availableEventIds) {
-        this.availableEventIds = new ArrayList<>(availableEventIds);
+    void setEventDeck(List<UUID> eventDeck) {
+        this.eventDeck = new ArrayList<>(eventDeck);
     }
 }

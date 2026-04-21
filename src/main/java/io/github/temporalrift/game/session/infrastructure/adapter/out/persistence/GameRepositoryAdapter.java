@@ -37,7 +37,7 @@ class GameRepositoryAdapter implements GameRepository {
         entity.setStatus(game.status().name());
         entity.setEraCounter(game.eraCounter());
         entity.setCascadedParadoxCounter(game.cascadedParadoxCounter());
-        entity.setAvailableEventIds(new ArrayList<>(game.availableEventIds()));
+        entity.setEventDeck(new ArrayList<>(game.eventDeck()));
         return entity;
     }
 
@@ -45,7 +45,7 @@ class GameRepositoryAdapter implements GameRepository {
         return Game.reconstitute(
                 entity.getId(),
                 entity.getLobbyId(),
-                new ArrayList<>(entity.getAvailableEventIds()),
+                new ArrayList<>(entity.getEventDeck()),
                 entity.getEraCounter(),
                 entity.getCascadedParadoxCounter(),
                 GameStatus.valueOf(entity.getStatus()));

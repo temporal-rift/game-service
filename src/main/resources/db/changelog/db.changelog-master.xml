@@ -1,23 +1,23 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <databaseChangeLog
-    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
-    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
             https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.29.xsd">
 
 
-  <!-- Infrastructure (Spring Modulith) -->
-  <include file="db/changelog/infrastructure/001-create-event-publication.xml"/>
+    <!-- Infrastructure (Spring Modulith) -->
+    <include file="db/changelog/infrastructure/001-create-event-publication.xml"/>
 
-  <!-- Session module -->
-  <include file="db/changelog/session/001-create-lobby.xml"/>
-  <include file="db/changelog/session/002-create-lobby-player.xml"/>
-  <include file="db/changelog/session/003-create-game.xml"/>
-  <include file="db/changelog/session/004-create-game-available-event.xml"/>
+    <!-- Session module -->
+    <include file="db/changelog/session/001-create-lobby.xml"/>
+    <include file="db/changelog/session/002-create-lobby-player.xml"/>
+    <include file="db/changelog/session/003-create-game.xml"/>
+    <include file="db/changelog/session/004-create-game-deck-entry.xml"/>
 
-  <!-- Action module -->
+    <!-- Action module -->
 
-  <!-- Scoring module -->
+    <!-- Scoring module -->
 
 </databaseChangeLog>
 

@@ -62,9 +62,9 @@ class GameTest {
     @Test
     void startEra_removesDrawnEventsFromDeck() {
         var game = newGame();
-        var before = game.availableEventIds().size();
+        var before = game.eventDeck().size();
         game.startEra(0, EVENTS_PER_ERA);
-        assertThat(game.availableEventIds()).hasSize(before - EVENTS_PER_ERA);
+        assertThat(game.eventDeck()).hasSize(before - EVENTS_PER_ERA);
     }
 
     @Test
