@@ -17,7 +17,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import io.github.temporalrift.game.session.application.port.in.StartGameUseCase;
-import io.github.temporalrift.game.session.application.saga.GameStartSaga;
+import io.github.temporalrift.game.session.application.saga.StartGameSaga;
 import io.github.temporalrift.game.session.domain.lobby.DisconnectedPlayersException;
 import io.github.temporalrift.game.session.domain.lobby.Lobby;
 import io.github.temporalrift.game.session.domain.lobby.LobbyNotFoundException;
@@ -37,7 +37,7 @@ class StartGameCommandHandlerTest {
     LobbyRepository lobbyRepository;
 
     @Mock
-    GameStartSaga gameStartSaga;
+    StartGameSaga gameStartSaga;
 
     @Mock
     Lobby lobby;

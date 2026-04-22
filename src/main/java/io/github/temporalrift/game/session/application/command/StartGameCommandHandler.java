@@ -4,7 +4,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import io.github.temporalrift.game.session.application.port.in.StartGameUseCase;
-import io.github.temporalrift.game.session.application.saga.GameStartSaga;
+import io.github.temporalrift.game.session.application.saga.StartGameSaga;
 import io.github.temporalrift.game.session.domain.lobby.DisconnectedPlayersException;
 import io.github.temporalrift.game.session.domain.lobby.LobbyNotFoundException;
 import io.github.temporalrift.game.session.domain.lobby.NotEnoughPlayersException;
@@ -16,9 +16,9 @@ import io.github.temporalrift.game.session.domain.port.out.LobbyRepository;
 class StartGameCommandHandler implements StartGameUseCase {
 
     private final LobbyRepository lobbyRepository;
-    private final GameStartSaga gameStartSaga;
+    private final StartGameSaga gameStartSaga;
 
-    StartGameCommandHandler(LobbyRepository lobbyRepository, GameStartSaga gameStartSaga) {
+    StartGameCommandHandler(LobbyRepository lobbyRepository, StartGameSaga gameStartSaga) {
         this.lobbyRepository = lobbyRepository;
         this.gameStartSaga = gameStartSaga;
     }

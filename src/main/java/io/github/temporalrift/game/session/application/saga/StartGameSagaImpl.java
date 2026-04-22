@@ -24,7 +24,7 @@ import io.github.temporalrift.game.session.domain.port.out.SessionEventPublisher
 
 // Stub: saga state is not persisted (blocked by #3). Compensation flows not yet implemented.
 @Service
-class GameStartSagaImpl implements GameStartSaga {
+class StartGameSagaImpl implements StartGameSaga {
 
     private static final int DECK_SIZE = 30;
 
@@ -33,7 +33,7 @@ class GameStartSagaImpl implements GameStartSaga {
     private final SessionEventPublisher eventPublisher;
     private final SecureRandom random;
 
-    GameStartSagaImpl(
+    StartGameSagaImpl(
             LobbyRepository lobbyRepository, GameRepository gameRepository, SessionEventPublisher eventPublisher) {
         this.lobbyRepository = lobbyRepository;
         this.gameRepository = gameRepository;
