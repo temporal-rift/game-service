@@ -84,6 +84,11 @@ public class Lobby extends AggregateRoot {
         currentPlayers.set(index, currentPlayers.get(index).withFaction(faction));
     }
 
+    public void resetFactionAssignments() {
+        requireWaiting();
+        currentPlayers.replaceAll(lobbyPlayer -> lobbyPlayer.withFaction(null));
+    }
+
     public void markPlayerDisconnected(UUID playerId) {
         var index = playerIndex(playerId);
         currentPlayers.set(index, currentPlayers.get(index).withConnected(false));

@@ -14,6 +14,7 @@
     <include file="db/changelog/session/002-create-lobby-player.xml"/>
     <include file="db/changelog/session/003-create-game.xml"/>
     <include file="db/changelog/session/004-create-game-deck-entry.xml"/>
+    <include file="db/changelog/session/005-create-game-start-saga-state.xml"/>
 
     <!-- Action module -->
 

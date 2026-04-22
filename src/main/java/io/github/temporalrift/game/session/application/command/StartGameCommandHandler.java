@@ -1,7 +1,6 @@
 package io.github.temporalrift.game.session.application.command;
 
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import io.github.temporalrift.game.session.application.port.in.StartGameUseCase;
 import io.github.temporalrift.game.session.application.saga.StartGameSaga;
@@ -16,15 +15,14 @@ import io.github.temporalrift.game.session.domain.port.out.LobbyRepository;
 class StartGameCommandHandler implements StartGameUseCase {
 
     private final LobbyRepository lobbyRepository;
-    private final StartGameSaga gameStartSaga;
+    private final StartGameSaga startGameSaga;
 
-    StartGameCommandHandler(LobbyRepository lobbyRepository, StartGameSaga gameStartSaga) {
+    StartGameCommandHandler(LobbyRepository lobbyRepository, StartGameSaga startGameSaga) {
         this.lobbyRepository = lobbyRepository;
-        this.gameStartSaga = gameStartSaga;
+        this.startGameSaga = startGameSaga;
     }
 
     @Override
-    @Transactional
     public Result handle(Command command) {
         var lobby = lobbyRepository
                 .findById(command.lobbyId())
@@ -32,7 +30,7 @@ class StartGameCommandHandler implements StartGameUseCase {
 
         return switch (lobby.requestStart(command.requestingPlayerId())) {
             case StartOutcome.GameStarted() -> {
-                gameStartSaga.start(lobby.gameId(), lobby);
+                startGameSaga.start(lobby.gameId(), lobby);
                 yield new Result(lobby.gameId());
             }
             case StartOutcome.NotHost() -> throw new NotLobbyHostException();

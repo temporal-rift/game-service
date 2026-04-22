@@ -11,8 +11,12 @@ public class TestcontainersConfiguration {
 
     @Bean
     @ServiceConnection
+    @SuppressWarnings("resource")
     PostgreSQLContainer postgresContainer() {
-        return new PostgreSQLContainer("postgres:16-alpine");
+        return new PostgreSQLContainer("postgres:16-alpine")
+                .withDatabaseName("temporal_rift")
+                .withUsername("temporal_rift")
+                .withPassword("temporal_rift");
     }
 
     @Bean

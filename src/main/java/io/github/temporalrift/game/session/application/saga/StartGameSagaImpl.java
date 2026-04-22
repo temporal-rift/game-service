@@ -1,5 +1,7 @@
 package io.github.temporalrift.game.session.application.saga;
 
+import static org.springframework.transaction.annotation.Propagation.REQUIRES_NEW;
+
 import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -8,6 +10,7 @@ import java.util.List;
 import java.util.UUID;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import io.github.temporalrift.events.envelope.EventEnvelope;
 import io.github.temporalrift.events.session.EraStarted;
@@ -31,21 +34,59 @@ class StartGameSagaImpl implements StartGameSaga {
     private final LobbyRepository lobbyRepository;
     private final GameRepository gameRepository;
     private final SessionEventPublisher eventPublisher;
+    private final StartGameSagaCompensator compensator;
     private final SecureRandom random;
 
     StartGameSagaImpl(
-            LobbyRepository lobbyRepository, GameRepository gameRepository, SessionEventPublisher eventPublisher) {
+            LobbyRepository lobbyRepository,
+            GameRepository gameRepository,
+            SessionEventPublisher eventPublisher,
+            StartGameSagaCompensator compensator) {
         this.lobbyRepository = lobbyRepository;
         this.gameRepository = gameRepository;
         this.eventPublisher = eventPublisher;
+        this.compensator = compensator;
         this.random = new SecureRandom();
     }
 
     @Override
+    @Transactional(propagation = REQUIRES_NEW)
     public void start(UUID gameId, Lobby lobby) {
-        var players = lobby.currentPlayers();
-        var factions = drawFactions(players.size());
+        try {
+            compensator.initRunning(gameId, lobby.id());
 
+            var players = lobby.currentPlayers();
+            var factions = drawFactions(players.size());
+
+            assignFactions(gameId, lobby, players, factions);
+
+            var factionNames = factions.stream().map(Faction::name).toList();
+            eventPublisher.publish(EventEnvelope.create(
+                    lobby.id(), Lobby.AGGREGATE_TYPE, gameId, 1, new FactionsDrawn(gameId, lobby.id(), factionNames)));
+
+            lobby.start();
+            lobbyRepository.save(lobby);
+
+            var playerIds = players.stream().map(LobbyPlayer::playerId).toList();
+            var game = new Game(gameId, lobby.id(), buildDeck());
+            gameRepository.save(game);
+
+            eventPublisher.publish(EventEnvelope.create(
+                    lobby.id(),
+                    Lobby.AGGREGATE_TYPE,
+                    gameId,
+                    1,
+                    new GameStarted(gameId, lobby.id(), playerIds, factions.size(), DECK_SIZE)));
+
+            eventPublisher.publish(EventEnvelope.create(
+                    game.id(), Game.AGGREGATE_TYPE, gameId, 1, new EraStarted(gameId, 1, List.of())));
+        } catch (Exception e) {
+            compensator.compensate(gameId, e.getMessage());
+            throw e;
+        }
+    }
+
+    private void assignFactions(UUID gameId, Lobby lobby, List<LobbyPlayer> players, List<Faction> factions) {
         for (var i = 0; i < players.size(); i++) {
             var playerId = players.get(i).playerId();
             var faction = factions.get(i);
@@ -57,27 +98,6 @@ class StartGameSagaImpl implements StartGameSaga {
                     1,
                     new FactionAssigned(gameId, playerId, faction.name())));
         }
-
-        var factionNames = factions.stream().map(Faction::name).toList();
-        eventPublisher.publish(EventEnvelope.create(
-                lobby.id(), Lobby.AGGREGATE_TYPE, gameId, 1, new FactionsDrawn(gameId, lobby.id(), factionNames)));
-
-        lobby.start();
-        lobbyRepository.save(lobby);
-
-        var playerIds = players.stream().map(LobbyPlayer::playerId).toList();
-        var game = new Game(gameId, lobby.id(), buildDeck());
-        gameRepository.save(game);
-
-        eventPublisher.publish(EventEnvelope.create(
-                lobby.id(),
-                Lobby.AGGREGATE_TYPE,
-                gameId,
-                1,
-                new GameStarted(gameId, lobby.id(), playerIds, factions.size(), DECK_SIZE)));
-
-        eventPublisher.publish(
-                EventEnvelope.create(game.id(), Game.AGGREGATE_TYPE, gameId, 1, new EraStarted(gameId, 1, List.of())));
     }
 
     private List<Faction> drawFactions(int count) {
