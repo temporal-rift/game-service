@@ -29,6 +29,11 @@ public class StartGameSagaAdapter implements StartGameSagaRepository {
         return jpaRepository.findByGameId(id).map(this::toDomain);
     }
 
+    @Override
+    public Optional<StartGameSagaState> findByGameIdWithLock(UUID id) {
+        return jpaRepository.findByGameIdWithLock(id).map(this::toDomain);
+    }
+
     private StartGameSagaStateJpaEntity toEntity(StartGameSagaState saga) {
         var entity = new StartGameSagaStateJpaEntity();
         entity.setId(saga.sagaId());

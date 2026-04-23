@@ -30,10 +30,10 @@ class FactionAssignmentListConverter implements AttributeConverter<List<FactionA
     @Override
     public List<FactionAssignment> convertToEntityAttribute(String dbData) {
         if (dbData == null) {
-            return null;
+            return List.of();
         }
         try {
-            return MAPPER.readValue(dbData, new TypeReference<List<FactionAssignment>>() {});
+            return MAPPER.readValue(dbData, new TypeReference<>() {});
         } catch (JacksonException e) {
             throw new IllegalStateException("Failed to deserialize faction assignments", e);
         }

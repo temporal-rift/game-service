@@ -10,4 +10,6 @@ public interface StartGameSagaRepository {
     StartGameSagaState save(StartGameSagaState startGameSagaState);
 
     Optional<StartGameSagaState> findByGameId(UUID gameId);
+
+    Optional<StartGameSagaState> findByGameIdWithLock(UUID gameId);
 }

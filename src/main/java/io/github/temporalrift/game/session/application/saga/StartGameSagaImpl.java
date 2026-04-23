@@ -8,6 +8,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.IntStream;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,8 +25,8 @@ import io.github.temporalrift.game.session.domain.lobby.LobbyPlayer;
 import io.github.temporalrift.game.session.domain.port.out.GameRepository;
 import io.github.temporalrift.game.session.domain.port.out.LobbyRepository;
 import io.github.temporalrift.game.session.domain.port.out.SessionEventPublisher;
+import io.github.temporalrift.game.session.domain.saga.FactionAssignment;
 
-// Stub: saga state is not persisted (blocked by #3). Compensation flows not yet implemented.
 @Service
 class StartGameSagaImpl implements StartGameSaga {
 
@@ -34,6 +35,7 @@ class StartGameSagaImpl implements StartGameSaga {
     private final LobbyRepository lobbyRepository;
     private final GameRepository gameRepository;
     private final SessionEventPublisher eventPublisher;
+    private final StartGameSagaStateManager stateManager;
     private final StartGameSagaCompensator compensator;
     private final SecureRandom random;
 
@@ -41,10 +43,12 @@ class StartGameSagaImpl implements StartGameSaga {
             LobbyRepository lobbyRepository,
             GameRepository gameRepository,
             SessionEventPublisher eventPublisher,
+            StartGameSagaStateManager stateManager,
             StartGameSagaCompensator compensator) {
         this.lobbyRepository = lobbyRepository;
         this.gameRepository = gameRepository;
         this.eventPublisher = eventPublisher;
+        this.stateManager = stateManager;
         this.compensator = compensator;
         this.random = new SecureRandom();
     }
@@ -53,57 +57,62 @@ class StartGameSagaImpl implements StartGameSaga {
     @Transactional(propagation = REQUIRES_NEW)
     public void start(UUID gameId, Lobby lobby) {
         try {
-            compensator.initRunning(gameId, lobby.id());
+            stateManager.initRunning(gameId, lobby.id());
 
-            var players = lobby.currentPlayers();
-            var factions = drawFactions(players.size());
+            var assignments = drawFactionAssignments(lobby.currentPlayers());
+            applyFactionAssignments(lobby, assignments);
+            publishFactionEvents(gameId, lobby, assignments);
+            createAndSaveGame(gameId, lobby, assignments);
 
-            assignFactions(gameId, lobby, players, factions);
-
-            var factionNames = factions.stream().map(Faction::name).toList();
-            eventPublisher.publish(EventEnvelope.create(
-                    lobby.id(), Lobby.AGGREGATE_TYPE, gameId, 1, new FactionsDrawn(gameId, lobby.id(), factionNames)));
-
-            lobby.start();
-            lobbyRepository.save(lobby);
-
-            var playerIds = players.stream().map(LobbyPlayer::playerId).toList();
-            var game = new Game(gameId, lobby.id(), buildDeck());
-            gameRepository.save(game);
-
-            eventPublisher.publish(EventEnvelope.create(
-                    lobby.id(),
-                    Lobby.AGGREGATE_TYPE,
-                    gameId,
-                    1,
-                    new GameStarted(gameId, lobby.id(), playerIds, factions.size(), DECK_SIZE)));
-
-            eventPublisher.publish(EventEnvelope.create(
-                    game.id(), Game.AGGREGATE_TYPE, gameId, 1, new EraStarted(gameId, 1, List.of())));
+            stateManager.complete(gameId, lobby.id());
         } catch (Exception e) {
             compensator.compensate(gameId, e.getMessage());
             throw e;
         }
     }
 
-    private void assignFactions(UUID gameId, Lobby lobby, List<LobbyPlayer> players, List<Faction> factions) {
-        for (var i = 0; i < players.size(); i++) {
-            var playerId = players.get(i).playerId();
-            var faction = factions.get(i);
-            lobby.assignFaction(playerId, faction);
-            eventPublisher.publish(EventEnvelope.create(
-                    lobby.id(),
-                    Lobby.AGGREGATE_TYPE,
-                    gameId,
-                    1,
-                    new FactionAssigned(gameId, playerId, faction.name())));
-        }
+    private void applyFactionAssignments(Lobby lobby, List<FactionAssignment> assignments) {
+        assignments.forEach(a -> lobby.assignFaction(a.playerId(), a.faction()));
     }
 
-    private List<Faction> drawFactions(int count) {
+    private void publishFactionEvents(UUID gameId, Lobby lobby, List<FactionAssignment> assignments) {
+        assignments.forEach(a -> eventPublisher.publish(EventEnvelope.create(
+                lobby.id(),
+                Lobby.AGGREGATE_TYPE,
+                gameId,
+                1,
+                new FactionAssigned(gameId, a.playerId(), a.faction().name()))));
+    }
+
+    private void createAndSaveGame(UUID gameId, Lobby lobby, List<FactionAssignment> assignments) {
+        var factionNames = assignments.stream().map(a -> a.faction().name()).toList();
+        eventPublisher.publish(EventEnvelope.create(
+                lobby.id(), Lobby.AGGREGATE_TYPE, gameId, 1, new FactionsDrawn(gameId, lobby.id(), factionNames)));
+
+        lobby.start();
+        lobbyRepository.save(lobby);
+
+        var playerIds = assignments.stream().map(FactionAssignment::playerId).toList();
+        var game = new Game(gameId, lobby.id(), buildDeck());
+        gameRepository.save(game);
+
+        eventPublisher.publish(EventEnvelope.create(
+                lobby.id(),
+                Lobby.AGGREGATE_TYPE,
+                gameId,
+                1,
+                new GameStarted(gameId, lobby.id(), playerIds, assignments.size(), DECK_SIZE)));
+
+        eventPublisher.publish(
+                EventEnvelope.create(game.id(), Game.AGGREGATE_TYPE, gameId, 1, new EraStarted(gameId, 1, List.of())));
+    }
+
+    private List<FactionAssignment> drawFactionAssignments(List<LobbyPlayer> players) {
         var roster = new ArrayList<>(Arrays.asList(Faction.values()));
         Collections.shuffle(roster, random);
-        return List.copyOf(roster.subList(0, count));
+        return IntStream.range(0, players.size())
+                .mapToObj(i -> new FactionAssignment(players.get(i).playerId(), roster.get(i)))
+                .toList();
     }
 
     private List<UUID> buildDeck() {

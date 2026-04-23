@@ -2,19 +2,18 @@ package io.github.temporalrift.game.session.application.saga;
 
 import static org.springframework.transaction.annotation.Propagation.REQUIRES_NEW;
 
-import java.util.List;
 import java.util.UUID;
 
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import io.github.temporalrift.events.envelope.EventEnvelope;
+import io.github.temporalrift.events.session.GameStartCancelled;
 import io.github.temporalrift.events.session.GameStartFailed;
 import io.github.temporalrift.game.session.domain.lobby.Lobby;
 import io.github.temporalrift.game.session.domain.port.out.LobbyRepository;
 import io.github.temporalrift.game.session.domain.port.out.SessionEventPublisher;
 import io.github.temporalrift.game.session.domain.port.out.StartGameSagaRepository;
-import io.github.temporalrift.game.session.domain.saga.StartGameSagaState;
 import io.github.temporalrift.game.session.domain.saga.StartGameSagaStatus;
 
 @Component
@@ -37,14 +36,25 @@ class StartGameSagaCompensator {
         this.eventPublisher = eventPublisher;
     }
 
-    public void initRunning(UUID gameId, UUID lobbyId) {
-        this.startGameSagaRepository.save(
-                new StartGameSagaState(UUID.randomUUID(), gameId, lobbyId, StartGameSagaStatus.RUNNING, 0, List.of()));
+    @Transactional(propagation = REQUIRES_NEW)
+    public void cancel(UUID gameId) {
+        startGameSagaRepository
+                .findByGameIdWithLock(gameId)
+                .filter(state -> state.status() == StartGameSagaStatus.RUNNING)
+                .ifPresent(state -> {
+                    startGameSagaRepository.save(state.withStatus(StartGameSagaStatus.CANCELLED));
+                    eventPublisher.publish(EventEnvelope.create(
+                            state.lobbyId(),
+                            Lobby.AGGREGATE_TYPE,
+                            state.gameId(),
+                            1,
+                            new GameStartCancelled(state.gameId(), state.lobbyId())));
+                });
     }
 
     @Transactional(propagation = REQUIRES_NEW)
     public void compensate(UUID gameId, String reason) {
-        startGameSagaRepository.findByGameId(gameId).ifPresent(state -> {
+        startGameSagaRepository.findByGameIdWithLock(gameId).ifPresent(state -> {
             startGameSagaRepository.save(state.withStatus(StartGameSagaStatus.COMPENSATING));
 
             var lobby = lobbyRepository
