@@ -67,7 +67,7 @@ jobs:
           at: .
       - run:
           name: SonarCloud analysis
-          command: mvn -f pom.xml sonar:sonar --batch-mode
+          command: mvn -f pom.xml jacoco:report sonar:sonar --batch-mode
 
   snyk:
     docker:
