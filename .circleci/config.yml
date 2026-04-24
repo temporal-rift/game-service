@@ -99,4 +99,4 @@ workflows:
           requires:
             - build-and-unit-tests
           context: SonarCloud
-      - snyk:
+      - snyk
