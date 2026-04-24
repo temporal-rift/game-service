@@ -89,6 +89,7 @@ workflows:
   pipeline:
     jobs:
       - format-check
+      - snyk
       - build-and-unit-tests:
           requires:
             - format-check
@@ -99,4 +100,3 @@ workflows:
           requires:
             - build-and-unit-tests
           context: SonarCloud
-      - snyk
