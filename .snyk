@@ -1,0 +1,24 @@
+# Snyk (https://snyk.io) policy file
+version: v1.25.0
+
+ignore:
+  SNYK-JAVA-ORGSPRINGFRAMEWORKSECURITY-16120588:
+    - '*':
+        reason: Fixed in Spring Security 7.0.5 via Spring Boot parent upgrade; ignored until Spring Boot releases the patch
+        expires: 2026-07-24T00:00:00.000Z
+  SNYK-JAVA-ORGSPRINGFRAMEWORKSECURITY-16121326:
+    - '*':
+        reason: Fixed in Spring Security 7.0.5 via Spring Boot parent upgrade; ignored until Spring Boot releases the patch
+        expires: 2026-07-24T00:00:00.000Z
+  SNYK-JAVA-ORGAPACHETOMCATEMBED-15989820:
+    - '*':
+        reason: Fixed in Tomcat via Spring Boot parent upgrade; ignored until Spring Boot releases the patch
+        expires: 2026-07-24T00:00:00.000Z
+  SNYK-JAVA-ORGSPRINGFRAMEWORKSECURITY-16121020:
+    - '*':
+        reason: Fixed in Spring Security 7.0.5 via Spring Boot parent upgrade; ignored until Spring Boot releases the patch
+        expires: 2026-07-24T00:00:00.000Z
+  SNYK-JAVA-TOOLSJACKSONCORE-15907550:
+    - '*':
+        reason: No direct upgrade path available; transitive via spring-modulith; ignored until fixed upstream
+        expires: 2026-07-24T00:00:00.000Z
