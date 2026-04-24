@@ -17,10 +17,6 @@ jobs:
       - run:
           name: Format and Checkstyle
           command: mvn -f pom.xml validate --batch-mode
-      - save_cache:
-          key: deps-{{ checksum "pom.xml" }}
-          paths:
-            - ~/.m2/repository
 
   security-snyk:
     docker:
@@ -54,10 +50,14 @@ jobs:
       - run:
           name: Build, test and analyze
           command: mvn -f pom.xml verify sonar:sonar --batch-mode
+      - run:
+          name: Collect test results
+          when: always
+          command: |
+            mkdir -p /tmp/test-results
+            find target/surefire-reports target/failsafe-reports -name 'TEST-*.xml' -exec cp {} /tmp/test-results/ \; 2>/dev/null || true
       - store_test_results:
-          path: target/surefire-reports
-      - store_test_results:
-          path: target/failsafe-reports
+          path: /tmp/test-results
       - save_cache:
           key: deps-{{ checksum "pom.xml" }}
           paths:
