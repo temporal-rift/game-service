@@ -100,5 +100,3 @@ workflows:
             - build-and-unit-tests
           context: SonarCloud
       - snyk:
-          requires:
-            - build-and-unit-tests
