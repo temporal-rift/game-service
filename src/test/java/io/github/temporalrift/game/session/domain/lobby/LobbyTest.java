@@ -50,6 +50,19 @@ class LobbyTest {
         return new LobbyPlayer(UUID.randomUUID(), PLAYER_NAMES[playerIndex++ % PLAYER_NAMES.length], null, null, false);
     }
 
+    // --- LobbyPlayer ---
+
+    @Test
+    @DisplayName("Given a blank playerName, LobbyPlayer constructor throws IllegalArgumentException")
+    void lobbyPlayer_blankName_throws() {
+        // given
+        var playerId = UUID.randomUUID();
+
+        // when / then
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> new LobbyPlayer(playerId, "  ", null, null, true));
+    }
+
     // --- Constructor ---
 
     @Test

@@ -211,7 +211,7 @@ class SessionControllerTest {
                         .content("""
                                 {"playerName": "Alice"}
                                 """))
-                .andExpect(status().isUnprocessableEntity());
+                .andExpect(status().is(422));
     }
 
     @Test
@@ -221,8 +221,7 @@ class SessionControllerTest {
         given(startGameUseCase.handle(any())).willThrow(new NotEnoughPlayersException());
 
         // when / then
-        mockMvc.perform(post("/lobbies/{lobbyId}/start", LOBBY_ID).with(auth()))
-                .andExpect(status().isUnprocessableEntity());
+        mockMvc.perform(post("/lobbies/{lobbyId}/start", LOBBY_ID).with(auth())).andExpect(status().is(422));
     }
 
     @Test

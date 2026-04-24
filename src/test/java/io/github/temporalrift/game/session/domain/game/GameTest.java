@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.UUID;
 import java.util.stream.IntStream;
 
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 class GameTest {
@@ -22,6 +23,66 @@ class GameTest {
                 .mapToObj(ignored -> UUID.randomUUID())
                 .toList();
         return new Game(UUID.randomUUID(), UUID.randomUUID(), new ArrayList<>(eventIds));
+    }
+
+    // --- reconstitute() ---
+
+    @Test
+    @DisplayName("Given all valid arguments, reconstitute returns a Game with those values")
+    void reconstitute_happyPath_returnsGameWithExpectedState() {
+        // given
+        var id = UUID.randomUUID();
+        var lobbyId = UUID.randomUUID();
+        var eventIds = IntStream.range(0, NUMBER_OF_EVENTS)
+                .mapToObj(i -> UUID.randomUUID())
+                .toList();
+
+        // when
+        var game = Game.reconstitute(id, lobbyId, new ArrayList<>(eventIds), 2, 1, GameStatus.IN_PROGRESS);
+
+        // then
+        assertThat(game.id()).isEqualTo(id);
+        assertThat(game.lobbyId()).isEqualTo(lobbyId);
+        assertThat(game.eraCounter()).isEqualTo(2);
+        assertThat(game.cascadedParadoxCounter()).isEqualTo(1);
+        assertThat(game.status()).isEqualTo(GameStatus.IN_PROGRESS);
+        assertThat(game.eventDeck()).containsExactlyElementsOf(eventIds);
+    }
+
+    @Test
+    @DisplayName("Given null id, reconstitute throws NullPointerException")
+    void reconstitute_nullId_throws() {
+        // given / when / then
+        assertThatNullPointerException()
+                .isThrownBy(() ->
+                        Game.reconstitute(null, UUID.randomUUID(), new ArrayList<>(), 0, 0, GameStatus.IN_PROGRESS));
+    }
+
+    @Test
+    @DisplayName("Given null lobbyId, reconstitute throws NullPointerException")
+    void reconstitute_nullLobbyId_throws() {
+        // given / when / then
+        assertThatNullPointerException()
+                .isThrownBy(() ->
+                        Game.reconstitute(UUID.randomUUID(), null, new ArrayList<>(), 0, 0, GameStatus.IN_PROGRESS));
+    }
+
+    @Test
+    @DisplayName("Given null eventDeck, reconstitute throws NullPointerException")
+    void reconstitute_nullEventDeck_throws() {
+        // given / when / then
+        assertThatNullPointerException()
+                .isThrownBy(() ->
+                        Game.reconstitute(UUID.randomUUID(), UUID.randomUUID(), null, 0, 0, GameStatus.IN_PROGRESS));
+    }
+
+    @Test
+    @DisplayName("Given null status, reconstitute throws NullPointerException")
+    void reconstitute_nullStatus_throws() {
+        // given / when / then
+        assertThatNullPointerException()
+                .isThrownBy(
+                        () -> Game.reconstitute(UUID.randomUUID(), UUID.randomUUID(), new ArrayList<>(), 0, 0, null));
     }
 
     // --- Constructor ---

@@ -20,7 +20,7 @@ public class PlayerAuthenticationConverter implements Converter<Jwt, AbstractAut
         UUID playerId;
         try {
             playerId = UUID.fromString(sub);
-        } catch (IllegalArgumentException e) {
+        } catch (IllegalArgumentException _) {
             throw new InvalidBearerTokenException("sub claim is not a valid UUID");
         }
         return new PlayerAuthenticationToken(new PlayerPrincipal(playerId));

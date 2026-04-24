@@ -28,7 +28,7 @@ class SessionExceptionHandler {
 
     @ExceptionHandler({LobbyFullException.class, NotEnoughPlayersException.class})
     ProblemDetail handleUnprocessable(RuntimeException ex) {
-        return ProblemDetail.forStatusAndDetail(HttpStatus.UNPROCESSABLE_ENTITY, ex.getMessage());
+        return ProblemDetail.forStatusAndDetail(HttpStatus.UNPROCESSABLE_CONTENT, ex.getMessage());
     }
 
     @ExceptionHandler(NotLobbyHostException.class)

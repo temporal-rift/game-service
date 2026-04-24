@@ -1,6 +1,7 @@
 package io.github.temporalrift.game.shared.infrastructure.config;
 
 import java.util.Collections;
+import java.util.Objects;
 
 import org.springframework.security.authentication.AbstractAuthenticationToken;
 
@@ -24,5 +25,18 @@ public class PlayerAuthenticationToken extends AbstractAuthenticationToken {
     @Override
     public PlayerPrincipal getPrincipal() {
         return principal;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (!(obj instanceof PlayerAuthenticationToken other)) {
+            return false;
+        }
+        return super.equals(obj) && Objects.equals(principal, other.principal);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(super.hashCode(), principal);
     }
 }
