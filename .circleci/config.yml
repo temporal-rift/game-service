@@ -11,7 +11,9 @@ jobs:
     steps:
       - git-shallow-clone/checkout
       - restore_cache:
-          key: deps-{{ checksum "pom.xml" }}
+          keys:
+            - deps-{{ checksum "pom.xml" }}
+            - deps-
       - run:
           name: Format and Checkstyle
           command: mvn -f pom.xml validate --batch-mode
@@ -20,62 +22,15 @@ jobs:
           paths:
             - ~/.m2/repository
 
-  build-and-unit-tests:
+  security-snyk:
     docker:
       - image: maven:3.9.13-eclipse-temurin-25
     steps:
       - git-shallow-clone/checkout
       - restore_cache:
-          key: deps-{{ checksum "pom.xml" }}
-      - run:
-          name: Build and unit tests
-          command: mvn -f pom.xml test -Dexcludes="**/*IT.java" --batch-mode
-      - store_test_results:
-          path: target/surefire-reports
-      - persist_to_workspace:
-          root: .
-          paths:
-            - target
-      - save_cache:
-          key: deps-{{ checksum "pom.xml" }}
-          paths:
-            - ~/.m2/repository
-
-  integration-tests:
-    docker:
-      - image: maven:3.9.13-eclipse-temurin-25
-    steps:
-      - git-shallow-clone/checkout
-      - setup_remote_docker:
-          docker_layer_caching: true
-      - restore_cache:
-          key: deps-{{ checksum "pom.xml" }}
-      - run:
-          name: Integration tests
-          command: mvn -f pom.xml test -Dtest="*IT" --batch-mode
-      - store_test_results:
-          path: target/surefire-reports
-
-  sonar:
-    docker:
-      - image: maven:3.9.13-eclipse-temurin-25
-    steps:
-      - git-shallow-clone/checkout
-      - restore_cache:
-          key: deps-{{ checksum "pom.xml" }}
-      - attach_workspace:
-          at: .
-      - run:
-          name: SonarCloud analysis
-          command: mvn -f pom.xml jacoco:report sonar:sonar --batch-mode
-
-  snyk:
-    docker:
-      - image: maven:3.9.13-eclipse-temurin-25
-    steps:
-      - git-shallow-clone/checkout
-      - restore_cache:
-          key: deps-{{ checksum "pom.xml" }}
+          keys:
+            - deps-{{ checksum "pom.xml" }}
+            - deps-
       - run:
           name: Install sudo
           command: apt-get update -qq && apt-get install -y sudo
@@ -85,18 +40,35 @@ jobs:
           severity-threshold: high
           additional-arguments: --file=pom.xml --package-manager=maven --fail-on=upgradable
 
+  build-test-analyze:
+    docker:
+      - image: maven:3.9.13-eclipse-temurin-25
+    steps:
+      - git-shallow-clone/checkout
+      - setup_remote_docker:
+          docker_layer_caching: true
+      - restore_cache:
+          keys:
+            - deps-{{ checksum "pom.xml" }}
+            - deps-
+      - run:
+          name: Build, test and analyze
+          command: mvn -f pom.xml verify sonar:sonar --batch-mode
+      - store_test_results:
+          path: target/surefire-reports
+      - store_test_results:
+          path: target/failsafe-reports
+      - save_cache:
+          key: deps-{{ checksum "pom.xml" }}
+          paths:
+            - ~/.m2/repository
+
 workflows:
   pipeline:
     jobs:
       - format-check
-      - snyk
-      - build-and-unit-tests:
+      - security-snyk
+      - build-test-analyze:
           requires:
             - format-check
-      - integration-tests:
-          requires:
-            - build-and-unit-tests
-      - sonar:
-          requires:
-            - build-and-unit-tests
           context: SonarCloud
