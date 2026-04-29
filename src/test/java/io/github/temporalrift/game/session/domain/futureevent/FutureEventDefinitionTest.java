@@ -35,44 +35,50 @@ class FutureEventDefinitionTest {
     @Test
     @DisplayName("Given null eventId, constructor throws NullPointerException")
     void constructor_nullEventId_throws() {
-        assertThatNullPointerException().isThrownBy(() -> new FutureEventDefinition(null, "title", balancedOutcomes()));
+        var outcomes = balancedOutcomes();
+        assertThatNullPointerException().isThrownBy(() -> new FutureEventDefinition(null, "title", outcomes));
     }
 
     @Test
     @DisplayName("Given null title, constructor throws NullPointerException")
     void constructor_nullTitle_throws() {
-        assertThatNullPointerException()
-                .isThrownBy(() -> new FutureEventDefinition(UUID.randomUUID(), null, balancedOutcomes()));
+        var id = UUID.randomUUID();
+        var outcomes = balancedOutcomes();
+        assertThatNullPointerException().isThrownBy(() -> new FutureEventDefinition(id, null, outcomes));
     }
 
     @Test
     @DisplayName("Given null outcomes, constructor throws NullPointerException")
     void constructor_nullOutcomes_throws() {
-        assertThatNullPointerException().isThrownBy(() -> new FutureEventDefinition(UUID.randomUUID(), "title", null));
+        var id = UUID.randomUUID();
+        assertThatNullPointerException().isThrownBy(() -> new FutureEventDefinition(id, "title", null));
     }
 
     @Test
     @DisplayName("Given two outcomes, constructor throws IllegalArgumentException")
     void constructor_twoOutcomes_throws() {
+        var id = UUID.randomUUID();
+        var outcomes = List.of(outcome(50), outcome(50));
         assertThatExceptionOfType(IllegalArgumentException.class)
-                .isThrownBy(
-                        () -> new FutureEventDefinition(UUID.randomUUID(), "title", List.of(outcome(50), outcome(50))));
+                .isThrownBy(() -> new FutureEventDefinition(id, "title", outcomes));
     }
 
     @Test
     @DisplayName("Given four outcomes, constructor throws IllegalArgumentException")
     void constructor_fourOutcomes_throws() {
+        var id = UUID.randomUUID();
+        var outcomes = List.of(outcome(25), outcome(25), outcome(25), outcome(25));
         assertThatExceptionOfType(IllegalArgumentException.class)
-                .isThrownBy(() -> new FutureEventDefinition(
-                        UUID.randomUUID(), "title", List.of(outcome(25), outcome(25), outcome(25), outcome(25))));
+                .isThrownBy(() -> new FutureEventDefinition(id, "title", outcomes));
     }
 
     @Test
     @DisplayName("Given probabilities summing to 99, constructor throws IllegalArgumentException")
     void constructor_probabilitiesNotSummingTo100_throws() {
+        var id = UUID.randomUUID();
+        var outcomes = List.of(outcome(33), outcome(33), outcome(33));
         assertThatExceptionOfType(IllegalArgumentException.class)
-                .isThrownBy(() -> new FutureEventDefinition(
-                        UUID.randomUUID(), "title", List.of(outcome(33), outcome(33), outcome(33))));
+                .isThrownBy(() -> new FutureEventDefinition(id, "title", outcomes));
     }
 
     @Test
@@ -80,10 +86,11 @@ class FutureEventDefinitionTest {
     void constructor_outcomesListIsUnmodifiable() {
         // given
         var event = new FutureEventDefinition(UUID.randomUUID(), "title", balancedOutcomes());
+        var extraOutcome = outcome(10);
 
         // when / then
         assertThatExceptionOfType(UnsupportedOperationException.class)
-                .isThrownBy(() -> event.outcomes().add(outcome(10)));
+                .isThrownBy(() -> event.outcomes().add(extraOutcome));
     }
 
     // --- OutcomeDefinition constructor ---
@@ -97,20 +104,23 @@ class FutureEventDefinitionTest {
     @Test
     @DisplayName("Given null description, OutcomeDefinition throws NullPointerException")
     void outcomeDefinition_nullDescription_throws() {
-        assertThatNullPointerException().isThrownBy(() -> new OutcomeDefinition(UUID.randomUUID(), null, 33));
+        var id = UUID.randomUUID();
+        assertThatNullPointerException().isThrownBy(() -> new OutcomeDefinition(id, null, 33));
     }
 
     @Test
     @DisplayName("Given negative probability, OutcomeDefinition throws IllegalArgumentException")
     void outcomeDefinition_negativeProbability_throws() {
+        var id = UUID.randomUUID();
         assertThatExceptionOfType(IllegalArgumentException.class)
-                .isThrownBy(() -> new OutcomeDefinition(UUID.randomUUID(), "description", -1));
+                .isThrownBy(() -> new OutcomeDefinition(id, "description", -1));
     }
 
     @Test
     @DisplayName("Given probability above 100, OutcomeDefinition throws IllegalArgumentException")
     void outcomeDefinition_probabilityAbove100_throws() {
+        var id = UUID.randomUUID();
         assertThatExceptionOfType(IllegalArgumentException.class)
-                .isThrownBy(() -> new OutcomeDefinition(UUID.randomUUID(), "description", 101));
+                .isThrownBy(() -> new OutcomeDefinition(id, "description", 101));
     }
 }

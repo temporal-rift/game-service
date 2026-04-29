@@ -69,9 +69,11 @@ class FutureEventCatalogAdapterTest {
         var adapter = new FutureEventCatalogAdapter(catalogOf(30));
         var unknownId = UUID.randomUUID();
 
+        var ids = List.of(unknownId);
+
         // when / then
         assertThatExceptionOfType(IllegalStateException.class)
-                .isThrownBy(() -> adapter.findByEventIds(List.of(unknownId)))
+                .isThrownBy(() -> adapter.findByEventIds(ids))
                 .withMessageContaining(unknownId.toString());
     }
 }
