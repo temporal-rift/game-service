@@ -22,6 +22,7 @@ import io.github.temporalrift.events.shared.Faction;
 import io.github.temporalrift.game.session.domain.game.Game;
 import io.github.temporalrift.game.session.domain.lobby.Lobby;
 import io.github.temporalrift.game.session.domain.lobby.LobbyPlayer;
+import io.github.temporalrift.game.session.domain.port.out.FutureEventCatalogPort;
 import io.github.temporalrift.game.session.domain.port.out.GameRepository;
 import io.github.temporalrift.game.session.domain.port.out.LobbyRepository;
 import io.github.temporalrift.game.session.domain.port.out.SessionEventPublisher;
@@ -30,13 +31,12 @@ import io.github.temporalrift.game.session.domain.saga.FactionAssignment;
 @Service
 class StartGameSagaImpl implements StartGameSaga {
 
-    private static final int DECK_SIZE = 30;
-
     private final LobbyRepository lobbyRepository;
     private final GameRepository gameRepository;
     private final SessionEventPublisher eventPublisher;
     private final StartGameSagaStateManager stateManager;
     private final StartGameSagaCompensator compensator;
+    private final FutureEventCatalogPort futureEventCatalog;
     private final SecureRandom random;
 
     StartGameSagaImpl(
@@ -44,12 +44,14 @@ class StartGameSagaImpl implements StartGameSaga {
             GameRepository gameRepository,
             SessionEventPublisher eventPublisher,
             StartGameSagaStateManager stateManager,
-            StartGameSagaCompensator compensator) {
+            StartGameSagaCompensator compensator,
+            FutureEventCatalogPort futureEventCatalog) {
         this.lobbyRepository = lobbyRepository;
         this.gameRepository = gameRepository;
         this.eventPublisher = eventPublisher;
         this.stateManager = stateManager;
         this.compensator = compensator;
+        this.futureEventCatalog = futureEventCatalog;
         this.random = new SecureRandom();
     }
 
@@ -92,16 +94,18 @@ class StartGameSagaImpl implements StartGameSaga {
         lobby.start();
         lobbyRepository.save(lobby);
 
-        var playerIds = assignments.stream().map(FactionAssignment::playerId).toList();
-        var game = new Game(gameId, lobby.id(), buildDeck());
+        var gameDeck = buildDeck();
+        var game = new Game(gameId, lobby.id(), gameDeck);
         gameRepository.save(game);
+
+        var playerIds = assignments.stream().map(FactionAssignment::playerId).toList();
 
         eventPublisher.publish(EventEnvelope.create(
                 lobby.id(),
                 Lobby.AGGREGATE_TYPE,
                 gameId,
                 1,
-                new GameStarted(gameId, lobby.id(), playerIds, assignments.size(), DECK_SIZE)));
+                new GameStarted(gameId, lobby.id(), playerIds, assignments.size(), gameDeck.size())));
 
         eventPublisher.publish(
                 EventEnvelope.create(game.id(), Game.AGGREGATE_TYPE, gameId, 1, new EraStarted(gameId, 1, List.of())));
@@ -116,10 +120,8 @@ class StartGameSagaImpl implements StartGameSaga {
     }
 
     private List<UUID> buildDeck() {
-        var deck = new ArrayList<UUID>(DECK_SIZE);
-        for (var i = 0; i < DECK_SIZE; i++) {
-            deck.add(UUID.randomUUID());
-        }
-        return Collections.unmodifiableList(deck);
+        var deck = new ArrayList<>(futureEventCatalog.allEventIds());
+        Collections.shuffle(deck, random);
+        return List.copyOf(deck);
     }
 }
