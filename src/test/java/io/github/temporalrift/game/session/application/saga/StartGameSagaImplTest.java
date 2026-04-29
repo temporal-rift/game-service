@@ -14,6 +14,7 @@ import static org.mockito.Mockito.times;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.IntStream;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -29,6 +30,7 @@ import io.github.temporalrift.events.session.FactionsDrawn;
 import io.github.temporalrift.events.session.GameStarted;
 import io.github.temporalrift.game.session.domain.lobby.Lobby;
 import io.github.temporalrift.game.session.domain.lobby.LobbyPlayer;
+import io.github.temporalrift.game.session.domain.port.out.FutureEventCatalogPort;
 import io.github.temporalrift.game.session.domain.port.out.GameRepository;
 import io.github.temporalrift.game.session.domain.port.out.LobbyRepository;
 import io.github.temporalrift.game.session.domain.port.out.SessionEventPublisher;
@@ -38,6 +40,8 @@ class StartGameSagaImplTest {
 
     static final UUID GAME_ID = UUID.randomUUID();
     static final UUID LOBBY_ID = UUID.randomUUID();
+    static final List<UUID> CATALOG_IDS =
+            IntStream.range(0, 30).mapToObj(i -> UUID.randomUUID()).toList();
     static final List<LobbyPlayer> TWO_PLAYERS = List.of(
             new LobbyPlayer(UUID.randomUUID(), "Alice", null, Instant.now(), true),
             new LobbyPlayer(UUID.randomUUID(), "Bob", null, Instant.now(), true));
@@ -58,6 +62,9 @@ class StartGameSagaImplTest {
     StartGameSagaCompensator compensator;
 
     @Mock
+    FutureEventCatalogPort futureEventCatalog;
+
+    @Mock
     Lobby lobby;
 
     @InjectMocks
@@ -69,6 +76,7 @@ class StartGameSagaImplTest {
         // given
         given(lobby.id()).willReturn(LOBBY_ID);
         given(lobby.currentPlayers()).willReturn(TWO_PLAYERS);
+        given(futureEventCatalog.allEventIds()).willReturn(CATALOG_IDS);
 
         // when
         saga.start(GAME_ID, lobby);
@@ -104,6 +112,7 @@ class StartGameSagaImplTest {
         // given — saga is RUNNING, disconnect listener marks CANCELLED before complete() runs
         given(lobby.id()).willReturn(LOBBY_ID);
         given(lobby.currentPlayers()).willReturn(TWO_PLAYERS);
+        given(futureEventCatalog.allEventIds()).willReturn(CATALOG_IDS);
         willThrow(new RuntimeException("cancelled")).given(stateManager).complete(any(), any());
 
         // when / then

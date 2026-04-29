@@ -1,6 +1,8 @@
 spring:
   application:
     name: game-service
+  config:
+    import: classpath:future-events.yml
   jackson:
     default-property-inclusion: non_null
   datasource:
