@@ -87,10 +87,10 @@ class FutureEventDefinitionTest {
         // given
         var event = new FutureEventDefinition(UUID.randomUUID(), "title", balancedOutcomes());
         var extraOutcome = outcome(10);
+        var outcomes = event.outcomes();
 
         // when / then
-        assertThatExceptionOfType(UnsupportedOperationException.class)
-                .isThrownBy(() -> event.outcomes().add(extraOutcome));
+        assertThatExceptionOfType(UnsupportedOperationException.class).isThrownBy(() -> outcomes.add(extraOutcome));
     }
 
     // --- OutcomeDefinition constructor ---
