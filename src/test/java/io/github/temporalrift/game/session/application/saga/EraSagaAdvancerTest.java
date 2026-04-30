@@ -87,7 +87,6 @@ class EraSagaAdvancerTest {
         var state = new EraSagaState(GAME_ID, 1, EraSagaStatus.WAITING_ROUND_1, PLAYER_IDS);
         given(eraSagaRepository.findByGameIdWithLock(GAME_ID)).willReturn(Optional.of(state));
         var arc = new ActionRoundClosed(GAME_ID, 1, 1, "ALL_SUBMITTED", 4);
-        var envelope = envelopeFor(arc);
 
         // when
         advancer.handleRoundClosed(GAME_ID, arc);
