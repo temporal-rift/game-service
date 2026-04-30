@@ -9,6 +9,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -42,16 +43,19 @@ class EraSagaAdvancer {
     private final EraSagaRepository eraSagaRepository;
     private final GameRepository gameRepository;
     private final SessionEventPublisher eventPublisher;
+    private final ApplicationEventPublisher applicationEventPublisher;
     private final GameRulesPort gameRules;
 
     EraSagaAdvancer(
             EraSagaRepository eraSagaRepository,
             GameRepository gameRepository,
             SessionEventPublisher eventPublisher,
+            ApplicationEventPublisher applicationEventPublisher,
             GameRulesPort gameRules) {
         this.eraSagaRepository = eraSagaRepository;
         this.gameRepository = gameRepository;
         this.eventPublisher = eventPublisher;
+        this.applicationEventPublisher = applicationEventPublisher;
         this.gameRules = gameRules;
     }
 
@@ -140,7 +144,9 @@ class EraSagaAdvancer {
                                         gameId,
                                         new EraEnded(
                                                 gameId, state.eraNumber(), game.cascadedParadoxCounter(), nextEra));
-                                publishEvent(gameId, new EraStarted(gameId, nextEra, List.of(), state.playerIds()));
+                                var eraStarted = new EraStarted(gameId, nextEra, List.of(), state.playerIds());
+                                publishEvent(gameId, eraStarted);
+                                applicationEventPublisher.publishEvent(eraStarted);
                             }
                         });
     }
