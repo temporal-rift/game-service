@@ -1,6 +1,6 @@
 package io.github.temporalrift.game.session.application.saga;
 
-import org.springframework.context.event.EventListener;
+import org.springframework.modulith.events.ApplicationModuleListener;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -12,7 +12,7 @@ class StartGameSagaDisconnectListener {
         this.compensator = compensator;
     }
 
-    @EventListener
+    @ApplicationModuleListener
     void onPlayerDisconnected(PlayerDisconnectedApplicationEvent event) {
         compensator.cancel(event.gameId());
     }
