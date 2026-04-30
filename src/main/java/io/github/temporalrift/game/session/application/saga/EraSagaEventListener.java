@@ -1,6 +1,6 @@
 package io.github.temporalrift.game.session.application.saga;
 
-import org.springframework.modulith.events.ApplicationModuleListener;
+import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
 import io.github.temporalrift.events.action.ActionRoundClosed;
@@ -19,7 +19,7 @@ class EraSagaEventListener {
         this.eraSagaAdvancer = eraSagaAdvancer;
     }
 
-    @ApplicationModuleListener
+    @EventListener
     void onEvent(EventEnvelope envelope) {
         switch (envelope.payload()) {
             case EraStarted(var gameId, var eraNumber, var cascadedEventIds, var playerIds) ->
