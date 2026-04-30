@@ -67,7 +67,7 @@ class EraSagaImpl implements EraSaga {
             playerIds.forEach(playerId -> publishHandDealt(game, gameId, eraNumber, playerId));
 
             stateManager.advanceTo(gameId, EraSagaStatus.WAITING_ROUND_1);
-        } catch (InsufficientDeckException e) {
+        } catch (InsufficientDeckException _) {
             stateManager.fail(gameId);
             eventPublisher.publish(EventEnvelope.create(
                     game.id(), Game.AGGREGATE_TYPE, gameId, 1, new GameEndedAbnormally(gameId, "deck-exhausted")));
