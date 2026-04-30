@@ -22,7 +22,8 @@ class EraSagaEventListener {
     @ApplicationModuleListener
     void onEvent(EventEnvelope envelope) {
         switch (envelope.payload()) {
-            case EraStarted es -> eraSaga.start(es.gameId(), es.eraNumber(), es.playerIds(), es.cascadedEventIds());
+            case EraStarted(var gameId, var eraNumber, var cascadedEventIds, var playerIds) ->
+                eraSaga.start(gameId, eraNumber, playerIds, cascadedEventIds);
             case ActionRoundClosed arc -> eraSagaAdvancer.handleRoundClosed(envelope.gameId(), arc);
             case ScoresUpdated su -> eraSagaAdvancer.handleScoresUpdated(envelope.gameId(), su);
             default -> {}
