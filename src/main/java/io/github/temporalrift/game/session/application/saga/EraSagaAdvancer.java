@@ -9,7 +9,6 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
-import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -54,15 +53,6 @@ class EraSagaAdvancer {
         this.gameRepository = gameRepository;
         this.eventPublisher = eventPublisher;
         this.gameRules = gameRules;
-    }
-
-    @EventListener
-    void onEvent(EventEnvelope envelope) {
-        switch (envelope.payload()) {
-            case ActionRoundClosed arc -> handleRoundClosed(envelope.gameId(), arc);
-            case ScoresUpdated su -> handleScoresUpdated(envelope.gameId(), su);
-            default -> {}
-        }
     }
 
     @Transactional(propagation = REQUIRES_NEW)
