@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 
 import java.util.List;
 import java.util.Optional;
@@ -14,6 +15,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -225,6 +227,31 @@ class EraSagaAdvancerTest {
         then(eventPublisher).should().publish(envelopeWithPayload(EraEnded.class));
         then(eventPublisher).should().publish(envelopeWithPayload(EraStarted.class));
         then(eventPublisher).should(never()).publish(envelopeWithPayload(TimelineStabilized.class));
+    }
+
+    @Test
+    @DisplayName(
+            "no winner and not final era — EraStarted also published as typed Spring event for internal saga trigger")
+    void handleScoresUpdated_noWinnerNotFinalEra_publishesTypedEraStartedForInternalRouting() {
+        // given
+        var state = new EraSagaState(GAME_ID, 1, EraSagaStatus.WAITING_SCORES, PLAYER_IDS);
+        given(eraSagaRepository.findByGameIdWithLock(GAME_ID)).willReturn(Optional.of(state));
+        given(gameRules.winScoreThreshold()).willReturn(WIN_THRESHOLD);
+        given(gameRules.maxEras()).willReturn(MAX_ERAS);
+        var game = Game.reconstitute(GAME_ID, LOBBY_ID, List.of(), 1, 0, GameStatus.IN_PROGRESS);
+        given(gameRepository.findById(GAME_ID)).willReturn(Optional.of(game));
+        var captor = ArgumentCaptor.forClass(Object.class);
+
+        // when
+        advancer.handleScoresUpdated(GAME_ID, noWinnerScores());
+
+        // then
+        verify(applicationEventPublisher).publishEvent(captor.capture());
+        assertThat(captor.getValue()).isInstanceOf(EraStarted.class);
+        var eraStarted = (EraStarted) captor.getValue();
+        assertThat(eraStarted.gameId()).isEqualTo(GAME_ID);
+        assertThat(eraStarted.eraNumber()).isEqualTo(2);
+        assertThat(eraStarted.playerIds()).isEqualTo(PLAYER_IDS);
     }
 
     @Test

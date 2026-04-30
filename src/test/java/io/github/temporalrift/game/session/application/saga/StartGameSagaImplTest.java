@@ -1,5 +1,6 @@
 package io.github.temporalrift.game.session.application.saga;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
@@ -19,6 +20,7 @@ import java.util.stream.IntStream;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -124,6 +126,26 @@ class StartGameSagaImplTest {
         then(stateManager).should().initRunning(GAME_ID, LOBBY_ID);
         then(stateManager).should().complete(GAME_ID, LOBBY_ID);
         then(compensator).should().compensate(eq(GAME_ID), any());
+    }
+
+    @Test
+    @DisplayName("happy path — EraStarted also published as typed Spring event for internal saga trigger")
+    void start_happyPath_publishesTypedEraStartedForInternalRouting() {
+        // given
+        given(lobby.id()).willReturn(LOBBY_ID);
+        given(lobby.currentPlayers()).willReturn(TWO_PLAYERS);
+        given(futureEventCatalog.allEventIds()).willReturn(CATALOG_IDS);
+        var captor = ArgumentCaptor.forClass(Object.class);
+
+        // when
+        saga.start(GAME_ID, lobby);
+
+        // then
+        then(applicationEventPublisher).should().publishEvent(captor.capture());
+        assertThat(captor.getValue()).isInstanceOf(EraStarted.class);
+        var eraStarted = (EraStarted) captor.getValue();
+        assertThat(eraStarted.gameId()).isEqualTo(GAME_ID);
+        assertThat(eraStarted.eraNumber()).isEqualTo(1);
     }
 
     private static EventEnvelope envelopeWithPayload(Class<?> payloadType) {
