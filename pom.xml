@@ -6,7 +6,7 @@
     <parent>
         <groupId>io.github.temporal-rift</groupId>
         <artifactId>temporal-rift-bom</artifactId>
-        <version>1.0.13</version>
+        <version>1.0.14</version>
         <relativePath/>
     </parent>
 
@@ -57,7 +57,7 @@
         <dependency>
             <groupId>io.github.temporal-rift</groupId>
             <artifactId>domain-events</artifactId>
-            <version>1.0.5</version>
+            <version>1.0.6</version>
         </dependency>
 
         <dependency>

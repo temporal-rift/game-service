@@ -50,6 +50,8 @@ game:
     max-eras: 5
     max-cascaded-paradoxes: 3
     events-per-era: 3
+    cards-per-hand: 5
+    win-score-threshold: 20
     action-round-timer-seconds:
       3: 60
       4: 45
