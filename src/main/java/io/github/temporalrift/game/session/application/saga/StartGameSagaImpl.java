@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.UUID;
 import java.util.stream.IntStream;
 
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -34,6 +35,7 @@ class StartGameSagaImpl implements StartGameSaga {
     private final LobbyRepository lobbyRepository;
     private final GameRepository gameRepository;
     private final SessionEventPublisher eventPublisher;
+    private final ApplicationEventPublisher applicationEventPublisher;
     private final StartGameSagaStateManager stateManager;
     private final StartGameSagaCompensator compensator;
     private final FutureEventCatalogPort futureEventCatalog;
@@ -43,12 +45,14 @@ class StartGameSagaImpl implements StartGameSaga {
             LobbyRepository lobbyRepository,
             GameRepository gameRepository,
             SessionEventPublisher eventPublisher,
+            ApplicationEventPublisher applicationEventPublisher,
             StartGameSagaStateManager stateManager,
             StartGameSagaCompensator compensator,
             FutureEventCatalogPort futureEventCatalog) {
         this.lobbyRepository = lobbyRepository;
         this.gameRepository = gameRepository;
         this.eventPublisher = eventPublisher;
+        this.applicationEventPublisher = applicationEventPublisher;
         this.stateManager = stateManager;
         this.compensator = compensator;
         this.futureEventCatalog = futureEventCatalog;
@@ -107,8 +111,9 @@ class StartGameSagaImpl implements StartGameSaga {
                 1,
                 new GameStarted(gameId, lobby.id(), playerIds, assignments.size(), gameDeck.size())));
 
-        eventPublisher.publish(EventEnvelope.create(
-                game.id(), Game.AGGREGATE_TYPE, gameId, 1, new EraStarted(gameId, 1, List.of(), playerIds)));
+        var eraStarted = new EraStarted(gameId, 1, List.of(), playerIds);
+        eventPublisher.publish(EventEnvelope.create(game.id(), Game.AGGREGATE_TYPE, gameId, 1, eraStarted));
+        applicationEventPublisher.publishEvent(eraStarted);
     }
 
     private List<FactionAssignment> drawFactionAssignments(List<LobbyPlayer> players) {

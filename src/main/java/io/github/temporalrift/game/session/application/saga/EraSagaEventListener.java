@@ -1,10 +1,9 @@
 package io.github.temporalrift.game.session.application.saga;
 
-import org.springframework.context.event.EventListener;
+import org.springframework.modulith.events.ApplicationModuleListener;
 import org.springframework.stereotype.Component;
 
 import io.github.temporalrift.events.action.ActionRoundClosed;
-import io.github.temporalrift.events.envelope.EventEnvelope;
 import io.github.temporalrift.events.scoring.ScoresUpdated;
 import io.github.temporalrift.events.session.EraStarted;
 
@@ -19,14 +18,18 @@ class EraSagaEventListener {
         this.eraSagaAdvancer = eraSagaAdvancer;
     }
 
-    @EventListener
-    void onEvent(EventEnvelope envelope) {
-        switch (envelope.payload()) {
-            case EraStarted(var gameId, var eraNumber, var cascadedEventIds, var playerIds) ->
-                eraSaga.start(gameId, eraNumber, playerIds, cascadedEventIds);
-            case ActionRoundClosed arc -> eraSagaAdvancer.handleRoundClosed(envelope.gameId(), arc);
-            case ScoresUpdated su -> eraSagaAdvancer.handleScoresUpdated(envelope.gameId(), su);
-            default -> {}
-        }
+    @ApplicationModuleListener
+    void onEraStarted(EraStarted event) {
+        eraSaga.start(event.gameId(), event.eraNumber(), event.playerIds(), event.cascadedEventIds());
+    }
+
+    @ApplicationModuleListener
+    void onActionRoundClosed(ActionRoundClosed event) {
+        eraSagaAdvancer.handleRoundClosed(event.gameId(), event);
+    }
+
+    @ApplicationModuleListener
+    void onScoresUpdated(ScoresUpdated event) {
+        eraSagaAdvancer.handleScoresUpdated(event.gameId(), event);
     }
 }

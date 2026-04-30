@@ -17,6 +17,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 
 import io.github.temporalrift.events.action.ActionRoundClosed;
 import io.github.temporalrift.events.envelope.EventEnvelope;
@@ -57,6 +58,9 @@ class EraSagaAdvancerTest {
 
     @Mock
     SessionEventPublisher eventPublisher;
+
+    @Mock
+    ApplicationEventPublisher applicationEventPublisher;
 
     @Mock
     GameRulesPort gameRules;
