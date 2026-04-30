@@ -13,4 +13,8 @@ public interface GameRulesPort {
     int eventsPerEra();
 
     int actionRoundTimerSeconds(int playerCount);
+
+    int cardsPerHand();
+
+    int winScoreThreshold();
 }

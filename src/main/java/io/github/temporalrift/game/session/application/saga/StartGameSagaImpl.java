@@ -107,8 +107,8 @@ class StartGameSagaImpl implements StartGameSaga {
                 1,
                 new GameStarted(gameId, lobby.id(), playerIds, assignments.size(), gameDeck.size())));
 
-        eventPublisher.publish(
-                EventEnvelope.create(game.id(), Game.AGGREGATE_TYPE, gameId, 1, new EraStarted(gameId, 1, List.of())));
+        eventPublisher.publish(EventEnvelope.create(
+                game.id(), Game.AGGREGATE_TYPE, gameId, 1, new EraStarted(gameId, 1, List.of(), playerIds)));
     }
 
     private List<FactionAssignment> drawFactionAssignments(List<LobbyPlayer> players) {
