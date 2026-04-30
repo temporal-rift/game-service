@@ -5,6 +5,8 @@ import static org.springframework.transaction.annotation.Propagation.REQUIRES_NE
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 import org.springframework.context.event.EventListener;
@@ -35,6 +37,9 @@ import io.github.temporalrift.game.session.domain.saga.EraSagaStatus;
 @Component
 class EraSagaAdvancer {
 
+    private static final int FINAL_ROUND = 3;
+    private static final Set<Faction> STABILIZATION_WINNERS = Set.of(Faction.PROPHETS, Faction.WEAVERS);
+
     private final EraSagaRepository eraSagaRepository;
     private final GameRepository gameRepository;
     private final SessionEventPublisher eventPublisher;
@@ -62,19 +67,13 @@ class EraSagaAdvancer {
 
     @Transactional(propagation = REQUIRES_NEW)
     void handleRoundClosed(UUID gameId, ActionRoundClosed arc) {
-        var expectedStatus =
-                switch (arc.roundNumber()) {
-                    case 1 -> EraSagaStatus.WAITING_ROUND_1;
-                    case 2 -> EraSagaStatus.WAITING_ROUND_2;
-                    case 3 -> EraSagaStatus.WAITING_ROUND_3;
-                    default -> null;
-                };
-        if (expectedStatus == null) {
+        var expectedStatus = findExpectedStatus(arc.roundNumber());
+        if (expectedStatus.isEmpty()) {
             return;
         }
         eraSagaRepository
                 .findByGameIdWithLock(gameId)
-                .filter(s -> s.status() == expectedStatus)
+                .filter(s -> s.status() == expectedStatus.get())
                 .ifPresent(state -> advanceRound(state, arc));
     }
 
@@ -97,26 +96,24 @@ class EraSagaAdvancer {
                 .filter(s -> s.status() == EraSagaStatus.WAITING_SCORES)
                 .ifPresent(state -> {
                     eraSagaRepository.save(state.withStatus(EraSagaStatus.FAILED));
-                    eventPublisher.publish(EventEnvelope.create(
-                            gameId, Game.AGGREGATE_TYPE, gameId, 1, new EraFailed(gameId, state.eraNumber(), reason)));
-                    eventPublisher.publish(EventEnvelope.create(
-                            gameId,
-                            Game.AGGREGATE_TYPE,
-                            gameId,
-                            1,
-                            new GameEndedAbnormally(gameId, "resolution-failed")));
+                    publishEvent(gameId, new EraFailed(gameId, state.eraNumber(), reason));
+                    publishEvent(gameId, new GameEndedAbnormally(gameId, "resolution-failed"));
                 });
     }
 
+    private static Optional<EraSagaStatus> findExpectedStatus(int roundNumber) {
+        return switch (roundNumber) {
+            case 1 -> Optional.of(EraSagaStatus.WAITING_ROUND_1);
+            case 2 -> Optional.of(EraSagaStatus.WAITING_ROUND_2);
+            case 3 -> Optional.of(EraSagaStatus.WAITING_ROUND_3);
+            default -> Optional.empty();
+        };
+    }
+
     private void advanceRound(EraSagaState state, ActionRoundClosed arc) {
-        if (arc.roundNumber() == 3) {
+        if (arc.roundNumber() == FINAL_ROUND) {
             eraSagaRepository.save(state.withStatus(EraSagaStatus.WAITING_SCORES));
-            eventPublisher.publish(EventEnvelope.create(
-                    state.gameId(),
-                    Game.AGGREGATE_TYPE,
-                    state.gameId(),
-                    1,
-                    new ResolutionStarted(state.gameId(), state.eraNumber())));
+            publishEvent(state.gameId(), new ResolutionStarted(state.gameId(), state.eraNumber()));
         } else {
             var nextStatus = arc.roundNumber() == 1 ? EraSagaStatus.WAITING_ROUND_2 : EraSagaStatus.WAITING_ROUND_3;
             eraSagaRepository.save(state.withStatus(nextStatus));
@@ -124,46 +121,48 @@ class EraSagaAdvancer {
     }
 
     private void processScoresUpdated(UUID gameId, EraSagaState state, ScoresUpdated su) {
-        var winner = su.updates().stream()
+        findWinner(su)
+                .ifPresentOrElse(
+                        winner -> {
+                            eraSagaRepository.save(state.withStatus(EraSagaStatus.COMPLETED));
+                            publishEvent(
+                                    gameId,
+                                    new WinConditionMet(
+                                            gameId,
+                                            winner.playerId(),
+                                            winner.faction().name(),
+                                            winner.newTotal(),
+                                            "SCORE_THRESHOLD"));
+                        },
+                        () -> {
+                            var game = gameRepository
+                                    .findById(gameId)
+                                    .orElseThrow(() -> new GameNotFoundException(gameId));
+                            game.endEra(gameRules.maxEras());
+                            gameRepository.save(game);
+                            eraSagaRepository.save(state.withStatus(EraSagaStatus.COMPLETED));
+
+                            if (game.status() == GameStatus.ENDED_BY_STABILIZATION) {
+                                publishEvent(gameId, buildTimelineStabilized(gameId, su));
+                            } else {
+                                var nextEra = state.eraNumber() + 1;
+                                publishEvent(
+                                        gameId,
+                                        new EraEnded(
+                                                gameId, state.eraNumber(), game.cascadedParadoxCounter(), nextEra));
+                                publishEvent(gameId, new EraStarted(gameId, nextEra, List.of(), state.playerIds()));
+                            }
+                        });
+    }
+
+    private Optional<ScoresUpdated.ScoreUpdate> findWinner(ScoresUpdated su) {
+        return su.updates().stream()
                 .filter(u -> u.newTotal() >= gameRules.winScoreThreshold())
-                .max(Comparator.comparingInt(ScoresUpdated.ScoreUpdate::newTotal))
-                .orElse(null);
+                .max(Comparator.comparingInt(ScoresUpdated.ScoreUpdate::newTotal));
+    }
 
-        if (winner != null) {
-            eraSagaRepository.save(state.withStatus(EraSagaStatus.COMPLETED));
-            eventPublisher.publish(EventEnvelope.create(
-                    gameId,
-                    Game.AGGREGATE_TYPE,
-                    gameId,
-                    1,
-                    new WinConditionMet(
-                            gameId, winner.playerId(), winner.faction().name(), winner.newTotal(), "SCORE_THRESHOLD")));
-            return;
-        }
-
-        var game = gameRepository.findById(gameId).orElseThrow(() -> new GameNotFoundException(gameId));
-        game.endEra(gameRules.maxEras());
-        gameRepository.save(game);
-        eraSagaRepository.save(state.withStatus(EraSagaStatus.COMPLETED));
-
-        if (game.status() == GameStatus.ENDED_BY_STABILIZATION) {
-            eventPublisher.publish(
-                    EventEnvelope.create(gameId, Game.AGGREGATE_TYPE, gameId, 1, buildTimelineStabilized(gameId, su)));
-        } else {
-            var nextEra = state.eraNumber() + 1;
-            eventPublisher.publish(EventEnvelope.create(
-                    gameId,
-                    Game.AGGREGATE_TYPE,
-                    gameId,
-                    1,
-                    new EraEnded(gameId, state.eraNumber(), game.cascadedParadoxCounter(), nextEra)));
-            eventPublisher.publish(EventEnvelope.create(
-                    gameId,
-                    Game.AGGREGATE_TYPE,
-                    gameId,
-                    1,
-                    new EraStarted(gameId, nextEra, List.of(), state.playerIds())));
-        }
+    private void publishEvent(UUID gameId, Object payload) {
+        eventPublisher.publish(EventEnvelope.create(gameId, Game.AGGREGATE_TYPE, gameId, 1, payload));
     }
 
     private TimelineStabilized buildTimelineStabilized(UUID gameId, ScoresUpdated su) {
@@ -172,16 +171,12 @@ class EraSagaAdvancer {
         for (var update : su.updates()) {
             var result = new TimelineStabilized.PlayerFactionResult(
                     update.playerId(), update.faction().name(), null);
-            if (isWinnerOnStabilization(update.faction())) {
+            if (STABILIZATION_WINNERS.contains(update.faction())) {
                 winners.add(result);
             } else {
                 losers.add(result);
             }
         }
         return new TimelineStabilized(gameId, winners, losers);
-    }
-
-    private static boolean isWinnerOnStabilization(Faction faction) {
-        return faction == Faction.PROPHETS || faction == Faction.WEAVERS;
     }
 }
