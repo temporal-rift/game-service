@@ -29,6 +29,7 @@ import io.github.temporalrift.game.session.domain.port.out.EraSagaRepository;
 import io.github.temporalrift.game.session.domain.port.out.GameRepository;
 import io.github.temporalrift.game.session.domain.port.out.GameRulesPort;
 import io.github.temporalrift.game.session.domain.port.out.SessionEventPublisher;
+import io.github.temporalrift.game.session.domain.saga.EraSagaState;
 import io.github.temporalrift.game.session.domain.saga.EraSagaStatus;
 
 @Component
@@ -61,11 +62,6 @@ class EraSagaAdvancer {
 
     @Transactional(propagation = REQUIRES_NEW)
     void handleRoundClosed(UUID gameId, ActionRoundClosed arc) {
-        var state = eraSagaRepository.findByGameIdWithLock(gameId).orElse(null);
-        if (state == null) {
-            return;
-        }
-
         var expectedStatus =
                 switch (arc.roundNumber()) {
                     case 1 -> EraSagaStatus.WAITING_ROUND_1;
@@ -73,27 +69,61 @@ class EraSagaAdvancer {
                     case 3 -> EraSagaStatus.WAITING_ROUND_3;
                     default -> null;
                 };
-        if (expectedStatus == null || state.status() != expectedStatus) {
+        if (expectedStatus == null) {
             return;
         }
+        eraSagaRepository
+                .findByGameIdWithLock(gameId)
+                .filter(s -> s.status() == expectedStatus)
+                .ifPresent(state -> advanceRound(state, arc));
+    }
 
+    @Transactional(propagation = REQUIRES_NEW)
+    void handleScoresUpdated(UUID gameId, ScoresUpdated su) {
+        eraSagaRepository
+                .findByGameIdWithLock(gameId)
+                .filter(s -> s.status() == EraSagaStatus.WAITING_SCORES)
+                .ifPresent(state -> processScoresUpdated(gameId, state, su));
+    }
+
+    /**
+     * Called when ResolutionSaga (timeline-service) reports failure.
+     * Wired to an incoming Kafka consumer once ResolutionSaga is implemented.
+     */
+    @Transactional(propagation = REQUIRES_NEW)
+    void handleResolutionFailed(UUID gameId, String reason) {
+        eraSagaRepository
+                .findByGameIdWithLock(gameId)
+                .filter(s -> s.status() == EraSagaStatus.WAITING_SCORES)
+                .ifPresent(state -> {
+                    eraSagaRepository.save(state.withStatus(EraSagaStatus.FAILED));
+                    eventPublisher.publish(EventEnvelope.create(
+                            gameId, Game.AGGREGATE_TYPE, gameId, 1, new EraFailed(gameId, state.eraNumber(), reason)));
+                    eventPublisher.publish(EventEnvelope.create(
+                            gameId,
+                            Game.AGGREGATE_TYPE,
+                            gameId,
+                            1,
+                            new GameEndedAbnormally(gameId, "resolution-failed")));
+                });
+    }
+
+    private void advanceRound(EraSagaState state, ActionRoundClosed arc) {
         if (arc.roundNumber() == 3) {
             eraSagaRepository.save(state.withStatus(EraSagaStatus.WAITING_SCORES));
             eventPublisher.publish(EventEnvelope.create(
-                    gameId, Game.AGGREGATE_TYPE, gameId, 1, new ResolutionStarted(gameId, state.eraNumber())));
+                    state.gameId(),
+                    Game.AGGREGATE_TYPE,
+                    state.gameId(),
+                    1,
+                    new ResolutionStarted(state.gameId(), state.eraNumber())));
         } else {
             var nextStatus = arc.roundNumber() == 1 ? EraSagaStatus.WAITING_ROUND_2 : EraSagaStatus.WAITING_ROUND_3;
             eraSagaRepository.save(state.withStatus(nextStatus));
         }
     }
 
-    @Transactional(propagation = REQUIRES_NEW)
-    void handleScoresUpdated(UUID gameId, ScoresUpdated su) {
-        var state = eraSagaRepository.findByGameIdWithLock(gameId).orElse(null);
-        if (state == null || state.status() != EraSagaStatus.WAITING_SCORES) {
-            return;
-        }
-
+    private void processScoresUpdated(UUID gameId, EraSagaState state, ScoresUpdated su) {
         var winner = su.updates().stream()
                 .filter(u -> u.newTotal() >= gameRules.winScoreThreshold())
                 .max(Comparator.comparingInt(ScoresUpdated.ScoreUpdate::newTotal))
@@ -134,24 +164,6 @@ class EraSagaAdvancer {
                     1,
                     new EraStarted(gameId, nextEra, List.of(), state.playerIds())));
         }
-    }
-
-    /**
-     * Called when ResolutionSaga (timeline-service) reports failure.
-     * Wired to an incoming Kafka consumer once ResolutionSaga is implemented.
-     */
-    @Transactional(propagation = REQUIRES_NEW)
-    void handleResolutionFailed(UUID gameId, String reason) {
-        var state = eraSagaRepository.findByGameIdWithLock(gameId).orElse(null);
-        if (state == null || state.status() != EraSagaStatus.WAITING_SCORES) {
-            return;
-        }
-
-        eraSagaRepository.save(state.withStatus(EraSagaStatus.FAILED));
-        eventPublisher.publish(EventEnvelope.create(
-                gameId, Game.AGGREGATE_TYPE, gameId, 1, new EraFailed(gameId, state.eraNumber(), reason)));
-        eventPublisher.publish(EventEnvelope.create(
-                gameId, Game.AGGREGATE_TYPE, gameId, 1, new GameEndedAbnormally(gameId, "resolution-failed")));
     }
 
     private TimelineStabilized buildTimelineStabilized(UUID gameId, ScoresUpdated su) {
