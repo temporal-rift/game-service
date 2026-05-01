@@ -152,9 +152,11 @@ class EraSagaImplTest {
         given(gameRepository.findById(GAME_ID)).willReturn(Optional.of(game));
         given(gameRules.eventsPerEra()).willReturn(3);
         given(gameRules.cardsPerHand()).willReturn(CARDS_PER_HAND);
-        // 2 drawn + 1 cascaded = 3 definitions returned
-        given(futureEventCatalog.findByEventIds(any()))
-                .willReturn(List.of(buildEventDef(), buildEventDef(), buildEventDef()));
+        // drawn IDs come from the deck; cascaded ID is known — stub each call separately
+        given(futureEventCatalog.findByEventIds(argThat(ids -> ids != null && !ids.contains(cascadedId))))
+                .willReturn(List.of(buildEventDef(), buildEventDef()));
+        given(futureEventCatalog.findByEventIds(argThat(ids -> ids != null && ids.contains(cascadedId))))
+                .willReturn(List.of(buildEventDef()));
 
         var captor = ArgumentCaptor.<EventEnvelope>captor();
 
