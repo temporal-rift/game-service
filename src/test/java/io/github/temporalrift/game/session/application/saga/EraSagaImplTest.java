@@ -1,6 +1,7 @@
 package io.github.temporalrift.game.session.application.saga;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.BDDMockito.given;
@@ -39,6 +40,7 @@ import io.github.temporalrift.game.session.domain.saga.EraSagaStatus;
 @ExtendWith(MockitoExtension.class)
 class EraSagaImplTest {
 
+    public static final int DECK_SIZE = 30;
     static final UUID GAME_ID = UUID.randomUUID();
     static final UUID LOBBY_ID = UUID.randomUUID();
     static final List<UUID> PLAYER_IDS = List.of(UUID.randomUUID(), UUID.randomUUID());
@@ -64,11 +66,30 @@ class EraSagaImplTest {
     @InjectMocks
     EraSagaImpl eraSaga;
 
+    private static List<UUID> buildDeck(int size) {
+        return new ArrayList<>(
+                IntStream.range(0, size).mapToObj(i -> UUID.randomUUID()).toList());
+    }
+
+    private static FutureEventDefinition buildEventDef() {
+        return new FutureEventDefinition(
+                UUID.randomUUID(),
+                "Test Event",
+                List.of(
+                        new FutureEventDefinition.OutcomeDefinition(UUID.randomUUID(), "Good", 40),
+                        new FutureEventDefinition.OutcomeDefinition(UUID.randomUUID(), "Bad", 40),
+                        new FutureEventDefinition.OutcomeDefinition(UUID.randomUUID(), "Neutral", 20)));
+    }
+
+    private static EventEnvelope envelopeWithPayload(Class<?> payloadType) {
+        return argThat(envelope -> payloadType.isInstance(envelope.payload()));
+    }
+
     @Test
     @DisplayName("happy path — state set to RUNNING then WAITING_ROUND_1, events drawn and hands dealt")
     void start_happyPath_publishesEventsDrawnAndHandDealtThenAdvancesToWaitingRound1() {
         // given
-        var deck = buildDeck(30);
+        var deck = buildDeck(DECK_SIZE);
         var game = new Game(GAME_ID, LOBBY_ID, deck);
         given(gameRepository.findById(GAME_ID)).willReturn(Optional.of(game));
         given(gameRules.eventsPerEra()).willReturn(EVENTS_PER_ERA);
@@ -93,7 +114,7 @@ class EraSagaImplTest {
     @DisplayName("hand dealt carries correct player ID and card count")
     void start_happyPath_handDealtCarriesCorrectPlayerIdAndCardCount() {
         // given
-        var game = new Game(GAME_ID, LOBBY_ID, buildDeck(30));
+        var game = new Game(GAME_ID, LOBBY_ID, buildDeck(DECK_SIZE));
         given(gameRepository.findById(GAME_ID)).willReturn(Optional.of(game));
         given(gameRules.eventsPerEra()).willReturn(EVENTS_PER_ERA);
         given(gameRules.cardsPerHand()).willReturn(CARDS_PER_HAND);
@@ -127,7 +148,7 @@ class EraSagaImplTest {
     void start_withCascadedEvents_cascadedFlagSetCorrectly() {
         // given
         var cascadedId = UUID.randomUUID();
-        var game = new Game(GAME_ID, LOBBY_ID, buildDeck(30));
+        var game = new Game(GAME_ID, LOBBY_ID, buildDeck(DECK_SIZE));
         given(gameRepository.findById(GAME_ID)).willReturn(Optional.of(game));
         given(gameRules.eventsPerEra()).willReturn(3);
         given(gameRules.cardsPerHand()).willReturn(CARDS_PER_HAND);
@@ -180,14 +201,14 @@ class EraSagaImplTest {
         given(gameRules.eventsPerEra()).willReturn(EVENTS_PER_ERA);
 
         // when / then — no exception expected
-        eraSaga.start(GAME_ID, ERA_NUMBER, PLAYER_IDS, List.of());
+        assertThatNoException().isThrownBy(() -> eraSaga.start(GAME_ID, ERA_NUMBER, PLAYER_IDS, List.of()));
     }
 
     @Test
     @DisplayName("state manager initRunning called before any event is published")
     void start_initRunningCalledFirst() {
         // given
-        var game = new Game(GAME_ID, LOBBY_ID, buildDeck(30));
+        var game = new Game(GAME_ID, LOBBY_ID, buildDeck(DECK_SIZE));
         given(gameRepository.findById(GAME_ID)).willReturn(Optional.of(game));
         given(gameRules.eventsPerEra()).willReturn(EVENTS_PER_ERA);
         given(gameRules.cardsPerHand()).willReturn(CARDS_PER_HAND);
@@ -203,24 +224,5 @@ class EraSagaImplTest {
         var ordered = inOrder(stateManager, eventPublisher);
         then(stateManager).should(ordered).initRunning(any(), any(int.class), any());
         then(eventPublisher).should(ordered, atLeastOnce()).publish(any());
-    }
-
-    private static List<UUID> buildDeck(int size) {
-        return new ArrayList<>(
-                IntStream.range(0, size).mapToObj(i -> UUID.randomUUID()).toList());
-    }
-
-    private static FutureEventDefinition buildEventDef() {
-        return new FutureEventDefinition(
-                UUID.randomUUID(),
-                "Test Event",
-                List.of(
-                        new FutureEventDefinition.OutcomeDefinition(UUID.randomUUID(), "Good", 40),
-                        new FutureEventDefinition.OutcomeDefinition(UUID.randomUUID(), "Bad", 40),
-                        new FutureEventDefinition.OutcomeDefinition(UUID.randomUUID(), "Neutral", 20)));
-    }
-
-    private static EventEnvelope envelopeWithPayload(Class<?> payloadType) {
-        return argThat(envelope -> payloadType.isInstance(envelope.payload()));
     }
 }

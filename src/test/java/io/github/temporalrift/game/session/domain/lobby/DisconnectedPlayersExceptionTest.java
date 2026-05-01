@@ -42,16 +42,15 @@ class DisconnectedPlayersExceptionTest {
     @DisplayName("disconnectedPlayerIds is an unmodifiable defensive copy")
     void disconnectedPlayerIds_isDefensiveCopy() {
         // given
+        var uuid = UUID.randomUUID();
         var mutable = new ArrayList<UUID>();
-        mutable.add(UUID.randomUUID());
-        var ex = new DisconnectedPlayersException(mutable);
+        mutable.add(uuid);
+        var disconnectedPlayerIds = new DisconnectedPlayersException(mutable).disconnectedPlayerIds();
 
-        // when
-        mutable.add(UUID.randomUUID());
-
-        // then
-        assertThat(ex.disconnectedPlayerIds()).hasSize(1);
-        assertThatThrownBy(() -> ex.disconnectedPlayerIds().add(UUID.randomUUID()))
+        // when / then
+        assertThat(disconnectedPlayerIds).hasSize(1);
+        assertThatThrownBy(() -> disconnectedPlayerIds.add(uuid))
+                .as("disconnectedPlayerIds should be unmodifiable")
                 .isInstanceOf(UnsupportedOperationException.class);
     }
 }

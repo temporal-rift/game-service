@@ -72,10 +72,6 @@ class EraSagaAdvancerTest {
 
     // ─── handleRoundClosed ───────────────────────────────────────────────────
 
-    private static EventEnvelope envelopeFor(Object payload) {
-        return EventEnvelope.create(GAME_ID, Game.AGGREGATE_TYPE, GAME_ID, 1, payload);
-    }
-
     private static EventEnvelope envelopeWithPayload(Class<?> payloadType) {
         return argThat(envelope -> payloadType.isInstance(envelope.payload()));
     }
