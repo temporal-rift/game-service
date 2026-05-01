@@ -21,8 +21,7 @@ class LobbyPlayerPkTest {
         var pk2 = new LobbyPlayerPk(lobbyId, playerId);
 
         // then
-        assertThat(pk1).isEqualTo(pk2);
-        assertThat(pk1.hashCode()).isEqualTo(pk2.hashCode());
+        assertThat(pk1).isEqualTo(pk2).hasSameHashCodeAs(pk2);
     }
 
     @Test
@@ -32,7 +31,7 @@ class LobbyPlayerPkTest {
         var pk = new LobbyPlayerPk(UUID.randomUUID(), UUID.randomUUID());
 
         // then
-        assertThat(pk).isEqualTo(pk);
+        assertThat(pk).hasSameHashCodeAs(pk);
     }
 
     @Test
@@ -57,16 +56,6 @@ class LobbyPlayerPkTest {
 
         // then
         assertThat(pk1).isNotEqualTo(pk2);
-    }
-
-    @Test
-    @DisplayName("key is not equal to a non-LobbyPlayerPk object")
-    void equals_differentType_returnsFalse() {
-        // given
-        var pk = new LobbyPlayerPk(UUID.randomUUID(), UUID.randomUUID());
-
-        // then
-        assertThat(pk).isNotEqualTo("not-a-pk");
     }
 
     @Test

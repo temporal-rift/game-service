@@ -55,8 +55,7 @@ class PlayerAuthenticationTokenTest {
         var t2 = new PlayerAuthenticationToken(p);
 
         // then
-        assertThat(t1).isEqualTo(t2);
-        assertThat(t1.hashCode()).isEqualTo(t2.hashCode());
+        assertThat(t1).isEqualTo(t2).hasSameHashCodeAs(t2);
     }
 
     @Test
