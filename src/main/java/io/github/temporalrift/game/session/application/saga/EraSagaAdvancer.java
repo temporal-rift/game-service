@@ -119,14 +119,14 @@ class EraSagaAdvancer {
                 .ifPresentOrElse(
                         winner -> {
                             eraSagaRepository.save(state.withStatus(EraSagaStatus.COMPLETED));
-                            publishEvent(
+                            var winConditionMet = new WinConditionMet(
                                     gameId,
-                                    new WinConditionMet(
-                                            gameId,
-                                            winner.playerId(),
-                                            winner.faction().name(),
-                                            winner.newTotal(),
-                                            "SCORE_THRESHOLD"));
+                                    winner.playerId(),
+                                    winner.faction().name(),
+                                    winner.newTotal(),
+                                    "SCORE_THRESHOLD");
+                            publishEvent(gameId, winConditionMet);
+                            applicationEventPublisher.publishEvent(winConditionMet);
                         },
                         () -> {
                             var game = gameRepository
@@ -137,7 +137,9 @@ class EraSagaAdvancer {
                             eraSagaRepository.save(state.withStatus(EraSagaStatus.COMPLETED));
 
                             if (game.status() == GameStatus.ENDED_BY_STABILIZATION) {
-                                publishEvent(gameId, buildTimelineStabilized(gameId, su));
+                                var stabilized = buildTimelineStabilized(gameId, su);
+                                publishEvent(gameId, stabilized);
+                                applicationEventPublisher.publishEvent(stabilized);
                             } else {
                                 var nextEra = state.eraNumber() + 1;
                                 publishEvent(

@@ -271,6 +271,53 @@ class EraSagaAdvancerTest {
         then(eventPublisher).should(never()).publish(envelopeWithPayload(EraEnded.class));
     }
 
+    // ─── dual-publish ────────────────────────────────────────────────────────
+
+    @Test
+    @DisplayName("WinConditionMet — also published as typed Spring event for EndGameSaga trigger")
+    void handleScoresUpdated_winCondition_dualPublishesWinConditionMet() {
+        // given
+        var state = new EraSagaState(GAME_ID, 1, EraSagaStatus.WAITING_SCORES, PLAYER_IDS);
+        given(eraSagaRepository.findByGameIdWithLock(GAME_ID)).willReturn(Optional.of(state));
+        given(gameRules.winScoreThreshold()).willReturn(WIN_THRESHOLD);
+        var updates =
+                List.of(new ScoresUpdated.ScoreUpdate(PLAYER_1, Faction.PROPHETS, 5, "round-bonus", WIN_THRESHOLD));
+        var su = new ScoresUpdated(GAME_ID, 1, updates);
+        var captor = ArgumentCaptor.forClass(Object.class);
+
+        // when
+        advancer.handleScoresUpdated(GAME_ID, su);
+
+        // then
+        verify(applicationEventPublisher).publishEvent(captor.capture());
+        assertThat(captor.getValue()).isInstanceOf(WinConditionMet.class);
+        var event = (WinConditionMet) captor.getValue();
+        assertThat(event.gameId()).isEqualTo(GAME_ID);
+        assertThat(event.winnerId()).isEqualTo(PLAYER_1);
+    }
+
+    @Test
+    @DisplayName("TimelineStabilized — also published as typed Spring event for EndGameSaga trigger")
+    void handleScoresUpdated_finalEraStabilized_dualPublishesTimelineStabilized() {
+        // given
+        var state = new EraSagaState(GAME_ID, MAX_ERAS, EraSagaStatus.WAITING_SCORES, PLAYER_IDS);
+        given(eraSagaRepository.findByGameIdWithLock(GAME_ID)).willReturn(Optional.of(state));
+        given(gameRules.winScoreThreshold()).willReturn(WIN_THRESHOLD);
+        given(gameRules.maxEras()).willReturn(MAX_ERAS);
+        var game = Game.reconstitute(GAME_ID, LOBBY_ID, List.of(), MAX_ERAS, 0, GameStatus.IN_PROGRESS);
+        given(gameRepository.findById(GAME_ID)).willReturn(Optional.of(game));
+        var captor = ArgumentCaptor.forClass(Object.class);
+
+        // when
+        advancer.handleScoresUpdated(GAME_ID, noWinnerScores());
+
+        // then
+        verify(applicationEventPublisher).publishEvent(captor.capture());
+        assertThat(captor.getValue()).isInstanceOf(TimelineStabilized.class);
+        var event = (TimelineStabilized) captor.getValue();
+        assertThat(event.gameId()).isEqualTo(GAME_ID);
+    }
+
     // ─── handleResolutionFailed ──────────────────────────────────────────────
 
     @Test
