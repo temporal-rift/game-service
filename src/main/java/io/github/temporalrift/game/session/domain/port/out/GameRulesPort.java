@@ -17,4 +17,6 @@ public interface GameRulesPort {
     int cardsPerHand();
 
     int winScoreThreshold();
+
+    int reconnectGracePeriodSeconds();
 }

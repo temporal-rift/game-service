@@ -10,7 +10,7 @@ import org.junit.jupiter.api.Test;
 class SessionRulesPropertiesTest {
 
     static SessionRulesProperties properties(Map<Integer, Integer> timers) {
-        return new SessionRulesProperties(2, 8, 4, 3, 5, 7, 100, timers);
+        return new SessionRulesProperties(2, 8, 4, 3, 5, 7, 100, 30, timers);
     }
 
     @Test

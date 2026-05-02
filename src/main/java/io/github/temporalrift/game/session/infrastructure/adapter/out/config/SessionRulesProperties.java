@@ -19,6 +19,7 @@ public record SessionRulesProperties(
         @Min(1) int eventsPerEra,
         @Min(1) int cardsPerHand,
         @Min(1) int winScoreThreshold,
+        @Min(1) int reconnectGracePeriodSeconds,
         @NotEmpty Map<Integer, Integer> actionRoundTimerSeconds)
         implements GameRulesPort {
 

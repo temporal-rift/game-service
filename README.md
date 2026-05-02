@@ -48,9 +48,10 @@ src/main/java/io/github/temporalrift/game/
 └── shared/     ← cross-cutting concerns
 ```
 
-Each module follows a hexagonal layout: `domain/` → `application/` → `infrastructure/`. Modules communicate only via Spring `ApplicationEvent` — never by direct cross-module bean injection.
+Each module follows a hexagonal layout: `domain/` → `application/` → `infrastructure/`.
+Modules communicate only via Spring `ApplicationEvent` — never by direct cross-module bean injection.
 
 ## Dependencies
 
-- Parent BOM: `temporal-rift-bom:1.0.9` (Spotless, Checkstyle, OpenAPI generator)
-- Shared events: `domain-events:1.0.4`
+- Parent BOM: `temporal-rift-bom:1.0.14` (Spotless, Checkstyle, OpenAPI generator)
+- Shared events: `domain-events:1.0.7`

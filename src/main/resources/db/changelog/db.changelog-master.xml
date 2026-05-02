@@ -17,6 +17,7 @@
     <include file="db/changelog/session/005-create-game-start-saga-state.xml"/>
     <include file="db/changelog/session/006-create-era-saga-state.xml"/>
     <include file="db/changelog/session/007-create-end-game-saga-state.xml"/>
+    <include file="db/changelog/session/008-create-player-reconnect-saga-state.xml"/>
 
     <!-- Action module -->
 

@@ -54,6 +54,7 @@ game:
     events-per-era: 3
     cards-per-hand: 5
     win-score-threshold: 20
+    reconnect-grace-period-seconds: 30
     action-round-timer-seconds:
       3: 60
       4: 45
