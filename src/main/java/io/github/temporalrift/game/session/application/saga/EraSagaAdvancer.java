@@ -59,6 +59,15 @@ class EraSagaAdvancer {
         this.gameRules = gameRules;
     }
 
+    private static Optional<EraSagaStatus> findExpectedStatus(int roundNumber) {
+        return switch (roundNumber) {
+            case 1 -> Optional.of(EraSagaStatus.WAITING_ROUND_1);
+            case 2 -> Optional.of(EraSagaStatus.WAITING_ROUND_2);
+            case 3 -> Optional.of(EraSagaStatus.WAITING_ROUND_3);
+            default -> Optional.empty();
+        };
+    }
+
     @Transactional(propagation = REQUIRES_NEW)
     void handleRoundClosed(UUID gameId, ActionRoundClosed arc) {
         var expectedStatus = findExpectedStatus(arc.roundNumber());
@@ -93,15 +102,6 @@ class EraSagaAdvancer {
                     publishEvent(gameId, new EraFailed(gameId, state.eraNumber(), reason));
                     publishEvent(gameId, new GameEndedAbnormally(gameId, "resolution-failed"));
                 });
-    }
-
-    private static Optional<EraSagaStatus> findExpectedStatus(int roundNumber) {
-        return switch (roundNumber) {
-            case 1 -> Optional.of(EraSagaStatus.WAITING_ROUND_1);
-            case 2 -> Optional.of(EraSagaStatus.WAITING_ROUND_2);
-            case 3 -> Optional.of(EraSagaStatus.WAITING_ROUND_3);
-            default -> Optional.empty();
-        };
     }
 
     private void advanceRound(EraSagaState state, ActionRoundClosed arc) {

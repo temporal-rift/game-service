@@ -69,7 +69,7 @@ class ParadoxCascadedKafkaConsumer {
         var game = gameRepository.findById(gameId).orElseThrow(() -> new GameNotFoundException(gameId));
         try {
             game.recordCascadedParadox(gameRules.maxCascadedParadoxes());
-        } catch (GameAlreadyOverException e) {
+        } catch (GameAlreadyOverException _) {
             log.info("ParadoxCascaded ignored for game {} — already over", gameId);
             return;
         }

@@ -2,7 +2,6 @@ package io.github.temporalrift.game.session.application.saga;
 
 import static org.springframework.transaction.annotation.Propagation.REQUIRES_NEW;
 
-import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 
@@ -26,7 +25,6 @@ import io.github.temporalrift.game.session.domain.port.out.GameRepository;
 import io.github.temporalrift.game.session.domain.port.out.SessionEventPublisher;
 import io.github.temporalrift.game.session.domain.port.out.StartGameSagaRepository;
 import io.github.temporalrift.game.session.domain.saga.EndGameTrigger;
-import io.github.temporalrift.game.session.domain.saga.FactionAssignment;
 
 @Service
 class EndGameSagaImpl implements EndGameSaga {
@@ -59,13 +57,12 @@ class EndGameSagaImpl implements EndGameSaga {
         var game = gameRepository.findById(gameId).orElseThrow(() -> new GameNotFoundException(gameId));
         try {
             game.end();
-        } catch (GameAlreadyOverException e) {
+        } catch (GameAlreadyOverException _) {
             log.info("EndGameSaga.start ignored for game {} — already over", gameId);
             return;
         }
 
-        var playerIdList = Arrays.asList(playerIds);
-        stateManager.initRunning(gameId, triggerType, playerIdList);
+        stateManager.initRunning(gameId, triggerType, List.of(playerIds));
         gameRepository.save(game);
 
         var assignments = startGameSagaRepository
@@ -74,8 +71,16 @@ class EndGameSagaImpl implements EndGameSaga {
                 .factionAssignments();
 
         var finalScores = finalScoreQueryPort.getScores(gameId);
-        publishEvent(gameId, new GameEnded(gameId, toEndReason(triggerType), finalScores));
-        publishEvent(gameId, new FactionRevealed(gameId, toReveals(assignments)));
+        publishEvent(gameId, new GameEnded(gameId, triggerType.name(), finalScores));
+        publishEvent(
+                gameId,
+                new FactionRevealed(
+                        gameId,
+                        assignments.stream()
+                                .map(assignment -> new FactionRevealed.PlayerFactionResult(
+                                        assignment.playerId(),
+                                        assignment.faction().name()))
+                                .toList()));
 
         stateManager.complete(gameId);
     }
@@ -88,20 +93,5 @@ class EndGameSagaImpl implements EndGameSaga {
 
     private void publishEvent(UUID gameId, Object payload) {
         eventPublisher.publish(EventEnvelope.create(gameId, Game.AGGREGATE_TYPE, gameId, 1, payload));
-    }
-
-    private static String toEndReason(EndGameTrigger trigger) {
-        return switch (trigger) {
-            case WIN_CONDITION_MET -> "WIN_CONDITION_MET";
-            case TIMELINE_COLLAPSED -> "TIMELINE_COLLAPSED";
-            case TIMELINE_STABILIZED -> "TIMELINE_STABILIZED";
-        };
-    }
-
-    private static List<FactionRevealed.PlayerFactionResult> toReveals(List<FactionAssignment> assignments) {
-        return assignments.stream()
-                .map(a -> new FactionRevealed.PlayerFactionResult(
-                        a.playerId(), a.faction().name()))
-                .toList();
     }
 }
