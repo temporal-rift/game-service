@@ -1,7 +1,5 @@
 package io.github.temporalrift.game.session.application.saga;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.modulith.events.ApplicationModuleListener;
 import org.springframework.stereotype.Component;
 
@@ -11,8 +9,6 @@ import io.github.temporalrift.game.session.domain.port.out.LobbyRepository;
 
 @Component
 class PlayerReconnectSagaEventListener {
-
-    private static final Logger log = LoggerFactory.getLogger(PlayerReconnectSagaEventListener.class);
 
     private final PlayerReconnectSaga saga;
     private final PlayerReconnectSagaStateManager stateManager;
@@ -32,26 +28,12 @@ class PlayerReconnectSagaEventListener {
 
     @ApplicationModuleListener
     void onPlayerDisconnected(PlayerDisconnectedApplicationEvent event) {
-        var gameOpt = gameRepository.findById(event.gameId());
-        if (gameOpt.isEmpty()) {
-            return;
-        }
-        var game = gameOpt.get();
-        var lobbyOpt = lobbyRepository.findById(game.lobbyId());
-        if (lobbyOpt.isEmpty()) {
-            return;
-        }
-        if (lobbyOpt.get().status() != LobbyStatus.STARTED) {
-            return;
-        }
-        if (stateManager.hasActiveGracePeriod(event.gameId(), event.playerId())) {
-            log.debug(
-                    "Disconnect ignored for player {} in game {} — grace period already active",
-                    event.playerId(),
-                    event.gameId());
-            return;
-        }
-        saga.start(event.gameId(), event.playerId());
+        gameRepository
+                .findById(event.gameId())
+                .flatMap(game -> lobbyRepository.findById(game.lobbyId()))
+                .filter(lobby -> lobby.status() == LobbyStatus.STARTED)
+                .filter(_ -> !stateManager.hasActiveGracePeriod(event.gameId(), event.playerId()))
+                .ifPresent(_ -> saga.start(event.gameId(), event.playerId()));
     }
 
     @ApplicationModuleListener
