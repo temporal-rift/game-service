@@ -10,6 +10,7 @@ import java.util.stream.Stream;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -36,6 +37,7 @@ class EraSagaImpl implements EraSaga {
     private final GameRepository gameRepository;
     private final FutureEventCatalogPort futureEventCatalog;
     private final SessionEventPublisher eventPublisher;
+    private final ApplicationEventPublisher applicationEventPublisher;
     private final EraSagaStateManager stateManager;
     private final GameRulesPort gameRules;
     private final SecureRandom random;
@@ -44,11 +46,13 @@ class EraSagaImpl implements EraSaga {
             GameRepository gameRepository,
             FutureEventCatalogPort futureEventCatalog,
             SessionEventPublisher eventPublisher,
+            ApplicationEventPublisher applicationEventPublisher,
             EraSagaStateManager stateManager,
             GameRulesPort gameRules) {
         this.gameRepository = gameRepository;
         this.futureEventCatalog = futureEventCatalog;
         this.eventPublisher = eventPublisher;
+        this.applicationEventPublisher = applicationEventPublisher;
         this.stateManager = stateManager;
         this.gameRules = gameRules;
         this.random = new SecureRandom();
@@ -69,6 +73,8 @@ class EraSagaImpl implements EraSaga {
             playerIds.forEach(playerId -> publishHandDealt(game, gameId, eraNumber, playerId));
 
             stateManager.advanceTo(gameId, EraSagaStatus.WAITING_ROUND_1);
+            applicationEventPublisher.publishEvent(
+                    new StartActionRoundApplicationEvent(gameId, eraNumber, 1, playerIds));
         } catch (InsufficientDeckException e) {
             log.warn("Deck exhausted for game {} era {} — ending game abnormally", gameId, eraNumber, e);
             stateManager.fail(gameId);
