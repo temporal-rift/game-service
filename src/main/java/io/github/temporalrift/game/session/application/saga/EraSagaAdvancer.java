@@ -109,8 +109,11 @@ class EraSagaAdvancer {
             eraSagaRepository.save(state.withStatus(EraSagaStatus.WAITING_SCORES));
             publishEvent(state.gameId(), new ResolutionStarted(state.gameId(), state.eraNumber()));
         } else {
+            var nextRound = arc.roundNumber() + 1;
             var nextStatus = arc.roundNumber() == 1 ? EraSagaStatus.WAITING_ROUND_2 : EraSagaStatus.WAITING_ROUND_3;
             eraSagaRepository.save(state.withStatus(nextStatus));
+            applicationEventPublisher.publishEvent(new StartActionRoundApplicationEvent(
+                    state.gameId(), state.eraNumber(), nextRound, state.playerIds()));
         }
     }
 
