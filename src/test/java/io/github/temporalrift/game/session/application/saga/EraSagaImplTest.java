@@ -24,6 +24,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 
 import io.github.temporalrift.events.action.EventsDrawn;
 import io.github.temporalrift.events.action.HandDealt;
@@ -62,6 +63,9 @@ class EraSagaImplTest {
 
     @Mock
     GameRulesPort gameRules;
+
+    @Mock
+    ApplicationEventPublisher applicationEventPublisher;
 
     @InjectMocks
     EraSagaImpl eraSaga;
