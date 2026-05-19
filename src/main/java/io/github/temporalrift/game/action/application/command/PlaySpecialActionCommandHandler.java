@@ -1,5 +1,6 @@
 package io.github.temporalrift.game.action.application.command;
 
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -10,6 +11,7 @@ import io.github.temporalrift.game.action.domain.port.out.ActionRoundRepository;
 import io.github.temporalrift.game.action.domain.port.out.PlayerStateRepository;
 
 @Service
+@ConditionalOnBean({ActionRoundRepository.class, PlayerStateRepository.class})
 class PlaySpecialActionCommandHandler implements PlaySpecialActionUseCase {
 
     private final ActionRoundRepository actionRoundRepository;
