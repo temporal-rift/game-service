@@ -34,7 +34,7 @@ jobs:
           fail-on-issues: true
           monitor-on-build: true
           severity-threshold: high
-          additional-arguments: --file=pom.xml --package-manager=maven --fail-on=upgradable
+          additional-arguments: --file=pom.xml --package-manager=maven --org=temporal-rift
 
   build-test-analyze:
     docker:
