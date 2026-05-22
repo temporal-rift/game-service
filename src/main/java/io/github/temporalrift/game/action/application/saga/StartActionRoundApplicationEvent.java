@@ -1,4 +1,4 @@
-package io.github.temporalrift.game.session.application.saga;
+package io.github.temporalrift.game.action.application.saga;
 
 import java.util.List;
 import java.util.UUID;

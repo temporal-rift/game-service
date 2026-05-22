@@ -10,6 +10,7 @@ import java.util.concurrent.ScheduledFuture;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.scheduling.TaskScheduler;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -42,6 +43,7 @@ class PlayerReconnectSagaImpl implements PlayerReconnectSaga {
     private final PlayerReconnectSagaStateManager stateManager;
     private final GameRulesPort gameRules;
     private final TaskScheduler taskScheduler;
+    private final PlayerReconnectSaga self;
 
     private final ConcurrentHashMap<UUID, ScheduledFuture<?>> scheduledTimers = new ConcurrentHashMap<>();
 
@@ -52,7 +54,8 @@ class PlayerReconnectSagaImpl implements PlayerReconnectSaga {
             ApplicationEventPublisher applicationEventPublisher,
             PlayerReconnectSagaStateManager stateManager,
             GameRulesPort gameRules,
-            TaskScheduler taskScheduler) {
+            TaskScheduler taskScheduler,
+            @Lazy PlayerReconnectSaga self) {
         this.lobbyRepository = lobbyRepository;
         this.gameRepository = gameRepository;
         this.eventPublisher = eventPublisher;
@@ -60,6 +63,7 @@ class PlayerReconnectSagaImpl implements PlayerReconnectSaga {
         this.stateManager = stateManager;
         this.gameRules = gameRules;
         this.taskScheduler = taskScheduler;
+        this.self = self;
     }
 
     @Override
@@ -148,7 +152,7 @@ class PlayerReconnectSagaImpl implements PlayerReconnectSaga {
     }
 
     void rescheduleTimer(UUID sagaId, Instant graceExpiresAt) {
-        var future = taskScheduler.schedule(() -> handleTimerExpiry(sagaId), graceExpiresAt);
+        var future = taskScheduler.schedule(() -> self.handleTimerExpiry(sagaId), graceExpiresAt);
         if (future != null) {
             scheduledTimers.put(sagaId, future);
         }
