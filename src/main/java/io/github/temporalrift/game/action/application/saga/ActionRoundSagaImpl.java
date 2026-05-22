@@ -5,6 +5,7 @@ import static org.springframework.transaction.annotation.Propagation.REQUIRES_NE
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledFuture;
@@ -12,7 +13,9 @@ import java.util.concurrent.ScheduledFuture;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.scheduling.TaskScheduler;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -32,9 +35,11 @@ import io.github.temporalrift.game.action.domain.port.out.ActionEventPublisher;
 import io.github.temporalrift.game.action.domain.port.out.ActionRoundRepository;
 import io.github.temporalrift.game.action.domain.port.out.FutureEventDefinitionPort;
 import io.github.temporalrift.game.action.domain.port.out.GameRulesPort;
+import io.github.temporalrift.game.action.domain.port.out.PlayerStateRepository;
 import io.github.temporalrift.game.action.domain.saga.ActionRoundSagaStatus;
 
 @Service
+@ConditionalOnBean({ActionRoundRepository.class, PlayerStateRepository.class})
 class ActionRoundSagaImpl implements ActionRoundSaga {
 
     private static final Logger log = LoggerFactory.getLogger(ActionRoundSagaImpl.class);
@@ -47,7 +52,8 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
     private final FutureEventDefinitionPort futureEventDefinitionPort;
     private final BandCalculator bandCalculator;
     private final TaskScheduler taskScheduler;
-    private final ConcurrentHashMap<UUID, ScheduledFuture<?>> scheduledTimers;
+    private final Map<UUID, ScheduledFuture<?>> scheduledTimers;
+    private final ActionRoundSaga self;
 
     ActionRoundSagaImpl(
             ActionRoundRepository actionRoundRepository,
@@ -57,7 +63,8 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
             GameRulesPort gameRules,
             FutureEventDefinitionPort futureEventDefinitionPort,
             BandCalculator bandCalculator,
-            @Qualifier("actionTaskScheduler") TaskScheduler taskScheduler) {
+            @Qualifier("actionTaskScheduler") TaskScheduler taskScheduler,
+            @Lazy ActionRoundSaga self) {
         this.actionRoundRepository = actionRoundRepository;
         this.actionEventPublisher = actionEventPublisher;
         this.applicationEventPublisher = applicationEventPublisher;
@@ -67,6 +74,7 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
         this.bandCalculator = bandCalculator;
         this.taskScheduler = taskScheduler;
         this.scheduledTimers = new ConcurrentHashMap<>();
+        this.self = self;
     }
 
     @Override
@@ -197,8 +205,8 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
                 new BandedProbabilityPublished(gameId, eraNumber, bandStates)));
     }
 
-    void rescheduleTimer(UUID sagaId, Instant timerExpiresAt) {
-        var future = taskScheduler.schedule(() -> handleTimerExpiry(sagaId), timerExpiresAt);
+    public void rescheduleTimer(UUID sagaId, Instant timerExpiresAt) {
+        var future = taskScheduler.schedule(() -> self.handleTimerExpiry(sagaId), timerExpiresAt);
         if (future != null) {
             scheduledTimers.put(sagaId, future);
         }
