@@ -11,6 +11,7 @@ import static org.mockito.BDDMockito.then;
 import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.never;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -31,6 +32,7 @@ import io.github.temporalrift.game.action.domain.actionround.JammedPlayerExcepti
 import io.github.temporalrift.game.action.domain.actionround.RoundNotFoundException;
 import io.github.temporalrift.game.action.domain.playerstate.PlayerState;
 import io.github.temporalrift.game.action.domain.playerstate.PlayerStateNotFoundException;
+import io.github.temporalrift.game.action.domain.port.out.ActionEventPublisher;
 import io.github.temporalrift.game.action.domain.port.out.ActionRoundRepository;
 import io.github.temporalrift.game.action.domain.port.out.PlayerStateRepository;
 
@@ -50,6 +52,9 @@ class PlaySpecialActionCommandHandlerTest {
     PlayerStateRepository playerStateRepository;
 
     @Mock
+    ActionEventPublisher actionEventPublisher;
+
+    @Mock
     ActionRound round;
 
     @Mock
@@ -59,7 +64,8 @@ class PlaySpecialActionCommandHandlerTest {
     PlaySpecialActionCommandHandler handler;
 
     @Test
-    @DisplayName("handle — happy path — saves round, does not save player state, returns result")
+    @DisplayName(
+            "handle — happy path — saves round, publishes special action, does not save player state, returns result")
     void handleHappyPath() {
         // given
         var command = new PlaySpecialActionUseCase.Command(
@@ -78,6 +84,9 @@ class PlaySpecialActionCommandHandlerTest {
         given(playerState.isJammed()).willReturn(false);
         given(round.submitSpecial(any(), any(), any(), any(), any(), any(), anyBoolean()))
                 .willReturn(false);
+        given(round.id()).willReturn(UUID.randomUUID());
+        given(round.gameId()).willReturn(GAME_ID);
+        given(round.pullEvents()).willReturn(List.of(new Object()));
 
         // when
         var result = handler.handle(command);
@@ -85,6 +94,8 @@ class PlaySpecialActionCommandHandlerTest {
         // then
         then(actionRoundRepository).should().save(round);
         then(playerStateRepository).should(never()).save(any());
+        then(actionEventPublisher).should().publish(any());
+        then(actionEventPublisher).should().publishInternally(any());
         assertThat(result.gameId()).isEqualTo(GAME_ID);
         assertThat(result.eraNumber()).isEqualTo(ERA);
         assertThat(result.roundNumber()).isEqualTo(ROUND);
@@ -93,8 +104,8 @@ class PlaySpecialActionCommandHandlerTest {
     }
 
     @Test
-    @DisplayName("handle — all players submitted — calls close on round and returns roundClosed true")
-    void handleAllSubmittedClosesRound() {
+    @DisplayName("handle — all players submitted — does not close directly and returns roundClosed true")
+    void handleAllSubmittedDoesNotCloseDirectly() {
         // given
         var command = new PlaySpecialActionUseCase.Command(
                 GAME_ID, ERA, ROUND, PLAYER_ID, Faction.PROPHETS, SpecialAction.SEAL, null, null, null);
@@ -104,12 +115,15 @@ class PlaySpecialActionCommandHandlerTest {
         given(playerState.isJammed()).willReturn(false);
         given(round.submitSpecial(any(), any(), any(), any(), any(), any(), anyBoolean()))
                 .willReturn(true);
+        given(round.id()).willReturn(UUID.randomUUID());
+        given(round.gameId()).willReturn(GAME_ID);
+        given(round.pullEvents()).willReturn(List.of(new Object()));
 
         // when
         var result = handler.handle(command);
 
         // then
-        then(round).should().close("ALL_SUBMITTED");
+        then(round).should(never()).close(any());
         assertThat(result.roundClosed()).isTrue();
     }
 
@@ -206,6 +220,9 @@ class PlaySpecialActionCommandHandlerTest {
         given(playerState.isJammed()).willReturn(false);
         given(round.submitSpecial(any(), any(), any(), any(), any(), any(), anyBoolean()))
                 .willReturn(false);
+        given(round.id()).willReturn(UUID.randomUUID());
+        given(round.gameId()).willReturn(GAME_ID);
+        given(round.pullEvents()).willReturn(List.of(new Object()));
 
         // when
         handler.handle(command);

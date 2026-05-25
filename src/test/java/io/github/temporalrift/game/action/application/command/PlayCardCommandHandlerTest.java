@@ -9,6 +9,7 @@ import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.BDDMockito.willThrow;
+import static org.mockito.Mockito.never;
 
 import java.util.List;
 import java.util.Optional;
@@ -31,6 +32,7 @@ import io.github.temporalrift.game.action.domain.actionround.DuplicateSubmission
 import io.github.temporalrift.game.action.domain.actionround.RoundNotFoundException;
 import io.github.temporalrift.game.action.domain.playerstate.PlayerState;
 import io.github.temporalrift.game.action.domain.playerstate.PlayerStateNotFoundException;
+import io.github.temporalrift.game.action.domain.port.out.ActionEventPublisher;
 import io.github.temporalrift.game.action.domain.port.out.ActionRoundRepository;
 import io.github.temporalrift.game.action.domain.port.out.PlayerStateRepository;
 
@@ -51,6 +53,9 @@ class PlayCardCommandHandlerTest {
     PlayerStateRepository playerStateRepository;
 
     @Mock
+    ActionEventPublisher actionEventPublisher;
+
+    @Mock
     ActionRound round;
 
     @Mock
@@ -60,7 +65,7 @@ class PlayCardCommandHandlerTest {
     PlayCardCommandHandler handler;
 
     @Test
-    @DisplayName("handle — happy path — saves round and player state, returns result")
+    @DisplayName("handle — happy path — saves round and player state, publishes card played, returns result")
     void handleHappyPath() {
         // given
         var cardInstanceId = UUID.randomUUID();
@@ -72,6 +77,9 @@ class PlayCardCommandHandlerTest {
         given(playerState.hand()).willReturn(List.of(new PlayerState.CardInstance(cardInstanceId, CardType.PUSH)));
         given(round.submitCard(eq(PLAYER_ID), eq(cardInstanceId), eq(CardType.PUSH), any(), any(), anyList()))
                 .willReturn(false);
+        given(round.id()).willReturn(UUID.randomUUID());
+        given(round.gameId()).willReturn(GAME_ID);
+        given(round.pullEvents()).willReturn(List.of(new Object()));
 
         // when
         var result = handler.handle(command);
@@ -79,6 +87,8 @@ class PlayCardCommandHandlerTest {
         // then
         then(actionRoundRepository).should().save(round);
         then(playerStateRepository).should().save(playerState);
+        then(actionEventPublisher).should().publish(any());
+        then(actionEventPublisher).should().publishInternally(any());
         assertThat(result.gameId()).isEqualTo(GAME_ID);
         assertThat(result.eraNumber()).isEqualTo(ERA);
         assertThat(result.roundNumber()).isEqualTo(ROUND);
@@ -87,8 +97,8 @@ class PlayCardCommandHandlerTest {
     }
 
     @Test
-    @DisplayName("handle — all players submitted — calls close on round and returns roundClosed true")
-    void handleAllSubmittedClosesRound() {
+    @DisplayName("handle — all players submitted — does not close directly and returns roundClosed true")
+    void handleAllSubmittedDoesNotCloseDirectly() {
         // given
         var cardInstanceId = UUID.randomUUID();
         var command =
@@ -98,12 +108,15 @@ class PlayCardCommandHandlerTest {
         given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(playerState));
         given(playerState.hand()).willReturn(List.of(new PlayerState.CardInstance(cardInstanceId, CardType.PUSH)));
         given(round.submitCard(any(), any(), any(), any(), any(), anyList())).willReturn(true);
+        given(round.id()).willReturn(UUID.randomUUID());
+        given(round.gameId()).willReturn(GAME_ID);
+        given(round.pullEvents()).willReturn(List.of(new Object()));
 
         // when
         var result = handler.handle(command);
 
         // then
-        then(round).should().close("ALL_SUBMITTED");
+        then(round).should(never()).close(any());
         assertThat(result.roundClosed()).isTrue();
     }
 
@@ -199,6 +212,9 @@ class PlayCardCommandHandlerTest {
         given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(playerState));
         given(playerState.hand()).willReturn(List.of(c1, c2));
         given(round.submitCard(any(), any(), any(), any(), any(), anyList())).willReturn(false);
+        given(round.id()).willReturn(UUID.randomUUID());
+        given(round.gameId()).willReturn(GAME_ID);
+        given(round.pullEvents()).willReturn(List.of(new Object()));
         var command = new PlayCardUseCase.Command(
                 GAME_ID, ERA, ROUND, PLAYER_ID, c1.cardInstanceId(), CardType.PUSH, null, null);
 

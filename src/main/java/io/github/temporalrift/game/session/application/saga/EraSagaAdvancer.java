@@ -24,7 +24,7 @@ import io.github.temporalrift.events.session.TimelineStabilized;
 import io.github.temporalrift.events.session.WinConditionMet;
 import io.github.temporalrift.events.shared.Faction;
 import io.github.temporalrift.events.timeline.ResolutionStarted;
-import io.github.temporalrift.game.action.application.saga.StartActionRoundApplicationEvent;
+import io.github.temporalrift.game.action.StartActionRoundRequested;
 import io.github.temporalrift.game.session.domain.game.Game;
 import io.github.temporalrift.game.session.domain.game.GameNotFoundException;
 import io.github.temporalrift.game.session.domain.game.GameStatus;
@@ -113,8 +113,8 @@ class EraSagaAdvancer {
             var nextRound = arc.roundNumber() + 1;
             var nextStatus = arc.roundNumber() == 1 ? EraSagaStatus.WAITING_ROUND_2 : EraSagaStatus.WAITING_ROUND_3;
             eraSagaRepository.save(state.withStatus(nextStatus));
-            applicationEventPublisher.publishEvent(new StartActionRoundApplicationEvent(
-                    state.gameId(), state.eraNumber(), nextRound, state.playerIds()));
+            applicationEventPublisher.publishEvent(
+                    new StartActionRoundRequested(state.gameId(), state.eraNumber(), nextRound, state.playerIds()));
         }
     }
 

@@ -1,12 +1,13 @@
 package io.github.temporalrift.game.session.application.saga;
 
+import java.time.Instant;
 import java.util.UUID;
 
 interface PlayerReconnectSaga {
 
-    void start(UUID gameId, UUID playerId);
+    StartResult start(UUID gameId, UUID playerId);
 
     void handleReconnect(UUID gameId, UUID playerId);
 
-    void handleTimerExpiry(UUID sagaId);
+    record StartResult(UUID sagaId, Instant graceExpiresAt) {}
 }

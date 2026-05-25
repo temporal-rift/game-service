@@ -11,16 +11,19 @@ import io.github.temporalrift.game.session.domain.port.out.LobbyRepository;
 class PlayerReconnectSagaEventListener {
 
     private final PlayerReconnectSaga saga;
+    private final PlayerReconnectTimerScheduler timerScheduler;
     private final PlayerReconnectSagaStateManager stateManager;
     private final GameRepository gameRepository;
     private final LobbyRepository lobbyRepository;
 
     PlayerReconnectSagaEventListener(
             PlayerReconnectSaga saga,
+            PlayerReconnectTimerScheduler timerScheduler,
             PlayerReconnectSagaStateManager stateManager,
             GameRepository gameRepository,
             LobbyRepository lobbyRepository) {
         this.saga = saga;
+        this.timerScheduler = timerScheduler;
         this.stateManager = stateManager;
         this.gameRepository = gameRepository;
         this.lobbyRepository = lobbyRepository;
@@ -33,7 +36,7 @@ class PlayerReconnectSagaEventListener {
                 .flatMap(game -> lobbyRepository.findById(game.lobbyId()))
                 .filter(lobby -> lobby.status() == LobbyStatus.STARTED)
                 .filter(_ -> !stateManager.hasActiveGracePeriod(event.gameId(), event.playerId()))
-                .ifPresent(_ -> saga.start(event.gameId(), event.playerId()));
+                .ifPresent(_ -> timerScheduler.scheduleAfterCommit(saga.start(event.gameId(), event.playerId())));
     }
 
     @ApplicationModuleListener

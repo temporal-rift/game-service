@@ -4,9 +4,12 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import io.github.temporalrift.events.envelope.EventEnvelope;
 import io.github.temporalrift.game.action.application.port.in.PlaySpecialActionUseCase;
+import io.github.temporalrift.game.action.domain.actionround.ActionRound;
 import io.github.temporalrift.game.action.domain.actionround.RoundNotFoundException;
 import io.github.temporalrift.game.action.domain.playerstate.PlayerStateNotFoundException;
+import io.github.temporalrift.game.action.domain.port.out.ActionEventPublisher;
 import io.github.temporalrift.game.action.domain.port.out.ActionRoundRepository;
 import io.github.temporalrift.game.action.domain.port.out.PlayerStateRepository;
 
@@ -18,10 +21,15 @@ class PlaySpecialActionCommandHandler implements PlaySpecialActionUseCase {
 
     private final PlayerStateRepository playerStateRepository;
 
+    private final ActionEventPublisher actionEventPublisher;
+
     PlaySpecialActionCommandHandler(
-            ActionRoundRepository actionRoundRepository, PlayerStateRepository playerStateRepository) {
+            ActionRoundRepository actionRoundRepository,
+            PlayerStateRepository playerStateRepository,
+            ActionEventPublisher actionEventPublisher) {
         this.actionRoundRepository = actionRoundRepository;
         this.playerStateRepository = playerStateRepository;
+        this.actionEventPublisher = actionEventPublisher;
     }
 
     @Override
@@ -42,12 +50,20 @@ class PlaySpecialActionCommandHandler implements PlaySpecialActionUseCase {
                 command.targetOutcomeId(),
                 command.targetPlayerId(),
                 playerState.isJammed());
-        if (allSubmitted) {
-            round.close("ALL_SUBMITTED");
-        }
         actionRoundRepository.save(round);
+        publishRoundEvents(round);
 
         return new Result(
                 command.gameId(), command.eraNumber(), command.roundNumber(), command.playerId(), allSubmitted);
+    }
+
+    private void publishRoundEvents(ActionRound round) {
+        // Special submissions follow the same dual-publish rule as card submissions so the saga can
+        // react internally without bypassing the external event contract.
+        for (var payload : round.pullEvents()) {
+            actionEventPublisher.publish(
+                    EventEnvelope.create(round.id(), ActionRound.AGGREGATE_TYPE, round.gameId(), 1, payload));
+            actionEventPublisher.publishInternally(payload);
+        }
     }
 }

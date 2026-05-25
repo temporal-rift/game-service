@@ -4,18 +4,12 @@ import static org.springframework.transaction.annotation.Propagation.REQUIRES_NE
 
 import java.time.Instant;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ScheduledFuture;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.context.annotation.Lazy;
-import org.springframework.scheduling.TaskScheduler;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import io.github.temporalrift.events.envelope.EventEnvelope;
 import io.github.temporalrift.events.session.GameEndedAbnormally;
@@ -42,10 +36,7 @@ class PlayerReconnectSagaImpl implements PlayerReconnectSaga {
     private final ApplicationEventPublisher applicationEventPublisher;
     private final PlayerReconnectSagaStateManager stateManager;
     private final GameRulesPort gameRules;
-    private final TaskScheduler taskScheduler;
-    private final PlayerReconnectSaga self;
-
-    private final ConcurrentHashMap<UUID, ScheduledFuture<?>> scheduledTimers = new ConcurrentHashMap<>();
+    private final PlayerReconnectTimerRegistry timerRegistry;
 
     PlayerReconnectSagaImpl(
             LobbyRepository lobbyRepository,
@@ -54,21 +45,19 @@ class PlayerReconnectSagaImpl implements PlayerReconnectSaga {
             ApplicationEventPublisher applicationEventPublisher,
             PlayerReconnectSagaStateManager stateManager,
             GameRulesPort gameRules,
-            TaskScheduler taskScheduler,
-            @Lazy PlayerReconnectSaga self) {
+            PlayerReconnectTimerRegistry timerRegistry) {
         this.lobbyRepository = lobbyRepository;
         this.gameRepository = gameRepository;
         this.eventPublisher = eventPublisher;
         this.applicationEventPublisher = applicationEventPublisher;
         this.stateManager = stateManager;
         this.gameRules = gameRules;
-        this.taskScheduler = taskScheduler;
-        this.self = self;
+        this.timerRegistry = timerRegistry;
     }
 
     @Override
     @Transactional(propagation = REQUIRES_NEW)
-    public void start(UUID gameId, UUID playerId) {
+    public StartResult start(UUID gameId, UUID playerId) {
         var game = gameRepository.findById(gameId).orElseThrow(() -> new GameNotFoundException(gameId));
         var lobby =
                 lobbyRepository.findById(game.lobbyId()).orElseThrow(() -> new LobbyNotFoundException(game.lobbyId()));
@@ -83,7 +72,7 @@ class PlayerReconnectSagaImpl implements PlayerReconnectSaga {
         eventPublisher.publish(EventEnvelope.create(
                 lobby.id(), Lobby.AGGREGATE_TYPE, gameId, 1, new PlayerDisconnected(gameId, playerId)));
 
-        scheduleAfterCommit(sagaId, graceExpiresAt);
+        return new StartResult(sagaId, graceExpiresAt);
     }
 
     @Override
@@ -100,11 +89,7 @@ class PlayerReconnectSagaImpl implements PlayerReconnectSaga {
 
         var saga = sagaOpt.get();
         stateManager.reconnect(saga.sagaId());
-
-        var future = scheduledTimers.remove(saga.sagaId());
-        if (future != null) {
-            future.cancel(false);
-        }
+        timerRegistry.cancel(saga.sagaId());
 
         var game = gameRepository.findById(gameId).orElseThrow(() -> new GameNotFoundException(gameId));
         var lobby =
@@ -113,9 +98,7 @@ class PlayerReconnectSagaImpl implements PlayerReconnectSaga {
         lobbyRepository.save(lobby);
     }
 
-    @Override
-    @Transactional(propagation = REQUIRES_NEW)
-    public void handleTimerExpiry(UUID sagaId) {
+    void handleTimerExpiry(UUID sagaId) {
         var sagaOpt =
                 stateManager.findBySagaId(sagaId).filter(s -> s.status() == PlayerReconnectSagaStatus.GRACE_PERIOD);
 
@@ -126,7 +109,7 @@ class PlayerReconnectSagaImpl implements PlayerReconnectSaga {
 
         var saga = sagaOpt.get();
         stateManager.abandon(sagaId);
-        scheduledTimers.remove(sagaId);
+        timerRegistry.remove(sagaId);
 
         eventPublisher.publish(EventEnvelope.create(
                 saga.gameId(),
@@ -148,26 +131,6 @@ class PlayerReconnectSagaImpl implements PlayerReconnectSaga {
             var payload = new GameEndedAbnormally(saga.gameId(), "all-players-abandoned");
             eventPublisher.publish(EventEnvelope.create(saga.gameId(), Game.AGGREGATE_TYPE, saga.gameId(), 1, payload));
             applicationEventPublisher.publishEvent(payload);
-        }
-    }
-
-    void rescheduleTimer(UUID sagaId, Instant graceExpiresAt) {
-        var future = taskScheduler.schedule(() -> self.handleTimerExpiry(sagaId), graceExpiresAt);
-        if (future != null) {
-            scheduledTimers.put(sagaId, future);
-        }
-    }
-
-    private void scheduleAfterCommit(UUID sagaId, Instant graceExpiresAt) {
-        if (TransactionSynchronizationManager.isSynchronizationActive()) {
-            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-                @Override
-                public void afterCommit() {
-                    rescheduleTimer(sagaId, graceExpiresAt);
-                }
-            });
-        } else {
-            rescheduleTimer(sagaId, graceExpiresAt);
         }
     }
 }

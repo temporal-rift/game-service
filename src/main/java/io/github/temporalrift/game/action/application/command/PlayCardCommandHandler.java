@@ -4,10 +4,13 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import io.github.temporalrift.events.envelope.EventEnvelope;
 import io.github.temporalrift.game.action.application.port.in.PlayCardUseCase;
+import io.github.temporalrift.game.action.domain.actionround.ActionRound;
 import io.github.temporalrift.game.action.domain.actionround.RoundNotFoundException;
 import io.github.temporalrift.game.action.domain.playerstate.PlayerState;
 import io.github.temporalrift.game.action.domain.playerstate.PlayerStateNotFoundException;
+import io.github.temporalrift.game.action.domain.port.out.ActionEventPublisher;
 import io.github.temporalrift.game.action.domain.port.out.ActionRoundRepository;
 import io.github.temporalrift.game.action.domain.port.out.PlayerStateRepository;
 
@@ -19,9 +22,15 @@ class PlayCardCommandHandler implements PlayCardUseCase {
 
     private final PlayerStateRepository playerStateRepository;
 
-    PlayCardCommandHandler(ActionRoundRepository actionRoundRepository, PlayerStateRepository playerStateRepository) {
+    private final ActionEventPublisher actionEventPublisher;
+
+    PlayCardCommandHandler(
+            ActionRoundRepository actionRoundRepository,
+            PlayerStateRepository playerStateRepository,
+            ActionEventPublisher actionEventPublisher) {
         this.actionRoundRepository = actionRoundRepository;
         this.playerStateRepository = playerStateRepository;
+        this.actionEventPublisher = actionEventPublisher;
     }
 
     @Override
@@ -45,13 +54,21 @@ class PlayCardCommandHandler implements PlayCardUseCase {
                 command.targetOutcomeId(),
                 playerHand);
         playerState.removeCard(command.cardInstanceId());
-        if (allSubmitted) {
-            round.close("ALL_SUBMITTED");
-        }
         actionRoundRepository.save(round);
         playerStateRepository.save(playerState);
+        publishRoundEvents(round);
 
         return new Result(
                 command.gameId(), command.eraNumber(), command.roundNumber(), command.playerId(), allSubmitted);
+    }
+
+    private void publishRoundEvents(ActionRound round) {
+        // Card submissions need both publication paths: the outbox envelope for cross-service delivery
+        // and the typed payload for the in-process action-round saga listener.
+        for (var payload : round.pullEvents()) {
+            actionEventPublisher.publish(
+                    EventEnvelope.create(round.id(), ActionRound.AGGREGATE_TYPE, round.gameId(), 1, payload));
+            actionEventPublisher.publishInternally(payload);
+        }
     }
 }
