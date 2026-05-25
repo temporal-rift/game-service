@@ -14,11 +14,16 @@ class PlayerReconnectSagaRecovery implements ApplicationListener<ApplicationStar
     private static final Logger log = LoggerFactory.getLogger(PlayerReconnectSagaRecovery.class);
 
     private final PlayerReconnectSagaStateManager stateManager;
-    private final PlayerReconnectSagaImpl saga;
+    private final PlayerReconnectTimerScheduler timerScheduler;
+    private final PlayerReconnectTimeoutProcessor timeoutProcessor;
 
-    PlayerReconnectSagaRecovery(PlayerReconnectSagaStateManager stateManager, PlayerReconnectSagaImpl saga) {
+    PlayerReconnectSagaRecovery(
+            PlayerReconnectSagaStateManager stateManager,
+            PlayerReconnectTimerScheduler timerScheduler,
+            PlayerReconnectTimeoutProcessor timeoutProcessor) {
         this.stateManager = stateManager;
-        this.saga = saga;
+        this.timerScheduler = timerScheduler;
+        this.timeoutProcessor = timeoutProcessor;
     }
 
     @Override
@@ -35,10 +40,10 @@ class PlayerReconnectSagaRecovery implements ApplicationListener<ApplicationStar
         for (var state : inFlight) {
             if (state.graceExpiresAt().isBefore(now)) {
                 log.info("Grace period already expired for saga {} — processing immediately", state.sagaId());
-                saga.handleTimerExpiry(state.sagaId());
+                timeoutProcessor.handleTimerExpiry(state.sagaId());
             } else {
                 log.info("Rescheduling timer for saga {} expiring at {}", state.sagaId(), state.graceExpiresAt());
-                saga.rescheduleTimer(state.sagaId(), state.graceExpiresAt());
+                timerScheduler.reschedule(state.sagaId(), state.graceExpiresAt());
             }
         }
     }

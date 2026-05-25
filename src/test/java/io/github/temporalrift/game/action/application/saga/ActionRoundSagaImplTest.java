@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -23,10 +24,9 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.scheduling.TaskScheduler;
 
 import io.github.temporalrift.events.action.ActionRoundClosed;
+import io.github.temporalrift.events.action.ActionRoundStarted;
 import io.github.temporalrift.events.action.ActionRoundTimerExpired;
 import io.github.temporalrift.events.action.RoundSummaryPublished;
 import io.github.temporalrift.events.action.RoundSummaryPublished.ActionSummary;
@@ -63,9 +63,6 @@ class ActionRoundSagaImplTest {
     ActionEventPublisher actionEventPublisher;
 
     @Mock
-    ApplicationEventPublisher applicationEventPublisher;
-
-    @Mock
     ActionRoundSagaStateManager stateManager;
 
     @Mock
@@ -76,9 +73,6 @@ class ActionRoundSagaImplTest {
 
     @Mock
     BandCalculator bandCalculator;
-
-    @Mock
-    TaskScheduler taskScheduler;
 
     @InjectMocks
     ActionRoundSagaImpl saga;
@@ -92,13 +86,13 @@ class ActionRoundSagaImplTest {
     class StartTests {
 
         @Test
-        @DisplayName("creates saga state with WAITING status and schedules timer after commit")
-        void start_createsWaitingStateAndSchedulesTimer() {
+        @DisplayName("creates saga state with WAITING status, saves round, and publishes ActionRoundStarted")
+        void start_createsWaitingStateAndReturnsTimerMetadata() {
             // given
             given(gameRules.actionRoundTimerSeconds(PLAYER_IDS.size())).willReturn(TIMER_SECONDS);
 
             // when
-            saga.start(GAME_ID, ERA_NUMBER, ROUND_NUMBER, PLAYER_IDS);
+            var result = saga.start(GAME_ID, ERA_NUMBER, ROUND_NUMBER, PLAYER_IDS);
 
             // then
             var captor = ArgumentCaptor.<UUID>captor();
@@ -111,8 +105,11 @@ class ActionRoundSagaImplTest {
                             eq(ROUND_NUMBER),
                             eq(PLAYER_IDS),
                             any(Instant.class));
-            var sagaId = captor.getValue();
-            assertThat(sagaId).isNotNull();
+            then(actionRoundRepository).should(times(1)).save(any(ActionRound.class));
+            then(actionEventPublisher).should(times(1)).publish(envelopeWithPayload(ActionRoundStarted.class));
+            then(actionEventPublisher).should(times(1)).publishInternally(any(ActionRoundStarted.class));
+            assertThat(result.sagaId()).isEqualTo(captor.getValue());
+            assertThat(result.timerExpiresAt()).isNotNull();
         }
 
         @Test
@@ -288,7 +285,7 @@ class ActionRoundSagaImplTest {
             then(stateManager).should(times(1)).markClosing(GAME_ID, ERA_NUMBER, ROUND_NUMBER);
             then(stateManager).should(times(1)).complete(GAME_ID, ERA_NUMBER, ROUND_NUMBER);
             then(actionEventPublisher).should(never()).publish(any());
-            then(applicationEventPublisher).should(never()).publishEvent(any());
+            then(actionEventPublisher).should(never()).publishInternally(any());
         }
 
         @Test
@@ -318,7 +315,7 @@ class ActionRoundSagaImplTest {
             // then
             then(actionEventPublisher).should(times(1)).publish(envelopeWithPayload(ActionRoundTimerExpired.class));
             then(actionRoundRepository).should(times(1)).save(any(ActionRound.class));
-            then(applicationEventPublisher).should(times(1)).publishEvent(any(ActionRoundClosed.class));
+            then(actionEventPublisher).should(times(1)).publishInternally(any(ActionRoundClosed.class));
             then(actionEventPublisher).should(times(1)).publish(envelopeWithPayload(RoundSummaryPublished.class));
             then(stateManager).should(times(1)).complete(GAME_ID, ERA_NUMBER, ROUND_NUMBER);
         }
@@ -349,7 +346,7 @@ class ActionRoundSagaImplTest {
             // then
             then(actionEventPublisher).should(never()).publish(envelopeWithPayload(ActionRoundTimerExpired.class));
             then(actionRoundRepository).should(times(1)).save(any(ActionRound.class));
-            then(applicationEventPublisher).should(times(1)).publishEvent(any(ActionRoundClosed.class));
+            then(actionEventPublisher).should(times(1)).publishInternally(any(ActionRoundClosed.class));
             then(actionEventPublisher).should(times(1)).publish(envelopeWithPayload(RoundSummaryPublished.class));
         }
 
@@ -442,7 +439,7 @@ class ActionRoundSagaImplTest {
 
             // then
             var captor = ArgumentCaptor.<EventEnvelope>captor();
-            then(actionEventPublisher).should(times(1)).publish(captor.capture());
+            then(actionEventPublisher).should(atLeastOnce()).publish(captor.capture());
             var summaryEnvelope = captor.getAllValues().stream()
                     .filter(e -> e.payload() instanceof RoundSummaryPublished)
                     .findFirst()
@@ -495,7 +492,7 @@ class ActionRoundSagaImplTest {
 
             // then
             var captor = ArgumentCaptor.<EventEnvelope>captor();
-            then(actionEventPublisher).should(times(1)).publish(captor.capture());
+            then(actionEventPublisher).should(atLeastOnce()).publish(captor.capture());
             var summaryEnvelope = captor.getAllValues().stream()
                     .filter(e -> e.payload() instanceof RoundSummaryPublished)
                     .findFirst()
@@ -542,7 +539,7 @@ class ActionRoundSagaImplTest {
 
             // then
             var captor = ArgumentCaptor.<EventEnvelope>captor();
-            then(actionEventPublisher).should(times(2)).publish(captor.capture());
+            then(actionEventPublisher).should(atLeastOnce()).publish(captor.capture());
             var summaryEnvelope = captor.getAllValues().stream()
                     .filter(e -> e.payload() instanceof RoundSummaryPublished)
                     .findFirst()
@@ -589,7 +586,7 @@ class ActionRoundSagaImplTest {
             // then — verify events were published once
             then(actionEventPublisher).should(times(1)).publish(envelopeWithPayload(ActionRoundTimerExpired.class));
             then(actionEventPublisher).should(times(1)).publish(envelopeWithPayload(RoundSummaryPublished.class));
-            then(applicationEventPublisher).should(times(1)).publishEvent(any(ActionRoundClosed.class));
+            then(actionEventPublisher).should(times(1)).publishInternally(any(ActionRoundClosed.class));
             then(stateManager).should(times(1)).complete(GAME_ID, ERA_NUMBER, ROUND_NUMBER);
         }
 
@@ -647,10 +644,10 @@ class ActionRoundSagaImplTest {
             saga.handleTimerExpiry(sagaId);
 
             // then — verify order using inOrder
-            var ordered = inOrder(actionEventPublisher, actionRoundRepository, applicationEventPublisher, stateManager);
+            var ordered = inOrder(actionEventPublisher, actionRoundRepository, stateManager);
             then(actionEventPublisher).should(ordered).publish(envelopeWithPayload(ActionRoundTimerExpired.class));
             then(actionRoundRepository).should(ordered).save(any(ActionRound.class));
-            then(applicationEventPublisher).should(ordered).publishEvent(any(ActionRoundClosed.class));
+            then(actionEventPublisher).should(ordered).publishInternally(any(ActionRoundClosed.class));
             then(actionEventPublisher).should(ordered).publish(envelopeWithPayload(RoundSummaryPublished.class));
             then(stateManager).should(ordered).complete(GAME_ID, ERA_NUMBER, ROUND_NUMBER);
         }

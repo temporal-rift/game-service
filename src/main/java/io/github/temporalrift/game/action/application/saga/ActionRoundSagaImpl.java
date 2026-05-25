@@ -5,24 +5,14 @@ import static org.springframework.transaction.annotation.Propagation.REQUIRES_NE
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ScheduledFuture;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
-import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.context.annotation.Lazy;
-import org.springframework.scheduling.TaskScheduler;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 
-import io.github.temporalrift.events.action.ActionRoundClosed;
 import io.github.temporalrift.events.action.ActionRoundTimerExpired;
 import io.github.temporalrift.events.action.RoundSummaryPublished;
 import io.github.temporalrift.events.action.RoundSummaryPublished.ActionSummary;
@@ -46,46 +36,38 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
 
     private final ActionRoundRepository actionRoundRepository;
     private final ActionEventPublisher actionEventPublisher;
-    private final ApplicationEventPublisher applicationEventPublisher;
     private final ActionRoundSagaStateManager stateManager;
     private final GameRulesPort gameRules;
     private final FutureEventDefinitionPort futureEventDefinitionPort;
     private final BandCalculator bandCalculator;
-    private final TaskScheduler taskScheduler;
-    private final Map<UUID, ScheduledFuture<?>> scheduledTimers;
-    private final ActionRoundSaga self;
 
     ActionRoundSagaImpl(
             ActionRoundRepository actionRoundRepository,
             ActionEventPublisher actionEventPublisher,
-            ApplicationEventPublisher applicationEventPublisher,
             ActionRoundSagaStateManager stateManager,
             GameRulesPort gameRules,
             FutureEventDefinitionPort futureEventDefinitionPort,
-            BandCalculator bandCalculator,
-            @Qualifier("actionTaskScheduler") TaskScheduler taskScheduler,
-            @Lazy ActionRoundSaga self) {
+            BandCalculator bandCalculator) {
         this.actionRoundRepository = actionRoundRepository;
         this.actionEventPublisher = actionEventPublisher;
-        this.applicationEventPublisher = applicationEventPublisher;
         this.stateManager = stateManager;
         this.gameRules = gameRules;
         this.futureEventDefinitionPort = futureEventDefinitionPort;
         this.bandCalculator = bandCalculator;
-        this.taskScheduler = taskScheduler;
-        this.scheduledTimers = new ConcurrentHashMap<>();
-        this.self = self;
     }
 
     @Override
     @Transactional(propagation = REQUIRES_NEW)
-    public void start(UUID gameId, int eraNumber, int roundNumber, List<UUID> playerIds) {
+    public StartResult start(UUID gameId, int eraNumber, int roundNumber, List<UUID> playerIds) {
         var sagaId = UUID.randomUUID();
         var timerSeconds = gameRules.actionRoundTimerSeconds(playerIds.size());
         var timerExpiresAt = Instant.now().plusSeconds(timerSeconds);
 
         stateManager.initWaiting(sagaId, gameId, eraNumber, roundNumber, playerIds, timerExpiresAt);
-        scheduleAfterCommit(sagaId, timerExpiresAt);
+        var round = new ActionRound(UUID.randomUUID(), gameId, eraNumber, roundNumber, playerIds, timerSeconds);
+        actionRoundRepository.save(round);
+        publishRoundDomainEvents(round);
+        return new StartResult(sagaId, timerExpiresAt);
     }
 
     @Override
@@ -98,9 +80,7 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
         tryClose(gameId, eraNumber, roundNumber, "ALL_SUBMITTED");
     }
 
-    @Override
-    @Transactional(propagation = REQUIRES_NEW)
-    public void handleTimerExpiry(UUID sagaId) {
+    void handleTimerExpiry(UUID sagaId) {
         var stateOpt = stateManager.findBySagaId(sagaId);
         if (stateOpt.isEmpty()) {
             log.debug("handleTimerExpiry: saga {} not found (stale or duplicate fire)", sagaId);
@@ -111,11 +91,12 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
             log.debug("handleTimerExpiry: saga {} already COMPLETED", sagaId);
             return;
         }
-        scheduledTimers.remove(sagaId);
         tryClose(state.gameId(), state.eraNumber(), state.roundNumber(), "TIMER_EXPIRED");
     }
 
     private void tryClose(UUID gameId, int eraNumber, int roundNumber, String closeReason) {
+        // Marking the saga as CLOSING before taking the round lock gives recovery code a durable
+        // breadcrumb. If the process dies mid-close, startup recovery can resume from that state.
         stateManager.markClosing(gameId, eraNumber, roundNumber);
 
         var roundId = actionRoundRepository
@@ -132,6 +113,8 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
 
         switch (outcome) {
             case CloseOutcome.AlreadyClosing ignored -> {
+                // Another path won the race and already moved the round out of OPEN. The saga still
+                // needs to transition to COMPLETED so recovery does not retry forever.
                 log.debug("tryClose: ActionRound {} already closing", round.id());
                 stateManager.complete(gameId, eraNumber, roundNumber);
             }
@@ -146,14 +129,7 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
                 }
 
                 actionRoundRepository.save(round);
-
-                var closedPayload = new ActionRoundClosed(
-                        gameId,
-                        eraNumber,
-                        roundNumber,
-                        closeReason,
-                        round.submittedActions().size());
-                applicationEventPublisher.publishEvent(closedPayload);
+                publishRoundDomainEvents(round);
 
                 publishRoundSummary(round, gameId, eraNumber, roundNumber, skippedPlayerIds);
 
@@ -166,8 +142,21 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
         }
     }
 
+    private void publishRoundDomainEvents(ActionRound round) {
+        // The aggregate is the single source of truth for CardPlayed, SpecialActionPlayed,
+        // ActionRoundStarted, PlayerSkipped, and ActionRoundClosed. Re-publishing those payloads from
+        // application code would duplicate logic and eventually drift from aggregate behavior.
+        for (var payload : round.pullEvents()) {
+            actionEventPublisher.publish(
+                    EventEnvelope.create(round.id(), ActionRound.AGGREGATE_TYPE, round.gameId(), 1, payload));
+            actionEventPublisher.publishInternally(payload);
+        }
+    }
+
     private void publishRoundSummary(
             ActionRound round, UUID gameId, int eraNumber, int roundNumber, List<UUID> skippedPlayerIds) {
+        // Summary publication is intentionally separate from aggregate domain events because it is a
+        // projection-style public view of the round, not part of the aggregate's invariant changes.
         var summaries = new ArrayList<ActionSummary>();
         for (var action : round.submittedActions()) {
             switch (action) {
@@ -203,25 +192,5 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
                 gameId,
                 1,
                 new BandedProbabilityPublished(gameId, eraNumber, bandStates)));
-    }
-
-    public void rescheduleTimer(UUID sagaId, Instant timerExpiresAt) {
-        var future = taskScheduler.schedule(() -> self.handleTimerExpiry(sagaId), timerExpiresAt);
-        if (future != null) {
-            scheduledTimers.put(sagaId, future);
-        }
-    }
-
-    private void scheduleAfterCommit(UUID sagaId, Instant timerExpiresAt) {
-        if (TransactionSynchronizationManager.isSynchronizationActive()) {
-            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-                @Override
-                public void afterCommit() {
-                    rescheduleTimer(sagaId, timerExpiresAt);
-                }
-            });
-        } else {
-            rescheduleTimer(sagaId, timerExpiresAt);
-        }
     }
 }

@@ -11,7 +11,6 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.concurrent.ScheduledFuture;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -20,7 +19,6 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.scheduling.TaskScheduler;
 
 import io.github.temporalrift.events.envelope.EventEnvelope;
 import io.github.temporalrift.events.session.GameEndedAbnormally;
@@ -66,11 +64,7 @@ class PlayerReconnectSagaImplTest {
     GameRulesPort gameRules;
 
     @Mock
-    TaskScheduler taskScheduler;
-
-    @Mock
-    @SuppressWarnings("rawtypes")
-    ScheduledFuture scheduledFuture;
+    PlayerReconnectTimerRegistry timerRegistry;
 
     @InjectMocks
     PlayerReconnectSagaImpl saga;
@@ -108,16 +102,17 @@ class PlayerReconnectSagaImplTest {
                 Instant.now().plusSeconds(GRACE_SECONDS));
         given(stateManager.initGracePeriod(any(), eq(GAME_ID), eq(PLAYER_ID), any()))
                 .willReturn(state);
-        given(taskScheduler.schedule(any(Runnable.class), any(Instant.class))).willReturn(scheduledFuture);
 
         // when
-        saga.start(GAME_ID, PLAYER_ID);
+        var result = saga.start(GAME_ID, PLAYER_ID);
 
         // then
         then(stateManager).should().initGracePeriod(any(), eq(GAME_ID), eq(PLAYER_ID), any());
         then(lobbyRepository).should().save(any());
         then(eventPublisher).should().publish(envelopeWithPayload(PlayerDisconnected.class));
-        then(taskScheduler).should().schedule(any(Runnable.class), any(Instant.class));
+        then(timerRegistry).shouldHaveNoInteractions();
+        org.assertj.core.api.Assertions.assertThat(result.sagaId()).isNotNull();
+        org.assertj.core.api.Assertions.assertThat(result.graceExpiresAt()).isNotNull();
     }
 
     @Test
@@ -133,15 +128,13 @@ class PlayerReconnectSagaImplTest {
                 PlayerReconnectSagaStatus.GRACE_PERIOD,
                 Instant.now().plusSeconds(GRACE_SECONDS));
         given(stateManager.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(gracePeriodState));
-        given(taskScheduler.schedule(any(Runnable.class), any(Instant.class))).willReturn(scheduledFuture);
-        saga.rescheduleTimer(SAGA_ID, Instant.now().plusSeconds(GRACE_SECONDS));
 
         // when
         saga.handleReconnect(GAME_ID, PLAYER_ID);
 
         // then
         then(stateManager).should().reconnect(SAGA_ID);
-        then(scheduledFuture).should().cancel(false);
+        then(timerRegistry).should().cancel(SAGA_ID);
         then(lobbyRepository).should().save(any());
     }
 

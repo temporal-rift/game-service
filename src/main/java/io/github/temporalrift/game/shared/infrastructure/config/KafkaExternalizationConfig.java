@@ -1,4 +1,4 @@
-package io.github.temporalrift.game.session.infrastructure.adapter.out.config;
+package io.github.temporalrift.game.shared.infrastructure.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -10,9 +10,6 @@ import io.github.temporalrift.events.envelope.EventEnvelope;
 /**
  * Configures Spring Modulith to externalize {@link EventEnvelope} instances to the
  * {@code game.events} Kafka topic, partitioned by {@code gameId} to guarantee in-game ordering.
- *
- * <p>See <a href="https://github.com/temporal-rift/game-service/issues/14">issue #14</a> — move to
- * {@code shared/} when {@code action} or {@code scoring} modules start publishing events.
  */
 @Configuration
 class KafkaExternalizationConfig {
