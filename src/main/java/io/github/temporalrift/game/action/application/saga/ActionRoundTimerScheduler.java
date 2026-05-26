@@ -46,9 +46,7 @@ class ActionRoundTimerScheduler {
                     timeoutProcessor.handleTimerExpiry(sagaId);
                 },
                 timerExpiresAt);
-        if (future != null) {
-            scheduledTimers.put(sagaId, future);
-        }
+        scheduledTimers.put(sagaId, future);
     }
 
     private void scheduleAfterCommit(UUID sagaId, Instant timerExpiresAt) {

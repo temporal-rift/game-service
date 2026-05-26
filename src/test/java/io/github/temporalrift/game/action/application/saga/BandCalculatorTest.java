@@ -79,6 +79,54 @@ class BandCalculatorTest {
     }
 
     @Test
+    @DisplayName("computeBands uses GDD shift magnitudes for probability shifter cards")
+    void computeBands_usesGddShiftMagnitudes() {
+        // given
+        var pushEventId = UUID.randomUUID();
+        var suppressEventId = UUID.randomUUID();
+        var swingEventId = UUID.randomUUID();
+        var pushOutcomeId = UUID.randomUUID();
+        var suppressOutcomeId = UUID.randomUUID();
+        var swingOutcomeId = UUID.randomUUID();
+        var definitions = List.of(
+                new FutureEventDefinitionPort.EventDefinition(
+                        pushEventId, List.of(new FutureEventDefinitionPort.OutcomeDefinition(pushOutcomeId, 11))),
+                new FutureEventDefinitionPort.EventDefinition(
+                        suppressEventId,
+                        List.of(new FutureEventDefinitionPort.OutcomeDefinition(suppressOutcomeId, 81))),
+                new FutureEventDefinitionPort.EventDefinition(
+                        swingEventId, List.of(new FutureEventDefinitionPort.OutcomeDefinition(swingOutcomeId, 31))));
+        List<SubmittedAction> round1 = List.of(
+                new SubmittedAction.CardAction(PLAYER_ID, UUID.randomUUID(), CardType.PUSH, pushEventId, pushOutcomeId),
+                new SubmittedAction.CardAction(
+                        PLAYER_ID, UUID.randomUUID(), CardType.SUPPRESS, suppressEventId, suppressOutcomeId),
+                new SubmittedAction.CardAction(
+                        PLAYER_ID, UUID.randomUUID(), CardType.SWING, swingEventId, swingOutcomeId));
+
+        // when
+        var result = calculator.computeBands(round1, List.of(), definitions);
+
+        // then
+        assertThat(result)
+                .containsExactlyInAnyOrder(
+                        new io.github.temporalrift.events.timeline.BandedProbabilityPublished.EventBandState(
+                                pushEventId,
+                                List.of(
+                                        new io.github.temporalrift.events.timeline.BandedProbabilityPublished
+                                                .OutcomeBandState(pushOutcomeId, ProbabilityBand.MEDIUM))),
+                        new io.github.temporalrift.events.timeline.BandedProbabilityPublished.EventBandState(
+                                suppressEventId,
+                                List.of(
+                                        new io.github.temporalrift.events.timeline.BandedProbabilityPublished
+                                                .OutcomeBandState(suppressOutcomeId, ProbabilityBand.HIGH))),
+                        new io.github.temporalrift.events.timeline.BandedProbabilityPublished.EventBandState(
+                                swingEventId,
+                                List.of(
+                                        new io.github.temporalrift.events.timeline.BandedProbabilityPublished
+                                                .OutcomeBandState(swingOutcomeId, ProbabilityBand.HIGH))));
+    }
+
+    @Test
     @DisplayName("computeBands skips event definitions that disappear from the cumulative state")
     void computeBands_skipsDefinitionsMissingFromState() {
         // given
