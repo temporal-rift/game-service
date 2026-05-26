@@ -13,8 +13,6 @@ import io.github.temporalrift.game.action.domain.port.out.FutureEventDefinitionP
 
 class BandCalculator {
 
-    record BandedOutcome(UUID eventId, UUID outcomeId, ProbabilityBand band) {}
-
     List<BandedProbabilityPublished.EventBandState> computeBands(
             List<SubmittedAction> round1Actions,
             List<SubmittedAction> round2Actions,
@@ -83,9 +81,12 @@ class BandCalculator {
         }
         var shift =
                 switch (action.cardType()) {
-                    case PUSH -> 15;
-                    case SUPPRESS -> -15;
-                    case SWING -> 25;
+                    case PUSH -> 20;
+                    case SUPPRESS -> -20;
+                    // GDD defines Swing as moving 30% from one outcome to another on the same event.
+                    // The current action contract only carries a single target outcome, so this is the
+                    // closest representable approximation until the command/API model is expanded.
+                    case SWING -> 30;
                     case AMPLIFY -> 0; // Amplify doubles the next card's effect — handled at resolution time
                     case INTERCEPT -> 0;
                     case SCAN -> 0;
@@ -135,4 +136,6 @@ class BandCalculator {
             outcomeMap.merge(action.targetOutcomeId(), shift, Integer::sum);
         }
     }
+
+    record BandedOutcome(UUID eventId, UUID outcomeId, ProbabilityBand band) {}
 }

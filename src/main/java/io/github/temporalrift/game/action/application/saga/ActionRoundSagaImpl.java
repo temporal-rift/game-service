@@ -112,7 +112,7 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
         var outcome = round.close(closeReason);
 
         switch (outcome) {
-            case CloseOutcome.AlreadyClosing ignored -> {
+            case CloseOutcome.AlreadyClosing _ -> {
                 // Another path won the race and already moved the round out of OPEN. The saga still
                 // needs to transition to COMPLETED so recovery does not retry forever.
                 log.debug("tryClose: ActionRound {} already closing", round.id());

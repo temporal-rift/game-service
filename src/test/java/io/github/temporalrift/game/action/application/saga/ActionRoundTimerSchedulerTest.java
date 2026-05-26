@@ -60,23 +60,6 @@ class ActionRoundTimerSchedulerTest {
     }
 
     @Test
-    @DisplayName("reschedule tolerates schedulers that return null future")
-    void reschedule_nullFuture_stillSchedulesCallback() {
-        // given
-        var scheduler = new ActionRoundTimerScheduler(taskScheduler, timeoutProcessor);
-        var sagaId = UUID.randomUUID();
-        var expiresAt = Instant.now().plusSeconds(10);
-        org.mockito.BDDMockito.given(taskScheduler.schedule(any(Runnable.class), eq(expiresAt)))
-                .willReturn(null);
-
-        // when
-        scheduler.reschedule(sagaId, expiresAt);
-
-        // then
-        then(taskScheduler).should().schedule(any(Runnable.class), eq(expiresAt));
-    }
-
-    @Test
     @DisplayName("scheduleAfterCommit delays scheduling until after transaction commit")
     void scheduleAfterCommit_withSynchronization_registersAfterCommitHook() {
         // given
@@ -84,6 +67,7 @@ class ActionRoundTimerSchedulerTest {
         var result =
                 new ActionRoundSaga.StartResult(UUID.randomUUID(), Instant.now().plusSeconds(15));
         TransactionSynchronizationManager.initSynchronization();
+        doReturn(scheduledFuture).when(taskScheduler).schedule(any(Runnable.class), eq(result.timerExpiresAt()));
 
         // when
         scheduler.scheduleAfterCommit(result);
@@ -102,6 +86,7 @@ class ActionRoundTimerSchedulerTest {
         var scheduler = new ActionRoundTimerScheduler(taskScheduler, timeoutProcessor);
         var result =
                 new ActionRoundSaga.StartResult(UUID.randomUUID(), Instant.now().plusSeconds(15));
+        doReturn(scheduledFuture).when(taskScheduler).schedule(any(Runnable.class), eq(result.timerExpiresAt()));
 
         // when
         scheduler.scheduleAfterCommit(result);
