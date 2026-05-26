@@ -40,7 +40,8 @@ jobs:
     docker:
       - image: maven:3.9.13-eclipse-temurin-25
     steps:
-      - checkout
+      - checkout:
+          method: full
       - setup_remote_docker:
           docker_layer_caching: true
       - restore_cache:
