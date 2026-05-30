@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+            https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.29.xsd">
+
+    <changeSet id="action-002-create-player-state" author="game-service">
+        <createTable tableName="player_state">
+            <column name="id" type="UUID">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="game_id" type="UUID">
+                <constraints nullable="false"/>
+            </column>
+            <column name="player_id" type="UUID">
+                <constraints nullable="false"/>
+            </column>
+            <column name="faction" type="VARCHAR(50)"/>
+            <column name="jammed" type="BOOLEAN">
+                <constraints nullable="false"/>
+            </column>
+            <column name="hand" type="JSONB">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addUniqueConstraint
+                tableName="player_state"
+                columnNames="game_id,player_id"
+                constraintName="uq_player_state_game_player"/>
+    </changeSet>
+
+</databaseChangeLog>

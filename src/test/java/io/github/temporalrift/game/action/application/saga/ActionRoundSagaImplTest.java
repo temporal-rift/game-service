@@ -261,7 +261,15 @@ class ActionRoundSagaImplTest {
             // given
             var roundId = UUID.randomUUID();
             var round = ActionRound.reconstitute(
-                    roundId, GAME_ID, ERA_NUMBER, ROUND_NUMBER, RoundStatus.CLOSING, List.of(), List.of());
+                    roundId,
+                    GAME_ID,
+                    ERA_NUMBER,
+                    ROUND_NUMBER,
+                    RoundStatus.CLOSING,
+                    TIMER_SECONDS,
+                    "TIMER_EXPIRED",
+                    List.of(),
+                    List.of());
             given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumber(GAME_ID, ERA_NUMBER, ROUND_NUMBER))
                     .willReturn(Optional.of(round));
             given(actionRoundRepository.findByIdForUpdate(roundId)).willReturn(Optional.of(round));

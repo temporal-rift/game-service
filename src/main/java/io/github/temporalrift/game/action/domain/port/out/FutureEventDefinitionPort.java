@@ -10,4 +10,6 @@ public interface FutureEventDefinitionPort {
     record OutcomeDefinition(UUID outcomeId, int initialProbability) {}
 
     List<EventDefinition> findByGameIdAndEraNumber(UUID gameId, int eraNumber);
+
+    void replaceForGameEra(UUID gameId, int eraNumber, List<EventDefinition> definitions);
 }

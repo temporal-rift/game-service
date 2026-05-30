@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+            https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.29.xsd">
+
+    <changeSet id="action-001-create-action-round" author="game-service">
+        <createTable tableName="action_round">
+            <column name="id" type="UUID">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="game_id" type="UUID">
+                <constraints nullable="false"/>
+            </column>
+            <column name="era_number" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="round_number" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="status" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="timer_seconds" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="closed_reason" type="VARCHAR(255)"/>
+            <column name="pending_player_ids" type="JSONB">
+                <constraints nullable="false"/>
+            </column>
+            <column name="submitted_actions" type="JSONB">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addUniqueConstraint
+                tableName="action_round"
+                columnNames="game_id,era_number,round_number"
+                constraintName="uq_action_round_game_era_round"/>
+    </changeSet>
+
+</databaseChangeLog>
