@@ -55,10 +55,20 @@ class ActionRoundTest {
     void reconstituteRegistersNoEvents() {
         // when
         var round = ActionRound.reconstitute(
-                UUID.randomUUID(), GAME_ID, ERA, ROUND, RoundStatus.OPEN, List.of(PLAYER_A), List.of());
+                UUID.randomUUID(),
+                GAME_ID,
+                ERA,
+                ROUND,
+                RoundStatus.OPEN,
+                TIMER_SECONDS,
+                null,
+                List.of(PLAYER_A),
+                List.of());
 
         // then
         assertThat(round.pullEvents()).isEmpty();
+        assertThat(round.timerSeconds()).isEqualTo(TIMER_SECONDS);
+        assertThat(round.closedReason()).isNull();
     }
 
     @Test
@@ -116,7 +126,15 @@ class ActionRoundTest {
     void submitCardOnClosingRoundThrows() {
         // given
         var round = ActionRound.reconstitute(
-                UUID.randomUUID(), GAME_ID, ERA, ROUND, RoundStatus.CLOSING, List.of(PLAYER_A), List.of());
+                UUID.randomUUID(),
+                GAME_ID,
+                ERA,
+                ROUND,
+                RoundStatus.CLOSING,
+                TIMER_SECONDS,
+                "TIMER_EXPIRED",
+                List.of(PLAYER_A),
+                List.of());
         var cardId = UUID.randomUUID();
 
         // when / then
@@ -202,6 +220,7 @@ class ActionRoundTest {
         assertThat(outcome).isInstanceOf(CloseOutcome.Closed.class);
         assertThat(((CloseOutcome.Closed) outcome).skippedPlayerIds()).isEmpty();
         assertThat(round.status()).isEqualTo(RoundStatus.CLOSED);
+        assertThat(round.closedReason()).isEqualTo("ALL_SUBMITTED");
         var events = round.pullEvents();
         assertThat(events).singleElement().isInstanceOf(ActionRoundClosed.class);
         assertThat(((ActionRoundClosed) events.getFirst()).closedReason()).isEqualTo("ALL_SUBMITTED");

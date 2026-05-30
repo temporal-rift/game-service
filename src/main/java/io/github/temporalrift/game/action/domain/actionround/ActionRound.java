@@ -25,9 +25,11 @@ public class ActionRound extends AggregateRoot {
     private final UUID gameId;
     private final int eraNumber;
     private final int roundNumber;
+    private final int timerSeconds;
     private final List<UUID> pendingPlayerIds;
     private final List<SubmittedAction> submittedActions;
     private RoundStatus status;
+    private String closedReason;
 
     public ActionRound(
             UUID id, UUID gameId, int eraNumber, int roundNumber, List<UUID> pendingPlayerIds, int timerSeconds) {
@@ -35,10 +37,12 @@ public class ActionRound extends AggregateRoot {
         this.gameId = Objects.requireNonNull(gameId, "gameId must not be null");
         this.eraNumber = eraNumber;
         this.roundNumber = roundNumber;
+        this.timerSeconds = timerSeconds;
         this.pendingPlayerIds =
                 new ArrayList<>(Objects.requireNonNull(pendingPlayerIds, "pendingPlayerIds must not be null"));
         this.submittedActions = new ArrayList<>();
         this.status = RoundStatus.OPEN;
+        this.closedReason = null;
         registerEvent(
                 new ActionRoundStarted(gameId, eraNumber, roundNumber, timerSeconds, List.copyOf(pendingPlayerIds)));
     }
@@ -49,13 +53,17 @@ public class ActionRound extends AggregateRoot {
             int eraNumber,
             int roundNumber,
             RoundStatus status,
+            int timerSeconds,
+            String closedReason,
             List<UUID> pendingPlayerIds,
             List<SubmittedAction> submittedActions) {
         this.id = id;
         this.gameId = gameId;
         this.eraNumber = eraNumber;
         this.roundNumber = roundNumber;
+        this.timerSeconds = timerSeconds;
         this.status = status;
+        this.closedReason = closedReason;
         this.pendingPlayerIds = new ArrayList<>(pendingPlayerIds);
         this.submittedActions = new ArrayList<>(submittedActions);
     }
@@ -66,9 +74,20 @@ public class ActionRound extends AggregateRoot {
             int eraNumber,
             int roundNumber,
             RoundStatus status,
+            int timerSeconds,
+            String closedReason,
             List<UUID> pendingPlayerIds,
             List<SubmittedAction> submittedActions) {
-        return new ActionRound(id, gameId, eraNumber, roundNumber, status, pendingPlayerIds, submittedActions);
+        return new ActionRound(
+                id,
+                gameId,
+                eraNumber,
+                roundNumber,
+                status,
+                timerSeconds,
+                closedReason,
+                pendingPlayerIds,
+                submittedActions);
     }
 
     public boolean submitCard(
@@ -136,6 +155,7 @@ public class ActionRound extends AggregateRoot {
         if (this.status != RoundStatus.OPEN) {
             return new CloseOutcome.AlreadyClosing();
         }
+        this.closedReason = closedReason;
 
         // CLOSING is not the concurrency guard.
         // The pessimistic lock in tryClose already prevents two transactions from reaching this line simultaneously.
@@ -185,5 +205,13 @@ public class ActionRound extends AggregateRoot {
 
     public RoundStatus status() {
         return status;
+    }
+
+    public int timerSeconds() {
+        return timerSeconds;
+    }
+
+    public String closedReason() {
+        return closedReason;
     }
 }

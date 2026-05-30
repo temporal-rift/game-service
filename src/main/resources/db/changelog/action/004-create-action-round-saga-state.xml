@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+            https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.29.xsd">
+
+    <changeSet id="action-004-create-action-round-saga-state" author="game-service">
+        <createTable tableName="action_round_saga_state">
+            <column name="saga_id" type="UUID">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="game_id" type="UUID">
+                <constraints nullable="false"/>
+            </column>
+            <column name="era_number" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="round_number" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="status" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="pending_player_ids" type="JSONB">
+                <constraints nullable="false"/>
+            </column>
+            <column name="timer_expires_at" type="TIMESTAMPTZ">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addUniqueConstraint
+                tableName="action_round_saga_state"
+                columnNames="game_id,era_number,round_number"
+                constraintName="uq_action_round_saga_game_era_round"/>
+    </changeSet>
+
+</databaseChangeLog>
