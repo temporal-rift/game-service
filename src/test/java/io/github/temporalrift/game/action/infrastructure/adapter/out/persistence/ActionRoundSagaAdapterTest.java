@@ -51,6 +51,7 @@ class ActionRoundSagaAdapterTest {
         assertThat(saved.getSagaId()).isEqualTo(SAGA_ID);
         assertThat(saved.getGameId()).isEqualTo(GAME_ID);
         assertThat(saved.getStatus()).isEqualTo(ActionRoundSagaStatus.WAITING.name());
+        assertThat(saved.getPendingPlayerIds()).containsExactlyElementsOf(state.pendingPlayerIds());
         assertThat(result).isEqualTo(state);
     }
 
@@ -108,7 +109,7 @@ class ActionRoundSagaAdapterTest {
         entity.setEraNumber(1);
         entity.setRoundNumber(2);
         entity.setStatus(status.name());
-        entity.setPendingPlayerIds(PENDING_PLAYER_IDS);
+        entity.setPendingPlayerIds(PENDING_PLAYER_IDS.toArray(UUID[]::new));
         entity.setTimerExpiresAt(EXPIRES_AT);
         return entity;
     }

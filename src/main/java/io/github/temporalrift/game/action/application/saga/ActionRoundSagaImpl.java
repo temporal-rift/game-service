@@ -24,9 +24,9 @@ import io.github.temporalrift.game.action.domain.actionround.SubmittedAction;
 import io.github.temporalrift.game.action.domain.port.out.ActionEventPublisher;
 import io.github.temporalrift.game.action.domain.port.out.ActionRoundRepository;
 import io.github.temporalrift.game.action.domain.port.out.FutureEventDefinitionPort;
-import io.github.temporalrift.game.action.domain.port.out.GameRulesPort;
 import io.github.temporalrift.game.action.domain.port.out.PlayerStateRepository;
 import io.github.temporalrift.game.action.domain.saga.ActionRoundSagaStatus;
+import io.github.temporalrift.game.shared.GameRulesPort;
 
 @Service
 @ConditionalOnBean({ActionRoundRepository.class, PlayerStateRepository.class})

@@ -8,6 +8,8 @@ import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import io.github.temporalrift.game.action.domain.playerstate.PlayerState;
 
@@ -33,6 +35,7 @@ class PlayerStateJpaEntity {
 
     @Column(name = "hand", columnDefinition = "jsonb", nullable = false)
     @Convert(converter = PlayerHandConverter.class)
+    @JdbcTypeCode(SqlTypes.JSON)
     private List<PlayerState.CardInstance> hand;
 
     protected PlayerStateJpaEntity() {}

@@ -1,6 +1,7 @@
 package io.github.temporalrift.game.action.infrastructure.adapter.out.persistence;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -51,7 +52,7 @@ class ActionRoundRepositoryAdapter implements ActionRoundRepository {
         entity.setStatus(round.status().name());
         entity.setTimerSeconds(round.timerSeconds());
         entity.setClosedReason(round.closedReason());
-        entity.setPendingPlayerIds(new ArrayList<>(round.pendingPlayerIds()));
+        entity.setPendingPlayerIds(round.pendingPlayerIds().toArray(UUID[]::new));
         entity.setSubmittedActions(new ArrayList<>(round.submittedActions()));
         return entity;
     }
@@ -65,7 +66,7 @@ class ActionRoundRepositoryAdapter implements ActionRoundRepository {
                 RoundStatus.valueOf(entity.getStatus()),
                 entity.getTimerSeconds(),
                 entity.getClosedReason(),
-                new ArrayList<>(entity.getPendingPlayerIds()),
+                new ArrayList<>(Arrays.asList(entity.getPendingPlayerIds())),
                 new ArrayList<>(entity.getSubmittedActions()));
     }
 }

@@ -8,6 +8,8 @@ import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import io.github.temporalrift.game.action.domain.actionround.SubmittedAction;
 
@@ -37,12 +39,13 @@ class ActionRoundJpaEntity {
     @Column(name = "closed_reason")
     private String closedReason;
 
-    @Column(name = "pending_player_ids", columnDefinition = "jsonb", nullable = false)
-    @Convert(converter = UuidListConverter.class)
-    private List<UUID> pendingPlayerIds;
+    @Column(name = "pending_player_ids", columnDefinition = "uuid[]", nullable = false)
+    @JdbcTypeCode(SqlTypes.ARRAY)
+    private UUID[] pendingPlayerIds;
 
     @Column(name = "submitted_actions", columnDefinition = "jsonb", nullable = false)
     @Convert(converter = SubmittedActionListConverter.class)
+    @JdbcTypeCode(SqlTypes.JSON)
     private List<SubmittedAction> submittedActions;
 
     protected ActionRoundJpaEntity() {}
@@ -103,11 +106,11 @@ class ActionRoundJpaEntity {
         this.closedReason = closedReason;
     }
 
-    List<UUID> getPendingPlayerIds() {
+    UUID[] getPendingPlayerIds() {
         return pendingPlayerIds;
     }
 
-    void setPendingPlayerIds(List<UUID> pendingPlayerIds) {
+    void setPendingPlayerIds(UUID[] pendingPlayerIds) {
         this.pendingPlayerIds = pendingPlayerIds;
     }
 

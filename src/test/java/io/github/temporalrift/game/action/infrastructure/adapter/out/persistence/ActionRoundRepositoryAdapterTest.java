@@ -50,6 +50,7 @@ class ActionRoundRepositoryAdapterTest {
         assertThat(entity.getStatus()).isEqualTo(RoundStatus.CLOSED.name());
         assertThat(entity.getTimerSeconds()).isEqualTo(45);
         assertThat(entity.getClosedReason()).isEqualTo("TIMER_EXPIRED");
+        assertThat(entity.getPendingPlayerIds()).containsExactly(playerId);
         assertThat(entity.getSubmittedActions()).hasSize(1);
     }
 
@@ -63,7 +64,7 @@ class ActionRoundRepositoryAdapterTest {
         entity.setStatus(RoundStatus.CLOSED.name());
         entity.setTimerSeconds(30);
         entity.setClosedReason("ALL_SUBMITTED");
-        entity.setPendingPlayerIds(List.of());
+        entity.setPendingPlayerIds(new UUID[0]);
         entity.setSubmittedActions(List.of(new SubmittedAction.SpecialActionSubmission(
                 UUID.randomUUID(),
                 Faction.PROPHETS,

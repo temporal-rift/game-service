@@ -6,11 +6,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import org.springframework.stereotype.Component;
+
 import io.github.temporalrift.events.timeline.BandedProbabilityPublished;
 import io.github.temporalrift.events.timeline.BandedProbabilityPublished.ProbabilityBand;
 import io.github.temporalrift.game.action.domain.actionround.SubmittedAction;
 import io.github.temporalrift.game.action.domain.port.out.FutureEventDefinitionPort;
 
+@Component
 class BandCalculator {
 
     List<BandedProbabilityPublished.EventBandState> computeBands(

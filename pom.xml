@@ -51,13 +51,16 @@
         <sonar.host.url>https://sonarcloud.io</sonar.host.url>
         <sonar.coverage.jacoco.xmlReportPaths>${project.build.directory}/site/jacoco/jacoco.xml
         </sonar.coverage.jacoco.xmlReportPaths>
+        <domain-events.version>1.0.7</domain-events.version>
+        <spring-retry.version>2.0.12</spring-retry.version>
+        <archunit-junit5.version>1.4.2</archunit-junit5.version>
     </properties>
 
     <dependencies>
         <dependency>
             <groupId>io.github.temporal-rift</groupId>
             <artifactId>domain-events</artifactId>
-            <version>1.0.7</version>
+            <version>${domain-events.version}</version>
         </dependency>
 
         <dependency>
@@ -101,7 +104,7 @@
         <dependency>
             <groupId>org.springframework.retry</groupId>
             <artifactId>spring-retry</artifactId>
-            <version>2.0.12</version>
+            <version>${spring-retry.version}</version>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -204,7 +207,7 @@
         <dependency>
             <groupId>com.tngtech.archunit</groupId>
             <artifactId>archunit-junit5</artifactId>
-            <version>1.4.2</version>
+            <version>${archunit-junit5.version}</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
