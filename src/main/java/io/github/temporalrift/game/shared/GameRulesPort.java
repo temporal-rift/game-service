@@ -1,4 +1,4 @@
-package io.github.temporalrift.game.action.domain.port.out;
+package io.github.temporalrift.game.shared;
 
 public interface GameRulesPort {
 

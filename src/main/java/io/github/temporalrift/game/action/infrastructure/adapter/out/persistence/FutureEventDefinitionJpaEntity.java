@@ -8,6 +8,8 @@ import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import io.github.temporalrift.game.action.domain.port.out.FutureEventDefinitionPort;
 
@@ -33,6 +35,7 @@ class FutureEventDefinitionJpaEntity {
 
     @Column(name = "outcomes", columnDefinition = "jsonb", nullable = false)
     @Convert(converter = OutcomeDefinitionListConverter.class)
+    @JdbcTypeCode(SqlTypes.JSON)
     private List<FutureEventDefinitionPort.OutcomeDefinition> outcomes;
 
     protected FutureEventDefinitionJpaEntity() {}

@@ -26,7 +26,7 @@
                 <constraints nullable="false"/>
             </column>
             <column name="closed_reason" type="VARCHAR(255)"/>
-            <column name="pending_player_ids" type="JSONB">
+            <column name="pending_player_ids" type="UUID[]">
                 <constraints nullable="false"/>
             </column>
             <column name="submitted_actions" type="JSONB">

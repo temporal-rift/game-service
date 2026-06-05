@@ -1,5 +1,6 @@
 package io.github.temporalrift.game.action.infrastructure.adapter.out.persistence;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -63,7 +64,7 @@ public class ActionRoundSagaAdapter implements ActionRoundSagaRepository {
         entity.setEraNumber(state.eraNumber());
         entity.setRoundNumber(state.roundNumber());
         entity.setStatus(state.status().name());
-        entity.setPendingPlayerIds(new java.util.ArrayList<>(state.pendingPlayerIds()));
+        entity.setPendingPlayerIds(state.pendingPlayerIds().toArray(UUID[]::new));
         entity.setTimerExpiresAt(state.timerExpiresAt());
         return entity;
     }
@@ -75,7 +76,7 @@ public class ActionRoundSagaAdapter implements ActionRoundSagaRepository {
                 entity.getEraNumber(),
                 entity.getRoundNumber(),
                 ActionRoundSagaStatus.valueOf(entity.getStatus()),
-                List.copyOf(entity.getPendingPlayerIds()),
+                List.copyOf(Arrays.asList(entity.getPendingPlayerIds())),
                 entity.getTimerExpiresAt());
     }
 }

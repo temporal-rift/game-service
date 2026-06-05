@@ -21,7 +21,7 @@ public record SessionRulesProperties(
         @Min(1) int winScoreThreshold,
         @Min(1) int reconnectGracePeriodSeconds,
         @NotEmpty Map<Integer, Integer> actionRoundTimerSeconds)
-        implements GameRulesPort, io.github.temporalrift.game.action.domain.port.out.GameRulesPort {
+        implements GameRulesPort {
 
     private static final int DEFAULT_ACTION_ROUND_TIMER_SECONDS = 60;
 

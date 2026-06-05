@@ -2,6 +2,8 @@ package io.github.temporalrift.game.action.infrastructure.adapter.out.persistenc
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.UUID;
 
@@ -135,6 +137,7 @@ class ActionPersistenceIT {
 
     @Test
     void actionRoundSagaState_save_and_lookup_roundTrips() {
+        var timerExpiresAt = Instant.now().plusSeconds(30).truncatedTo(ChronoUnit.MICROS);
         var state = new ActionRoundSagaState(
                 UUID.randomUUID(),
                 UUID.randomUUID(),
@@ -142,7 +145,7 @@ class ActionPersistenceIT {
                 2,
                 ActionRoundSagaStatus.WAITING,
                 List.of(UUID.randomUUID(), UUID.randomUUID()),
-                java.time.Instant.now().plusSeconds(30));
+                timerExpiresAt);
         actionRoundSagaRepository.save(state);
 
         var loaded = actionRoundSagaRepository.findByGameIdAndEraNumberAndRoundNumber(

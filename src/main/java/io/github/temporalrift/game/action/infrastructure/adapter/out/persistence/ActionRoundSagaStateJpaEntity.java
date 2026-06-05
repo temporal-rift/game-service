@@ -1,14 +1,14 @@
 package io.github.temporalrift.game.action.infrastructure.adapter.out.persistence;
 
 import java.time.Instant;
-import java.util.List;
 import java.util.UUID;
 
 import jakarta.persistence.Column;
-import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 @Entity
 @Table(name = "action_round_saga_state")
@@ -30,9 +30,9 @@ class ActionRoundSagaStateJpaEntity {
     @Column(name = "status", nullable = false)
     private String status;
 
-    @Column(name = "pending_player_ids", columnDefinition = "jsonb", nullable = false)
-    @Convert(converter = UuidListConverter.class)
-    private List<UUID> pendingPlayerIds;
+    @Column(name = "pending_player_ids", columnDefinition = "uuid[]", nullable = false)
+    @JdbcTypeCode(SqlTypes.ARRAY)
+    private UUID[] pendingPlayerIds;
 
     @Column(name = "timer_expires_at", nullable = false, columnDefinition = "TIMESTAMPTZ")
     private Instant timerExpiresAt;
@@ -79,11 +79,11 @@ class ActionRoundSagaStateJpaEntity {
         this.status = status;
     }
 
-    public List<UUID> getPendingPlayerIds() {
+    public UUID[] getPendingPlayerIds() {
         return pendingPlayerIds;
     }
 
-    public void setPendingPlayerIds(List<UUID> pendingPlayerIds) {
+    public void setPendingPlayerIds(UUID[] pendingPlayerIds) {
         this.pendingPlayerIds = pendingPlayerIds;
     }
 

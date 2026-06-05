@@ -1,6 +1,6 @@
 package io.github.temporalrift.game.session.domain.port.out;
 
-public interface GameRulesPort {
+public interface GameRulesPort extends io.github.temporalrift.game.shared.GameRulesPort {
 
     int minPlayers();
 
@@ -11,8 +11,6 @@ public interface GameRulesPort {
     int maxCascadedParadoxes();
 
     int eventsPerEra();
-
-    int actionRoundTimerSeconds(int playerCount);
 
     int cardsPerHand();
 
