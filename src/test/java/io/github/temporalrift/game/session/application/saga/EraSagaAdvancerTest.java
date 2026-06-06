@@ -36,8 +36,8 @@ import io.github.temporalrift.game.session.domain.game.Game;
 import io.github.temporalrift.game.session.domain.game.GameStatus;
 import io.github.temporalrift.game.session.domain.port.out.EraSagaRepository;
 import io.github.temporalrift.game.session.domain.port.out.GameRepository;
-import io.github.temporalrift.game.session.domain.port.out.GameRulesPort;
 import io.github.temporalrift.game.session.domain.port.out.SessionEventPublisher;
+import io.github.temporalrift.game.session.domain.port.out.SessionGameRulesPort;
 import io.github.temporalrift.game.session.domain.saga.EraSagaState;
 import io.github.temporalrift.game.session.domain.saga.EraSagaStatus;
 
@@ -65,7 +65,7 @@ class EraSagaAdvancerTest {
     ApplicationEventPublisher applicationEventPublisher;
 
     @Mock
-    GameRulesPort gameRules;
+    SessionGameRulesPort gameRules;
 
     @InjectMocks
     EraSagaAdvancer advancer;

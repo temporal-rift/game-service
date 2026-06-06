@@ -6,7 +6,6 @@ import java.util.UUID;
 import jakarta.persistence.Column;
 import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
@@ -15,17 +14,7 @@ import io.github.temporalrift.game.action.domain.actionround.SubmittedAction;
 
 @Entity
 @Table(name = "action_round")
-class ActionRoundJpaEntity {
-
-    @Id
-    @Column(name = "id", nullable = false)
-    private UUID id;
-
-    @Column(name = "game_id", nullable = false)
-    private UUID gameId;
-
-    @Column(name = "era_number", nullable = false)
-    private int eraNumber;
+class ActionRoundJpaEntity extends GameEraScopedJpaEntity {
 
     @Column(name = "round_number", nullable = false)
     private int roundNumber;
@@ -49,30 +38,6 @@ class ActionRoundJpaEntity {
     private List<SubmittedAction> submittedActions;
 
     protected ActionRoundJpaEntity() {}
-
-    UUID getId() {
-        return id;
-    }
-
-    void setId(UUID id) {
-        this.id = id;
-    }
-
-    UUID getGameId() {
-        return gameId;
-    }
-
-    void setGameId(UUID gameId) {
-        this.gameId = gameId;
-    }
-
-    int getEraNumber() {
-        return eraNumber;
-    }
-
-    void setEraNumber(int eraNumber) {
-        this.eraNumber = eraNumber;
-    }
 
     int getRoundNumber() {
         return roundNumber;

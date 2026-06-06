@@ -34,8 +34,8 @@ import io.github.temporalrift.game.session.domain.futureevent.FutureEventDefinit
 import io.github.temporalrift.game.session.domain.game.Game;
 import io.github.temporalrift.game.session.domain.port.out.FutureEventCatalogPort;
 import io.github.temporalrift.game.session.domain.port.out.GameRepository;
-import io.github.temporalrift.game.session.domain.port.out.GameRulesPort;
 import io.github.temporalrift.game.session.domain.port.out.SessionEventPublisher;
+import io.github.temporalrift.game.session.domain.port.out.SessionGameRulesPort;
 import io.github.temporalrift.game.session.domain.saga.EraSagaStatus;
 
 @ExtendWith(MockitoExtension.class)
@@ -62,7 +62,7 @@ class EraSagaImplTest {
     EraSagaStateManager stateManager;
 
     @Mock
-    GameRulesPort gameRules;
+    SessionGameRulesPort gameRules;
 
     @Mock
     ApplicationEventPublisher applicationEventPublisher;

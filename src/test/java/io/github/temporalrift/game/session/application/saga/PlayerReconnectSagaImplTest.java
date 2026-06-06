@@ -30,9 +30,9 @@ import io.github.temporalrift.game.session.domain.lobby.LobbyConfig;
 import io.github.temporalrift.game.session.domain.lobby.LobbyPlayer;
 import io.github.temporalrift.game.session.domain.lobby.LobbyStatus;
 import io.github.temporalrift.game.session.domain.port.out.GameRepository;
-import io.github.temporalrift.game.session.domain.port.out.GameRulesPort;
 import io.github.temporalrift.game.session.domain.port.out.LobbyRepository;
 import io.github.temporalrift.game.session.domain.port.out.SessionEventPublisher;
+import io.github.temporalrift.game.session.domain.port.out.SessionGameRulesPort;
 import io.github.temporalrift.game.session.domain.saga.PlayerReconnectSagaState;
 import io.github.temporalrift.game.session.domain.saga.PlayerReconnectSagaStatus;
 
@@ -61,7 +61,7 @@ class PlayerReconnectSagaImplTest {
     PlayerReconnectSagaStateManager stateManager;
 
     @Mock
-    GameRulesPort gameRules;
+    SessionGameRulesPort gameRules;
 
     @Mock
     PlayerReconnectTimerRegistry timerRegistry;

@@ -20,9 +20,9 @@ import io.github.temporalrift.game.session.domain.game.GameNotFoundException;
 import io.github.temporalrift.game.session.domain.lobby.Lobby;
 import io.github.temporalrift.game.session.domain.lobby.LobbyNotFoundException;
 import io.github.temporalrift.game.session.domain.port.out.GameRepository;
-import io.github.temporalrift.game.session.domain.port.out.GameRulesPort;
 import io.github.temporalrift.game.session.domain.port.out.LobbyRepository;
 import io.github.temporalrift.game.session.domain.port.out.SessionEventPublisher;
+import io.github.temporalrift.game.session.domain.port.out.SessionGameRulesPort;
 import io.github.temporalrift.game.session.domain.saga.PlayerReconnectSagaStatus;
 
 @Service
@@ -35,7 +35,7 @@ class PlayerReconnectSagaImpl implements PlayerReconnectSaga {
     private final SessionEventPublisher eventPublisher;
     private final ApplicationEventPublisher applicationEventPublisher;
     private final PlayerReconnectSagaStateManager stateManager;
-    private final GameRulesPort gameRules;
+    private final SessionGameRulesPort gameRules;
     private final PlayerReconnectTimerRegistry timerRegistry;
 
     PlayerReconnectSagaImpl(
@@ -44,7 +44,7 @@ class PlayerReconnectSagaImpl implements PlayerReconnectSaga {
             SessionEventPublisher eventPublisher,
             ApplicationEventPublisher applicationEventPublisher,
             PlayerReconnectSagaStateManager stateManager,
-            GameRulesPort gameRules,
+            SessionGameRulesPort gameRules,
             PlayerReconnectTimerRegistry timerRegistry) {
         this.lobbyRepository = lobbyRepository;
         this.gameRepository = gameRepository;

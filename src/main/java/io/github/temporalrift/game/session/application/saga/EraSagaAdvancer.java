@@ -30,8 +30,8 @@ import io.github.temporalrift.game.session.domain.game.GameNotFoundException;
 import io.github.temporalrift.game.session.domain.game.GameStatus;
 import io.github.temporalrift.game.session.domain.port.out.EraSagaRepository;
 import io.github.temporalrift.game.session.domain.port.out.GameRepository;
-import io.github.temporalrift.game.session.domain.port.out.GameRulesPort;
 import io.github.temporalrift.game.session.domain.port.out.SessionEventPublisher;
+import io.github.temporalrift.game.session.domain.port.out.SessionGameRulesPort;
 import io.github.temporalrift.game.session.domain.saga.EraSagaState;
 import io.github.temporalrift.game.session.domain.saga.EraSagaStatus;
 
@@ -45,14 +45,14 @@ class EraSagaAdvancer {
     private final GameRepository gameRepository;
     private final SessionEventPublisher eventPublisher;
     private final ApplicationEventPublisher applicationEventPublisher;
-    private final GameRulesPort gameRules;
+    private final SessionGameRulesPort gameRules;
 
     EraSagaAdvancer(
             EraSagaRepository eraSagaRepository,
             GameRepository gameRepository,
             SessionEventPublisher eventPublisher,
             ApplicationEventPublisher applicationEventPublisher,
-            GameRulesPort gameRules) {
+            SessionGameRulesPort gameRules) {
         this.eraSagaRepository = eraSagaRepository;
         this.gameRepository = gameRepository;
         this.eventPublisher = eventPublisher;

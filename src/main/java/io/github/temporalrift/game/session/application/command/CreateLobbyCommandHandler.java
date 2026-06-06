@@ -11,23 +11,23 @@ import io.github.temporalrift.game.session.application.port.in.CreateLobbyUseCas
 import io.github.temporalrift.game.session.domain.lobby.Lobby;
 import io.github.temporalrift.game.session.domain.lobby.LobbyConfig;
 import io.github.temporalrift.game.session.domain.lobby.LobbyPlayer;
-import io.github.temporalrift.game.session.domain.port.out.GameRulesPort;
 import io.github.temporalrift.game.session.domain.port.out.JoinCodePort;
 import io.github.temporalrift.game.session.domain.port.out.LobbyRepository;
+import io.github.temporalrift.game.session.domain.port.out.SessionGameRulesPort;
 
 @Service
 class CreateLobbyCommandHandler implements CreateLobbyUseCase {
 
     private final LobbyRepository lobbyRepository;
 
-    private final GameRulesPort gameRules;
+    private final SessionGameRulesPort gameRules;
 
     private final JoinCodePort joinCodePort;
 
     private final Clock clock;
 
     CreateLobbyCommandHandler(
-            LobbyRepository lobbyRepository, GameRulesPort gameRules, JoinCodePort joinCodePort, Clock clock) {
+            LobbyRepository lobbyRepository, SessionGameRulesPort gameRules, JoinCodePort joinCodePort, Clock clock) {
         this.lobbyRepository = lobbyRepository;
         this.gameRules = gameRules;
         this.joinCodePort = joinCodePort;

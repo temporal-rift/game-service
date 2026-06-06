@@ -28,8 +28,8 @@ import io.github.temporalrift.events.timeline.ParadoxCascaded;
 import io.github.temporalrift.game.session.domain.game.Game;
 import io.github.temporalrift.game.session.domain.game.GameStatus;
 import io.github.temporalrift.game.session.domain.port.out.GameRepository;
-import io.github.temporalrift.game.session.domain.port.out.GameRulesPort;
 import io.github.temporalrift.game.session.domain.port.out.SessionEventPublisher;
+import io.github.temporalrift.game.session.domain.port.out.SessionGameRulesPort;
 import io.github.temporalrift.game.session.domain.port.out.StartGameSagaRepository;
 import io.github.temporalrift.game.session.domain.saga.FactionAssignment;
 import io.github.temporalrift.game.session.domain.saga.StartGameSagaState;
@@ -58,7 +58,7 @@ class ParadoxCascadedKafkaConsumerTest {
     ApplicationEventPublisher applicationEventPublisher;
 
     @Mock
-    GameRulesPort gameRules;
+    SessionGameRulesPort gameRules;
 
     @Mock
     ObjectMapper objectMapper;
