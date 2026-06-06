@@ -1,6 +1,6 @@
 package io.github.temporalrift.game.session.domain.port.out;
 
-public interface GameRulesPort extends io.github.temporalrift.game.shared.GameRulesPort {
+public interface SessionGameRulesPort extends io.github.temporalrift.game.shared.GameRulesPort {
 
     int minPlayers();
 

@@ -23,8 +23,8 @@ import io.github.temporalrift.game.session.domain.game.GameAlreadyOverException;
 import io.github.temporalrift.game.session.domain.game.GameNotFoundException;
 import io.github.temporalrift.game.session.domain.game.GameStatus;
 import io.github.temporalrift.game.session.domain.port.out.GameRepository;
-import io.github.temporalrift.game.session.domain.port.out.GameRulesPort;
 import io.github.temporalrift.game.session.domain.port.out.SessionEventPublisher;
+import io.github.temporalrift.game.session.domain.port.out.SessionGameRulesPort;
 import io.github.temporalrift.game.session.domain.port.out.StartGameSagaRepository;
 import io.github.temporalrift.game.session.domain.saga.FactionAssignment;
 
@@ -39,7 +39,7 @@ class ParadoxCascadedKafkaConsumer {
     private final StartGameSagaRepository startGameSagaRepository;
     private final SessionEventPublisher eventPublisher;
     private final ApplicationEventPublisher applicationEventPublisher;
-    private final GameRulesPort gameRules;
+    private final SessionGameRulesPort gameRules;
     private final ObjectMapper objectMapper;
 
     ParadoxCascadedKafkaConsumer(
@@ -47,7 +47,7 @@ class ParadoxCascadedKafkaConsumer {
             StartGameSagaRepository startGameSagaRepository,
             SessionEventPublisher eventPublisher,
             ApplicationEventPublisher applicationEventPublisher,
-            GameRulesPort gameRules,
+            SessionGameRulesPort gameRules,
             ObjectMapper objectMapper) {
         this.gameRepository = gameRepository;
         this.startGameSagaRepository = startGameSagaRepository;

@@ -20,9 +20,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import io.github.temporalrift.game.session.application.port.in.CreateLobbyUseCase;
 import io.github.temporalrift.game.session.domain.lobby.Lobby;
-import io.github.temporalrift.game.session.domain.port.out.GameRulesPort;
 import io.github.temporalrift.game.session.domain.port.out.JoinCodePort;
 import io.github.temporalrift.game.session.domain.port.out.LobbyRepository;
+import io.github.temporalrift.game.session.domain.port.out.SessionGameRulesPort;
 
 @ExtendWith(MockitoExtension.class)
 class CreateLobbyCommandHandlerTest {
@@ -34,7 +34,7 @@ class CreateLobbyCommandHandlerTest {
     LobbyRepository lobbyRepository;
 
     @Mock
-    GameRulesPort gameRules;
+    SessionGameRulesPort gameRules;
 
     @Mock
     JoinCodePort joinCodePort;

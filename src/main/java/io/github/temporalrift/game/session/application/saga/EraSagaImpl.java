@@ -25,8 +25,8 @@ import io.github.temporalrift.game.session.domain.game.GameNotFoundException;
 import io.github.temporalrift.game.session.domain.game.InsufficientDeckException;
 import io.github.temporalrift.game.session.domain.port.out.FutureEventCatalogPort;
 import io.github.temporalrift.game.session.domain.port.out.GameRepository;
-import io.github.temporalrift.game.session.domain.port.out.GameRulesPort;
 import io.github.temporalrift.game.session.domain.port.out.SessionEventPublisher;
+import io.github.temporalrift.game.session.domain.port.out.SessionGameRulesPort;
 import io.github.temporalrift.game.session.domain.saga.EraSagaStatus;
 
 @Service
@@ -40,7 +40,7 @@ class EraSagaImpl implements EraSaga {
     private final SessionEventPublisher eventPublisher;
     private final ApplicationEventPublisher applicationEventPublisher;
     private final EraSagaStateManager stateManager;
-    private final GameRulesPort gameRules;
+    private final SessionGameRulesPort gameRules;
     private final SecureRandom random;
 
     EraSagaImpl(
@@ -49,7 +49,7 @@ class EraSagaImpl implements EraSaga {
             SessionEventPublisher eventPublisher,
             ApplicationEventPublisher applicationEventPublisher,
             EraSagaStateManager stateManager,
-            GameRulesPort gameRules) {
+            SessionGameRulesPort gameRules) {
         this.gameRepository = gameRepository;
         this.futureEventCatalog = futureEventCatalog;
         this.eventPublisher = eventPublisher;

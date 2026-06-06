@@ -58,28 +58,39 @@ class SubmittedActionListConverter implements AttributeConverter<List<SubmittedA
 
         static SubmittedActionRow fromDomain(SubmittedAction action) {
             return switch (action) {
-                case SubmittedAction.CardAction card ->
+                case SubmittedAction.CardAction(
+                        UUID playerId,
+                        UUID cardInstanceId,
+                        CardType cardType,
+                        UUID targetEventId,
+                        UUID targetOutcomeId) ->
                     new SubmittedActionRow(
                             "CARD",
-                            card.playerId(),
-                            card.cardInstanceId(),
-                            card.cardType().name(),
+                            playerId,
+                            cardInstanceId,
+                            cardType.name(),
                             null,
                             null,
-                            card.targetEventId(),
-                            card.targetOutcomeId(),
+                            targetEventId,
+                            targetOutcomeId,
                             null);
-                case SubmittedAction.SpecialActionSubmission special ->
+                case SubmittedAction.SpecialActionSubmission(
+                        UUID playerId,
+                        Faction faction,
+                        SpecialAction specialAction,
+                        UUID targetEventId,
+                        UUID targetOutcomeId,
+                        UUID targetPlayerId) ->
                     new SubmittedActionRow(
                             "SPECIAL",
-                            special.playerId(),
+                            playerId,
                             null,
                             null,
-                            special.faction().name(),
-                            special.specialAction().name(),
-                            special.targetEventId(),
-                            special.targetOutcomeId(),
-                            special.targetPlayerId());
+                            faction.name(),
+                            specialAction.name(),
+                            targetEventId,
+                            targetOutcomeId,
+                            targetPlayerId);
             };
         }
 
