@@ -15,6 +15,7 @@ record StoredSubmittedAction(
         String faction,
         String specialAction,
         UUID targetEventId,
+        UUID sourceOutcomeId,
         UUID targetOutcomeId,
         UUID targetPlayerId) {
 
@@ -25,6 +26,7 @@ record StoredSubmittedAction(
                     UUID cardInstanceId,
                     CardType cardType,
                     UUID targetEventId,
+                    UUID sourceOutcomeId,
                     UUID targetOutcomeId) ->
                 new StoredSubmittedAction(
                         "CARD",
@@ -34,6 +36,7 @@ record StoredSubmittedAction(
                         null,
                         null,
                         targetEventId,
+                        sourceOutcomeId,
                         targetOutcomeId,
                         null);
             case SubmittedAction.SpecialActionSubmission(
@@ -51,6 +54,7 @@ record StoredSubmittedAction(
                         faction.name(),
                         specialAction.name(),
                         targetEventId,
+                        null,
                         targetOutcomeId,
                         targetPlayerId);
         };
@@ -60,7 +64,12 @@ record StoredSubmittedAction(
         return switch (type) {
             case "CARD" ->
                 new SubmittedAction.CardAction(
-                        playerId, cardInstanceId, CardType.valueOf(cardType), targetEventId, targetOutcomeId);
+                        playerId,
+                        cardInstanceId,
+                        CardType.valueOf(cardType),
+                        targetEventId,
+                        sourceOutcomeId,
+                        targetOutcomeId);
             case "SPECIAL" ->
                 new SubmittedAction.SpecialActionSubmission(
                         playerId,

@@ -58,7 +58,7 @@ class ActionRoundSagaEventListenerTest {
         // given
         var listener = new ActionRoundSagaEventListener(saga, timerScheduler);
         var event = new CardPlayed(
-                GAME_ID, ERA_NUMBER, ROUND_NUMBER, PLAYER_ID, UUID.randomUUID(), CardType.PUSH, null, null);
+                GAME_ID, ERA_NUMBER, ROUND_NUMBER, PLAYER_ID, UUID.randomUUID(), CardType.PUSH, null, null, null);
 
         // when
         listener.onCardPlayed(event);

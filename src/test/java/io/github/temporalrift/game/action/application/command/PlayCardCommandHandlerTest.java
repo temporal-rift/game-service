@@ -70,12 +70,20 @@ class PlayCardCommandHandlerTest {
         // given
         var cardInstanceId = UUID.randomUUID();
         var command = new PlayCardUseCase.Command(
-                GAME_ID, ERA, ROUND, PLAYER_ID, cardInstanceId, CardType.PUSH, UUID.randomUUID(), UUID.randomUUID());
+                GAME_ID,
+                ERA,
+                ROUND,
+                PLAYER_ID,
+                cardInstanceId,
+                CardType.PUSH,
+                UUID.randomUUID(),
+                null,
+                UUID.randomUUID());
         given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumber(GAME_ID, ERA, ROUND))
                 .willReturn(Optional.of(round));
         given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(playerState));
         given(playerState.hand()).willReturn(List.of(new PlayerState.CardInstance(cardInstanceId, CardType.PUSH)));
-        given(round.submitCard(eq(PLAYER_ID), eq(cardInstanceId), eq(CardType.PUSH), any(), any(), anyList()))
+        given(round.submitCard(eq(PLAYER_ID), eq(cardInstanceId), eq(CardType.PUSH), any(), any(), any(), anyList()))
                 .willReturn(false);
         given(round.id()).willReturn(UUID.randomUUID());
         given(round.gameId()).willReturn(GAME_ID);
@@ -101,13 +109,14 @@ class PlayCardCommandHandlerTest {
     void handleAllSubmittedDoesNotCloseDirectly() {
         // given
         var cardInstanceId = UUID.randomUUID();
-        var command =
-                new PlayCardUseCase.Command(GAME_ID, ERA, ROUND, PLAYER_ID, cardInstanceId, CardType.PUSH, null, null);
+        var command = new PlayCardUseCase.Command(
+                GAME_ID, ERA, ROUND, PLAYER_ID, cardInstanceId, CardType.PUSH, null, null, null);
         given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumber(GAME_ID, ERA, ROUND))
                 .willReturn(Optional.of(round));
         given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(playerState));
         given(playerState.hand()).willReturn(List.of(new PlayerState.CardInstance(cardInstanceId, CardType.PUSH)));
-        given(round.submitCard(any(), any(), any(), any(), any(), anyList())).willReturn(true);
+        given(round.submitCard(any(), any(), any(), any(), any(), any(), anyList()))
+                .willReturn(true);
         given(round.id()).willReturn(UUID.randomUUID());
         given(round.gameId()).willReturn(GAME_ID);
         given(round.pullEvents()).willReturn(List.of(new Object()));
@@ -127,7 +136,7 @@ class PlayCardCommandHandlerTest {
         given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumber(GAME_ID, ERA, ROUND))
                 .willReturn(Optional.empty());
         var command = new PlayCardUseCase.Command(
-                GAME_ID, ERA, ROUND, PLAYER_ID, UUID.randomUUID(), CardType.PUSH, null, null);
+                GAME_ID, ERA, ROUND, PLAYER_ID, UUID.randomUUID(), CardType.PUSH, null, null, null);
 
         // when / then
         assertThatExceptionOfType(RoundNotFoundException.class).isThrownBy(() -> handler.handle(command));
@@ -141,7 +150,7 @@ class PlayCardCommandHandlerTest {
                 .willReturn(Optional.of(round));
         given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.empty());
         var command = new PlayCardUseCase.Command(
-                GAME_ID, ERA, ROUND, PLAYER_ID, UUID.randomUUID(), CardType.PUSH, null, null);
+                GAME_ID, ERA, ROUND, PLAYER_ID, UUID.randomUUID(), CardType.PUSH, null, null, null);
 
         // when / then
         assertThatExceptionOfType(PlayerStateNotFoundException.class).isThrownBy(() -> handler.handle(command));
@@ -157,9 +166,9 @@ class PlayCardCommandHandlerTest {
         given(playerState.hand()).willReturn(List.of(new PlayerState.CardInstance(CARD_INSTANCE_ID, CardType.PUSH)));
         willThrow(new ActionRoundClosedException())
                 .given(round)
-                .submitCard(any(), any(), any(), any(), any(), anyList());
+                .submitCard(any(), any(), any(), any(), any(), any(), anyList());
         var command = new PlayCardUseCase.Command(
-                GAME_ID, ERA, ROUND, PLAYER_ID, CARD_INSTANCE_ID, CardType.PUSH, null, null);
+                GAME_ID, ERA, ROUND, PLAYER_ID, CARD_INSTANCE_ID, CardType.PUSH, null, null, null);
 
         // when / then
         assertThatExceptionOfType(ActionRoundClosedException.class).isThrownBy(() -> handler.handle(command));
@@ -175,9 +184,9 @@ class PlayCardCommandHandlerTest {
         given(playerState.hand()).willReturn(List.of());
         willThrow(new CardNotInHandException(CARD_INSTANCE_ID))
                 .given(round)
-                .submitCard(any(), any(), any(), any(), any(), anyList());
+                .submitCard(any(), any(), any(), any(), any(), any(), anyList());
         var command = new PlayCardUseCase.Command(
-                GAME_ID, ERA, ROUND, PLAYER_ID, CARD_INSTANCE_ID, CardType.PUSH, null, null);
+                GAME_ID, ERA, ROUND, PLAYER_ID, CARD_INSTANCE_ID, CardType.PUSH, null, null, null);
 
         // when / then
         assertThatExceptionOfType(CardNotInHandException.class).isThrownBy(() -> handler.handle(command));
@@ -193,9 +202,9 @@ class PlayCardCommandHandlerTest {
         given(playerState.hand()).willReturn(List.of(new PlayerState.CardInstance(CARD_INSTANCE_ID, CardType.PUSH)));
         willThrow(new DuplicateSubmissionException(PLAYER_ID))
                 .given(round)
-                .submitCard(any(), any(), any(), any(), any(), anyList());
+                .submitCard(any(), any(), any(), any(), any(), any(), anyList());
         var command = new PlayCardUseCase.Command(
-                GAME_ID, ERA, ROUND, PLAYER_ID, CARD_INSTANCE_ID, CardType.PUSH, null, null);
+                GAME_ID, ERA, ROUND, PLAYER_ID, CARD_INSTANCE_ID, CardType.PUSH, null, null, null);
 
         // when / then
         assertThatExceptionOfType(DuplicateSubmissionException.class).isThrownBy(() -> handler.handle(command));
@@ -211,12 +220,13 @@ class PlayCardCommandHandlerTest {
                 .willReturn(Optional.of(round));
         given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(playerState));
         given(playerState.hand()).willReturn(List.of(c1, c2));
-        given(round.submitCard(any(), any(), any(), any(), any(), anyList())).willReturn(false);
+        given(round.submitCard(any(), any(), any(), any(), any(), any(), anyList()))
+                .willReturn(false);
         given(round.id()).willReturn(UUID.randomUUID());
         given(round.gameId()).willReturn(GAME_ID);
         given(round.pullEvents()).willReturn(List.of(new Object()));
         var command = new PlayCardUseCase.Command(
-                GAME_ID, ERA, ROUND, PLAYER_ID, c1.cardInstanceId(), CardType.PUSH, null, null);
+                GAME_ID, ERA, ROUND, PLAYER_ID, c1.cardInstanceId(), CardType.PUSH, null, null, null);
 
         // when
         handler.handle(command);
@@ -232,7 +242,48 @@ class PlayCardCommandHandlerTest {
                         eq(CardType.PUSH),
                         isNull(),
                         isNull(),
+                        isNull(),
                         captor.capture());
         assertThat(captor.getValue()).containsExactlyInAnyOrder(c1.cardInstanceId(), c2.cardInstanceId());
+    }
+
+    @Test
+    @DisplayName("handle — forwards source outcome to submitCard")
+    void handleForwardsSourceOutcomeToSubmitCard() {
+        var cardInstanceId = UUID.randomUUID();
+        var sourceOutcomeId = UUID.randomUUID();
+        var targetOutcomeId = UUID.randomUUID();
+        var command = new PlayCardUseCase.Command(
+                GAME_ID,
+                ERA,
+                ROUND,
+                PLAYER_ID,
+                cardInstanceId,
+                CardType.SWING,
+                UUID.randomUUID(),
+                sourceOutcomeId,
+                targetOutcomeId);
+        given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumber(GAME_ID, ERA, ROUND))
+                .willReturn(Optional.of(round));
+        given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(playerState));
+        given(playerState.hand()).willReturn(List.of(new PlayerState.CardInstance(cardInstanceId, CardType.SWING)));
+        given(round.submitCard(any(), any(), any(), any(), any(), any(), anyList()))
+                .willReturn(false);
+        given(round.id()).willReturn(UUID.randomUUID());
+        given(round.gameId()).willReturn(GAME_ID);
+        given(round.pullEvents()).willReturn(List.of(new Object()));
+
+        handler.handle(command);
+
+        then(round)
+                .should()
+                .submitCard(
+                        eq(PLAYER_ID),
+                        eq(cardInstanceId),
+                        eq(CardType.SWING),
+                        any(),
+                        eq(sourceOutcomeId),
+                        eq(targetOutcomeId),
+                        anyList());
     }
 }

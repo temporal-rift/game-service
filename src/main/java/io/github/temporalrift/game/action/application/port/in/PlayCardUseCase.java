@@ -29,6 +29,7 @@ public interface PlayCardUseCase {
             UUID cardInstanceId,
             CardType cardType,
             UUID targetEventId,
+            UUID sourceOutcomeId,
             UUID targetOutcomeId) {}
 
     /**

@@ -18,6 +18,7 @@ import io.github.temporalrift.events.shared.SpecialAction;
 import io.github.temporalrift.game.TestcontainersConfiguration;
 import io.github.temporalrift.game.action.domain.actionround.ActionRound;
 import io.github.temporalrift.game.action.domain.actionround.RoundStatus;
+import io.github.temporalrift.game.action.domain.actionround.SubmittedAction;
 import io.github.temporalrift.game.action.domain.playerstate.PlayerState;
 import io.github.temporalrift.game.action.domain.port.out.ActionRoundRepository;
 import io.github.temporalrift.game.action.domain.port.out.ActionRoundSagaRepository;
@@ -51,6 +52,7 @@ class ActionPersistenceIT {
         var player1 = UUID.randomUUID();
         var player2 = UUID.randomUUID();
         var targetEventId = UUID.randomUUID();
+        var sourceOutcomeId = UUID.randomUUID();
         var targetOutcomeId = UUID.randomUUID();
         var targetPlayerId = UUID.randomUUID();
         var cardInstanceId = UUID.randomUUID();
@@ -58,7 +60,13 @@ class ActionPersistenceIT {
         var round = new ActionRound(roundId, gameId, 2, 3, List.of(player1, player2), 45);
         round.pullEvents();
         round.submitCard(
-                player1, cardInstanceId, CardType.PUSH, targetEventId, targetOutcomeId, List.of(cardInstanceId));
+                player1,
+                cardInstanceId,
+                CardType.SWING,
+                targetEventId,
+                sourceOutcomeId,
+                targetOutcomeId,
+                List.of(cardInstanceId));
         round.submitSpecial(
                 player2, Faction.PROPHETS, SpecialAction.SEAL, targetEventId, targetOutcomeId, targetPlayerId, false);
         round.close("ALL_SUBMITTED");
@@ -76,6 +84,14 @@ class ActionPersistenceIT {
         assertThat(loaded.get().closedReason()).isEqualTo("ALL_SUBMITTED");
         assertThat(loaded.get().pendingPlayerIds()).isEmpty();
         assertThat(loaded.get().submittedActions()).hasSize(2);
+        assertThat(loaded.get().submittedActions())
+                .filteredOn(SubmittedAction.CardAction.class::isInstance)
+                .singleElement()
+                .isInstanceOfSatisfying(SubmittedAction.CardAction.class, card -> {
+                    assertThat(card.cardType()).isEqualTo(CardType.SWING);
+                    assertThat(card.sourceOutcomeId()).isEqualTo(sourceOutcomeId);
+                    assertThat(card.targetOutcomeId()).isEqualTo(targetOutcomeId);
+                });
     }
 
     @Test

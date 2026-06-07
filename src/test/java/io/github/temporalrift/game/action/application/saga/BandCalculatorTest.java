@@ -36,9 +36,9 @@ class BandCalculatorTest {
                         new FutureEventDefinitionPort.OutcomeDefinition(OUTCOME_1, 20),
                         new FutureEventDefinitionPort.OutcomeDefinition(OUTCOME_2, 55))));
         List<SubmittedAction> round1 = List.of(
-                new SubmittedAction.CardAction(PLAYER_ID, UUID.randomUUID(), CardType.PUSH, EVENT_ID, OUTCOME_1));
-        List<SubmittedAction> round2 = List.of(
-                new SubmittedAction.CardAction(PLAYER_ID, UUID.randomUUID(), CardType.SUPPRESS, EVENT_ID, OUTCOME_2));
+                new SubmittedAction.CardAction(PLAYER_ID, UUID.randomUUID(), CardType.PUSH, EVENT_ID, null, OUTCOME_1));
+        List<SubmittedAction> round2 = List.of(new SubmittedAction.CardAction(
+                PLAYER_ID, UUID.randomUUID(), CardType.SUPPRESS, EVENT_ID, null, OUTCOME_2));
 
         // when
         var result = calculator.computeBands(round1, round2, definitions);
@@ -62,9 +62,9 @@ class BandCalculatorTest {
         var definitions = List.of(new FutureEventDefinitionPort.EventDefinition(
                 EVENT_ID, List.of(new FutureEventDefinitionPort.OutcomeDefinition(OUTCOME_1, 70))));
         List<SubmittedAction> round1 = List.of(
-                new SubmittedAction.CardAction(PLAYER_ID, UUID.randomUUID(), CardType.SCAN, EVENT_ID, OUTCOME_1),
+                new SubmittedAction.CardAction(PLAYER_ID, UUID.randomUUID(), CardType.SCAN, EVENT_ID, null, OUTCOME_1),
                 new SubmittedAction.CardAction(
-                        PLAYER_ID, UUID.randomUUID(), CardType.PUSH, UUID.randomUUID(), OUTCOME_1));
+                        PLAYER_ID, UUID.randomUUID(), CardType.PUSH, UUID.randomUUID(), null, OUTCOME_1));
         List<SubmittedAction> round2 = List.of(new SubmittedAction.SpecialActionSubmission(
                 PLAYER_ID, Faction.ERASERS, SpecialAction.ANNIHILATE, EVENT_ID, OUTCOME_1, null));
 
@@ -89,6 +89,7 @@ class BandCalculatorTest {
         var swingEventId = UUID.randomUUID();
         var pushOutcomeId = UUID.randomUUID();
         var suppressOutcomeId = UUID.randomUUID();
+        var swingSourceOutcomeId = UUID.randomUUID();
         var swingOutcomeId = UUID.randomUUID();
         var definitions = List.of(
                 new FutureEventDefinitionPort.EventDefinition(
@@ -97,13 +98,22 @@ class BandCalculatorTest {
                         suppressEventId,
                         List.of(new FutureEventDefinitionPort.OutcomeDefinition(suppressOutcomeId, 81))),
                 new FutureEventDefinitionPort.EventDefinition(
-                        swingEventId, List.of(new FutureEventDefinitionPort.OutcomeDefinition(swingOutcomeId, 31))));
+                        swingEventId,
+                        List.of(
+                                new FutureEventDefinitionPort.OutcomeDefinition(swingSourceOutcomeId, 75),
+                                new FutureEventDefinitionPort.OutcomeDefinition(swingOutcomeId, 31))));
         List<SubmittedAction> round1 = List.of(
-                new SubmittedAction.CardAction(PLAYER_ID, UUID.randomUUID(), CardType.PUSH, pushEventId, pushOutcomeId),
                 new SubmittedAction.CardAction(
-                        PLAYER_ID, UUID.randomUUID(), CardType.SUPPRESS, suppressEventId, suppressOutcomeId),
+                        PLAYER_ID, UUID.randomUUID(), CardType.PUSH, pushEventId, null, pushOutcomeId),
                 new SubmittedAction.CardAction(
-                        PLAYER_ID, UUID.randomUUID(), CardType.SWING, swingEventId, swingOutcomeId));
+                        PLAYER_ID, UUID.randomUUID(), CardType.SUPPRESS, suppressEventId, null, suppressOutcomeId),
+                new SubmittedAction.CardAction(
+                        PLAYER_ID,
+                        UUID.randomUUID(),
+                        CardType.SWING,
+                        swingEventId,
+                        swingSourceOutcomeId,
+                        swingOutcomeId));
 
         // when
         var result = calculator.computeBands(round1, List.of(), definitions);
@@ -124,6 +134,8 @@ class BandCalculatorTest {
                         new io.github.temporalrift.events.timeline.BandedProbabilityPublished.EventBandState(
                                 swingEventId,
                                 List.of(
+                                        new io.github.temporalrift.events.timeline.BandedProbabilityPublished
+                                                .OutcomeBandState(swingSourceOutcomeId, ProbabilityBand.MEDIUM),
                                         new io.github.temporalrift.events.timeline.BandedProbabilityPublished
                                                 .OutcomeBandState(swingOutcomeId, ProbabilityBand.HIGH))));
     }
@@ -168,8 +180,8 @@ class BandCalculatorTest {
         // given
         var definitions = List.of(new FutureEventDefinitionPort.EventDefinition(
                 EVENT_ID, List.of(new FutureEventDefinitionPort.OutcomeDefinition(OUTCOME_1, 55))));
-        List<SubmittedAction> actions =
-                List.of(new SubmittedAction.CardAction(PLAYER_ID, UUID.randomUUID(), cardType, EVENT_ID, OUTCOME_1));
+        List<SubmittedAction> actions = List.of(
+                new SubmittedAction.CardAction(PLAYER_ID, UUID.randomUUID(), cardType, EVENT_ID, null, OUTCOME_1));
 
         // when
         var result = calculator.computeBands(actions, List.of(), definitions);
@@ -212,8 +224,10 @@ class BandCalculatorTest {
         var definitions = List.of(new FutureEventDefinitionPort.EventDefinition(
                 EVENT_ID, List.of(new FutureEventDefinitionPort.OutcomeDefinition(OUTCOME_1, 55))));
         List<SubmittedAction> round1 = List.of(
-                new SubmittedAction.CardAction(PLAYER_ID, UUID.randomUUID(), CardType.PUSH, null, OUTCOME_1),
-                new SubmittedAction.CardAction(PLAYER_ID, UUID.randomUUID(), CardType.PUSH, EVENT_ID, null));
+                new SubmittedAction.CardAction(PLAYER_ID, UUID.randomUUID(), CardType.PUSH, null, null, OUTCOME_1),
+                new SubmittedAction.CardAction(PLAYER_ID, UUID.randomUUID(), CardType.PUSH, EVENT_ID, null, null),
+                new SubmittedAction.CardAction(
+                        PLAYER_ID, UUID.randomUUID(), CardType.SWING, EVENT_ID, null, OUTCOME_1));
         List<SubmittedAction> round2 = List.of(
                 new SubmittedAction.SpecialActionSubmission(
                         PLAYER_ID, Faction.ERASERS, SpecialAction.SEAL, null, OUTCOME_1, null),

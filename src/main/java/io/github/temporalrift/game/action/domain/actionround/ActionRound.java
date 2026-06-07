@@ -95,6 +95,7 @@ public class ActionRound extends AggregateRoot {
             UUID cardInstanceId,
             CardType cardType,
             UUID targetEventId,
+            UUID sourceOutcomeId,
             UUID targetOutcomeId,
             List<UUID> playerHand) {
         if (this.status != RoundStatus.OPEN) {
@@ -108,10 +109,18 @@ public class ActionRound extends AggregateRoot {
         }
 
         pendingPlayerIds.remove(playerId);
-        submittedActions.add(
-                new SubmittedAction.CardAction(playerId, cardInstanceId, cardType, targetEventId, targetOutcomeId));
+        submittedActions.add(new SubmittedAction.CardAction(
+                playerId, cardInstanceId, cardType, targetEventId, sourceOutcomeId, targetOutcomeId));
         registerEvent(new CardPlayed(
-                gameId, eraNumber, roundNumber, playerId, cardInstanceId, cardType, targetEventId, targetOutcomeId));
+                gameId,
+                eraNumber,
+                roundNumber,
+                playerId,
+                cardInstanceId,
+                cardType,
+                targetEventId,
+                sourceOutcomeId,
+                targetOutcomeId));
 
         return allSubmitted();
     }
