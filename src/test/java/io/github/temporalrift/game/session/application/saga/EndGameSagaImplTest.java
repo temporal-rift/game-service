@@ -205,7 +205,6 @@ class EndGameSagaImplTest {
     // ─── helpers ─────────────────────────────────────────────────────────────
 
     private StartGameSagaState startGameSagaState() {
-        return new StartGameSagaState(
-                UUID.randomUUID(), GAME_ID, LOBBY_ID, StartGameSagaStatus.COMPLETED, 5, ASSIGNMENTS);
+        return new StartGameSagaState(UUID.randomUUID(), GAME_ID, LOBBY_ID, StartGameSagaStatus.COMPLETED, ASSIGNMENTS);
     }
 }

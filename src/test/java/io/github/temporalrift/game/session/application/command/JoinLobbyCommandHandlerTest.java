@@ -7,6 +7,7 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.BDDMockito.willThrow;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -14,7 +15,6 @@ import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -33,6 +33,7 @@ class JoinLobbyCommandHandlerTest {
     static final UUID lobbyId = UUID.randomUUID();
     static final UUID playerId = UUID.randomUUID();
     static final UUID hostPlayerId = UUID.randomUUID();
+    static final Instant JOINED_AT = Instant.parse("2026-01-01T00:00:00Z");
 
     @Mock
     LobbyRepository lobbyRepository;
@@ -79,10 +80,7 @@ class JoinLobbyCommandHandlerTest {
         handler.handle(command);
 
         // then
-        var captor = ArgumentCaptor.forClass(LobbyPlayer.class);
-        then(lobby).should().join(captor.capture());
-        assertThat(captor.getValue().playerId()).isEqualTo(playerId);
-        assertThat(captor.getValue().playerName()).isEqualTo("Alice");
+        then(lobby).should().join(playerId, "Alice");
     }
 
     @Test
@@ -106,7 +104,7 @@ class JoinLobbyCommandHandlerTest {
     void handle_returnsCurrentPlayersFromLobbyAfterJoin() {
         // given
         stubSuccessfulJoin();
-        var existingPlayer = new LobbyPlayer(hostPlayerId, "Bob", null, null, true);
+        var existingPlayer = new LobbyPlayer(hostPlayerId, "Bob", null, JOINED_AT, true);
         given(lobby.currentPlayers()).willReturn(List.of(existingPlayer));
         given(lobby.hostPlayerId()).willReturn(hostPlayerId);
         var command = new JoinLobbyUseCase.Command(lobbyId, playerId, "Alice");
@@ -136,7 +134,7 @@ class JoinLobbyCommandHandlerTest {
     void handle_lobbyFull_propagatesLobbyFullException() {
         // given
         given(lobbyRepository.findById(lobbyId)).willReturn(Optional.of(lobby));
-        willThrow(new LobbyFullException()).given(lobby).join(any());
+        willThrow(new LobbyFullException()).given(lobby).join(any(), any());
         var command = new JoinLobbyUseCase.Command(lobbyId, playerId, "Alice");
 
         // when / then
@@ -148,7 +146,7 @@ class JoinLobbyCommandHandlerTest {
     void handle_lobbyAlreadyStarted_propagatesLobbyAlreadyStartedException() {
         // given
         given(lobbyRepository.findById(lobbyId)).willReturn(Optional.of(lobby));
-        willThrow(new LobbyAlreadyStartedException()).given(lobby).join(any());
+        willThrow(new LobbyAlreadyStartedException()).given(lobby).join(any(), any());
         var command = new JoinLobbyUseCase.Command(lobbyId, playerId, "Alice");
 
         // when / then

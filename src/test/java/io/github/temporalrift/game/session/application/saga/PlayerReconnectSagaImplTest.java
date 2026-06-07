@@ -44,6 +44,7 @@ class PlayerReconnectSagaImplTest {
     static final UUID PLAYER_ID = UUID.randomUUID();
     static final UUID SAGA_ID = UUID.randomUUID();
     static final int GRACE_SECONDS = 30;
+    static final Instant BASE_INSTANT = Instant.parse("2026-01-01T00:00:00Z");
 
     @Mock
     LobbyRepository lobbyRepository;
@@ -80,7 +81,7 @@ class PlayerReconnectSagaImplTest {
     }
 
     private Lobby stubStartedLobby(boolean playerConnected) {
-        var player = new LobbyPlayer(PLAYER_ID, "Alice", null, Instant.now(), playerConnected);
+        var player = new LobbyPlayer(PLAYER_ID, "Alice", null, BASE_INSTANT, playerConnected);
         var config = new LobbyConfig("ABCD", 3, 5, java.time.Clock.systemUTC());
         var lobby = Lobby.reconstitute(LOBBY_ID, GAME_ID, PLAYER_ID, List.of(player), LobbyStatus.STARTED, config);
         given(lobbyRepository.findById(LOBBY_ID)).willReturn(Optional.of(lobby));
@@ -99,7 +100,7 @@ class PlayerReconnectSagaImplTest {
                 GAME_ID,
                 PLAYER_ID,
                 PlayerReconnectSagaStatus.GRACE_PERIOD,
-                Instant.now().plusSeconds(GRACE_SECONDS));
+                BASE_INSTANT.plusSeconds(GRACE_SECONDS));
         given(stateManager.initGracePeriod(any(), eq(GAME_ID), eq(PLAYER_ID), any()))
                 .willReturn(state);
 
@@ -126,7 +127,7 @@ class PlayerReconnectSagaImplTest {
                 GAME_ID,
                 PLAYER_ID,
                 PlayerReconnectSagaStatus.GRACE_PERIOD,
-                Instant.now().plusSeconds(GRACE_SECONDS));
+                BASE_INSTANT.plusSeconds(GRACE_SECONDS));
         given(stateManager.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(gracePeriodState));
 
         // when
@@ -143,11 +144,7 @@ class PlayerReconnectSagaImplTest {
     void handleReconnect_abandonedSaga_rejectsWithoutMutation() {
         // given
         var abandonedState = new PlayerReconnectSagaState(
-                SAGA_ID,
-                GAME_ID,
-                PLAYER_ID,
-                PlayerReconnectSagaStatus.ABANDONED,
-                Instant.now().minusSeconds(5));
+                SAGA_ID, GAME_ID, PLAYER_ID, PlayerReconnectSagaStatus.ABANDONED, BASE_INSTANT.minusSeconds(5));
         given(stateManager.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(abandonedState));
 
         // when
@@ -164,11 +161,7 @@ class PlayerReconnectSagaImplTest {
     void handleTimerExpiry_gracePeriodActive_abandonsPlayerAndPublishesEvent() {
         // given
         var gracePeriodState = new PlayerReconnectSagaState(
-                SAGA_ID,
-                GAME_ID,
-                PLAYER_ID,
-                PlayerReconnectSagaStatus.GRACE_PERIOD,
-                Instant.now().minusSeconds(1));
+                SAGA_ID, GAME_ID, PLAYER_ID, PlayerReconnectSagaStatus.GRACE_PERIOD, BASE_INSTANT.minusSeconds(1));
         given(stateManager.findBySagaId(SAGA_ID)).willReturn(Optional.of(gracePeriodState));
         stubGame();
         stubStartedLobby(false);
@@ -187,11 +180,7 @@ class PlayerReconnectSagaImplTest {
     void handleTimerExpiry_lastPlayerAbandoned_publishesGameEndedAbnormally() {
         // given
         var gracePeriodState = new PlayerReconnectSagaState(
-                SAGA_ID,
-                GAME_ID,
-                PLAYER_ID,
-                PlayerReconnectSagaStatus.GRACE_PERIOD,
-                Instant.now().minusSeconds(1));
+                SAGA_ID, GAME_ID, PLAYER_ID, PlayerReconnectSagaStatus.GRACE_PERIOD, BASE_INSTANT.minusSeconds(1));
         given(stateManager.findBySagaId(SAGA_ID)).willReturn(Optional.of(gracePeriodState));
         stubGame();
         stubStartedLobby(false);

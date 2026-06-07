@@ -46,6 +46,11 @@ class LobbyRepositoryAdapter implements LobbyRepository {
     }
 
     @Override
+    public Optional<Lobby> findByIdWithLock(UUID id) {
+        return jpaRepository.findByIdWithLock(id).map(this::toDomain);
+    }
+
+    @Override
     public Optional<Lobby> findByJoinCode(String joinCode) {
         return jpaRepository.findByJoinCode(joinCode).map(this::toDomain);
     }

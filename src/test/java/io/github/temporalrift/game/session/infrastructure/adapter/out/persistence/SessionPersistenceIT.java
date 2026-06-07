@@ -47,8 +47,10 @@ class SessionPersistenceIT {
         var id = UUID.randomUUID();
         var gameId = UUID.randomUUID();
         var hostPlayerId = UUID.randomUUID();
-        var player1 = new LobbyPlayer(hostPlayerId, "Alice", Faction.ERASERS, Instant.now(), true);
-        var player2 = new LobbyPlayer(UUID.randomUUID(), "Bob", Faction.PROPHETS, Instant.now(), true);
+        var player1 =
+                new LobbyPlayer(hostPlayerId, "Alice", Faction.ERASERS, Instant.parse("2026-01-01T00:00:00Z"), true);
+        var player2 = new LobbyPlayer(
+                UUID.randomUUID(), "Bob", Faction.PROPHETS, Instant.parse("2026-01-01T00:00:00Z"), true);
         var players = new ArrayList<LobbyPlayer>();
         players.add(player1);
         players.add(player2);

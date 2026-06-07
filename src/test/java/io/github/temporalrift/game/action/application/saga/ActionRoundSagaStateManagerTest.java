@@ -33,7 +33,7 @@ class ActionRoundSagaStateManagerTest {
     static final UUID PLAYER_2 = UUID.randomUUID();
     static final int ERA_NUMBER = 1;
     static final int ROUND_NUMBER = 2;
-    static final Instant TIMER_EXPIRES_AT = Instant.now().plusSeconds(30);
+    static final Instant TIMER_EXPIRES_AT = Instant.parse("2099-01-01T00:00:30Z");
 
     @Mock
     ActionRoundSagaRepository repository;

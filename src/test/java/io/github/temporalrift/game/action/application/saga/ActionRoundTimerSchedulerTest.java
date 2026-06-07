@@ -46,7 +46,7 @@ class ActionRoundTimerSchedulerTest {
         // given
         var scheduler = new ActionRoundTimerScheduler(taskScheduler, timeoutProcessor);
         var sagaId = UUID.randomUUID();
-        var expiresAt = Instant.now().plusSeconds(10);
+        var expiresAt = Instant.parse("2099-01-01T00:00:10Z");
         var runnableCaptor = ArgumentCaptor.forClass(Runnable.class);
         doReturn(scheduledFuture).when(taskScheduler).schedule(runnableCaptor.capture(), eq(expiresAt));
 
@@ -64,8 +64,7 @@ class ActionRoundTimerSchedulerTest {
     void scheduleAfterCommit_withSynchronization_registersAfterCommitHook() {
         // given
         var scheduler = new ActionRoundTimerScheduler(taskScheduler, timeoutProcessor);
-        var result =
-                new ActionRoundSaga.StartResult(UUID.randomUUID(), Instant.now().plusSeconds(15));
+        var result = new ActionRoundSaga.StartResult(UUID.randomUUID(), Instant.parse("2099-01-01T00:00:15Z"));
         TransactionSynchronizationManager.initSynchronization();
         doReturn(scheduledFuture).when(taskScheduler).schedule(any(Runnable.class), eq(result.timerExpiresAt()));
 
@@ -84,8 +83,7 @@ class ActionRoundTimerSchedulerTest {
     void scheduleAfterCommit_withoutSynchronization_schedulesImmediately() {
         // given
         var scheduler = new ActionRoundTimerScheduler(taskScheduler, timeoutProcessor);
-        var result =
-                new ActionRoundSaga.StartResult(UUID.randomUUID(), Instant.now().plusSeconds(15));
+        var result = new ActionRoundSaga.StartResult(UUID.randomUUID(), Instant.parse("2099-01-01T00:00:15Z"));
         doReturn(scheduledFuture).when(taskScheduler).schedule(any(Runnable.class), eq(result.timerExpiresAt()));
 
         // when

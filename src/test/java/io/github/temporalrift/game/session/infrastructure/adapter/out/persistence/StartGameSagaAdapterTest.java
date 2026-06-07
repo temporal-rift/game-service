@@ -36,7 +36,6 @@ class StartGameSagaAdapterTest {
                 UUID.randomUUID(),
                 UUID.randomUUID(),
                 StartGameSagaStatus.RUNNING,
-                1,
                 List.of(new FactionAssignment(UUID.randomUUID(), Faction.WEAVERS)));
     }
 
@@ -46,7 +45,6 @@ class StartGameSagaAdapterTest {
         e.setGameId(saga.gameId());
         e.setLobbyId(saga.lobbyId());
         e.setStatus(saga.status().name());
-        e.setCurrentStep(saga.currentStep());
         e.setFactionAssignments(saga.factionAssignments());
         return e;
     }

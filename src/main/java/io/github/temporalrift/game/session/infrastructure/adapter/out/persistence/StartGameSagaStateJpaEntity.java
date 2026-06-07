@@ -27,9 +27,6 @@ public class StartGameSagaStateJpaEntity {
     @Column(name = "status", nullable = false)
     private String status;
 
-    @Column(name = "current_step")
-    private Integer currentStep;
-
     @Column(name = "context", columnDefinition = "jsonb")
     @Convert(converter = FactionAssignmentListConverter.class)
     private List<FactionAssignment> factionAssignments; // nullable
@@ -66,14 +63,6 @@ public class StartGameSagaStateJpaEntity {
 
     public void setStatus(String status) {
         this.status = status;
-    }
-
-    public Integer getCurrentStep() {
-        return currentStep;
-    }
-
-    public void setCurrentStep(Integer currentStep) {
-        this.currentStep = currentStep;
     }
 
     public List<FactionAssignment> getFactionAssignments() {

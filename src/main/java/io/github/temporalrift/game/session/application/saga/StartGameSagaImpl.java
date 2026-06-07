@@ -21,8 +21,13 @@ import io.github.temporalrift.events.session.FactionsDrawn;
 import io.github.temporalrift.events.session.GameStarted;
 import io.github.temporalrift.events.shared.Faction;
 import io.github.temporalrift.game.session.domain.game.Game;
+import io.github.temporalrift.game.session.domain.lobby.DisconnectedPlayersException;
 import io.github.temporalrift.game.session.domain.lobby.Lobby;
+import io.github.temporalrift.game.session.domain.lobby.LobbyNotFoundException;
 import io.github.temporalrift.game.session.domain.lobby.LobbyPlayer;
+import io.github.temporalrift.game.session.domain.lobby.NotEnoughPlayersException;
+import io.github.temporalrift.game.session.domain.lobby.NotLobbyHostException;
+import io.github.temporalrift.game.session.domain.lobby.StartOutcome;
 import io.github.temporalrift.game.session.domain.port.out.FutureEventCatalogPort;
 import io.github.temporalrift.game.session.domain.port.out.GameRepository;
 import io.github.temporalrift.game.session.domain.port.out.LobbyRepository;
@@ -61,7 +66,11 @@ class StartGameSagaImpl implements StartGameSaga {
 
     @Override
     @Transactional(propagation = REQUIRES_NEW)
-    public void start(UUID gameId, Lobby lobby) {
+    public UUID start(UUID lobbyId, UUID requestingPlayerId) {
+        var lobby = lobbyRepository.findByIdWithLock(lobbyId).orElseThrow(() -> new LobbyNotFoundException(lobbyId));
+        var gameId = lobby.gameId();
+        validateStartRequest(lobby, requestingPlayerId);
+
         try {
             stateManager.initRunning(gameId, lobby.id());
 
@@ -71,9 +80,21 @@ class StartGameSagaImpl implements StartGameSaga {
             createAndSaveGame(gameId, lobby, assignments);
 
             stateManager.complete(gameId, lobby.id());
+            return gameId;
         } catch (Exception e) {
             compensator.compensate(gameId, e.getMessage());
             throw e;
+        }
+    }
+
+    private void validateStartRequest(Lobby lobby, UUID requestingPlayerId) {
+        switch (lobby.requestStart(requestingPlayerId)) {
+            case StartOutcome.GameStarted() -> {
+                return;
+            }
+            case StartOutcome.NotHost() -> throw new NotLobbyHostException();
+            case StartOutcome.NotEnoughPlayers(var count, var min) -> throw new NotEnoughPlayersException(count, min);
+            case StartOutcome.HasDisconnectedPlayers(var ids) -> throw new DisconnectedPlayersException(ids);
         }
     }
 

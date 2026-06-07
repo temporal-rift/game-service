@@ -32,7 +32,7 @@ class ActionEventPublisherAdapterTest {
                 UUID.randomUUID(),
                 "ActionRound",
                 UUID.randomUUID(),
-                Instant.now(),
+                Instant.parse("2026-01-01T00:00:00Z"),
                 1,
                 new ActionRoundClosed(UUID.randomUUID(), 1, 2, "ALL_SUBMITTED", 3));
 

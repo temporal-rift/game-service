@@ -63,7 +63,7 @@ class PlayerReconnectSagaRecoveryTest {
                 GAME_ID,
                 PLAYER_ID,
                 PlayerReconnectSagaStatus.GRACE_PERIOD,
-                Instant.now().minusSeconds(5));
+                Instant.parse("2000-01-01T00:00:00Z"));
         given(stateManager.findAllInGracePeriod()).willReturn(List.of(state));
 
         // when
@@ -84,7 +84,7 @@ class PlayerReconnectSagaRecoveryTest {
                 GAME_ID,
                 PLAYER_ID,
                 PlayerReconnectSagaStatus.GRACE_PERIOD,
-                Instant.now().plusSeconds(20));
+                Instant.parse("2099-01-01T00:00:20Z"));
         given(stateManager.findAllInGracePeriod()).willReturn(List.of(state));
 
         // when

@@ -65,17 +65,21 @@ public class Lobby extends AggregateRoot {
 
     public void join(LobbyPlayer player) {
         Objects.requireNonNull(player, "Player must not be null");
+        join(player.playerId(), player.playerName(), player.faction());
+    }
+
+    public void join(UUID playerId, String playerName) {
+        join(playerId, playerName, null);
+    }
+
+    private void join(UUID playerId, String playerName, io.github.temporalrift.events.shared.Faction faction) {
         requireWaiting();
         if (currentPlayers.size() >= config.maxPlayers()) {
             throw new LobbyFullException();
         }
-        currentPlayers.add(new LobbyPlayer(
-                player.playerId(),
-                player.playerName(),
-                player.faction(),
-                config.clock().instant(),
-                true));
-        registerEvent(new PlayerJoinedLobby(id, player.playerId(), player.playerName()));
+        currentPlayers.add(
+                new LobbyPlayer(playerId, playerName, faction, config.clock().instant(), true));
+        registerEvent(new PlayerJoinedLobby(id, playerId, playerName));
     }
 
     public void assignFaction(UUID playerId, io.github.temporalrift.events.shared.Faction faction) {
