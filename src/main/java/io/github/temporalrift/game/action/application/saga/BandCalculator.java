@@ -8,6 +8,7 @@ import java.util.UUID;
 
 import org.springframework.stereotype.Component;
 
+import io.github.temporalrift.events.shared.CardType;
 import io.github.temporalrift.events.timeline.BandedProbabilityPublished;
 import io.github.temporalrift.events.timeline.BandedProbabilityPublished.ProbabilityBand;
 import io.github.temporalrift.game.action.domain.actionround.SubmittedAction;
@@ -82,14 +83,15 @@ class BandCalculator {
         if (outcomeMap == null) {
             return;
         }
+        if (action.cardType() == CardType.SWING) {
+            applySwingShift(outcomeMap, action);
+            return;
+        }
+
         var shift =
                 switch (action.cardType()) {
                     case PUSH -> 20;
                     case SUPPRESS -> -20;
-                    // GDD defines Swing as moving 30% from one outcome to another on the same event.
-                    // The current action contract only carries a single target outcome, so this is the
-                    // closest representable approximation until the command/API model is expanded.
-                    case SWING -> 30;
                     case AMPLIFY -> 0; // Amplify doubles the next card's effect — handled at resolution time
                     case INTERCEPT -> 0;
                     case SCAN -> 0;
@@ -102,10 +104,19 @@ class BandCalculator {
                     case COLLIDE -> 0;
                     case STABILIZE -> 0;
                     case DETONATE -> 0;
+                    case SWING -> 0;
                 };
         if (shift != 0) {
             outcomeMap.merge(action.targetOutcomeId(), shift, Integer::sum);
         }
+    }
+
+    private void applySwingShift(Map<UUID, Integer> outcomeMap, SubmittedAction.CardAction action) {
+        if (action.sourceOutcomeId() == null || action.sourceOutcomeId().equals(action.targetOutcomeId())) {
+            return;
+        }
+        outcomeMap.merge(action.sourceOutcomeId(), -30, Integer::sum);
+        outcomeMap.merge(action.targetOutcomeId(), 30, Integer::sum);
     }
 
     private void applySpecialShift(

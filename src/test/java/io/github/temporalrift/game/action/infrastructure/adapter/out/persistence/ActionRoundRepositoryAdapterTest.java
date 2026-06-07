@@ -38,8 +38,10 @@ class ActionRoundRepositoryAdapterTest {
         round.pullEvents();
         var cardId = UUID.randomUUID();
         var targetEventId = UUID.randomUUID();
+        var sourceOutcomeId = UUID.randomUUID();
         var targetOutcomeId = UUID.randomUUID();
-        round.submitCard(playerId, cardId, CardType.PUSH, targetEventId, targetOutcomeId, List.of(cardId));
+        round.submitCard(
+                playerId, cardId, CardType.SWING, targetEventId, sourceOutcomeId, targetOutcomeId, List.of(cardId));
         round.close("TIMER_EXPIRED");
 
         adapter.save(round);
@@ -58,10 +60,11 @@ class ActionRoundRepositoryAdapterTest {
                         "CARD",
                         playerId,
                         cardId,
-                        CardType.PUSH.name(),
+                        CardType.SWING.name(),
                         null,
                         null,
                         targetEventId,
+                        sourceOutcomeId,
                         targetOutcomeId,
                         null));
     }
@@ -85,6 +88,7 @@ class ActionRoundRepositoryAdapterTest {
                 Faction.PROPHETS.name(),
                 SpecialAction.SEAL.name(),
                 UUID.randomUUID(),
+                null,
                 UUID.randomUUID(),
                 UUID.randomUUID())));
         given(jpaRepository.findById(entity.getId())).willReturn(Optional.of(entity));
@@ -98,5 +102,44 @@ class ActionRoundRepositoryAdapterTest {
         assertThat(loaded.get().submittedActions())
                 .singleElement()
                 .isInstanceOf(SubmittedAction.SpecialActionSubmission.class);
+    }
+
+    @Test
+    void findById_mapsCardSourceOutcomeToDomain() {
+        var entity = new ActionRoundJpaEntity();
+        var sourceOutcomeId = UUID.randomUUID();
+        var targetOutcomeId = UUID.randomUUID();
+        entity.setId(UUID.randomUUID());
+        entity.setGameId(UUID.randomUUID());
+        entity.setEraNumber(1);
+        entity.setRoundNumber(3);
+        entity.setStatus(RoundStatus.CLOSED.name());
+        entity.setTimerSeconds(30);
+        entity.setClosedReason("ALL_SUBMITTED");
+        entity.setPendingPlayerIds(new UUID[0]);
+        entity.setSubmittedActions(List.of(new StoredSubmittedAction(
+                "CARD",
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                CardType.SWING.name(),
+                null,
+                null,
+                UUID.randomUUID(),
+                sourceOutcomeId,
+                targetOutcomeId,
+                null)));
+        given(jpaRepository.findById(entity.getId())).willReturn(Optional.of(entity));
+
+        var loaded = adapter.findById(entity.getId());
+
+        assertThat(loaded)
+                .get()
+                .extracting(ActionRound::submittedActions)
+                .asList()
+                .singleElement()
+                .isInstanceOfSatisfying(SubmittedAction.CardAction.class, card -> {
+                    assertThat(card.sourceOutcomeId()).isEqualTo(sourceOutcomeId);
+                    assertThat(card.targetOutcomeId()).isEqualTo(targetOutcomeId);
+                });
     }
 }

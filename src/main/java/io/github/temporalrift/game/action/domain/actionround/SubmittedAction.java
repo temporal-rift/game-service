@@ -10,7 +10,13 @@ public sealed interface SubmittedAction permits SubmittedAction.CardAction, Subm
 
     UUID playerId();
 
-    record CardAction(UUID playerId, UUID cardInstanceId, CardType cardType, UUID targetEventId, UUID targetOutcomeId)
+    record CardAction(
+            UUID playerId,
+            UUID cardInstanceId,
+            CardType cardType,
+            UUID targetEventId,
+            UUID sourceOutcomeId,
+            UUID targetOutcomeId)
             implements SubmittedAction {}
 
     record SpecialActionSubmission(

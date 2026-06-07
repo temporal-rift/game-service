@@ -197,6 +197,10 @@ components:
             targetEventId:
               type: string
               format: uuid
+            sourceOutcomeId:
+              type: string
+              format: uuid
+              description: Required when the submitted card resolves as SWING.
             targetOutcomeId:
               type: string
               format: uuid
@@ -327,4 +331,3 @@ components:
               - detail
       required:
         - detail
-

@@ -51,6 +51,7 @@ class PlayCardCommandHandler implements PlayCardUseCase {
                 command.cardInstanceId(),
                 command.cardType(),
                 command.targetEventId(),
+                command.sourceOutcomeId(),
                 command.targetOutcomeId(),
                 playerHand);
         playerState.removeCard(command.cardInstanceId());

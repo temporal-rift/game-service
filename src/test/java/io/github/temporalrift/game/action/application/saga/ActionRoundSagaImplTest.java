@@ -445,7 +445,13 @@ class ActionRoundSagaImplTest {
             var round = new ActionRound(
                     roundId, GAME_ID, ERA_NUMBER, ROUND_NUMBER, List.of(PLAYER_1, PLAYER_2, PLAYER_3), TIMER_SECONDS);
             round.submitCard(
-                    PLAYER_1, cardInstanceId, CardType.PUSH, targetEventId, targetOutcomeId, List.of(cardInstanceId));
+                    PLAYER_1,
+                    cardInstanceId,
+                    CardType.PUSH,
+                    targetEventId,
+                    null,
+                    targetOutcomeId,
+                    List.of(cardInstanceId));
 
             given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumber(GAME_ID, ERA_NUMBER, ROUND_NUMBER))
                     .willReturn(Optional.of(round));
