@@ -50,7 +50,8 @@ class PlayerStateRepositoryAdapter implements PlayerStateRepository {
         entity.setPlayerId(state.playerId());
         entity.setFaction(state.faction() == null ? null : state.faction().name());
         entity.setJammed(state.isJammed());
-        entity.setHand(new ArrayList<>(state.hand()));
+        entity.setHand(
+                state.hand().stream().map(PlayerHandCardValue::fromDomain).toList());
         return entity;
     }
 
@@ -60,7 +61,9 @@ class PlayerStateRepositoryAdapter implements PlayerStateRepository {
                 entity.getGameId(),
                 entity.getPlayerId(),
                 entity.getFaction() == null ? null : Faction.valueOf(entity.getFaction()),
-                new ArrayList<>(entity.getHand()),
+                entity.getHand().stream()
+                        .map(PlayerHandCardValue::toDomain)
+                        .collect(ArrayList::new, ArrayList::add, ArrayList::addAll),
                 entity.isJammed());
     }
 }

@@ -4,13 +4,10 @@ import java.util.List;
 import java.util.UUID;
 
 import jakarta.persistence.Column;
-import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
-
-import io.github.temporalrift.game.action.domain.actionround.SubmittedAction;
 
 @Entity
 @Table(name = "action_round")
@@ -33,9 +30,8 @@ class ActionRoundJpaEntity extends GameEraScopedJpaEntity {
     private UUID[] pendingPlayerIds;
 
     @Column(name = "submitted_actions", columnDefinition = "jsonb", nullable = false)
-    @Convert(converter = SubmittedActionListConverter.class)
     @JdbcTypeCode(SqlTypes.JSON)
-    private List<SubmittedAction> submittedActions;
+    private List<StoredSubmittedAction> submittedActions;
 
     protected ActionRoundJpaEntity() {}
 
@@ -79,11 +75,11 @@ class ActionRoundJpaEntity extends GameEraScopedJpaEntity {
         this.pendingPlayerIds = pendingPlayerIds;
     }
 
-    List<SubmittedAction> getSubmittedActions() {
+    List<StoredSubmittedAction> getSubmittedActions() {
         return submittedActions;
     }
 
-    void setSubmittedActions(List<SubmittedAction> submittedActions) {
+    void setSubmittedActions(List<StoredSubmittedAction> submittedActions) {
         this.submittedActions = submittedActions;
     }
 }

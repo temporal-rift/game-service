@@ -37,7 +37,9 @@ class ActionRoundRepositoryAdapterTest {
         var round = new ActionRound(UUID.randomUUID(), UUID.randomUUID(), 1, 2, List.of(playerId), 45);
         round.pullEvents();
         var cardId = UUID.randomUUID();
-        round.submitCard(playerId, cardId, CardType.PUSH, UUID.randomUUID(), UUID.randomUUID(), List.of(cardId));
+        var targetEventId = UUID.randomUUID();
+        var targetOutcomeId = UUID.randomUUID();
+        round.submitCard(playerId, cardId, CardType.PUSH, targetEventId, targetOutcomeId, List.of(cardId));
         round.close("TIMER_EXPIRED");
 
         adapter.save(round);
@@ -51,7 +53,17 @@ class ActionRoundRepositoryAdapterTest {
         assertThat(entity.getTimerSeconds()).isEqualTo(45);
         assertThat(entity.getClosedReason()).isEqualTo("TIMER_EXPIRED");
         assertThat(entity.getPendingPlayerIds()).isEmpty();
-        assertThat(entity.getSubmittedActions()).hasSize(1);
+        assertThat(entity.getSubmittedActions())
+                .containsExactly(new StoredSubmittedAction(
+                        "CARD",
+                        playerId,
+                        cardId,
+                        CardType.PUSH.name(),
+                        null,
+                        null,
+                        targetEventId,
+                        targetOutcomeId,
+                        null));
     }
 
     @Test
@@ -65,10 +77,13 @@ class ActionRoundRepositoryAdapterTest {
         entity.setTimerSeconds(30);
         entity.setClosedReason("ALL_SUBMITTED");
         entity.setPendingPlayerIds(new UUID[0]);
-        entity.setSubmittedActions(List.of(new SubmittedAction.SpecialActionSubmission(
+        entity.setSubmittedActions(List.of(new StoredSubmittedAction(
+                "SPECIAL",
                 UUID.randomUUID(),
-                Faction.PROPHETS,
-                SpecialAction.SEAL,
+                null,
+                null,
+                Faction.PROPHETS.name(),
+                SpecialAction.SEAL.name(),
                 UUID.randomUUID(),
                 UUID.randomUUID(),
                 UUID.randomUUID())));

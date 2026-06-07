@@ -20,7 +20,11 @@ class CurrentEraFutureEventAdapter implements FutureEventDefinitionPort {
     @Override
     public List<EventDefinition> findByGameIdAndEraNumber(UUID gameId, int eraNumber) {
         return jpaRepository.findAllByGameIdAndEraNumberOrderByDisplayOrder(gameId, eraNumber).stream()
-                .map(entity -> new EventDefinition(entity.getEventId(), List.copyOf(entity.getOutcomes())))
+                .map(entity -> new EventDefinition(
+                        entity.getEventId(),
+                        entity.getOutcomes().stream()
+                                .map(FutureEventOutcomeValue::toDomain)
+                                .toList()))
                 .toList();
     }
 
@@ -36,7 +40,9 @@ class CurrentEraFutureEventAdapter implements FutureEventDefinitionPort {
             entity.setEraNumber(eraNumber);
             entity.setEventId(definition.eventId());
             entity.setDisplayOrder(i);
-            entity.setOutcomes(List.copyOf(definition.outcomes()));
+            entity.setOutcomes(definition.outcomes().stream()
+                    .map(FutureEventOutcomeValue::fromDomain)
+                    .toList());
             jpaRepository.save(entity);
         }
     }

@@ -20,10 +20,25 @@
             <column name="jammed" type="BOOLEAN">
                 <constraints nullable="false"/>
             </column>
-            <column name="hand" type="JSONB">
+        </createTable>
+        <createTable tableName="player_state_hand_card">
+            <column name="player_state_id" type="UUID">
+                <constraints nullable="false" foreignKeyName="fk_player_state_hand_card_state"
+                             referencedTableName="player_state" referencedColumnNames="id"/>
+            </column>
+            <column name="card_position" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="card_instance_id" type="UUID">
+                <constraints nullable="false"/>
+            </column>
+            <column name="card_type" type="VARCHAR(50)">
                 <constraints nullable="false"/>
             </column>
         </createTable>
+        <addPrimaryKey tableName="player_state_hand_card"
+                       columnNames="player_state_id,card_position"
+                       constraintName="pk_player_state_hand_card"/>
         <addUniqueConstraint
                 tableName="player_state"
                 columnNames="game_id,player_id"

@@ -7,6 +7,8 @@ import java.util.UUID;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 
 import io.github.temporalrift.events.shared.CardType;
 import io.github.temporalrift.events.shared.Faction;
@@ -142,5 +144,114 @@ class BandCalculatorTest {
 
         // then
         assertThat(result).hasSize(2);
+    }
+
+    @ParameterizedTest
+    @EnumSource(
+            value = CardType.class,
+            names = {
+                "AMPLIFY",
+                "INTERCEPT",
+                "SCAN",
+                "TRACE",
+                "DECOY",
+                "JAM",
+                "STALL",
+                "REDIRECT",
+                "NULLIFY",
+                "COLLIDE",
+                "STABILIZE",
+                "DETONATE"
+            })
+    @DisplayName("computeBands keeps probability unchanged for cards resolved outside band calculation")
+    void computeBands_ignoresCardsResolvedOutsideBandCalculation(CardType cardType) {
+        // given
+        var definitions = List.of(new FutureEventDefinitionPort.EventDefinition(
+                EVENT_ID, List.of(new FutureEventDefinitionPort.OutcomeDefinition(OUTCOME_1, 55))));
+        List<SubmittedAction> actions =
+                List.of(new SubmittedAction.CardAction(PLAYER_ID, UUID.randomUUID(), cardType, EVENT_ID, OUTCOME_1));
+
+        // when
+        var result = calculator.computeBands(actions, List.of(), definitions);
+
+        // then
+        assertThat(result)
+                .singleElement()
+                .satisfies(event -> assertThat(event.outcomes())
+                        .containsExactly(
+                                new io.github.temporalrift.events.timeline.BandedProbabilityPublished.OutcomeBandState(
+                                        OUTCOME_1, ProbabilityBand.MEDIUM)));
+    }
+
+    @ParameterizedTest
+    @EnumSource(SpecialAction.class)
+    @DisplayName("computeBands keeps probability unchanged for special actions resolved outside band calculation")
+    void computeBands_ignoresSpecialActionsResolvedOutsideBandCalculation(SpecialAction specialAction) {
+        // given
+        var definitions = List.of(new FutureEventDefinitionPort.EventDefinition(
+                EVENT_ID, List.of(new FutureEventDefinitionPort.OutcomeDefinition(OUTCOME_1, 55))));
+        List<SubmittedAction> actions = List.of(new SubmittedAction.SpecialActionSubmission(
+                PLAYER_ID, Faction.ERASERS, specialAction, EVENT_ID, OUTCOME_1, PLAYER_ID));
+
+        // when
+        var result = calculator.computeBands(List.of(), actions, definitions);
+
+        // then
+        assertThat(result)
+                .singleElement()
+                .satisfies(event -> assertThat(event.outcomes())
+                        .containsExactly(
+                                new io.github.temporalrift.events.timeline.BandedProbabilityPublished.OutcomeBandState(
+                                        OUTCOME_1, ProbabilityBand.MEDIUM)));
+    }
+
+    @Test
+    @DisplayName("computeBands ignores card and special actions without complete targets")
+    void computeBands_ignoresActionsWithoutCompleteTargets() {
+        // given
+        var definitions = List.of(new FutureEventDefinitionPort.EventDefinition(
+                EVENT_ID, List.of(new FutureEventDefinitionPort.OutcomeDefinition(OUTCOME_1, 55))));
+        List<SubmittedAction> round1 = List.of(
+                new SubmittedAction.CardAction(PLAYER_ID, UUID.randomUUID(), CardType.PUSH, null, OUTCOME_1),
+                new SubmittedAction.CardAction(PLAYER_ID, UUID.randomUUID(), CardType.PUSH, EVENT_ID, null));
+        List<SubmittedAction> round2 = List.of(
+                new SubmittedAction.SpecialActionSubmission(
+                        PLAYER_ID, Faction.ERASERS, SpecialAction.SEAL, null, OUTCOME_1, null),
+                new SubmittedAction.SpecialActionSubmission(
+                        PLAYER_ID, Faction.ERASERS, SpecialAction.SEAL, EVENT_ID, null, null));
+
+        // when
+        var result = calculator.computeBands(round1, round2, definitions);
+
+        // then
+        assertThat(result)
+                .singleElement()
+                .satisfies(event -> assertThat(event.outcomes())
+                        .containsExactly(
+                                new io.github.temporalrift.events.timeline.BandedProbabilityPublished.OutcomeBandState(
+                                        OUTCOME_1, ProbabilityBand.MEDIUM)));
+    }
+
+    @Test
+    @DisplayName("computeBands defaults a missing outcome probability to low")
+    void computeBands_missingOutcomeProbability_defaultsToLowBand() {
+        // given
+        var definitions = List.of(
+                new FutureEventDefinitionPort.EventDefinition(
+                        EVENT_ID, List.of(new FutureEventDefinitionPort.OutcomeDefinition(OUTCOME_1, 55))),
+                new FutureEventDefinitionPort.EventDefinition(
+                        EVENT_ID, List.of(new FutureEventDefinitionPort.OutcomeDefinition(OUTCOME_2, 55))));
+
+        // when
+        var result = calculator.computeBands(List.of(), List.of(), definitions);
+
+        // then
+        assertThat(result)
+                .extracting(event -> event.outcomes().getFirst())
+                .containsExactly(
+                        new io.github.temporalrift.events.timeline.BandedProbabilityPublished.OutcomeBandState(
+                                OUTCOME_1, ProbabilityBand.LOW),
+                        new io.github.temporalrift.events.timeline.BandedProbabilityPublished.OutcomeBandState(
+                                OUTCOME_2, ProbabilityBand.MEDIUM));
     }
 }

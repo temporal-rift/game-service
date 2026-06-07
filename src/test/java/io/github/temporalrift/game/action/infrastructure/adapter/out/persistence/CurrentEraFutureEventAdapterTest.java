@@ -52,12 +52,16 @@ class CurrentEraFutureEventAdapterTest {
         entity.setEraNumber(1);
         entity.setEventId(UUID.randomUUID());
         entity.setDisplayOrder(0);
-        entity.setOutcomes(List.of(new OutcomeDefinition(UUID.randomUUID(), 60)));
+        entity.setOutcomes(List.of(new FutureEventOutcomeValue(UUID.randomUUID(), 60)));
         given(jpaRepository.findAllByGameIdAndEraNumberOrderByDisplayOrder(gameId, 1))
                 .willReturn(List.of(entity));
 
         var result = adapter.findByGameIdAndEraNumber(gameId, 1);
 
-        assertThat(result).containsExactly(new EventDefinition(entity.getEventId(), entity.getOutcomes()));
+        assertThat(result)
+                .containsExactly(new EventDefinition(
+                        entity.getEventId(),
+                        List.of(new OutcomeDefinition(
+                                entity.getOutcomes().getFirst().outcomeId(), 60))));
     }
 }
