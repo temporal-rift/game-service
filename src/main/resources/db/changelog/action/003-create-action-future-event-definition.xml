@@ -22,10 +22,25 @@
             <column name="display_order" type="INT">
                 <constraints nullable="false"/>
             </column>
-            <column name="outcomes" type="JSONB">
+        </createTable>
+        <createTable tableName="action_future_event_outcome">
+            <column name="future_event_definition_id" type="UUID">
+                <constraints nullable="false" foreignKeyName="fk_action_future_event_outcome_definition"
+                             referencedTableName="action_future_event_definition" referencedColumnNames="id"/>
+            </column>
+            <column name="outcome_position" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="outcome_id" type="UUID">
+                <constraints nullable="false"/>
+            </column>
+            <column name="initial_probability" type="INT">
                 <constraints nullable="false"/>
             </column>
         </createTable>
+        <addPrimaryKey tableName="action_future_event_outcome"
+                       columnNames="future_event_definition_id,outcome_position"
+                       constraintName="pk_action_future_event_outcome"/>
         <addUniqueConstraint
                 tableName="action_future_event_definition"
                 columnNames="game_id,era_number,event_id"

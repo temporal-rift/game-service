@@ -3,15 +3,15 @@ package io.github.temporalrift.game.action.infrastructure.adapter.out.persistenc
 import java.util.List;
 import java.util.UUID;
 
+import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
-import jakarta.persistence.Convert;
+import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.OrderColumn;
 import jakarta.persistence.Table;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
-
-import io.github.temporalrift.game.action.domain.playerstate.PlayerState;
 
 @Entity
 @Table(name = "player_state")
@@ -33,10 +33,10 @@ class PlayerStateJpaEntity {
     @Column(name = "jammed", nullable = false)
     private boolean jammed;
 
-    @Column(name = "hand", columnDefinition = "jsonb", nullable = false)
-    @Convert(converter = PlayerHandConverter.class)
-    @JdbcTypeCode(SqlTypes.JSON)
-    private List<PlayerState.CardInstance> hand;
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "player_state_hand_card", joinColumns = @JoinColumn(name = "player_state_id"))
+    @OrderColumn(name = "card_position")
+    private List<PlayerHandCardValue> hand;
 
     protected PlayerStateJpaEntity() {}
 
@@ -80,11 +80,11 @@ class PlayerStateJpaEntity {
         this.jammed = jammed;
     }
 
-    List<PlayerState.CardInstance> getHand() {
+    List<PlayerHandCardValue> getHand() {
         return hand;
     }
 
-    void setHand(List<PlayerState.CardInstance> hand) {
+    void setHand(List<PlayerHandCardValue> hand) {
         this.hand = hand;
     }
 }

@@ -3,14 +3,14 @@ package io.github.temporalrift.game.action.infrastructure.adapter.out.persistenc
 import java.util.List;
 import java.util.UUID;
 
+import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
-import jakarta.persistence.Convert;
+import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.OrderColumn;
 import jakarta.persistence.Table;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
-
-import io.github.temporalrift.game.action.domain.port.out.FutureEventDefinitionPort;
 
 @Entity
 @Table(name = "action_future_event_definition")
@@ -22,10 +22,12 @@ class FutureEventDefinitionJpaEntity extends GameEraScopedJpaEntity {
     @Column(name = "display_order", nullable = false)
     private int displayOrder;
 
-    @Column(name = "outcomes", columnDefinition = "jsonb", nullable = false)
-    @Convert(converter = OutcomeDefinitionListConverter.class)
-    @JdbcTypeCode(SqlTypes.JSON)
-    private List<FutureEventDefinitionPort.OutcomeDefinition> outcomes;
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(
+            name = "action_future_event_outcome",
+            joinColumns = @JoinColumn(name = "future_event_definition_id"))
+    @OrderColumn(name = "outcome_position")
+    private List<FutureEventOutcomeValue> outcomes;
 
     protected FutureEventDefinitionJpaEntity() {}
 
@@ -45,11 +47,11 @@ class FutureEventDefinitionJpaEntity extends GameEraScopedJpaEntity {
         this.displayOrder = displayOrder;
     }
 
-    List<FutureEventDefinitionPort.OutcomeDefinition> getOutcomes() {
+    List<FutureEventOutcomeValue> getOutcomes() {
         return outcomes;
     }
 
-    void setOutcomes(List<FutureEventDefinitionPort.OutcomeDefinition> outcomes) {
+    void setOutcomes(List<FutureEventOutcomeValue> outcomes) {
         this.outcomes = outcomes;
     }
 }

@@ -53,7 +53,9 @@ class ActionRoundRepositoryAdapter implements ActionRoundRepository {
         entity.setTimerSeconds(round.timerSeconds());
         entity.setClosedReason(round.closedReason());
         entity.setPendingPlayerIds(round.pendingPlayerIds().toArray(UUID[]::new));
-        entity.setSubmittedActions(new ArrayList<>(round.submittedActions()));
+        entity.setSubmittedActions(round.submittedActions().stream()
+                .map(StoredSubmittedAction::fromDomain)
+                .toList());
         return entity;
     }
 
@@ -67,6 +69,8 @@ class ActionRoundRepositoryAdapter implements ActionRoundRepository {
                 entity.getTimerSeconds(),
                 entity.getClosedReason(),
                 new ArrayList<>(Arrays.asList(entity.getPendingPlayerIds())),
-                new ArrayList<>(entity.getSubmittedActions()));
+                entity.getSubmittedActions().stream()
+                        .map(StoredSubmittedAction::toDomain)
+                        .collect(ArrayList::new, ArrayList::add, ArrayList::addAll));
     }
 }
