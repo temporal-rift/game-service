@@ -15,6 +15,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.InvalidBearerTokenException;
 
+import io.github.temporalrift.game.shared.PlayerPrincipal;
+
 @ExtendWith(MockitoExtension.class)
 class PlayerAuthenticationConverterTest {
 
@@ -57,8 +59,7 @@ class PlayerAuthenticationConverterTest {
 
         // then
         assertThat(result).isInstanceOf(PlayerAuthenticationToken.class);
-        assertThat(result.getPrincipal()).isInstanceOf(io.github.temporalrift.game.shared.PlayerPrincipal.class);
-        assertThat(((io.github.temporalrift.game.shared.PlayerPrincipal) result.getPrincipal()).playerId())
-                .isEqualTo(playerId);
+        assertThat(result.getPrincipal()).isInstanceOf(PlayerPrincipal.class);
+        assertThat(((PlayerPrincipal) result.getPrincipal()).playerId()).isEqualTo(playerId);
     }
 }

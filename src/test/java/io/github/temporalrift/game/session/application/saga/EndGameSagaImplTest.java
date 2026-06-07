@@ -5,6 +5,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.never;
 
 import java.util.List;
@@ -98,7 +99,7 @@ class EndGameSagaImplTest {
         saga.start(GAME_ID, EndGameTrigger.WIN_CONDITION_MET, PLAYER_1);
 
         // then
-        then(eventPublisher).should(org.mockito.Mockito.atLeastOnce()).publish(captor.capture());
+        then(eventPublisher).should(atLeastOnce()).publish(captor.capture());
         var gameEnded = captor.getAllValues().stream()
                 .filter(e -> e.payload() instanceof GameEnded)
                 .map(e -> (GameEnded) e.payload())
@@ -123,7 +124,7 @@ class EndGameSagaImplTest {
         saga.start(GAME_ID, EndGameTrigger.TIMELINE_COLLAPSED, PLAYER_1, PLAYER_2);
 
         // then
-        then(eventPublisher).should(org.mockito.Mockito.atLeastOnce()).publish(captor.capture());
+        then(eventPublisher).should(atLeastOnce()).publish(captor.capture());
         var gameEnded = captor.getAllValues().stream()
                 .filter(e -> e.payload() instanceof GameEnded)
                 .map(e -> (GameEnded) e.payload())
@@ -148,7 +149,7 @@ class EndGameSagaImplTest {
         saga.start(GAME_ID, EndGameTrigger.TIMELINE_STABILIZED, PLAYER_1, PLAYER_2);
 
         // then
-        then(eventPublisher).should(org.mockito.Mockito.atLeastOnce()).publish(captor.capture());
+        then(eventPublisher).should(atLeastOnce()).publish(captor.capture());
         var gameEnded = captor.getAllValues().stream()
                 .filter(e -> e.payload() instanceof GameEnded)
                 .map(e -> (GameEnded) e.payload())
@@ -173,7 +174,7 @@ class EndGameSagaImplTest {
         saga.start(GAME_ID, EndGameTrigger.WIN_CONDITION_MET, PLAYER_1);
 
         // then
-        then(eventPublisher).should(org.mockito.Mockito.atLeastOnce()).publish(captor.capture());
+        then(eventPublisher).should(atLeastOnce()).publish(captor.capture());
         var factionRevealed = captor.getAllValues().stream()
                 .filter(e -> e.payload() instanceof FactionRevealed)
                 .map(e -> (FactionRevealed) e.payload())

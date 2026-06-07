@@ -5,6 +5,7 @@ import static org.springframework.transaction.annotation.Propagation.REQUIRES_NE
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -87,8 +88,7 @@ class ParadoxCascadedKafkaConsumer {
         }
     }
 
-    private TimelineCollapsed buildTimelineCollapsed(
-            java.util.UUID gameId, int eraNumber, List<FactionAssignment> assignments) {
+    private TimelineCollapsed buildTimelineCollapsed(UUID gameId, int eraNumber, List<FactionAssignment> assignments) {
         var winners = new ArrayList<TimelineCollapsed.PlayerFactionResult>();
         var losers = new ArrayList<TimelineCollapsed.PlayerFactionResult>();
         for (var assignment : assignments) {

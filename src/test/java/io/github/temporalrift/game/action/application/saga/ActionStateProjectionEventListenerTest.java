@@ -2,6 +2,7 @@ package io.github.temporalrift.game.action.application.saga;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
@@ -162,7 +163,7 @@ class ActionStateProjectionEventListenerTest {
         listener.onFactionAssigned(
                 new FactionAssigned(existing.gameId(), existing.playerId(), Faction.PROPHETS.name()));
 
-        then(playerStateRepository).should(never()).save(org.mockito.ArgumentMatchers.any());
+        then(playerStateRepository).should(never()).save(any());
     }
 
     @Test
@@ -178,6 +179,6 @@ class ActionStateProjectionEventListenerTest {
                         new FactionAssigned(existing.gameId(), existing.playerId(), Faction.WEAVERS.name())))
                 .withMessageContaining("Conflicting faction assignment");
 
-        then(playerStateRepository).should(never()).save(org.mockito.ArgumentMatchers.any());
+        then(playerStateRepository).should(never()).save(any());
     }
 }

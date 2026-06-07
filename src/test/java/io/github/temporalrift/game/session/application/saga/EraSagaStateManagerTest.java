@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.never;
 import static org.mockito.BDDMockito.then;
 
 import java.util.List;
@@ -103,6 +104,6 @@ class EraSagaStateManagerTest {
 
         // then
         then(eraSagaRepository).should().findByGameIdWithLock(GAME_ID);
-        then(eraSagaRepository).should(org.mockito.BDDMockito.never()).save(any());
+        then(eraSagaRepository).should(never()).save(any());
     }
 }

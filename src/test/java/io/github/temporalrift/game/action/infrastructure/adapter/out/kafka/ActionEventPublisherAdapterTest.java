@@ -28,7 +28,7 @@ class ActionEventPublisherAdapterTest {
         var adapter = new ActionEventPublisherAdapter(applicationEventPublisher);
         var envelope = new EventEnvelope(
                 UUID.randomUUID(),
-                "io.github.temporalrift.events.action.ActionRoundClosed",
+                ActionRoundClosed.class.getName(),
                 UUID.randomUUID(),
                 "ActionRound",
                 UUID.randomUUID(),
