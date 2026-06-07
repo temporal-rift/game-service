@@ -14,6 +14,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.boot.SpringApplication;
 import org.springframework.boot.context.event.ApplicationStartedEvent;
 import org.springframework.context.ConfigurableApplicationContext;
 
@@ -95,7 +96,7 @@ class PlayerReconnectSagaRecoveryTest {
         then(timerScheduler).should().reschedule(SAGA_ID, state.graceExpiresAt());
     }
 
-    static class SpringApplicationStub extends org.springframework.boot.SpringApplication {
+    static class SpringApplicationStub extends SpringApplication {
         SpringApplicationStub() {
             super(GameServiceApplication.class);
         }

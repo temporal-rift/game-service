@@ -6,6 +6,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import org.junit.jupiter.api.Test;
@@ -104,7 +105,7 @@ class SessionPersistenceIT {
         var lobbyId = UUID.randomUUID();
         var eventIds = IntStream.range(0, EVENT_COUNT)
                 .mapToObj(ignored -> UUID.randomUUID())
-                .collect(java.util.stream.Collectors.toCollection(ArrayList::new));
+                .collect(Collectors.toCollection(ArrayList::new));
 
         var game = new Game(id, lobbyId, eventIds);
         gameRepository.save(game);
@@ -126,7 +127,7 @@ class SessionPersistenceIT {
         var id = UUID.randomUUID();
         var eventIds = IntStream.range(0, EVENT_COUNT)
                 .mapToObj(ignored -> UUID.randomUUID())
-                .collect(java.util.stream.Collectors.toCollection(ArrayList::new));
+                .collect(Collectors.toCollection(ArrayList::new));
 
         var game = new Game(id, UUID.randomUUID(), eventIds);
         game.startEra(0, EVENTS_PER_ERA);

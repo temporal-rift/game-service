@@ -133,7 +133,7 @@ class EraSagaImplTest {
         eraSaga.start(GAME_ID, ERA_NUMBER, PLAYER_IDS, List.of());
 
         // then
-        then(eventPublisher).should(org.mockito.Mockito.atLeastOnce()).publish(captor.capture());
+        then(eventPublisher).should(atLeastOnce()).publish(captor.capture());
 
         var handDealtEnvelopes = captor.getAllValues().stream()
                 .filter(e -> e.payload() instanceof HandDealt)
@@ -168,7 +168,7 @@ class EraSagaImplTest {
         eraSaga.start(GAME_ID, ERA_NUMBER, PLAYER_IDS, List.of(cascadedId));
 
         // then
-        then(eventPublisher).should(org.mockito.Mockito.atLeastOnce()).publish(captor.capture());
+        then(eventPublisher).should(atLeastOnce()).publish(captor.capture());
         var eventsDrawn = captor.getAllValues().stream()
                 .filter(e -> e.payload() instanceof EventsDrawn)
                 .map(e -> (EventsDrawn) e.payload())

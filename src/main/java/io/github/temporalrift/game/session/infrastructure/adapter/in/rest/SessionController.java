@@ -13,6 +13,7 @@ import io.github.temporalrift.game.session.application.port.in.LeaveLobbyUseCase
 import io.github.temporalrift.game.session.application.port.in.StartGameUseCase;
 import io.github.temporalrift.game.session.infrastructure.adapter.in.rest.model.CreateLobbyRequest;
 import io.github.temporalrift.game.session.infrastructure.adapter.in.rest.model.CreateLobbyResponse;
+import io.github.temporalrift.game.session.infrastructure.adapter.in.rest.model.GameStatus;
 import io.github.temporalrift.game.session.infrastructure.adapter.in.rest.model.GameSummaryResponse;
 import io.github.temporalrift.game.session.infrastructure.adapter.in.rest.model.JoinLobbyRequest;
 import io.github.temporalrift.game.session.infrastructure.adapter.in.rest.model.JoinLobbyResponse;
@@ -77,10 +78,8 @@ class SessionController implements SessionApi {
         var result = getGameStateUseCase.handle(new GetGameStateUseCase.Query(gameId));
         var apiStatus =
                 switch (result.status()) {
-                    case IN_PROGRESS ->
-                        io.github.temporalrift.game.session.infrastructure.adapter.in.rest.model.GameStatus.IN_PROGRESS;
-                    case ENDED_BY_WIN, ENDED_BY_COLLAPSE, ENDED_BY_STABILIZATION ->
-                        io.github.temporalrift.game.session.infrastructure.adapter.in.rest.model.GameStatus.GAME_ENDED;
+                    case IN_PROGRESS -> GameStatus.IN_PROGRESS;
+                    case ENDED_BY_WIN, ENDED_BY_COLLAPSE, ENDED_BY_STABILIZATION -> GameStatus.GAME_ENDED;
                 };
         return ResponseEntity.ok(new GameSummaryResponse(
                 result.gameId(), apiStatus, result.eraNumber(), result.playerCount(), result.cascadedParadoxCount()));

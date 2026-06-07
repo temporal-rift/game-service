@@ -3,6 +3,7 @@ package io.github.temporalrift.game.session.infrastructure.adapter.in.kafka;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.never;
@@ -76,8 +77,7 @@ class ParadoxCascadedKafkaConsumerTest {
         given(gameRepository.findById(GAME_ID)).willReturn(Optional.of(game));
         given(gameRules.maxCascadedParadoxes()).willReturn(MAX_CASCADED);
         var paradox = paradoxCascaded(1);
-        given(objectMapper.convertValue(any(), org.mockito.ArgumentMatchers.eq(ParadoxCascaded.class)))
-                .willReturn(paradox);
+        given(objectMapper.convertValue(any(), eq(ParadoxCascaded.class))).willReturn(paradox);
 
         // when
         consumer.handle(envelopeFor(paradox));
@@ -99,8 +99,7 @@ class ParadoxCascadedKafkaConsumerTest {
         given(gameRules.maxCascadedParadoxes()).willReturn(MAX_CASCADED);
         given(startGameSagaRepository.findByGameId(GAME_ID)).willReturn(Optional.of(startGameSagaState()));
         var paradox = paradoxCascaded(2);
-        given(objectMapper.convertValue(any(), org.mockito.ArgumentMatchers.eq(ParadoxCascaded.class)))
-                .willReturn(paradox);
+        given(objectMapper.convertValue(any(), eq(ParadoxCascaded.class))).willReturn(paradox);
 
         // when
         consumer.handle(envelopeFor(paradox));
@@ -124,8 +123,7 @@ class ParadoxCascadedKafkaConsumerTest {
         given(startGameSagaRepository.findByGameId(GAME_ID))
                 .willReturn(Optional.of(startGameSagaStateWithAssignments(assignments)));
         var paradox = paradoxCascaded(2);
-        given(objectMapper.convertValue(any(), org.mockito.ArgumentMatchers.eq(ParadoxCascaded.class)))
-                .willReturn(paradox);
+        given(objectMapper.convertValue(any(), eq(ParadoxCascaded.class))).willReturn(paradox);
         var captor = ArgumentCaptor.forClass(Object.class);
 
         // when

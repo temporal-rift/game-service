@@ -19,6 +19,7 @@ import io.github.temporalrift.game.session.domain.game.Game;
 import io.github.temporalrift.game.session.domain.game.GameNotFoundException;
 import io.github.temporalrift.game.session.domain.lobby.Lobby;
 import io.github.temporalrift.game.session.domain.lobby.LobbyNotFoundException;
+import io.github.temporalrift.game.session.domain.lobby.LobbyPlayer;
 import io.github.temporalrift.game.session.domain.port.out.GameRepository;
 import io.github.temporalrift.game.session.domain.port.out.LobbyRepository;
 import io.github.temporalrift.game.session.domain.port.out.SessionEventPublisher;
@@ -122,9 +123,8 @@ class PlayerReconnectSagaImpl implements PlayerReconnectSaga {
         var lobby =
                 lobbyRepository.findById(game.lobbyId()).orElseThrow(() -> new LobbyNotFoundException(game.lobbyId()));
 
-        var connectedCount = lobby.currentPlayers().stream()
-                .filter(io.github.temporalrift.game.session.domain.lobby.LobbyPlayer::connected)
-                .count();
+        var connectedCount =
+                lobby.currentPlayers().stream().filter(LobbyPlayer::connected).count();
         var gracePeriodCount = stateManager.countActiveGracePeriodForGame(saga.gameId());
 
         if (connectedCount == 0 && gracePeriodCount == 0) {

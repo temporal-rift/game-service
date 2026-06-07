@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 
+import java.util.List;
 import java.util.UUID;
 
 import org.junit.jupiter.api.DisplayName;
@@ -87,7 +88,7 @@ class StartGameCommandHandlerTest {
     void handle_disconnectedPlayers_propagatesDisconnectedPlayersException() {
         // given
         given(startGameSaga.start(LOBBY_ID, REQUESTING_PLAYER_ID))
-                .willThrow(new DisconnectedPlayersException(java.util.List.of(UUID.randomUUID())));
+                .willThrow(new DisconnectedPlayersException(List.of(UUID.randomUUID())));
         var command = new StartGameUseCase.Command(LOBBY_ID, REQUESTING_PLAYER_ID);
 
         // when / then

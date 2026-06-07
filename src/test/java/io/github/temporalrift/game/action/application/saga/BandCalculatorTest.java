@@ -13,6 +13,8 @@ import org.junit.jupiter.params.provider.EnumSource;
 import io.github.temporalrift.events.shared.CardType;
 import io.github.temporalrift.events.shared.Faction;
 import io.github.temporalrift.events.shared.SpecialAction;
+import io.github.temporalrift.events.timeline.BandedProbabilityPublished.EventBandState;
+import io.github.temporalrift.events.timeline.BandedProbabilityPublished.OutcomeBandState;
 import io.github.temporalrift.events.timeline.BandedProbabilityPublished.ProbabilityBand;
 import io.github.temporalrift.game.action.domain.actionround.SubmittedAction;
 import io.github.temporalrift.game.action.domain.port.out.FutureEventDefinitionPort;
@@ -48,10 +50,8 @@ class BandCalculatorTest {
             assertThat(event.eventId()).isEqualTo(EVENT_ID);
             assertThat(event.outcomes())
                     .containsExactlyInAnyOrder(
-                            new io.github.temporalrift.events.timeline.BandedProbabilityPublished.OutcomeBandState(
-                                    OUTCOME_1, ProbabilityBand.MEDIUM),
-                            new io.github.temporalrift.events.timeline.BandedProbabilityPublished.OutcomeBandState(
-                                    OUTCOME_2, ProbabilityBand.MEDIUM));
+                            new OutcomeBandState(OUTCOME_1, ProbabilityBand.MEDIUM),
+                            new OutcomeBandState(OUTCOME_2, ProbabilityBand.MEDIUM));
         });
     }
 
@@ -59,6 +59,7 @@ class BandCalculatorTest {
     @DisplayName("computeBands ignores actions that do not affect a tracked event outcome")
     void computeBands_ignoresUnsupportedActionsAndUnknownTargets() {
         // given
+        var unknownEventId = UUID.randomUUID();
         var definitions = List.of(new FutureEventDefinitionPort.EventDefinition(
                 EVENT_ID, List.of(new FutureEventDefinitionPort.OutcomeDefinition(OUTCOME_1, 70))));
         List<SubmittedAction> round1 = List.of(
@@ -66,7 +67,7 @@ class BandCalculatorTest {
                 new SubmittedAction.CardAction(
                         PLAYER_ID, UUID.randomUUID(), CardType.PUSH, UUID.randomUUID(), null, OUTCOME_1));
         List<SubmittedAction> round2 = List.of(new SubmittedAction.SpecialActionSubmission(
-                PLAYER_ID, Faction.ERASERS, SpecialAction.ANNIHILATE, EVENT_ID, OUTCOME_1, null));
+                PLAYER_ID, Faction.ERASERS, SpecialAction.ANNIHILATE, unknownEventId, OUTCOME_1, null));
 
         // when
         var result = calculator.computeBands(round1, round2, definitions);
@@ -75,9 +76,7 @@ class BandCalculatorTest {
         assertThat(result)
                 .singleElement()
                 .satisfies(event -> assertThat(event.outcomes())
-                        .containsExactly(
-                                new io.github.temporalrift.events.timeline.BandedProbabilityPublished.OutcomeBandState(
-                                        OUTCOME_1, ProbabilityBand.HIGH)));
+                        .containsExactly(new OutcomeBandState(OUTCOME_1, ProbabilityBand.HIGH)));
     }
 
     @Test
@@ -121,23 +120,16 @@ class BandCalculatorTest {
         // then
         assertThat(result)
                 .containsExactlyInAnyOrder(
-                        new io.github.temporalrift.events.timeline.BandedProbabilityPublished.EventBandState(
-                                pushEventId,
-                                List.of(
-                                        new io.github.temporalrift.events.timeline.BandedProbabilityPublished
-                                                .OutcomeBandState(pushOutcomeId, ProbabilityBand.MEDIUM))),
-                        new io.github.temporalrift.events.timeline.BandedProbabilityPublished.EventBandState(
+                        new EventBandState(
+                                pushEventId, List.of(new OutcomeBandState(pushOutcomeId, ProbabilityBand.MEDIUM))),
+                        new EventBandState(
                                 suppressEventId,
-                                List.of(
-                                        new io.github.temporalrift.events.timeline.BandedProbabilityPublished
-                                                .OutcomeBandState(suppressOutcomeId, ProbabilityBand.HIGH))),
-                        new io.github.temporalrift.events.timeline.BandedProbabilityPublished.EventBandState(
+                                List.of(new OutcomeBandState(suppressOutcomeId, ProbabilityBand.HIGH))),
+                        new EventBandState(
                                 swingEventId,
                                 List.of(
-                                        new io.github.temporalrift.events.timeline.BandedProbabilityPublished
-                                                .OutcomeBandState(swingSourceOutcomeId, ProbabilityBand.MEDIUM),
-                                        new io.github.temporalrift.events.timeline.BandedProbabilityPublished
-                                                .OutcomeBandState(swingOutcomeId, ProbabilityBand.HIGH))));
+                                        new OutcomeBandState(swingSourceOutcomeId, ProbabilityBand.MEDIUM),
+                                        new OutcomeBandState(swingOutcomeId, ProbabilityBand.HIGH))));
     }
 
     @Test
@@ -190,9 +182,7 @@ class BandCalculatorTest {
         assertThat(result)
                 .singleElement()
                 .satisfies(event -> assertThat(event.outcomes())
-                        .containsExactly(
-                                new io.github.temporalrift.events.timeline.BandedProbabilityPublished.OutcomeBandState(
-                                        OUTCOME_1, ProbabilityBand.MEDIUM)));
+                        .containsExactly(new OutcomeBandState(OUTCOME_1, ProbabilityBand.MEDIUM)));
     }
 
     @ParameterizedTest
@@ -212,9 +202,7 @@ class BandCalculatorTest {
         assertThat(result)
                 .singleElement()
                 .satisfies(event -> assertThat(event.outcomes())
-                        .containsExactly(
-                                new io.github.temporalrift.events.timeline.BandedProbabilityPublished.OutcomeBandState(
-                                        OUTCOME_1, ProbabilityBand.MEDIUM)));
+                        .containsExactly(new OutcomeBandState(OUTCOME_1, ProbabilityBand.MEDIUM)));
     }
 
     @Test
@@ -241,9 +229,26 @@ class BandCalculatorTest {
         assertThat(result)
                 .singleElement()
                 .satisfies(event -> assertThat(event.outcomes())
-                        .containsExactly(
-                                new io.github.temporalrift.events.timeline.BandedProbabilityPublished.OutcomeBandState(
-                                        OUTCOME_1, ProbabilityBand.MEDIUM)));
+                        .containsExactly(new OutcomeBandState(OUTCOME_1, ProbabilityBand.MEDIUM)));
+    }
+
+    @Test
+    @DisplayName("computeBands ignores Swing when source and target outcomes match")
+    void computeBands_ignoresSwingWithSameSourceAndTargetOutcome() {
+        // given
+        var definitions = List.of(new FutureEventDefinitionPort.EventDefinition(
+                EVENT_ID, List.of(new FutureEventDefinitionPort.OutcomeDefinition(OUTCOME_1, 55))));
+        List<SubmittedAction> actions = List.of(new SubmittedAction.CardAction(
+                PLAYER_ID, UUID.randomUUID(), CardType.SWING, EVENT_ID, OUTCOME_1, OUTCOME_1));
+
+        // when
+        var result = calculator.computeBands(actions, List.of(), definitions);
+
+        // then
+        assertThat(result)
+                .singleElement()
+                .satisfies(event -> assertThat(event.outcomes())
+                        .containsExactly(new OutcomeBandState(OUTCOME_1, ProbabilityBand.MEDIUM)));
     }
 
     @Test
@@ -263,9 +268,7 @@ class BandCalculatorTest {
         assertThat(result)
                 .extracting(event -> event.outcomes().getFirst())
                 .containsExactly(
-                        new io.github.temporalrift.events.timeline.BandedProbabilityPublished.OutcomeBandState(
-                                OUTCOME_1, ProbabilityBand.LOW),
-                        new io.github.temporalrift.events.timeline.BandedProbabilityPublished.OutcomeBandState(
-                                OUTCOME_2, ProbabilityBand.MEDIUM));
+                        new OutcomeBandState(OUTCOME_1, ProbabilityBand.LOW),
+                        new OutcomeBandState(OUTCOME_2, ProbabilityBand.MEDIUM));
     }
 }

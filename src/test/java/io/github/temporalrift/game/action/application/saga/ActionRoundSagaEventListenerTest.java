@@ -1,5 +1,6 @@
 package io.github.temporalrift.game.action.application.saga;
 
+import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 
 import java.time.Instant;
@@ -41,8 +42,7 @@ class ActionRoundSagaEventListenerTest {
         var playerIds = List.of(PLAYER_ID, UUID.randomUUID());
         var event = new StartActionRoundRequested(GAME_ID, ERA_NUMBER, ROUND_NUMBER, playerIds);
         var result = new ActionRoundSaga.StartResult(UUID.randomUUID(), Instant.parse("2099-01-01T00:00:30Z"));
-        org.mockito.BDDMockito.given(saga.start(GAME_ID, ERA_NUMBER, ROUND_NUMBER, playerIds))
-                .willReturn(result);
+        given(saga.start(GAME_ID, ERA_NUMBER, ROUND_NUMBER, playerIds)).willReturn(result);
 
         // when
         listener.onStartActionRound(event);

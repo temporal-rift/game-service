@@ -4,6 +4,7 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.never;
 
+import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -29,6 +30,7 @@ class PlayerReconnectSagaEventListenerTest {
     static final UUID GAME_ID = UUID.randomUUID();
     static final UUID LOBBY_ID = UUID.randomUUID();
     static final UUID PLAYER_ID = UUID.randomUUID();
+    static final Clock TEST_CLOCK = Clock.fixed(Instant.parse("2026-01-01T00:00:00Z"), java.time.ZoneOffset.UTC);
 
     @Mock
     PlayerReconnectSaga saga;
@@ -53,7 +55,7 @@ class PlayerReconnectSagaEventListenerTest {
                 PLAYER_ID,
                 List.of(player),
                 LobbyStatus.STARTED,
-                new LobbyConfig("ABCD", 3, 5, java.time.Clock.systemUTC()));
+                new LobbyConfig("ABCD", 3, 5, TEST_CLOCK));
     }
 
     @Test
@@ -115,7 +117,7 @@ class PlayerReconnectSagaEventListenerTest {
                 PLAYER_ID,
                 List.of(player),
                 LobbyStatus.WAITING,
-                new LobbyConfig("ABCD", 3, 5, java.time.Clock.systemUTC()));
+                new LobbyConfig("ABCD", 3, 5, TEST_CLOCK));
         given(gameRepository.findById(GAME_ID)).willReturn(Optional.of(game));
         given(lobbyRepository.findById(LOBBY_ID)).willReturn(Optional.of(waitingLobby));
 

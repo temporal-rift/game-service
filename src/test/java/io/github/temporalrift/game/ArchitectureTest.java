@@ -8,6 +8,7 @@ import com.tngtech.archunit.core.importer.ImportOption;
 import com.tngtech.archunit.junit.AnalyzeClasses;
 import com.tngtech.archunit.junit.ArchTest;
 import com.tngtech.archunit.lang.ArchRule;
+import org.springframework.beans.factory.annotation.Autowired;
 
 @AnalyzeClasses(packages = "io.github.temporalrift.game", importOptions = ImportOption.DoNotIncludeTests.class)
 public class ArchitectureTest {
@@ -41,6 +42,6 @@ public class ArchitectureTest {
     @ArchTest
     static final ArchRule no_field_injection = noFields()
             .should()
-            .beAnnotatedWith("org.springframework.beans.factory.annotation.Autowired")
+            .beAnnotatedWith(Autowired.class)
             .as("Use constructor injection — never @Autowired on fields");
 }

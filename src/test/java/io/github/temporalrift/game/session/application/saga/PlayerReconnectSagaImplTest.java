@@ -1,5 +1,6 @@
 package io.github.temporalrift.game.session.application.saga;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
@@ -7,6 +8,7 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.never;
 
+import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -45,6 +47,7 @@ class PlayerReconnectSagaImplTest {
     static final UUID SAGA_ID = UUID.randomUUID();
     static final int GRACE_SECONDS = 30;
     static final Instant BASE_INSTANT = Instant.parse("2026-01-01T00:00:00Z");
+    static final Clock TEST_CLOCK = Clock.fixed(BASE_INSTANT, java.time.ZoneOffset.UTC);
 
     @Mock
     LobbyRepository lobbyRepository;
@@ -82,7 +85,7 @@ class PlayerReconnectSagaImplTest {
 
     private Lobby stubStartedLobby(boolean playerConnected) {
         var player = new LobbyPlayer(PLAYER_ID, "Alice", null, BASE_INSTANT, playerConnected);
-        var config = new LobbyConfig("ABCD", 3, 5, java.time.Clock.systemUTC());
+        var config = new LobbyConfig("ABCD", 3, 5, TEST_CLOCK);
         var lobby = Lobby.reconstitute(LOBBY_ID, GAME_ID, PLAYER_ID, List.of(player), LobbyStatus.STARTED, config);
         given(lobbyRepository.findById(LOBBY_ID)).willReturn(Optional.of(lobby));
         return lobby;
@@ -112,8 +115,8 @@ class PlayerReconnectSagaImplTest {
         then(lobbyRepository).should().save(any());
         then(eventPublisher).should().publish(envelopeWithPayload(PlayerDisconnected.class));
         then(timerRegistry).shouldHaveNoInteractions();
-        org.assertj.core.api.Assertions.assertThat(result.sagaId()).isNotNull();
-        org.assertj.core.api.Assertions.assertThat(result.graceExpiresAt()).isNotNull();
+        assertThat(result.sagaId()).isNotNull();
+        assertThat(result.graceExpiresAt()).isNotNull();
     }
 
     @Test

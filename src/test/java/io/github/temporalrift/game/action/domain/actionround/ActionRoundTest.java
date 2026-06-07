@@ -144,10 +144,11 @@ class ActionRoundTest {
         var round = openRound(List.of(PLAYER_A));
         round.close("ALL_SUBMITTED");
         var cardId = UUID.randomUUID();
+        var playerHand = List.of(cardId);
 
         // when / then
         assertThatExceptionOfType(ActionRoundClosedException.class)
-                .isThrownBy(() -> round.submitCard(PLAYER_A, cardId, CardType.PUSH, null, null, null, List.of(cardId)));
+                .isThrownBy(() -> round.submitCard(PLAYER_A, cardId, CardType.PUSH, null, null, null, playerHand));
     }
 
     @Test
@@ -165,10 +166,11 @@ class ActionRoundTest {
                 List.of(PLAYER_A),
                 List.of());
         var cardId = UUID.randomUUID();
+        var playerHand = List.of(cardId);
 
         // when / then
         assertThatExceptionOfType(ActionRoundClosedException.class)
-                .isThrownBy(() -> round.submitCard(PLAYER_A, cardId, CardType.PUSH, null, null, null, List.of(cardId)));
+                .isThrownBy(() -> round.submitCard(PLAYER_A, cardId, CardType.PUSH, null, null, null, playerHand));
     }
 
     @Test
@@ -179,12 +181,14 @@ class ActionRoundTest {
         round.pullEvents();
         var cardId = UUID.randomUUID();
         var cardId2 = UUID.randomUUID();
-        round.submitCard(PLAYER_A, cardId, CardType.PUSH, null, null, null, List.of(cardId, cardId2));
+        var initialHand = List.of(cardId, cardId2);
+        var remainingHand = List.of(cardId2);
+        round.submitCard(PLAYER_A, cardId, CardType.PUSH, null, null, null, initialHand);
 
         // when / then
         assertThatExceptionOfType(DuplicateSubmissionException.class)
-                .isThrownBy(() ->
-                        round.submitCard(PLAYER_A, cardId2, CardType.SUPPRESS, null, null, null, List.of(cardId2)));
+                .isThrownBy(
+                        () -> round.submitCard(PLAYER_A, cardId2, CardType.SUPPRESS, null, null, null, remainingHand));
     }
 
     @Test
@@ -194,11 +198,11 @@ class ActionRoundTest {
         var round = openRound(List.of(PLAYER_A));
         round.pullEvents();
         var notInHand = UUID.randomUUID();
+        var playerHand = List.of(UUID.randomUUID());
 
         // when / then
         assertThatExceptionOfType(CardNotInHandException.class)
-                .isThrownBy(() -> round.submitCard(
-                        PLAYER_A, notInHand, CardType.JAM, null, null, null, List.of(UUID.randomUUID())));
+                .isThrownBy(() -> round.submitCard(PLAYER_A, notInHand, CardType.JAM, null, null, null, playerHand));
     }
 
     @Test
@@ -212,6 +216,33 @@ class ActionRoundTest {
         assertThatExceptionOfType(JammedPlayerException.class)
                 .isThrownBy(() -> round.submitSpecial(
                         PLAYER_A, Faction.ERASERS, SpecialAction.ANNIHILATE, null, null, null, true));
+    }
+
+    @Test
+    @DisplayName("submitSpecial — round is CLOSED — throws ActionRoundClosedException")
+    void submitSpecialOnClosedRoundThrows() {
+        // given
+        var round = openRound(List.of(PLAYER_A));
+        round.close("ALL_SUBMITTED");
+
+        // when / then
+        assertThatExceptionOfType(ActionRoundClosedException.class)
+                .isThrownBy(() ->
+                        round.submitSpecial(PLAYER_A, Faction.PROPHETS, SpecialAction.SEAL, null, null, null, false));
+    }
+
+    @Test
+    @DisplayName("submitSpecial — player already submitted — throws DuplicateSubmissionException")
+    void submitSpecialDuplicateSubmissionThrows() {
+        // given
+        var round = openRound(List.of(PLAYER_A, PLAYER_B));
+        round.pullEvents();
+        round.submitSpecial(PLAYER_A, Faction.PROPHETS, SpecialAction.SEAL, null, null, null, false);
+
+        // when / then
+        assertThatExceptionOfType(DuplicateSubmissionException.class)
+                .isThrownBy(() -> round.submitSpecial(
+                        PLAYER_A, Faction.PROPHETS, SpecialAction.REWRITE, null, null, null, false));
     }
 
     @Test

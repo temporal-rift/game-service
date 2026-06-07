@@ -191,7 +191,7 @@ class EraSagaAdvancerTest {
                 new ScoresUpdated.ScoreUpdate(PLAYER_2, Faction.WEAVERS, 3, "bonus", 25));
         var su = new ScoresUpdated(GAME_ID, 1, updates);
 
-        var captor = org.mockito.ArgumentCaptor.<EventEnvelope>captor();
+        var captor = ArgumentCaptor.<EventEnvelope>captor();
 
         // when
         advancer.handleScoresUpdated(GAME_ID, su);
@@ -339,7 +339,7 @@ class EraSagaAdvancerTest {
                 new ScoresUpdated.ScoreUpdate(player3, Faction.ERASERS, 3, "bonus", 12));
         var su = new ScoresUpdated(GAME_ID, MAX_ERAS, updates);
 
-        var captor = org.mockito.ArgumentCaptor.<EventEnvelope>captor();
+        var captor = ArgumentCaptor.<EventEnvelope>captor();
 
         // when
         advancer.handleScoresUpdated(GAME_ID, su);

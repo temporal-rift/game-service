@@ -134,12 +134,11 @@ class ActionRoundRepositoryAdapterTest {
 
         assertThat(loaded)
                 .get()
-                .extracting(ActionRound::submittedActions)
-                .asList()
-                .singleElement()
-                .isInstanceOfSatisfying(SubmittedAction.CardAction.class, card -> {
-                    assertThat(card.sourceOutcomeId()).isEqualTo(sourceOutcomeId);
-                    assertThat(card.targetOutcomeId()).isEqualTo(targetOutcomeId);
-                });
+                .satisfies(round -> assertThat(round.submittedActions())
+                        .singleElement()
+                        .isInstanceOfSatisfying(SubmittedAction.CardAction.class, card -> {
+                            assertThat(card.sourceOutcomeId()).isEqualTo(sourceOutcomeId);
+                            assertThat(card.targetOutcomeId()).isEqualTo(targetOutcomeId);
+                        }));
     }
 }

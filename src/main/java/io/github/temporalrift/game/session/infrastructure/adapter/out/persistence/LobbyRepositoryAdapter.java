@@ -4,6 +4,7 @@ import java.time.Clock;
 import java.util.ArrayList;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Component;
 
@@ -97,7 +98,7 @@ class LobbyRepositoryAdapter implements LobbyRepository {
                         p.getFaction() != null ? Faction.valueOf(p.getFaction()) : null,
                         p.getJoinedAt(),
                         p.isConnected()))
-                .collect(java.util.stream.Collectors.toCollection(ArrayList::new));
+                .collect(Collectors.toCollection(ArrayList::new));
 
         var config = new LobbyConfig(entity.getJoinCode(), entity.getMinPlayers(), entity.getMaxPlayers(), clock);
         return Lobby.reconstitute(

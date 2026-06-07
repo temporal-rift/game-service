@@ -14,6 +14,7 @@ import io.github.temporalrift.events.session.LobbyClosed;
 import io.github.temporalrift.events.session.LobbyCreated;
 import io.github.temporalrift.events.session.PlayerJoinedLobby;
 import io.github.temporalrift.events.session.PlayerLeftLobby;
+import io.github.temporalrift.events.shared.Faction;
 import io.github.temporalrift.game.shared.AggregateRoot;
 
 public class Lobby extends AggregateRoot {
@@ -72,7 +73,7 @@ public class Lobby extends AggregateRoot {
         join(playerId, playerName, null);
     }
 
-    private void join(UUID playerId, String playerName, io.github.temporalrift.events.shared.Faction faction) {
+    private void join(UUID playerId, String playerName, Faction faction) {
         requireWaiting();
         if (currentPlayers.size() >= config.maxPlayers()) {
             throw new LobbyFullException();
@@ -82,7 +83,7 @@ public class Lobby extends AggregateRoot {
         registerEvent(new PlayerJoinedLobby(id, playerId, playerName));
     }
 
-    public void assignFaction(UUID playerId, io.github.temporalrift.events.shared.Faction faction) {
+    public void assignFaction(UUID playerId, Faction faction) {
         requireWaiting();
         var index = playerIndex(playerId);
         currentPlayers.set(index, currentPlayers.get(index).withFaction(faction));
