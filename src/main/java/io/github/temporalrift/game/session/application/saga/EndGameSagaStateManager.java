@@ -1,7 +1,5 @@
 package io.github.temporalrift.game.session.application.saga;
 
-import static org.springframework.transaction.annotation.Propagation.REQUIRES_NEW;
-
 import java.util.List;
 import java.util.UUID;
 
@@ -22,19 +20,19 @@ class EndGameSagaStateManager {
         this.endGameSagaRepository = endGameSagaRepository;
     }
 
-    @Transactional(propagation = REQUIRES_NEW)
+    @Transactional
     void initRunning(UUID gameId, EndGameTrigger triggerType, List<UUID> playerIds) {
         endGameSagaRepository.save(new EndGameSagaState(gameId, triggerType, EndGameSagaStatus.RUNNING, playerIds));
     }
 
-    @Transactional(propagation = REQUIRES_NEW)
+    @Transactional
     void complete(UUID gameId) {
         endGameSagaRepository
                 .findByGameIdWithLock(gameId)
                 .ifPresent(state -> endGameSagaRepository.save(state.withStatus(EndGameSagaStatus.COMPLETED)));
     }
 
-    @Transactional(propagation = REQUIRES_NEW)
+    @Transactional
     void compensate(UUID gameId) {
         endGameSagaRepository
                 .findByGameIdWithLock(gameId)

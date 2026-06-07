@@ -48,7 +48,7 @@ class ActionRoundSagaRecoveryTest {
                 2,
                 ActionRoundSagaStatus.WAITING,
                 List.of(UUID.randomUUID()),
-                Instant.now().plusSeconds(30));
+                Instant.parse("2099-01-01T00:00:30Z"));
         given(stateManager.findAllWaiting()).willReturn(List.of(state));
         given(stateManager.findAllClosing()).willReturn(List.of());
 
@@ -72,7 +72,7 @@ class ActionRoundSagaRecoveryTest {
                 2,
                 ActionRoundSagaStatus.WAITING,
                 List.of(UUID.randomUUID()),
-                Instant.now().minusSeconds(5));
+                Instant.parse("2000-01-01T00:00:00Z"));
         given(stateManager.findAllWaiting()).willReturn(List.of(state));
         given(stateManager.findAllClosing()).willReturn(List.of());
 
@@ -96,7 +96,7 @@ class ActionRoundSagaRecoveryTest {
                 2,
                 ActionRoundSagaStatus.CLOSING,
                 List.of(),
-                Instant.now().plusSeconds(30));
+                Instant.parse("2099-01-01T00:00:30Z"));
         given(stateManager.findAllWaiting()).willReturn(List.of());
         given(stateManager.findAllClosing()).willReturn(List.of(state));
 

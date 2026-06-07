@@ -8,10 +8,9 @@ public record StartGameSagaState(
         UUID gameId,
         UUID lobbyId,
         StartGameSagaStatus status,
-        Integer currentStep,
         List<FactionAssignment> factionAssignments) {
 
     public StartGameSagaState withStatus(StartGameSagaStatus newStatus) {
-        return new StartGameSagaState(sagaId, gameId, lobbyId, newStatus, currentStep, factionAssignments);
+        return new StartGameSagaState(sagaId, gameId, lobbyId, newStatus, factionAssignments);
     }
 }

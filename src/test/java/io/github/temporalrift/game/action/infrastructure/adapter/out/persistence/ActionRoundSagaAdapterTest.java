@@ -25,7 +25,7 @@ class ActionRoundSagaAdapterTest {
 
     static final UUID SAGA_ID = UUID.randomUUID();
     static final UUID GAME_ID = UUID.randomUUID();
-    static final Instant EXPIRES_AT = Instant.now().plusSeconds(30);
+    static final Instant EXPIRES_AT = Instant.parse("2099-01-01T00:00:30Z");
     static final List<UUID> PENDING_PLAYER_IDS = List.of(UUID.randomUUID(), UUID.randomUUID());
 
     @Mock

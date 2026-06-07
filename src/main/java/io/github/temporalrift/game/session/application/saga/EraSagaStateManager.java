@@ -1,7 +1,5 @@
 package io.github.temporalrift.game.session.application.saga;
 
-import static org.springframework.transaction.annotation.Propagation.REQUIRES_NEW;
-
 import java.util.List;
 import java.util.UUID;
 
@@ -21,19 +19,19 @@ class EraSagaStateManager {
         this.eraSagaRepository = eraSagaRepository;
     }
 
-    @Transactional(propagation = REQUIRES_NEW)
+    @Transactional
     void initRunning(UUID gameId, int eraNumber, List<UUID> playerIds) {
         eraSagaRepository.save(new EraSagaState(gameId, eraNumber, EraSagaStatus.RUNNING, playerIds));
     }
 
-    @Transactional(propagation = REQUIRES_NEW)
+    @Transactional
     void advanceTo(UUID gameId, EraSagaStatus status) {
         eraSagaRepository
                 .findByGameIdWithLock(gameId)
                 .ifPresent(state -> eraSagaRepository.save(state.withStatus(status)));
     }
 
-    @Transactional(propagation = REQUIRES_NEW)
+    @Transactional
     void fail(UUID gameId) {
         eraSagaRepository
                 .findByGameIdWithLock(gameId)

@@ -59,9 +59,9 @@ class GetGameStateQueryHandlerTest {
         given(game.eraCounter()).willReturn(2);
         given(game.cascadedParadoxCounter()).willReturn(1);
         var players = List.of(
-                new LobbyPlayer(UUID.randomUUID(), "Alice", null, Instant.now(), true),
-                new LobbyPlayer(UUID.randomUUID(), "Bob", null, Instant.now(), true),
-                new LobbyPlayer(UUID.randomUUID(), "Carol", null, Instant.now(), true));
+                new LobbyPlayer(UUID.randomUUID(), "Alice", null, Instant.parse("2026-01-01T00:00:00Z"), true),
+                new LobbyPlayer(UUID.randomUUID(), "Bob", null, Instant.parse("2026-01-01T00:00:00Z"), true),
+                new LobbyPlayer(UUID.randomUUID(), "Carol", null, Instant.parse("2026-01-01T00:00:00Z"), true));
         given(lobby.currentPlayers()).willReturn(players);
         var query = new GetGameStateUseCase.Query(GAME_ID);
 

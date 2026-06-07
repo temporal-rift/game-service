@@ -1,7 +1,5 @@
 package io.github.temporalrift.game.action.application.saga;
 
-import static org.springframework.transaction.annotation.Propagation.REQUIRES_NEW;
-
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -28,7 +26,7 @@ class ActionRoundSagaStateManager {
         this.repository = repository;
     }
 
-    @Transactional(propagation = REQUIRES_NEW)
+    @Transactional
     ActionRoundSagaState initWaiting(
             UUID sagaId, UUID gameId, int eraNumber, int roundNumber, List<UUID> playerIds, Instant timerExpiresAt) {
         var state = new ActionRoundSagaState(
@@ -42,7 +40,7 @@ class ActionRoundSagaStateManager {
         return repository.save(state);
     }
 
-    @Transactional(propagation = REQUIRES_NEW)
+    @Transactional
     ActionRoundSagaState markSubmitted(UUID gameId, int eraNumber, int roundNumber, UUID playerId) {
         var stateOpt = repository.findByGameIdAndEraNumberAndRoundNumber(gameId, eraNumber, roundNumber);
         if (stateOpt.isEmpty()) {
@@ -65,7 +63,7 @@ class ActionRoundSagaStateManager {
         return repository.save(state.withPendingPlayerIds(updated));
     }
 
-    @Transactional(propagation = REQUIRES_NEW)
+    @Transactional
     void markClosing(UUID gameId, int eraNumber, int roundNumber) {
         var stateOpt = repository.findByGameIdAndEraNumberAndRoundNumberWithLock(gameId, eraNumber, roundNumber);
         if (stateOpt.isEmpty()) {
@@ -78,7 +76,7 @@ class ActionRoundSagaStateManager {
         repository.save(state.withStatus(ActionRoundSagaStatus.CLOSING));
     }
 
-    @Transactional(propagation = REQUIRES_NEW)
+    @Transactional
     void complete(UUID gameId, int eraNumber, int roundNumber) {
         var stateOpt = repository.findByGameIdAndEraNumberAndRoundNumber(gameId, eraNumber, roundNumber);
         if (stateOpt.isEmpty()) {

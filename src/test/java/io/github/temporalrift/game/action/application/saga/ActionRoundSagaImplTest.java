@@ -55,6 +55,7 @@ class ActionRoundSagaImplTest {
     static final UUID PLAYER_3 = UUID.randomUUID();
     static final List<UUID> PLAYER_IDS = List.of(PLAYER_1, PLAYER_2, PLAYER_3);
     static final int TIMER_SECONDS = 60;
+    static final Instant TIMER_EXPIRES_AT = Instant.parse("2099-01-01T00:00:00Z");
 
     @Mock
     ActionRoundRepository actionRoundRepository;
@@ -141,7 +142,7 @@ class ActionRoundSagaImplTest {
                     ROUND_NUMBER,
                     ActionRoundSagaStatus.WAITING,
                     List.of(PLAYER_2, PLAYER_3),
-                    Instant.now());
+                    TIMER_EXPIRES_AT);
             given(stateManager.markSubmitted(GAME_ID, ERA_NUMBER, ROUND_NUMBER, PLAYER_1))
                     .willReturn(updatedState);
 
@@ -160,7 +161,13 @@ class ActionRoundSagaImplTest {
             var sagaId = UUID.randomUUID();
             var roundId = UUID.randomUUID();
             var updatedState = new ActionRoundSagaState(
-                    sagaId, GAME_ID, ERA_NUMBER, ROUND_NUMBER, ActionRoundSagaStatus.WAITING, List.of(), Instant.now());
+                    sagaId,
+                    GAME_ID,
+                    ERA_NUMBER,
+                    ROUND_NUMBER,
+                    ActionRoundSagaStatus.WAITING,
+                    List.of(),
+                    TIMER_EXPIRES_AT);
             given(stateManager.markSubmitted(GAME_ID, ERA_NUMBER, ROUND_NUMBER, PLAYER_1))
                     .willReturn(updatedState);
 
@@ -209,7 +216,7 @@ class ActionRoundSagaImplTest {
                     ROUND_NUMBER,
                     ActionRoundSagaStatus.COMPLETED,
                     List.of(),
-                    Instant.now());
+                    TIMER_EXPIRES_AT);
             given(stateManager.findBySagaId(sagaId)).willReturn(Optional.of(state));
 
             // when
@@ -232,7 +239,7 @@ class ActionRoundSagaImplTest {
                     ROUND_NUMBER,
                     ActionRoundSagaStatus.WAITING,
                     List.of(PLAYER_2, PLAYER_3),
-                    Instant.now());
+                    TIMER_EXPIRES_AT);
             given(stateManager.findBySagaId(sagaId)).willReturn(Optional.of(state));
 
             var round = new ActionRound(
@@ -282,7 +289,7 @@ class ActionRoundSagaImplTest {
                     ROUND_NUMBER,
                     ActionRoundSagaStatus.WAITING,
                     List.of(),
-                    Instant.now());
+                    TIMER_EXPIRES_AT);
             given(stateManager.markSubmitted(GAME_ID, ERA_NUMBER, ROUND_NUMBER, PLAYER_1))
                     .willReturn(updatedState);
 
@@ -316,7 +323,7 @@ class ActionRoundSagaImplTest {
                     ROUND_NUMBER,
                     ActionRoundSagaStatus.WAITING,
                     List.of(PLAYER_2, PLAYER_3),
-                    Instant.now());
+                    TIMER_EXPIRES_AT);
             given(stateManager.findBySagaId(sagaId)).willReturn(Optional.of(state));
             saga.handleTimerExpiry(sagaId);
 
@@ -346,7 +353,7 @@ class ActionRoundSagaImplTest {
                     ROUND_NUMBER,
                     ActionRoundSagaStatus.WAITING,
                     List.of(),
-                    Instant.now());
+                    TIMER_EXPIRES_AT);
             given(stateManager.markSubmitted(GAME_ID, ERA_NUMBER, ROUND_NUMBER, PLAYER_1))
                     .willReturn(updatedState);
             saga.handlePlayerSubmitted(GAME_ID, ERA_NUMBER, ROUND_NUMBER, PLAYER_1);
@@ -378,7 +385,13 @@ class ActionRoundSagaImplTest {
 
             // when — simulate all-submitted path for round 2
             var updatedState = new ActionRoundSagaState(
-                    UUID.randomUUID(), GAME_ID, ERA_NUMBER, 2, ActionRoundSagaStatus.WAITING, List.of(), Instant.now());
+                    UUID.randomUUID(),
+                    GAME_ID,
+                    ERA_NUMBER,
+                    2,
+                    ActionRoundSagaStatus.WAITING,
+                    List.of(),
+                    TIMER_EXPIRES_AT);
             given(stateManager.markSubmitted(GAME_ID, ERA_NUMBER, 2, PLAYER_1)).willReturn(updatedState);
             saga.handlePlayerSubmitted(GAME_ID, ERA_NUMBER, 2, PLAYER_1);
 
@@ -400,7 +413,13 @@ class ActionRoundSagaImplTest {
 
             // when
             var updatedState = new ActionRoundSagaState(
-                    UUID.randomUUID(), GAME_ID, ERA_NUMBER, 1, ActionRoundSagaStatus.WAITING, List.of(), Instant.now());
+                    UUID.randomUUID(),
+                    GAME_ID,
+                    ERA_NUMBER,
+                    1,
+                    ActionRoundSagaStatus.WAITING,
+                    List.of(),
+                    TIMER_EXPIRES_AT);
             given(stateManager.markSubmitted(GAME_ID, ERA_NUMBER, 1, PLAYER_1)).willReturn(updatedState);
             saga.handlePlayerSubmitted(GAME_ID, ERA_NUMBER, 1, PLAYER_1);
 
@@ -440,7 +459,7 @@ class ActionRoundSagaImplTest {
                     ROUND_NUMBER,
                     ActionRoundSagaStatus.WAITING,
                     List.of(),
-                    Instant.now());
+                    TIMER_EXPIRES_AT);
             given(stateManager.markSubmitted(GAME_ID, ERA_NUMBER, ROUND_NUMBER, PLAYER_1))
                     .willReturn(updatedState);
             saga.handlePlayerSubmitted(GAME_ID, ERA_NUMBER, ROUND_NUMBER, PLAYER_1);
@@ -493,7 +512,7 @@ class ActionRoundSagaImplTest {
                     ROUND_NUMBER,
                     ActionRoundSagaStatus.WAITING,
                     List.of(),
-                    Instant.now());
+                    TIMER_EXPIRES_AT);
             given(stateManager.markSubmitted(GAME_ID, ERA_NUMBER, ROUND_NUMBER, PLAYER_1))
                     .willReturn(updatedState);
             saga.handlePlayerSubmitted(GAME_ID, ERA_NUMBER, ROUND_NUMBER, PLAYER_1);
@@ -541,7 +560,7 @@ class ActionRoundSagaImplTest {
                     ROUND_NUMBER,
                     ActionRoundSagaStatus.WAITING,
                     List.of(PLAYER_2, PLAYER_3),
-                    Instant.now());
+                    TIMER_EXPIRES_AT);
             given(stateManager.findBySagaId(sagaId)).willReturn(Optional.of(state));
             saga.handleTimerExpiry(sagaId);
 
@@ -585,7 +604,7 @@ class ActionRoundSagaImplTest {
                     ROUND_NUMBER,
                     ActionRoundSagaStatus.WAITING,
                     List.of(PLAYER_2, PLAYER_3),
-                    Instant.now());
+                    TIMER_EXPIRES_AT);
             given(stateManager.findBySagaId(sagaId)).willReturn(Optional.of(state));
 
             // when — first fire
@@ -610,7 +629,7 @@ class ActionRoundSagaImplTest {
                     ROUND_NUMBER,
                     ActionRoundSagaStatus.COMPLETED,
                     List.of(),
-                    Instant.now());
+                    TIMER_EXPIRES_AT);
             given(stateManager.findBySagaId(sagaId)).willReturn(Optional.of(state));
 
             // when
@@ -645,7 +664,7 @@ class ActionRoundSagaImplTest {
                     ROUND_NUMBER,
                     ActionRoundSagaStatus.WAITING,
                     List.of(PLAYER_2, PLAYER_3),
-                    Instant.now());
+                    TIMER_EXPIRES_AT);
             given(stateManager.findBySagaId(sagaId)).willReturn(Optional.of(state));
 
             // when

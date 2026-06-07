@@ -5,7 +5,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import io.github.temporalrift.game.session.application.port.in.JoinLobbyUseCase;
 import io.github.temporalrift.game.session.domain.lobby.LobbyNotFoundException;
-import io.github.temporalrift.game.session.domain.lobby.LobbyPlayer;
 import io.github.temporalrift.game.session.domain.port.out.LobbyRepository;
 
 @Service
@@ -24,8 +23,7 @@ class JoinLobbyCommandHandler implements JoinLobbyUseCase {
                 .findById(command.lobbyId())
                 .orElseThrow(() -> new LobbyNotFoundException(command.lobbyId()));
 
-        var player = new LobbyPlayer(command.playerId(), command.playerName(), null, null, true);
-        lobby.join(player);
+        lobby.join(command.playerId(), command.playerName());
 
         lobbyRepository.save(lobby);
 

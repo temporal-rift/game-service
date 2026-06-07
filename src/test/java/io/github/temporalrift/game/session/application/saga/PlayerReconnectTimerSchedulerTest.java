@@ -49,7 +49,7 @@ class PlayerReconnectTimerSchedulerTest {
         // given
         var scheduler = new PlayerReconnectTimerScheduler(taskScheduler, timeoutProcessor, timerRegistry);
         var sagaId = UUID.randomUUID();
-        var expiresAt = Instant.now().plusSeconds(30);
+        var expiresAt = Instant.parse("2099-01-01T00:00:30Z");
         var runnableCaptor = ArgumentCaptor.forClass(Runnable.class);
         doReturn(future).when(taskScheduler).schedule(runnableCaptor.capture(), eq(expiresAt));
 
@@ -68,8 +68,7 @@ class PlayerReconnectTimerSchedulerTest {
     void scheduleAfterCommit_withSynchronization_defersScheduling() {
         // given
         var scheduler = new PlayerReconnectTimerScheduler(taskScheduler, timeoutProcessor, timerRegistry);
-        var result = new PlayerReconnectSaga.StartResult(
-                UUID.randomUUID(), Instant.now().plusSeconds(20));
+        var result = new PlayerReconnectSaga.StartResult(UUID.randomUUID(), Instant.parse("2099-01-01T00:00:20Z"));
         TransactionSynchronizationManager.initSynchronization();
 
         // when
@@ -87,8 +86,7 @@ class PlayerReconnectTimerSchedulerTest {
     void scheduleAfterCommit_withoutSynchronization_schedulesImmediately() {
         // given
         var scheduler = new PlayerReconnectTimerScheduler(taskScheduler, timeoutProcessor, timerRegistry);
-        var result = new PlayerReconnectSaga.StartResult(
-                UUID.randomUUID(), Instant.now().plusSeconds(20));
+        var result = new PlayerReconnectSaga.StartResult(UUID.randomUUID(), Instant.parse("2099-01-01T00:00:20Z"));
 
         // when
         scheduler.scheduleAfterCommit(result);

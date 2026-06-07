@@ -37,9 +37,9 @@ class KafkaExternalizationConfigTest {
                 UUID.randomUUID(),
                 "Lobby",
                 UUID.randomUUID(),
-                Instant.now(),
+                Instant.parse("2026-01-01T00:00:00Z"),
                 1,
-                new LobbyCreated(UUID.randomUUID(), UUID.randomUUID(), Instant.now()));
+                new LobbyCreated(UUID.randomUUID(), UUID.randomUUID(), Instant.parse("2026-01-01T00:00:00Z")));
 
         // when
         var selected = cfg.supports(envelope);

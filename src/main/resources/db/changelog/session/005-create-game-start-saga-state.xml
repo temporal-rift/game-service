@@ -19,9 +19,6 @@
             <column name="status" type="VARCHAR(255)">
                 <constraints nullable="false"/>
             </column>
-            <column name="current_step" type="INT">
-                <constraints nullable="false"/>
-            </column>
             <column name="context" type="JSONB"/>
         </createTable>
     </changeSet>

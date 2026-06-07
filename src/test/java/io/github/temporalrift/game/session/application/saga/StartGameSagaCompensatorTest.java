@@ -35,7 +35,7 @@ class StartGameSagaCompensatorTest {
     static final UUID LOBBY_ID = UUID.randomUUID();
     static final UUID SAGA_ID = UUID.randomUUID();
     static final StartGameSagaState RUNNING_STATE =
-            new StartGameSagaState(SAGA_ID, GAME_ID, LOBBY_ID, StartGameSagaStatus.RUNNING, 0, List.of());
+            new StartGameSagaState(SAGA_ID, GAME_ID, LOBBY_ID, StartGameSagaStatus.RUNNING, List.of());
 
     static final String REASON = "duplicate faction";
 

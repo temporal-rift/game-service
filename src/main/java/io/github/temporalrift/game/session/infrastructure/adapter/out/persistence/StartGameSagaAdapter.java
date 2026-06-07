@@ -40,7 +40,6 @@ public class StartGameSagaAdapter implements StartGameSagaRepository {
         entity.setGameId(saga.gameId());
         entity.setLobbyId(saga.lobbyId());
         entity.setStatus(saga.status().name());
-        entity.setCurrentStep(saga.currentStep());
         entity.setFactionAssignments(saga.factionAssignments());
         return entity;
     }
@@ -51,7 +50,6 @@ public class StartGameSagaAdapter implements StartGameSagaRepository {
                 entity.getGameId(),
                 entity.getLobbyId(),
                 StartGameSagaStatus.valueOf(entity.getStatus()),
-                entity.getCurrentStep(),
                 entity.getFactionAssignments());
     }
 }

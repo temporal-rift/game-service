@@ -174,7 +174,6 @@ class ParadoxCascadedKafkaConsumerTest {
     }
 
     private StartGameSagaState startGameSagaStateWithAssignments(List<FactionAssignment> assignments) {
-        return new StartGameSagaState(
-                UUID.randomUUID(), GAME_ID, LOBBY_ID, StartGameSagaStatus.COMPLETED, 5, assignments);
+        return new StartGameSagaState(UUID.randomUUID(), GAME_ID, LOBBY_ID, StartGameSagaStatus.COMPLETED, assignments);
     }
 }

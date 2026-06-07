@@ -3,7 +3,6 @@ package io.github.temporalrift.game.action.infrastructure.adapter.out.persistenc
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.Instant;
-import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.UUID;
 
@@ -137,7 +136,7 @@ class ActionPersistenceIT {
 
     @Test
     void actionRoundSagaState_save_and_lookup_roundTrips() {
-        var timerExpiresAt = Instant.now().plusSeconds(30).truncatedTo(ChronoUnit.MICROS);
+        var timerExpiresAt = Instant.parse("2099-01-01T00:00:30Z");
         var state = new ActionRoundSagaState(
                 UUID.randomUUID(),
                 UUID.randomUUID(),

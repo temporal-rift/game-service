@@ -46,7 +46,7 @@ class PlayerReconnectSagaEventListenerTest {
     LobbyRepository lobbyRepository;
 
     private Lobby startedLobby() {
-        var player = new LobbyPlayer(PLAYER_ID, "Alice", null, Instant.now(), false);
+        var player = new LobbyPlayer(PLAYER_ID, "Alice", null, Instant.parse("2026-01-01T00:00:00Z"), false);
         return Lobby.reconstitute(
                 LOBBY_ID,
                 GAME_ID,
@@ -65,8 +65,7 @@ class PlayerReconnectSagaEventListenerTest {
         var event = new PlayerDisconnectedApplicationEvent(GAME_ID, PLAYER_ID);
         var game = new Game(GAME_ID, LOBBY_ID, List.of());
         var lobby = startedLobby();
-        var result = new PlayerReconnectSaga.StartResult(
-                UUID.randomUUID(), Instant.now().plusSeconds(30));
+        var result = new PlayerReconnectSaga.StartResult(UUID.randomUUID(), Instant.parse("2099-01-01T00:00:30Z"));
         given(gameRepository.findById(GAME_ID)).willReturn(Optional.of(game));
         given(lobbyRepository.findById(LOBBY_ID)).willReturn(Optional.of(lobby));
         given(stateManager.hasActiveGracePeriod(GAME_ID, PLAYER_ID)).willReturn(false);
@@ -109,7 +108,7 @@ class PlayerReconnectSagaEventListenerTest {
                 saga, timerScheduler, stateManager, gameRepository, lobbyRepository);
         var event = new PlayerDisconnectedApplicationEvent(GAME_ID, PLAYER_ID);
         var game = new Game(GAME_ID, LOBBY_ID, List.of());
-        var player = new LobbyPlayer(PLAYER_ID, "Alice", null, Instant.now(), false);
+        var player = new LobbyPlayer(PLAYER_ID, "Alice", null, Instant.parse("2026-01-01T00:00:00Z"), false);
         var waitingLobby = Lobby.reconstitute(
                 LOBBY_ID,
                 GAME_ID,

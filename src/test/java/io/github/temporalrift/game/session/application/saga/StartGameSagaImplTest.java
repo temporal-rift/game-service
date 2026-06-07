@@ -14,6 +14,7 @@ import static org.mockito.Mockito.times;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.IntStream;
 
@@ -31,8 +32,13 @@ import io.github.temporalrift.events.session.EraStarted;
 import io.github.temporalrift.events.session.FactionAssigned;
 import io.github.temporalrift.events.session.FactionsDrawn;
 import io.github.temporalrift.events.session.GameStarted;
+import io.github.temporalrift.game.session.domain.lobby.DisconnectedPlayersException;
 import io.github.temporalrift.game.session.domain.lobby.Lobby;
+import io.github.temporalrift.game.session.domain.lobby.LobbyNotFoundException;
 import io.github.temporalrift.game.session.domain.lobby.LobbyPlayer;
+import io.github.temporalrift.game.session.domain.lobby.NotEnoughPlayersException;
+import io.github.temporalrift.game.session.domain.lobby.NotLobbyHostException;
+import io.github.temporalrift.game.session.domain.lobby.StartOutcome;
 import io.github.temporalrift.game.session.domain.port.out.FutureEventCatalogPort;
 import io.github.temporalrift.game.session.domain.port.out.GameRepository;
 import io.github.temporalrift.game.session.domain.port.out.LobbyRepository;
@@ -43,11 +49,13 @@ class StartGameSagaImplTest {
 
     static final UUID GAME_ID = UUID.randomUUID();
     static final UUID LOBBY_ID = UUID.randomUUID();
+    static final UUID REQUESTING_PLAYER_ID = UUID.randomUUID();
+    static final Instant JOINED_AT = Instant.parse("2026-01-01T00:00:00Z");
     static final List<UUID> CATALOG_IDS =
             IntStream.range(0, 30).mapToObj(i -> UUID.randomUUID()).toList();
     static final List<LobbyPlayer> TWO_PLAYERS = List.of(
-            new LobbyPlayer(UUID.randomUUID(), "Alice", null, Instant.now(), true),
-            new LobbyPlayer(UUID.randomUUID(), "Bob", null, Instant.now(), true));
+            new LobbyPlayer(UUID.randomUUID(), "Alice", null, JOINED_AT, true),
+            new LobbyPlayer(UUID.randomUUID(), "Bob", null, JOINED_AT, true));
 
     @Mock
     LobbyRepository lobbyRepository;
@@ -80,14 +88,16 @@ class StartGameSagaImplTest {
     @DisplayName("happy path — all events published in order, saga marked COMPLETED")
     void start_happyPath_publishesAllEventsInOrderAndCompletes() {
         // given
+        stubStartableLobby();
         given(lobby.id()).willReturn(LOBBY_ID);
         given(lobby.currentPlayers()).willReturn(TWO_PLAYERS);
         given(futureEventCatalog.allEventIds()).willReturn(CATALOG_IDS);
 
         // when
-        saga.start(GAME_ID, lobby);
+        var result = saga.start(LOBBY_ID, REQUESTING_PLAYER_ID);
 
         // then
+        assertThat(result).isEqualTo(GAME_ID);
         var ordered = inOrder(stateManager, eventPublisher);
         then(stateManager).should(ordered).initRunning(GAME_ID, LOBBY_ID);
         then(eventPublisher).should(ordered, times(2)).publish(envelopeWithPayload(FactionAssigned.class));
@@ -102,12 +112,13 @@ class StartGameSagaImplTest {
     @DisplayName("faction assignment fails — compensate called with gameId, exception rethrown, COMPLETED never saved")
     void start_factionAssignmentFails_compensatesAndRethrows() {
         // given
+        stubStartableLobby();
         given(lobby.id()).willReturn(LOBBY_ID);
         given(lobby.currentPlayers()).willReturn(TWO_PLAYERS);
         willThrow(new RuntimeException("duplicate faction")).given(lobby).assignFaction(any(), any());
 
         // when / then
-        assertThatExceptionOfType(RuntimeException.class).isThrownBy(() -> saga.start(GAME_ID, lobby));
+        assertThatExceptionOfType(RuntimeException.class).isThrownBy(() -> saga.start(LOBBY_ID, REQUESTING_PLAYER_ID));
         then(compensator).should().compensate(eq(GAME_ID), any());
         then(stateManager).should(never()).complete(any(), any());
     }
@@ -116,13 +127,14 @@ class StartGameSagaImplTest {
     @DisplayName("player disconnects during saga — complete throws, compensate is called, COMPLETED not persisted")
     void start_playerDisconnectsDuringSaga_compensatesWhenCompleteFails() {
         // given — saga is RUNNING, disconnect listener marks CANCELLED before complete() runs
+        stubStartableLobby();
         given(lobby.id()).willReturn(LOBBY_ID);
         given(lobby.currentPlayers()).willReturn(TWO_PLAYERS);
         given(futureEventCatalog.allEventIds()).willReturn(CATALOG_IDS);
         willThrow(new RuntimeException("cancelled")).given(stateManager).complete(any(), any());
 
         // when / then
-        assertThatExceptionOfType(RuntimeException.class).isThrownBy(() -> saga.start(GAME_ID, lobby));
+        assertThatExceptionOfType(RuntimeException.class).isThrownBy(() -> saga.start(LOBBY_ID, REQUESTING_PLAYER_ID));
         then(stateManager).should().initRunning(GAME_ID, LOBBY_ID);
         then(stateManager).should().complete(GAME_ID, LOBBY_ID);
         then(compensator).should().compensate(eq(GAME_ID), any());
@@ -132,13 +144,14 @@ class StartGameSagaImplTest {
     @DisplayName("happy path — EraStarted also published as typed Spring event for internal saga trigger")
     void start_happyPath_publishesTypedEraStartedForInternalRouting() {
         // given
+        stubStartableLobby();
         given(lobby.id()).willReturn(LOBBY_ID);
         given(lobby.currentPlayers()).willReturn(TWO_PLAYERS);
         given(futureEventCatalog.allEventIds()).willReturn(CATALOG_IDS);
         var captor = ArgumentCaptor.forClass(Object.class);
 
         // when
-        saga.start(GAME_ID, lobby);
+        saga.start(LOBBY_ID, REQUESTING_PLAYER_ID);
 
         // then
         then(applicationEventPublisher).should().publishEvent(captor.capture());
@@ -148,7 +161,65 @@ class StartGameSagaImplTest {
         assertThat(eraStarted.eraNumber()).isEqualTo(1);
     }
 
+    @Test
+    @DisplayName("lobby not found — throws before saga state is initialized")
+    void start_lobbyNotFound_throwsBeforeInitializingSagaState() {
+        // given
+        given(lobbyRepository.findByIdWithLock(LOBBY_ID)).willReturn(Optional.empty());
+
+        // when / then
+        assertThatExceptionOfType(LobbyNotFoundException.class)
+                .isThrownBy(() -> saga.start(LOBBY_ID, REQUESTING_PLAYER_ID));
+        then(stateManager).shouldHaveNoInteractions();
+    }
+
+    @Test
+    @DisplayName("not host — throws before saga state is initialized")
+    void start_notHost_throwsBeforeInitializingSagaState() {
+        // given
+        stubLobbyStartOutcome(new StartOutcome.NotHost());
+
+        // when / then
+        assertThatExceptionOfType(NotLobbyHostException.class)
+                .isThrownBy(() -> saga.start(LOBBY_ID, REQUESTING_PLAYER_ID));
+        then(stateManager).shouldHaveNoInteractions();
+    }
+
+    @Test
+    @DisplayName("not enough players — throws before saga state is initialized")
+    void start_notEnoughPlayers_throwsBeforeInitializingSagaState() {
+        // given
+        stubLobbyStartOutcome(new StartOutcome.NotEnoughPlayers(2, 3));
+
+        // when / then
+        assertThatExceptionOfType(NotEnoughPlayersException.class)
+                .isThrownBy(() -> saga.start(LOBBY_ID, REQUESTING_PLAYER_ID));
+        then(stateManager).shouldHaveNoInteractions();
+    }
+
+    @Test
+    @DisplayName("disconnected players — throws before saga state is initialized")
+    void start_disconnectedPlayers_throwsBeforeInitializingSagaState() {
+        // given
+        stubLobbyStartOutcome(new StartOutcome.HasDisconnectedPlayers(List.of(UUID.randomUUID())));
+
+        // when / then
+        assertThatExceptionOfType(DisconnectedPlayersException.class)
+                .isThrownBy(() -> saga.start(LOBBY_ID, REQUESTING_PLAYER_ID));
+        then(stateManager).shouldHaveNoInteractions();
+    }
+
     private static EventEnvelope envelopeWithPayload(Class<?> payloadType) {
         return argThat(envelope -> payloadType.isInstance(envelope.payload()));
+    }
+
+    private void stubStartableLobby() {
+        stubLobbyStartOutcome(new StartOutcome.GameStarted());
+    }
+
+    private void stubLobbyStartOutcome(StartOutcome startOutcome) {
+        given(lobbyRepository.findByIdWithLock(LOBBY_ID)).willReturn(Optional.of(lobby));
+        given(lobby.requestStart(REQUESTING_PLAYER_ID)).willReturn(startOutcome);
+        given(lobby.gameId()).willReturn(GAME_ID);
     }
 }

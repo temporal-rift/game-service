@@ -28,7 +28,6 @@ class StartGameSagaStateJpaEntityTest {
         entity.setGameId(gameId);
         entity.setLobbyId(lobbyId);
         entity.setStatus("RUNNING");
-        entity.setCurrentStep(2);
         entity.setFactionAssignments(assignments);
 
         // then
@@ -36,7 +35,6 @@ class StartGameSagaStateJpaEntityTest {
         assertThat(entity.getGameId()).isEqualTo(gameId);
         assertThat(entity.getLobbyId()).isEqualTo(lobbyId);
         assertThat(entity.getStatus()).isEqualTo("RUNNING");
-        assertThat(entity.getCurrentStep()).isEqualTo(2);
         assertThat(entity.getFactionAssignments()).isEqualTo(assignments);
     }
 
@@ -47,11 +45,9 @@ class StartGameSagaStateJpaEntityTest {
         var entity = new StartGameSagaStateJpaEntity();
 
         // when
-        entity.setCurrentStep(null);
         entity.setFactionAssignments(null);
 
         // then
-        assertThat(entity.getCurrentStep()).isNull();
         assertThat(entity.getFactionAssignments()).isNull();
     }
 }
