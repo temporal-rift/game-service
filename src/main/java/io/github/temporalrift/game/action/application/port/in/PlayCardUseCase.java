@@ -2,8 +2,6 @@ package io.github.temporalrift.game.action.application.port.in;
 
 import java.util.UUID;
 
-import io.github.temporalrift.events.shared.CardType;
-
 /**
  * Accepts a player's card submission for an open action round.
  *
@@ -27,7 +25,6 @@ public interface PlayCardUseCase {
             int roundNumber,
             UUID playerId,
             UUID cardInstanceId,
-            CardType cardType,
             UUID targetEventId,
             UUID sourceOutcomeId,
             UUID targetOutcomeId) {}

@@ -7,6 +7,7 @@ import org.springframework.transaction.annotation.Transactional;
 import io.github.temporalrift.events.envelope.EventEnvelope;
 import io.github.temporalrift.game.action.application.port.in.PlaySpecialActionUseCase;
 import io.github.temporalrift.game.action.domain.actionround.ActionRound;
+import io.github.temporalrift.game.action.domain.actionround.FactionRequiredException;
 import io.github.temporalrift.game.action.domain.actionround.RoundNotFoundException;
 import io.github.temporalrift.game.action.domain.playerstate.PlayerStateNotFoundException;
 import io.github.temporalrift.game.action.domain.port.out.ActionEventPublisher;
@@ -42,9 +43,13 @@ class PlaySpecialActionCommandHandler implements PlaySpecialActionUseCase {
         var playerState = playerStateRepository
                 .findByGameIdAndPlayerId(command.gameId(), command.playerId())
                 .orElseThrow(() -> new PlayerStateNotFoundException(command.gameId(), command.playerId()));
+        var faction = playerState.faction();
+        if (faction == null) {
+            throw new FactionRequiredException(command.playerId());
+        }
         var allSubmitted = round.submitSpecial(
                 command.playerId(),
-                command.faction(),
+                faction,
                 command.specialAction(),
                 command.targetEventId(),
                 command.targetOutcomeId(),

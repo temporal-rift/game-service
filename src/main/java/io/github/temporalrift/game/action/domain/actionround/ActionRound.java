@@ -158,6 +158,9 @@ public class ActionRound extends AggregateRoot {
         if (isJammed) {
             throw new JammedPlayerException(playerId);
         }
+        if (faction == null) {
+            throw new FactionRequiredException(playerId);
+        }
 
         pendingPlayerIds.remove(playerId);
         submittedActions.add(new SubmittedAction.SpecialActionSubmission(
