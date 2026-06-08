@@ -1,6 +1,7 @@
 package io.github.temporalrift.game.action.application.saga;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 
 import java.util.List;
 import java.util.UUID;
@@ -16,6 +17,7 @@ import io.github.temporalrift.events.shared.SpecialAction;
 import io.github.temporalrift.events.timeline.BandedProbabilityPublished.EventBandState;
 import io.github.temporalrift.events.timeline.BandedProbabilityPublished.OutcomeBandState;
 import io.github.temporalrift.events.timeline.BandedProbabilityPublished.ProbabilityBand;
+import io.github.temporalrift.game.action.domain.actionround.InvalidActionTargetException;
 import io.github.temporalrift.game.action.domain.actionround.SubmittedAction;
 import io.github.temporalrift.game.action.domain.port.out.FutureEventDefinitionPort;
 
@@ -213,9 +215,7 @@ class BandCalculatorTest {
                 EVENT_ID, List.of(new FutureEventDefinitionPort.OutcomeDefinition(OUTCOME_1, 55))));
         List<SubmittedAction> round1 = List.of(
                 new SubmittedAction.CardAction(PLAYER_ID, UUID.randomUUID(), CardType.PUSH, null, null, OUTCOME_1),
-                new SubmittedAction.CardAction(PLAYER_ID, UUID.randomUUID(), CardType.PUSH, EVENT_ID, null, null),
-                new SubmittedAction.CardAction(
-                        PLAYER_ID, UUID.randomUUID(), CardType.SWING, EVENT_ID, null, OUTCOME_1));
+                new SubmittedAction.CardAction(PLAYER_ID, UUID.randomUUID(), CardType.PUSH, EVENT_ID, null, null));
         List<SubmittedAction> round2 = List.of(
                 new SubmittedAction.SpecialActionSubmission(
                         PLAYER_ID, Faction.ERASERS, SpecialAction.SEAL, null, OUTCOME_1, null),
@@ -233,22 +233,81 @@ class BandCalculatorTest {
     }
 
     @Test
-    @DisplayName("computeBands ignores Swing when source and target outcomes match")
-    void computeBands_ignoresSwingWithSameSourceAndTargetOutcome() {
-        // given
+    @DisplayName("computeBands rejects Swing when source outcome is missing")
+    void computeBands_rejectsSwingWithoutSourceOutcome() {
+        var definitions = List.of(new FutureEventDefinitionPort.EventDefinition(
+                EVENT_ID, List.of(new FutureEventDefinitionPort.OutcomeDefinition(OUTCOME_1, 55))));
+        List<SubmittedAction> actions = List.of(new SubmittedAction.CardAction(
+                PLAYER_ID, UUID.randomUUID(), CardType.SWING, EVENT_ID, null, OUTCOME_1));
+
+        assertThatExceptionOfType(InvalidActionTargetException.class)
+                .isThrownBy(() -> calculator.computeBands(actions, List.of(), definitions));
+    }
+
+    @Test
+    @DisplayName("computeBands rejects Swing when target outcome is missing")
+    void computeBands_rejectsSwingWithoutTargetOutcome() {
+        var definitions = List.of(new FutureEventDefinitionPort.EventDefinition(
+                EVENT_ID, List.of(new FutureEventDefinitionPort.OutcomeDefinition(OUTCOME_1, 55))));
+        List<SubmittedAction> actions = List.of(new SubmittedAction.CardAction(
+                PLAYER_ID, UUID.randomUUID(), CardType.SWING, EVENT_ID, OUTCOME_1, null));
+
+        assertThatExceptionOfType(InvalidActionTargetException.class)
+                .isThrownBy(() -> calculator.computeBands(actions, List.of(), definitions));
+    }
+
+    @Test
+    @DisplayName("computeBands rejects Swing when source and target outcomes match")
+    void computeBands_rejectsSwingWithSameSourceAndTargetOutcome() {
         var definitions = List.of(new FutureEventDefinitionPort.EventDefinition(
                 EVENT_ID, List.of(new FutureEventDefinitionPort.OutcomeDefinition(OUTCOME_1, 55))));
         List<SubmittedAction> actions = List.of(new SubmittedAction.CardAction(
                 PLAYER_ID, UUID.randomUUID(), CardType.SWING, EVENT_ID, OUTCOME_1, OUTCOME_1));
 
-        // when
+        assertThatExceptionOfType(InvalidActionTargetException.class)
+                .isThrownBy(() -> calculator.computeBands(actions, List.of(), definitions));
+    }
+
+    @Test
+    @DisplayName("computeBands ignores Swing when source outcome is not tracked")
+    void computeBands_ignoresSwingWithUnknownSourceOutcome() {
+        var definitions = List.of(new FutureEventDefinitionPort.EventDefinition(
+                EVENT_ID,
+                List.of(
+                        new FutureEventDefinitionPort.OutcomeDefinition(OUTCOME_1, 55),
+                        new FutureEventDefinitionPort.OutcomeDefinition(OUTCOME_2, 55))));
+        List<SubmittedAction> actions = List.of(new SubmittedAction.CardAction(
+                PLAYER_ID, UUID.randomUUID(), CardType.SWING, EVENT_ID, UUID.randomUUID(), OUTCOME_2));
+
         var result = calculator.computeBands(actions, List.of(), definitions);
 
-        // then
         assertThat(result)
                 .singleElement()
                 .satisfies(event -> assertThat(event.outcomes())
-                        .containsExactly(new OutcomeBandState(OUTCOME_1, ProbabilityBand.MEDIUM)));
+                        .containsExactlyInAnyOrder(
+                                new OutcomeBandState(OUTCOME_1, ProbabilityBand.MEDIUM),
+                                new OutcomeBandState(OUTCOME_2, ProbabilityBand.MEDIUM)));
+    }
+
+    @Test
+    @DisplayName("computeBands ignores Swing when target outcome is not tracked")
+    void computeBands_ignoresSwingWithUnknownTargetOutcome() {
+        var definitions = List.of(new FutureEventDefinitionPort.EventDefinition(
+                EVENT_ID,
+                List.of(
+                        new FutureEventDefinitionPort.OutcomeDefinition(OUTCOME_1, 55),
+                        new FutureEventDefinitionPort.OutcomeDefinition(OUTCOME_2, 55))));
+        List<SubmittedAction> actions = List.of(new SubmittedAction.CardAction(
+                PLAYER_ID, UUID.randomUUID(), CardType.SWING, EVENT_ID, OUTCOME_1, UUID.randomUUID()));
+
+        var result = calculator.computeBands(actions, List.of(), definitions);
+
+        assertThat(result)
+                .singleElement()
+                .satisfies(event -> assertThat(event.outcomes())
+                        .containsExactlyInAnyOrder(
+                                new OutcomeBandState(OUTCOME_1, ProbabilityBand.MEDIUM),
+                                new OutcomeBandState(OUTCOME_2, ProbabilityBand.MEDIUM)));
     }
 
     @Test
