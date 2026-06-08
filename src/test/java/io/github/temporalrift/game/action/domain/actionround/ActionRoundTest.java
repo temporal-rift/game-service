@@ -128,11 +128,13 @@ class ActionRoundTest {
         var round = openRound(List.of(PLAYER_A, PLAYER_B));
         round.pullEvents();
         var cardId = UUID.randomUUID();
+        var targetEventId = UUID.randomUUID();
         var targetOutcomeId = UUID.randomUUID();
+        var playerHand = List.of(cardId);
 
         assertThatExceptionOfType(InvalidActionTargetException.class)
                 .isThrownBy(() -> round.submitCard(
-                        PLAYER_A, cardId, CardType.SWING, UUID.randomUUID(), null, targetOutcomeId, List.of(cardId)));
+                        PLAYER_A, cardId, CardType.SWING, targetEventId, null, targetOutcomeId, playerHand));
     }
 
     @Test
@@ -141,11 +143,13 @@ class ActionRoundTest {
         var round = openRound(List.of(PLAYER_A, PLAYER_B));
         round.pullEvents();
         var cardId = UUID.randomUUID();
+        var targetEventId = UUID.randomUUID();
         var sourceOutcomeId = UUID.randomUUID();
+        var playerHand = List.of(cardId);
 
         assertThatExceptionOfType(InvalidActionTargetException.class)
                 .isThrownBy(() -> round.submitCard(
-                        PLAYER_A, cardId, CardType.SWING, UUID.randomUUID(), sourceOutcomeId, null, List.of(cardId)));
+                        PLAYER_A, cardId, CardType.SWING, targetEventId, sourceOutcomeId, null, playerHand));
     }
 
     @Test
@@ -154,11 +158,13 @@ class ActionRoundTest {
         var round = openRound(List.of(PLAYER_A, PLAYER_B));
         round.pullEvents();
         var cardId = UUID.randomUUID();
+        var targetEventId = UUID.randomUUID();
         var outcomeId = UUID.randomUUID();
+        var playerHand = List.of(cardId);
 
         assertThatExceptionOfType(InvalidActionTargetException.class)
                 .isThrownBy(() -> round.submitCard(
-                        PLAYER_A, cardId, CardType.SWING, UUID.randomUUID(), outcomeId, outcomeId, List.of(cardId)));
+                        PLAYER_A, cardId, CardType.SWING, targetEventId, outcomeId, outcomeId, playerHand));
     }
 
     @Test

@@ -11,14 +11,16 @@ public class InvalidActionTargetException extends RuntimeException {
     }
 
     private static String message(CardType cardType, UUID sourceOutcomeId, UUID targetOutcomeId) {
-        if (cardType == CardType.SWING && sourceOutcomeId == null) {
-            return "Swing action requires a sourceOutcomeId";
-        }
-        if (cardType == CardType.SWING && targetOutcomeId == null) {
-            return "Swing action requires a targetOutcomeId";
-        }
-        if (cardType == CardType.SWING && targetOutcomeId != null && targetOutcomeId.equals(sourceOutcomeId)) {
-            return "Swing action requires distinct sourceOutcomeId and targetOutcomeId";
+        if (cardType == CardType.SWING) {
+            if (sourceOutcomeId == null) {
+                return "Swing action requires a sourceOutcomeId";
+            }
+            if (targetOutcomeId == null) {
+                return "Swing action requires a targetOutcomeId";
+            }
+            if (sourceOutcomeId.equals(targetOutcomeId)) {
+                return "Swing action requires distinct sourceOutcomeId and targetOutcomeId";
+            }
         }
         return "Invalid action target";
     }
