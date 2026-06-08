@@ -200,10 +200,11 @@ components:
             sourceOutcomeId:
               type: string
               format: uuid
-              description: Required when the submitted card resolves as SWING.
+              description: Required when the submitted card resolves as SWING and must differ from targetOutcomeId.
             targetOutcomeId:
               type: string
               format: uuid
+              description: Required for card submissions and, for SWING, must differ from sourceOutcomeId.
 
     SpecialActionRequest:
       allOf:

@@ -123,6 +123,45 @@ class ActionRoundTest {
     }
 
     @Test
+    @DisplayName("submitCard — Swing without source outcome — throws InvalidActionTargetException")
+    void submitCardSwingWithoutSourceOutcomeThrows() {
+        var round = openRound(List.of(PLAYER_A, PLAYER_B));
+        round.pullEvents();
+        var cardId = UUID.randomUUID();
+        var targetOutcomeId = UUID.randomUUID();
+
+        assertThatExceptionOfType(InvalidActionTargetException.class)
+                .isThrownBy(() -> round.submitCard(
+                        PLAYER_A, cardId, CardType.SWING, UUID.randomUUID(), null, targetOutcomeId, List.of(cardId)));
+    }
+
+    @Test
+    @DisplayName("submitCard — Swing without target outcome — throws InvalidActionTargetException")
+    void submitCardSwingWithoutTargetOutcomeThrows() {
+        var round = openRound(List.of(PLAYER_A, PLAYER_B));
+        round.pullEvents();
+        var cardId = UUID.randomUUID();
+        var sourceOutcomeId = UUID.randomUUID();
+
+        assertThatExceptionOfType(InvalidActionTargetException.class)
+                .isThrownBy(() -> round.submitCard(
+                        PLAYER_A, cardId, CardType.SWING, UUID.randomUUID(), sourceOutcomeId, null, List.of(cardId)));
+    }
+
+    @Test
+    @DisplayName("submitCard — Swing with same source and target outcome — throws InvalidActionTargetException")
+    void submitCardSwingWithSameSourceAndTargetOutcomeThrows() {
+        var round = openRound(List.of(PLAYER_A, PLAYER_B));
+        round.pullEvents();
+        var cardId = UUID.randomUUID();
+        var outcomeId = UUID.randomUUID();
+
+        assertThatExceptionOfType(InvalidActionTargetException.class)
+                .isThrownBy(() -> round.submitCard(
+                        PLAYER_A, cardId, CardType.SWING, UUID.randomUUID(), outcomeId, outcomeId, List.of(cardId)));
+    }
+
+    @Test
     @DisplayName("submitCard — last player submits — returns true")
     void submitCardLastPlayerReturnsTrue() {
         // given

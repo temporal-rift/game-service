@@ -11,6 +11,7 @@ import org.springframework.stereotype.Component;
 import io.github.temporalrift.events.shared.CardType;
 import io.github.temporalrift.events.timeline.BandedProbabilityPublished;
 import io.github.temporalrift.events.timeline.BandedProbabilityPublished.ProbabilityBand;
+import io.github.temporalrift.game.action.domain.actionround.InvalidActionTargetException;
 import io.github.temporalrift.game.action.domain.actionround.SubmittedAction;
 import io.github.temporalrift.game.action.domain.port.out.FutureEventDefinitionPort;
 
@@ -76,15 +77,22 @@ class BandCalculator {
     }
 
     private void applyCardShift(Map<UUID, Map<UUID, Integer>> state, SubmittedAction.CardAction action) {
+        if (action.cardType() == CardType.SWING) {
+            if (action.targetEventId() == null) {
+                return;
+            }
+            var outcomeMap = state.get(action.targetEventId());
+            if (outcomeMap == null) {
+                return;
+            }
+            applySwingShift(outcomeMap, action);
+            return;
+        }
         if (action.targetEventId() == null || action.targetOutcomeId() == null) {
             return;
         }
         var outcomeMap = state.get(action.targetEventId());
         if (outcomeMap == null) {
-            return;
-        }
-        if (action.cardType() == CardType.SWING) {
-            applySwingShift(outcomeMap, action);
             return;
         }
 
@@ -112,7 +120,13 @@ class BandCalculator {
     }
 
     private void applySwingShift(Map<UUID, Integer> outcomeMap, SubmittedAction.CardAction action) {
-        if (action.sourceOutcomeId() == null || action.sourceOutcomeId().equals(action.targetOutcomeId())) {
+        if (action.sourceOutcomeId() == null
+                || action.targetOutcomeId() == null
+                || action.sourceOutcomeId().equals(action.targetOutcomeId())) {
+            throw new InvalidActionTargetException(
+                    action.cardType(), action.sourceOutcomeId(), action.targetOutcomeId());
+        }
+        if (!outcomeMap.containsKey(action.sourceOutcomeId()) || !outcomeMap.containsKey(action.targetOutcomeId())) {
             return;
         }
         outcomeMap.merge(action.sourceOutcomeId(), -30, Integer::sum);

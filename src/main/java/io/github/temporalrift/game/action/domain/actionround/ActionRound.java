@@ -107,6 +107,7 @@ public class ActionRound extends AggregateRoot {
         if (!playerHand.contains(cardInstanceId)) {
             throw new CardNotInHandException(cardInstanceId);
         }
+        validateCardTargets(cardType, sourceOutcomeId, targetOutcomeId);
 
         pendingPlayerIds.remove(playerId);
         submittedActions.add(new SubmittedAction.CardAction(
@@ -123,6 +124,21 @@ public class ActionRound extends AggregateRoot {
                 targetOutcomeId));
 
         return allSubmitted();
+    }
+
+    private void validateCardTargets(CardType cardType, UUID sourceOutcomeId, UUID targetOutcomeId) {
+        if (cardType != CardType.SWING) {
+            return;
+        }
+        if (sourceOutcomeId == null) {
+            throw new InvalidActionTargetException(cardType, null, targetOutcomeId);
+        }
+        if (targetOutcomeId == null) {
+            throw new InvalidActionTargetException(cardType, sourceOutcomeId, null);
+        }
+        if (sourceOutcomeId.equals(targetOutcomeId)) {
+            throw new InvalidActionTargetException(cardType, sourceOutcomeId, targetOutcomeId);
+        }
     }
 
     public boolean submitSpecial(
