@@ -6,6 +6,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import io.github.temporalrift.events.envelope.EventEnvelope;
 import io.github.temporalrift.game.action.application.port.in.PlayCardUseCase;
+import io.github.temporalrift.game.action.domain.CardNotInHandException;
 import io.github.temporalrift.game.action.domain.actionround.ActionRound;
 import io.github.temporalrift.game.action.domain.actionround.RoundNotFoundException;
 import io.github.temporalrift.game.action.domain.playerstate.PlayerState;
@@ -46,10 +47,14 @@ class PlayCardCommandHandler implements PlayCardUseCase {
         var playerHand = playerState.hand().stream()
                 .map(PlayerState.CardInstance::cardInstanceId)
                 .toList();
+        var submittedCard = playerState.hand().stream()
+                .filter(card -> card.cardInstanceId().equals(command.cardInstanceId()))
+                .findFirst()
+                .orElseThrow(() -> new CardNotInHandException(command.cardInstanceId()));
         var allSubmitted = round.submitCard(
                 command.playerId(),
                 command.cardInstanceId(),
-                command.cardType(),
+                submittedCard.cardType(),
                 command.targetEventId(),
                 command.sourceOutcomeId(),
                 command.targetOutcomeId(),

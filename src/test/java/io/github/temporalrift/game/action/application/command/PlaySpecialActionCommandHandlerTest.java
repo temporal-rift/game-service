@@ -28,6 +28,7 @@ import io.github.temporalrift.game.action.application.port.in.PlaySpecialActionU
 import io.github.temporalrift.game.action.domain.actionround.ActionRound;
 import io.github.temporalrift.game.action.domain.actionround.ActionRoundClosedException;
 import io.github.temporalrift.game.action.domain.actionround.DuplicateSubmissionException;
+import io.github.temporalrift.game.action.domain.actionround.FactionRequiredException;
 import io.github.temporalrift.game.action.domain.actionround.JammedPlayerException;
 import io.github.temporalrift.game.action.domain.actionround.RoundNotFoundException;
 import io.github.temporalrift.game.action.domain.playerstate.PlayerState;
@@ -69,18 +70,11 @@ class PlaySpecialActionCommandHandlerTest {
     void handleHappyPath() {
         // given
         var command = new PlaySpecialActionUseCase.Command(
-                GAME_ID,
-                ERA,
-                ROUND,
-                PLAYER_ID,
-                Faction.ERASERS,
-                SpecialAction.ANNIHILATE,
-                UUID.randomUUID(),
-                UUID.randomUUID(),
-                null);
+                GAME_ID, ERA, ROUND, PLAYER_ID, SpecialAction.ANNIHILATE, UUID.randomUUID(), UUID.randomUUID(), null);
         given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumber(GAME_ID, ERA, ROUND))
                 .willReturn(Optional.of(round));
         given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(playerState));
+        given(playerState.faction()).willReturn(Faction.ERASERS);
         given(playerState.isJammed()).willReturn(false);
         given(round.submitSpecial(any(), any(), any(), any(), any(), any(), anyBoolean()))
                 .willReturn(false);
@@ -108,10 +102,11 @@ class PlaySpecialActionCommandHandlerTest {
     void handleAllSubmittedDoesNotCloseDirectly() {
         // given
         var command = new PlaySpecialActionUseCase.Command(
-                GAME_ID, ERA, ROUND, PLAYER_ID, Faction.PROPHETS, SpecialAction.SEAL, null, null, null);
+                GAME_ID, ERA, ROUND, PLAYER_ID, SpecialAction.SEAL, null, null, null);
         given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumber(GAME_ID, ERA, ROUND))
                 .willReturn(Optional.of(round));
         given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(playerState));
+        given(playerState.faction()).willReturn(Faction.PROPHETS);
         given(playerState.isJammed()).willReturn(false);
         given(round.submitSpecial(any(), any(), any(), any(), any(), any(), anyBoolean()))
                 .willReturn(true);
@@ -134,7 +129,7 @@ class PlaySpecialActionCommandHandlerTest {
         given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumber(GAME_ID, ERA, ROUND))
                 .willReturn(Optional.empty());
         var command = new PlaySpecialActionUseCase.Command(
-                GAME_ID, ERA, ROUND, PLAYER_ID, Faction.PROPHETS, SpecialAction.SEAL, null, null, null);
+                GAME_ID, ERA, ROUND, PLAYER_ID, SpecialAction.SEAL, null, null, null);
 
         // when / then
         assertThatExceptionOfType(RoundNotFoundException.class).isThrownBy(() -> handler.handle(command));
@@ -148,10 +143,28 @@ class PlaySpecialActionCommandHandlerTest {
                 .willReturn(Optional.of(round));
         given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.empty());
         var command = new PlaySpecialActionUseCase.Command(
-                GAME_ID, ERA, ROUND, PLAYER_ID, Faction.PROPHETS, SpecialAction.SEAL, null, null, null);
+                GAME_ID, ERA, ROUND, PLAYER_ID, SpecialAction.SEAL, null, null, null);
 
         // when / then
         assertThatExceptionOfType(PlayerStateNotFoundException.class).isThrownBy(() -> handler.handle(command));
+    }
+
+    @Test
+    @DisplayName("handle — player faction missing — throws FactionRequiredException")
+    void handlePlayerFactionMissing() {
+        // given
+        var command = new PlaySpecialActionUseCase.Command(
+                GAME_ID, ERA, ROUND, PLAYER_ID, SpecialAction.SEAL, null, null, null);
+        given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumber(GAME_ID, ERA, ROUND))
+                .willReturn(Optional.of(round));
+        given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(playerState));
+        given(playerState.faction()).willReturn(null);
+
+        // when / then
+        assertThatExceptionOfType(FactionRequiredException.class).isThrownBy(() -> handler.handle(command));
+        then(round).should(never()).submitSpecial(any(), any(), any(), any(), any(), any(), anyBoolean());
+        then(actionRoundRepository).should(never()).save(any());
+        then(actionEventPublisher).shouldHaveNoInteractions();
     }
 
     @Test
@@ -159,10 +172,11 @@ class PlaySpecialActionCommandHandlerTest {
     void handleJammedPlayer() {
         // given
         var command = new PlaySpecialActionUseCase.Command(
-                GAME_ID, ERA, ROUND, PLAYER_ID, Faction.ERASERS, SpecialAction.ANNIHILATE, null, null, null);
+                GAME_ID, ERA, ROUND, PLAYER_ID, SpecialAction.ANNIHILATE, null, null, null);
         given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumber(GAME_ID, ERA, ROUND))
                 .willReturn(Optional.of(round));
         given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(playerState));
+        given(playerState.faction()).willReturn(Faction.ERASERS);
         given(playerState.isJammed()).willReturn(true);
         willThrow(new JammedPlayerException(PLAYER_ID))
                 .given(round)
@@ -179,12 +193,13 @@ class PlaySpecialActionCommandHandlerTest {
         given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumber(GAME_ID, ERA, ROUND))
                 .willReturn(Optional.of(round));
         given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(playerState));
+        given(playerState.faction()).willReturn(Faction.PROPHETS);
         given(playerState.isJammed()).willReturn(false);
         willThrow(new ActionRoundClosedException())
                 .given(round)
                 .submitSpecial(any(), any(), any(), any(), any(), any(), anyBoolean());
         var command = new PlaySpecialActionUseCase.Command(
-                GAME_ID, ERA, ROUND, PLAYER_ID, Faction.PROPHETS, SpecialAction.SEAL, null, null, null);
+                GAME_ID, ERA, ROUND, PLAYER_ID, SpecialAction.SEAL, null, null, null);
 
         // when / then
         assertThatExceptionOfType(ActionRoundClosedException.class).isThrownBy(() -> handler.handle(command));
@@ -197,12 +212,13 @@ class PlaySpecialActionCommandHandlerTest {
         given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumber(GAME_ID, ERA, ROUND))
                 .willReturn(Optional.of(round));
         given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(playerState));
+        given(playerState.faction()).willReturn(Faction.PROPHETS);
         given(playerState.isJammed()).willReturn(false);
         willThrow(new DuplicateSubmissionException(PLAYER_ID))
                 .given(round)
                 .submitSpecial(any(), any(), any(), any(), any(), any(), anyBoolean());
         var command = new PlaySpecialActionUseCase.Command(
-                GAME_ID, ERA, ROUND, PLAYER_ID, Faction.PROPHETS, SpecialAction.SEAL, null, null, null);
+                GAME_ID, ERA, ROUND, PLAYER_ID, SpecialAction.SEAL, null, null, null);
 
         // when / then
         assertThatExceptionOfType(DuplicateSubmissionException.class).isThrownBy(() -> handler.handle(command));
@@ -213,10 +229,11 @@ class PlaySpecialActionCommandHandlerTest {
     void handlePassesIsJammedToAggregate() {
         // given
         var command = new PlaySpecialActionUseCase.Command(
-                GAME_ID, ERA, ROUND, PLAYER_ID, Faction.ERASERS, SpecialAction.CORRUPT, null, null, UUID.randomUUID());
+                GAME_ID, ERA, ROUND, PLAYER_ID, SpecialAction.CORRUPT, null, null, UUID.randomUUID());
         given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumber(GAME_ID, ERA, ROUND))
                 .willReturn(Optional.of(round));
         given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(playerState));
+        given(playerState.faction()).willReturn(Faction.ERASERS);
         given(playerState.isJammed()).willReturn(false);
         given(round.submitSpecial(any(), any(), any(), any(), any(), any(), anyBoolean()))
                 .willReturn(false);
