@@ -4,10 +4,11 @@ import java.util.List;
 import java.util.UUID;
 
 import jakarta.persistence.Column;
-import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 @Entity
 @Table(name = "era_saga_state")
@@ -24,7 +25,7 @@ public class EraSagaStateJpaEntity {
     private String status;
 
     @Column(name = "player_ids", columnDefinition = "jsonb", nullable = false)
-    @Convert(converter = UuidListConverter.class)
+    @JdbcTypeCode(SqlTypes.JSON)
     private List<UUID> playerIds;
 
     protected EraSagaStateJpaEntity() {}
