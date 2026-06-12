@@ -32,6 +32,7 @@ import io.github.temporalrift.events.session.TimelineStabilized;
 import io.github.temporalrift.events.session.WinConditionMet;
 import io.github.temporalrift.events.shared.Faction;
 import io.github.temporalrift.events.timeline.ResolutionStarted;
+import io.github.temporalrift.game.action.StartActionRoundRequested;
 import io.github.temporalrift.game.session.domain.game.Game;
 import io.github.temporalrift.game.session.domain.game.GameStatus;
 import io.github.temporalrift.game.session.domain.port.out.EraSagaRepository;
@@ -83,12 +84,20 @@ class EraSagaAdvancerTest {
         var state = new EraSagaState(GAME_ID, 1, EraSagaStatus.WAITING_ROUND_1, PLAYER_IDS);
         given(eraSagaRepository.findByGameIdWithLock(GAME_ID)).willReturn(Optional.of(state));
         var arc = new ActionRoundClosed(GAME_ID, 1, 1, "ALL_SUBMITTED", 4);
+        var captor = ArgumentCaptor.forClass(Object.class);
 
         // when
         advancer.handleRoundClosed(GAME_ID, arc);
 
         // then
         then(eraSagaRepository).should().save(argThat(s -> s.status() == EraSagaStatus.WAITING_ROUND_2));
+        verify(applicationEventPublisher).publishEvent(captor.capture());
+        assertThat(captor.getValue()).isInstanceOf(StartActionRoundRequested.class);
+        var event = (StartActionRoundRequested) captor.getValue();
+        assertThat(event.gameId()).isEqualTo(GAME_ID);
+        assertThat(event.eraNumber()).isEqualTo(1);
+        assertThat(event.roundNumber()).isEqualTo(2);
+        assertThat(event.playerIds()).isEqualTo(PLAYER_IDS);
         then(eventPublisher).should(never()).publish(any());
     }
 
@@ -99,12 +108,20 @@ class EraSagaAdvancerTest {
         var state = new EraSagaState(GAME_ID, 1, EraSagaStatus.WAITING_ROUND_2, PLAYER_IDS);
         given(eraSagaRepository.findByGameIdWithLock(GAME_ID)).willReturn(Optional.of(state));
         var arc = new ActionRoundClosed(GAME_ID, 1, 2, "ALL_SUBMITTED", 4);
+        var captor = ArgumentCaptor.forClass(Object.class);
 
         // when
         advancer.handleRoundClosed(GAME_ID, arc);
 
         // then
         then(eraSagaRepository).should().save(argThat(s -> s.status() == EraSagaStatus.WAITING_ROUND_3));
+        verify(applicationEventPublisher).publishEvent(captor.capture());
+        assertThat(captor.getValue()).isInstanceOf(StartActionRoundRequested.class);
+        var event = (StartActionRoundRequested) captor.getValue();
+        assertThat(event.gameId()).isEqualTo(GAME_ID);
+        assertThat(event.eraNumber()).isEqualTo(1);
+        assertThat(event.roundNumber()).isEqualTo(3);
+        assertThat(event.playerIds()).isEqualTo(PLAYER_IDS);
         then(eventPublisher).should(never()).publish(any());
     }
 
