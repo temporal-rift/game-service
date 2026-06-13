@@ -16,7 +16,7 @@
             <column name="status" type="VARCHAR(255)">
                 <constraints nullable="false"/>
             </column>
-            <column name="player_ids" type="JSONB">
+            <column name="player_ids" type="UUID[]">
                 <constraints nullable="false"/>
             </column>
         </createTable>

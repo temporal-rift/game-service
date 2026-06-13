@@ -24,8 +24,8 @@ public class EraSagaStateJpaEntity {
     @Column(name = "status", nullable = false)
     private String status;
 
-    @Column(name = "player_ids", columnDefinition = "jsonb", nullable = false)
-    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "player_ids", columnDefinition = "uuid[]", nullable = false)
+    @JdbcTypeCode(SqlTypes.ARRAY)
     private List<UUID> playerIds;
 
     protected EraSagaStateJpaEntity() {}

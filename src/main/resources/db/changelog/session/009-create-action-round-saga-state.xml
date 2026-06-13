@@ -22,7 +22,7 @@
             <column name="status" type="VARCHAR(50)">
                 <constraints nullable="false"/>
             </column>
-            <column name="pending_player_ids" type="JSONB">
+            <column name="pending_player_ids" type="UUID[]">
                 <constraints nullable="false"/>
             </column>
             <column name="timer_expires_at" type="TIMESTAMPTZ">
