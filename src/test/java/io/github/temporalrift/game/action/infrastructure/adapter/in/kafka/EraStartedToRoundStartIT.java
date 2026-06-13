@@ -1,7 +1,9 @@
 package io.github.temporalrift.game.action.infrastructure.adapter.in.kafka;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.awaitility.Awaitility.await;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -78,41 +80,20 @@ class EraStartedToRoundStartIT {
     }
 
     private ActionRound awaitActionRound(UUID gameId, int eraNumber, int roundNumber) {
-        return awaitOptional(() ->
-                        actionRoundRepository.findByGameIdAndEraNumberAndRoundNumber(gameId, eraNumber, roundNumber))
+        return await().atMost(Duration.ofSeconds(10))
+                .until(
+                        () -> actionRoundRepository.findByGameIdAndEraNumberAndRoundNumber(
+                                gameId, eraNumber, roundNumber),
+                        Optional::isPresent)
                 .orElseThrow();
     }
 
     private ActionRoundSagaState awaitSagaState(UUID gameId, int eraNumber, int roundNumber) {
-        return awaitOptional(() -> actionRoundSagaRepository.findByGameIdAndEraNumberAndRoundNumber(
-                        gameId, eraNumber, roundNumber))
+        return await().atMost(Duration.ofSeconds(10))
+                .until(
+                        () -> actionRoundSagaRepository.findByGameIdAndEraNumberAndRoundNumber(
+                                gameId, eraNumber, roundNumber),
+                        Optional::isPresent)
                 .orElseThrow();
-    }
-
-    private static <T> Optional<T> awaitOptional(SupplierWithResult<Optional<T>> lookup) {
-        Optional<T> result = Optional.empty();
-        for (var attempt = 0; attempt < 100; attempt++) {
-            result = lookup.get();
-            if (result.isPresent()) {
-                return result;
-            }
-            sleepBriefly();
-        }
-        return result;
-    }
-
-    private static void sleepBriefly() {
-        try {
-            Thread.sleep(100);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw new IllegalStateException("Interrupted while waiting for asynchronous saga listeners", e);
-        }
-    }
-
-    @FunctionalInterface
-    private interface SupplierWithResult<T> {
-
-        T get();
     }
 }
