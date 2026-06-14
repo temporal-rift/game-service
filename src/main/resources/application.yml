@@ -63,3 +63,7 @@ game:
 logging:
   level:
     io.github.temporalrift: INFO
+
+server:
+  address: 0.0.0.0
+  port: ${PORT:8080}
