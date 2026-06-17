@@ -8,6 +8,7 @@
 
     <!-- Infrastructure (Spring Modulith) -->
     <include file="db/changelog/infrastructure/001-create-event-publication.xml"/>
+    <include file="db/changelog/infrastructure/002-create-processed-events.xml"/>
 
     <!-- Session module -->
     <include file="db/changelog/session/001-create-lobby.xml"/>

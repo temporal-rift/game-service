@@ -28,14 +28,17 @@ import io.github.temporalrift.game.session.domain.port.out.SessionEventPublisher
 import io.github.temporalrift.game.session.domain.port.out.SessionGameRulesPort;
 import io.github.temporalrift.game.session.domain.port.out.StartGameSagaRepository;
 import io.github.temporalrift.game.session.domain.saga.FactionAssignment;
+import io.github.temporalrift.game.shared.ProcessedEventRepository;
 
 @Component
 class ParadoxCascadedKafkaConsumer {
 
     private static final Logger log = LoggerFactory.getLogger(ParadoxCascadedKafkaConsumer.class);
     private static final String EVENT_TYPE = "timeline.ParadoxCascaded";
+    private static final String CONSUMER = "ParadoxCascadedKafkaConsumer";
     private static final Set<Faction> COLLAPSE_WINNERS = Set.of(Faction.ERASERS, Faction.REVISIONISTS);
 
+    private final ProcessedEventRepository processedEventRepository;
     private final GameRepository gameRepository;
     private final StartGameSagaRepository startGameSagaRepository;
     private final SessionEventPublisher eventPublisher;
@@ -44,12 +47,14 @@ class ParadoxCascadedKafkaConsumer {
     private final ObjectMapper objectMapper;
 
     ParadoxCascadedKafkaConsumer(
+            ProcessedEventRepository processedEventRepository,
             GameRepository gameRepository,
             StartGameSagaRepository startGameSagaRepository,
             SessionEventPublisher eventPublisher,
             ApplicationEventPublisher applicationEventPublisher,
             SessionGameRulesPort gameRules,
             ObjectMapper objectMapper) {
+        this.processedEventRepository = processedEventRepository;
         this.gameRepository = gameRepository;
         this.startGameSagaRepository = startGameSagaRepository;
         this.eventPublisher = eventPublisher;
@@ -64,6 +69,11 @@ class ParadoxCascadedKafkaConsumer {
         if (!EVENT_TYPE.equals(envelope.eventType())) {
             return;
         }
+        if (!processedEventRepository.tryMarkProcessed(envelope.eventId(), CONSUMER)) {
+            log.debug("Duplicate {} event {} ignored", EVENT_TYPE, envelope.eventId());
+            return;
+        }
+
         var paradox = objectMapper.convertValue(envelope.payload(), ParadoxCascaded.class);
         var gameId = paradox.gameId();
 
