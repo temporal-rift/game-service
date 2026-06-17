@@ -121,10 +121,13 @@ public class ActionModuleArchitectureTest {
                     "io.github.temporalrift.game.action.domain..", "io.github.temporalrift.game.action.application..")
             .should()
             .dependOnClassesThat()
-            .resideInAnyPackage(
-                    "io.github.temporalrift.game.session.infrastructure.adapter.out.config..",
-                    "org.springframework.beans.factory.annotation.Value",
-                    "org.springframework.boot.context.properties..")
+            .resideInAnyPackage("io.github.temporalrift.game.session.infrastructure.adapter.out.config..")
+            .orShould()
+            .dependOnClassesThat()
+            .haveFullyQualifiedName("org.springframework.beans.factory.annotation.Value")
+            .orShould()
+            .dependOnClassesThat()
+            .resideInAnyPackage("org.springframework.boot.context.properties..")
             .as("Action domain/application code must access configuration through ports such as GameRulesPort");
 
     private static ArchCondition<JavaMethod> notAcceptEventEnvelope() {
