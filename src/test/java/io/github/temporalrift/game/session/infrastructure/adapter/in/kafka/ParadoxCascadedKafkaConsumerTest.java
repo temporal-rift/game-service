@@ -35,6 +35,7 @@ import io.github.temporalrift.game.session.domain.port.out.StartGameSagaReposito
 import io.github.temporalrift.game.session.domain.saga.FactionAssignment;
 import io.github.temporalrift.game.session.domain.saga.StartGameSagaState;
 import io.github.temporalrift.game.session.domain.saga.StartGameSagaStatus;
+import io.github.temporalrift.game.shared.ProcessedEventRepository;
 
 @ExtendWith(MockitoExtension.class)
 class ParadoxCascadedKafkaConsumerTest {
@@ -45,6 +46,9 @@ class ParadoxCascadedKafkaConsumerTest {
     static final UUID PLAYER_2 = UUID.randomUUID();
     static final UUID PLAYER_3 = UUID.randomUUID();
     static final int MAX_CASCADED = 3;
+
+    @Mock
+    ProcessedEventRepository processedEventRepository;
 
     @Mock
     GameRepository gameRepository;
@@ -78,9 +82,12 @@ class ParadoxCascadedKafkaConsumerTest {
         given(gameRules.maxCascadedParadoxes()).willReturn(MAX_CASCADED);
         var paradox = paradoxCascaded(1);
         given(objectMapper.convertValue(any(), eq(ParadoxCascaded.class))).willReturn(paradox);
+        var envelope = envelopeFor(paradox);
+        given(processedEventRepository.tryMarkProcessed(eq(envelope.eventId()), eq("ParadoxCascadedKafkaConsumer")))
+                .willReturn(true);
 
         // when
-        consumer.handle(envelopeFor(paradox));
+        consumer.handle(envelope);
 
         // then
         then(gameRepository).should().save(game);
@@ -100,9 +107,12 @@ class ParadoxCascadedKafkaConsumerTest {
         given(startGameSagaRepository.findByGameId(GAME_ID)).willReturn(Optional.of(startGameSagaState()));
         var paradox = paradoxCascaded(2);
         given(objectMapper.convertValue(any(), eq(ParadoxCascaded.class))).willReturn(paradox);
+        var envelope = envelopeFor(paradox);
+        given(processedEventRepository.tryMarkProcessed(eq(envelope.eventId()), eq("ParadoxCascadedKafkaConsumer")))
+                .willReturn(true);
 
         // when
-        consumer.handle(envelopeFor(paradox));
+        consumer.handle(envelope);
 
         // then
         then(eventPublisher).should().publish(argThat(e -> e.payload() instanceof TimelineCollapsed));
@@ -124,10 +134,13 @@ class ParadoxCascadedKafkaConsumerTest {
                 .willReturn(Optional.of(startGameSagaStateWithAssignments(assignments)));
         var paradox = paradoxCascaded(2);
         given(objectMapper.convertValue(any(), eq(ParadoxCascaded.class))).willReturn(paradox);
+        var envelope = envelopeFor(paradox);
+        given(processedEventRepository.tryMarkProcessed(eq(envelope.eventId()), eq("ParadoxCascadedKafkaConsumer")))
+                .willReturn(true);
         var captor = ArgumentCaptor.forClass(Object.class);
 
         // when
-        consumer.handle(envelopeFor(paradox));
+        consumer.handle(envelope);
 
         // then
         then(applicationEventPublisher).should().publishEvent(captor.capture());
@@ -153,7 +166,27 @@ class ParadoxCascadedKafkaConsumerTest {
 
         // then
         then(gameRepository).should(never()).findById(any());
+        then(processedEventRepository).should(never()).tryMarkProcessed(any(), any());
         then(eventPublisher).should(never()).publish(any());
+    }
+
+    @Test
+    @DisplayName("duplicate eventId — ignored without mutating game state")
+    void handle_duplicateEventId_ignored() {
+        // given
+        var paradox = paradoxCascaded(1);
+        var envelope = envelopeFor(paradox);
+        given(processedEventRepository.tryMarkProcessed(eq(envelope.eventId()), eq("ParadoxCascadedKafkaConsumer")))
+                .willReturn(false);
+
+        // when
+        consumer.handle(envelope);
+
+        // then
+        then(objectMapper).should(never()).convertValue(any(), eq(ParadoxCascaded.class));
+        then(gameRepository).should(never()).findById(any());
+        then(eventPublisher).should(never()).publish(any());
+        then(applicationEventPublisher).should(never()).publishEvent(any());
     }
 
     // ─── helpers ──────────────────────────────────────────────────────────────
