@@ -122,6 +122,14 @@ class PlayerScoreTest {
     }
 
     @Test
+    @DisplayName("score entry rejects missing reason")
+    void scoreEntryRejectsMissingReason() {
+        assertThatExceptionOfType(NullPointerException.class)
+                .isThrownBy(() -> new ScoreEntry(ERA, null, 4, 4))
+                .withMessage("reason must not be null");
+    }
+
+    @Test
     @DisplayName("history is immutable to callers")
     void historyIsImmutable() {
         var score = new PlayerScore(UUID.randomUUID(), GAME_ID, PLAYER_ID, Faction.ACTIVISTS);
