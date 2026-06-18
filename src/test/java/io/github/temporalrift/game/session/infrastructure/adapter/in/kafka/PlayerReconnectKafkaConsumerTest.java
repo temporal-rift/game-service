@@ -46,7 +46,7 @@ class PlayerReconnectKafkaConsumerTest {
         // given
         var envelope = envelopeFor("session.PlayerReconnected");
         var payload = new PlayerReconnectKafkaConsumer.PlayerReconnectedPayload(GAME_ID, PLAYER_ID);
-        given(processedEventRepository.tryMarkProcessed(eq(envelope.eventId()), eq("PlayerReconnectKafkaConsumer")))
+        given(processedEventRepository.tryMarkProcessed(eq(envelope.eventId()), eq("session.player-reconnect")))
                 .willReturn(true);
         given(objectMapper.convertValue(any(), eq(PlayerReconnectKafkaConsumer.PlayerReconnectedPayload.class)))
                 .willReturn(payload);
@@ -67,7 +67,7 @@ class PlayerReconnectKafkaConsumerTest {
     void handle_duplicateEventId_ignored() {
         // given
         var envelope = envelopeFor("session.PlayerReconnected");
-        given(processedEventRepository.tryMarkProcessed(eq(envelope.eventId()), eq("PlayerReconnectKafkaConsumer")))
+        given(processedEventRepository.tryMarkProcessed(eq(envelope.eventId()), eq("session.player-reconnect")))
                 .willReturn(false);
 
         // when

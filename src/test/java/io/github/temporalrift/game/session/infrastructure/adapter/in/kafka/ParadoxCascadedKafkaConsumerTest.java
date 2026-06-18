@@ -83,7 +83,7 @@ class ParadoxCascadedKafkaConsumerTest {
         var paradox = paradoxCascaded(1);
         given(objectMapper.convertValue(any(), eq(ParadoxCascaded.class))).willReturn(paradox);
         var envelope = envelopeFor(paradox);
-        given(processedEventRepository.tryMarkProcessed(eq(envelope.eventId()), eq("ParadoxCascadedKafkaConsumer")))
+        given(processedEventRepository.tryMarkProcessed(eq(envelope.eventId()), eq("session.paradox-cascaded")))
                 .willReturn(true);
 
         // when
@@ -108,7 +108,7 @@ class ParadoxCascadedKafkaConsumerTest {
         var paradox = paradoxCascaded(2);
         given(objectMapper.convertValue(any(), eq(ParadoxCascaded.class))).willReturn(paradox);
         var envelope = envelopeFor(paradox);
-        given(processedEventRepository.tryMarkProcessed(eq(envelope.eventId()), eq("ParadoxCascadedKafkaConsumer")))
+        given(processedEventRepository.tryMarkProcessed(eq(envelope.eventId()), eq("session.paradox-cascaded")))
                 .willReturn(true);
 
         // when
@@ -135,7 +135,7 @@ class ParadoxCascadedKafkaConsumerTest {
         var paradox = paradoxCascaded(2);
         given(objectMapper.convertValue(any(), eq(ParadoxCascaded.class))).willReturn(paradox);
         var envelope = envelopeFor(paradox);
-        given(processedEventRepository.tryMarkProcessed(eq(envelope.eventId()), eq("ParadoxCascadedKafkaConsumer")))
+        given(processedEventRepository.tryMarkProcessed(eq(envelope.eventId()), eq("session.paradox-cascaded")))
                 .willReturn(true);
         var captor = ArgumentCaptor.forClass(Object.class);
 
@@ -176,7 +176,7 @@ class ParadoxCascadedKafkaConsumerTest {
         // given
         var paradox = paradoxCascaded(1);
         var envelope = envelopeFor(paradox);
-        given(processedEventRepository.tryMarkProcessed(eq(envelope.eventId()), eq("ParadoxCascadedKafkaConsumer")))
+        given(processedEventRepository.tryMarkProcessed(eq(envelope.eventId()), eq("session.paradox-cascaded")))
                 .willReturn(false);
 
         // when
