@@ -21,7 +21,7 @@ class PlayerReconnectKafkaConsumer {
 
     private static final Logger log = LoggerFactory.getLogger(PlayerReconnectKafkaConsumer.class);
     private static final String EVENT_TYPE = "session.PlayerReconnected";
-    private static final String CONSUMER = "PlayerReconnectKafkaConsumer";
+    private static final String CONSUMER = "session.player-reconnect";
 
     private final ProcessedEventRepository processedEventRepository;
     private final ApplicationEventPublisher applicationEventPublisher;

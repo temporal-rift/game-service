@@ -11,13 +11,12 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.jdbc.core.JdbcTemplate;
 
 @ExtendWith(MockitoExtension.class)
 class ProcessedEventRepositoryAdapterTest {
 
     @Mock
-    JdbcTemplate jdbcTemplate;
+    ProcessedEventJpaRepository jpaRepository;
 
     @InjectMocks
     ProcessedEventRepositoryAdapter adapter;
@@ -27,11 +26,7 @@ class ProcessedEventRepositoryAdapterTest {
     void tryMarkProcessed_inserted_returnsTrue() {
         // given
         var eventId = UUID.randomUUID();
-        given(jdbcTemplate.update(
-                        org.mockito.ArgumentMatchers.anyString(),
-                        org.mockito.ArgumentMatchers.eq(eventId),
-                        org.mockito.ArgumentMatchers.eq("consumer")))
-                .willReturn(1);
+        given(jpaRepository.insertIfAbsent(eventId, "consumer")).willReturn(1);
 
         // when / then
         assertThat(adapter.tryMarkProcessed(eventId, "consumer")).isTrue();
@@ -42,11 +37,7 @@ class ProcessedEventRepositoryAdapterTest {
     void tryMarkProcessed_duplicate_returnsFalse() {
         // given
         var eventId = UUID.randomUUID();
-        given(jdbcTemplate.update(
-                        org.mockito.ArgumentMatchers.anyString(),
-                        org.mockito.ArgumentMatchers.eq(eventId),
-                        org.mockito.ArgumentMatchers.eq("consumer")))
-                .willReturn(0);
+        given(jpaRepository.insertIfAbsent(eventId, "consumer")).willReturn(0);
 
         // when / then
         assertThat(adapter.tryMarkProcessed(eventId, "consumer")).isFalse();
