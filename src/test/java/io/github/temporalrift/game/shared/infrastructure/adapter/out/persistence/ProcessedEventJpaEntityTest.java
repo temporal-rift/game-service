@@ -9,16 +9,17 @@ import org.junit.jupiter.api.Test;
 
 class ProcessedEventJpaEntityTest {
 
+    static final Instant PROCESSED_AT = Instant.parse("2026-06-18T00:00:00Z");
+
     @Test
     void processedEventEntity_exposesCompositeKeyAndTimestamp() {
         var eventId = UUID.randomUUID();
-        var processedAt = Instant.now();
 
-        var entity = new ProcessedEventJpaEntity(eventId, "session.player-reconnect", processedAt);
+        var entity = new ProcessedEventJpaEntity(eventId, "session.player-reconnect", PROCESSED_AT);
 
         assertThat(entity.getId().getEventId()).isEqualTo(eventId);
         assertThat(entity.getId().getConsumer()).isEqualTo("session.player-reconnect");
-        assertThat(entity.getProcessedAt()).isEqualTo(processedAt);
+        assertThat(entity.getProcessedAt()).isEqualTo(PROCESSED_AT);
     }
 
     @Test

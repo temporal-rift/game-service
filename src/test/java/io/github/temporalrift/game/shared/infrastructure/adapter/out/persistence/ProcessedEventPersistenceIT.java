@@ -51,7 +51,9 @@ class ProcessedEventPersistenceIT {
 
     @Test
     void tryMarkProcessed_withoutSurroundingTransaction_failsFast() {
-        assertThatThrownBy(() -> processedEventRepository.tryMarkProcessed(UUID.randomUUID(), "consumer-a"))
+        var eventId = UUID.randomUUID();
+
+        assertThatThrownBy(() -> processedEventRepository.tryMarkProcessed(eventId, "consumer-a"))
                 .isInstanceOf(IllegalTransactionStateException.class);
     }
 
