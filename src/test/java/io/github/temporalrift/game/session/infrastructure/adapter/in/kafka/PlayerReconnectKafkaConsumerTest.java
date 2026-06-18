@@ -6,6 +6,7 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.never;
 
+import java.time.Instant;
 import java.util.UUID;
 
 import org.junit.jupiter.api.DisplayName;
@@ -27,6 +28,7 @@ class PlayerReconnectKafkaConsumerTest {
 
     static final UUID GAME_ID = UUID.randomUUID();
     static final UUID PLAYER_ID = UUID.randomUUID();
+    static final Instant OCCURRED_AT = Instant.parse("2026-06-18T00:00:00Z");
 
     @Mock
     ProcessedEventRepository processedEventRepository;
@@ -46,7 +48,7 @@ class PlayerReconnectKafkaConsumerTest {
         // given
         var envelope = envelopeFor("session.PlayerReconnected");
         var payload = new PlayerReconnectKafkaConsumer.PlayerReconnectedPayload(GAME_ID, PLAYER_ID);
-        given(processedEventRepository.tryMarkProcessed(eq(envelope.eventId()), eq("session.player-reconnect")))
+        given(processedEventRepository.tryMarkProcessed(envelope.eventId(), "session.player-reconnect"))
                 .willReturn(true);
         given(objectMapper.convertValue(any(), eq(PlayerReconnectKafkaConsumer.PlayerReconnectedPayload.class)))
                 .willReturn(payload);
@@ -67,7 +69,7 @@ class PlayerReconnectKafkaConsumerTest {
     void handle_duplicateEventId_ignored() {
         // given
         var envelope = envelopeFor("session.PlayerReconnected");
-        given(processedEventRepository.tryMarkProcessed(eq(envelope.eventId()), eq("session.player-reconnect")))
+        given(processedEventRepository.tryMarkProcessed(envelope.eventId(), "session.player-reconnect"))
                 .willReturn(false);
 
         // when
@@ -95,7 +97,6 @@ class PlayerReconnectKafkaConsumerTest {
     }
 
     private static EventEnvelope envelopeFor(String eventType) {
-        return new EventEnvelope(
-                UUID.randomUUID(), eventType, GAME_ID, "Game", GAME_ID, java.time.Instant.now(), 1, "");
+        return new EventEnvelope(UUID.randomUUID(), eventType, GAME_ID, "Game", GAME_ID, OCCURRED_AT, 1, "");
     }
 }
