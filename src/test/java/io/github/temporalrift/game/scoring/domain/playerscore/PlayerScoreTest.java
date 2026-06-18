@@ -130,6 +130,13 @@ class PlayerScoreTest {
     }
 
     @Test
+    @DisplayName("score entry rejects non-positive era numbers")
+    void scoreEntryRejectsNonPositiveEra() {
+        assertThatExceptionOfType(InvalidScoreEraException.class)
+                .isThrownBy(() -> new ScoreEntry(0, ScoreReason.DECLARED_OUTCOME_WON, 4, 4));
+    }
+
+    @Test
     @DisplayName("history is immutable to callers")
     void historyIsImmutable() {
         var score = new PlayerScore(UUID.randomUUID(), GAME_ID, PLAYER_ID, Faction.ACTIVISTS);
