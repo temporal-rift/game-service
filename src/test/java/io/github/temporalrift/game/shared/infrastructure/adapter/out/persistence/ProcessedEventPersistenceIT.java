@@ -8,17 +8,21 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
+import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.IllegalTransactionStateException;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
-import io.github.temporalrift.game.TestcontainersConfiguration;
+import io.github.temporalrift.game.PostgresTestcontainersConfiguration;
 import io.github.temporalrift.game.shared.ProcessedEventRepository;
 
-@SpringBootTest
-@Import(TestcontainersConfiguration.class)
+@DataJpaTest
+@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
+@Import({PostgresTestcontainersConfiguration.class, ProcessedEventRepositoryAdapter.class})
 class ProcessedEventPersistenceIT {
 
     @Autowired
@@ -50,6 +54,7 @@ class ProcessedEventPersistenceIT {
     }
 
     @Test
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     void tryMarkProcessed_withoutSurroundingTransaction_failsFast() {
         var eventId = UUID.randomUUID();
 

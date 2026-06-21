@@ -8,14 +8,15 @@ import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
+import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
 import org.springframework.context.annotation.Import;
 import org.springframework.transaction.annotation.Transactional;
 
 import io.github.temporalrift.events.shared.CardType;
 import io.github.temporalrift.events.shared.Faction;
 import io.github.temporalrift.events.shared.SpecialAction;
-import io.github.temporalrift.game.TestcontainersConfiguration;
+import io.github.temporalrift.game.PostgresTestcontainersConfiguration;
 import io.github.temporalrift.game.action.domain.actionround.ActionRound;
 import io.github.temporalrift.game.action.domain.actionround.RoundStatus;
 import io.github.temporalrift.game.action.domain.actionround.SubmittedAction;
@@ -29,8 +30,15 @@ import io.github.temporalrift.game.action.domain.port.out.PlayerStateRepository;
 import io.github.temporalrift.game.action.domain.saga.ActionRoundSagaState;
 import io.github.temporalrift.game.action.domain.saga.ActionRoundSagaStatus;
 
-@SpringBootTest
-@Import(TestcontainersConfiguration.class)
+@DataJpaTest
+@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
+@Import({
+    PostgresTestcontainersConfiguration.class,
+    ActionRoundRepositoryAdapter.class,
+    PlayerStateRepositoryAdapter.class,
+    ActionRoundSagaAdapter.class,
+    CurrentEraFutureEventAdapter.class
+})
 class ActionPersistenceIT {
 
     @Autowired
