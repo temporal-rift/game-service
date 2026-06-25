@@ -135,34 +135,7 @@ class BandCalculator {
 
     private void applySpecialShift(
             Map<UUID, Map<UUID, Integer>> state, SubmittedAction.SpecialActionSubmission action) {
-        if (action.targetEventId() == null || action.targetOutcomeId() == null) {
-            return;
-        }
-        var outcomeMap = state.get(action.targetEventId());
-        if (outcomeMap == null) {
-            return;
-        }
-        var shift =
-                switch (action.specialAction()) {
-                    case ANNIHILATE -> 0; // handled at resolution time
-                    case CORRUPT -> 0;
-                    case CASCADE -> 0;
-                    case FORESIGHT -> 0;
-                    case SEAL -> 0;
-                    case FULFILLMENT -> 0;
-                    case REWRITE -> 0;
-                    case MIMIC -> 0;
-                    case OBSCURE -> 0;
-                    case THREAD -> 0;
-                    case TAPESTRY -> 0;
-                    case UNRAVEL -> 0;
-                    case RALLY -> 0;
-                    case EXPOSE -> 0;
-                    case MOMENTUM -> 0;
-                };
-        if (shift != 0) {
-            outcomeMap.merge(action.targetOutcomeId(), shift, Integer::sum);
-        }
+        // All special actions are resolved at timeline resolution time and do not shift probability bands.
     }
 
     record BandedOutcome(UUID eventId, UUID outcomeId, ProbabilityBand band) {}
