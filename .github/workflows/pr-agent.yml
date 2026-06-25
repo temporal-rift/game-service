@@ -18,7 +18,7 @@ jobs:
         uses: the-pr-agent/pr-agent@main
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          ANTHROPIC.KEY: ${{ secrets.ANTHROPIC_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           config.model: "anthropic/claude-sonnet-4-6"
           config.fallback_models: '["anthropic/claude-haiku-4-5-20251001"]'
           github_action_config.auto_review: "true"
