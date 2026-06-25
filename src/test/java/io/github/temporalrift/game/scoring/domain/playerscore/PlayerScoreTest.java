@@ -99,6 +99,29 @@ class PlayerScoreTest {
     }
 
     @Test
+    @DisplayName("signed totals preserve competitive ordering after large negative then positive deltas")
+    void signedTotalsPreserveOrdering() {
+        // Player A: 0 - 24 (8x CHAIN_BROKEN) + 20 (2x CHAIN_COMPLETED) = -4
+        // Player B: 0 -  3 (1x CHAIN_BROKEN) +  2 (1x CHAIN_LINK_ADDED)  = -1
+        // With zero-flooring A would reach 0 then +20 = 20, incorrectly ranking above B.
+        var a = new PlayerScore(UUID.randomUUID(), GAME_ID, UUID.randomUUID(), Faction.WEAVERS);
+        var b = new PlayerScore(UUID.randomUUID(), GAME_ID, UUID.randomUUID(), Faction.WEAVERS);
+
+        for (int i = 0; i < 8; i++) {
+            a.apply(ERA, ScoreReason.CHAIN_BROKEN);
+        }
+        a.apply(ERA, ScoreReason.CHAIN_COMPLETED);
+        a.apply(ERA, ScoreReason.CHAIN_COMPLETED);
+
+        b.apply(ERA, ScoreReason.CHAIN_BROKEN);
+        b.apply(ERA, ScoreReason.CHAIN_LINK_ADDED);
+
+        assertThat(a.totalScore()).isEqualTo(-4);
+        assertThat(b.totalScore()).isEqualTo(-1);
+        assertThat(b.totalScore()).isGreaterThan(a.totalScore());
+    }
+
+    @Test
     @DisplayName("apply accumulates score and history entries")
     void applyAccumulatesScoreAndHistory() {
         var score = new PlayerScore(UUID.randomUUID(), GAME_ID, PLAYER_ID, Faction.ERASERS);
