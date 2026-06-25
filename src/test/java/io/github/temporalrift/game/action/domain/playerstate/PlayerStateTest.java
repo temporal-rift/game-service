@@ -86,8 +86,8 @@ class PlayerStateTest {
         }
 
         // when / then
-        assertThatExceptionOfType(HandFullException.class)
-                .isThrownBy(() -> ps.dealCard(card(CardType.SUPPRESS), MAX_HAND));
+        var extra = card(CardType.SUPPRESS);
+        assertThatExceptionOfType(HandFullException.class).isThrownBy(() -> ps.dealCard(extra, MAX_HAND));
     }
 
     @Test
@@ -112,7 +112,8 @@ class PlayerStateTest {
         var ps = newState();
 
         // when / then
-        assertThatExceptionOfType(CardNotInHandException.class).isThrownBy(() -> ps.removeCard(UUID.randomUUID()));
+        var unknownId = UUID.randomUUID();
+        assertThatExceptionOfType(CardNotInHandException.class).isThrownBy(() -> ps.removeCard(unknownId));
     }
 
     @Test
@@ -149,7 +150,8 @@ class PlayerStateTest {
         var ps = newState();
 
         // when / then
+        var c = card(CardType.PUSH);
         assertThatExceptionOfType(UnsupportedOperationException.class)
-                .isThrownBy(() -> ps.hand().add(card(CardType.PUSH)));
+                .isThrownBy(() -> ps.hand().add(c));
     }
 }
