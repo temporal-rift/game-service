@@ -28,7 +28,7 @@ class EraScoreEvaluator {
             }
         }
 
-        decisions.sort(Comparator.comparing((PlayerScoreDecision d) -> d.playerId())
+        decisions.sort(Comparator.comparing(PlayerScoreDecision::playerId)
                 .thenComparing(d -> d.reason().name()));
 
         return decisions;
