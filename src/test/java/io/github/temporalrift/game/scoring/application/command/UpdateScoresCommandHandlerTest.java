@@ -101,9 +101,9 @@ class UpdateScoresCommandHandlerTest {
                 .filter(u -> u.playerId().equals(eraserId))
                 .findFirst()
                 .orElseThrow();
-        assertThat(eraserUpdate.pointsDelta()).isEqualTo(0);
+        assertThat(eraserUpdate.pointsDelta()).isZero();
         assertThat(eraserUpdate.reason()).isEqualTo("NO_SCORE_CHANGE");
-        assertThat(eraserUpdate.newTotal()).isEqualTo(0);
+        assertThat(eraserUpdate.newTotal()).isZero();
     }
 
     @Test
