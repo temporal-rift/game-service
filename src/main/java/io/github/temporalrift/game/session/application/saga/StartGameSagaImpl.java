@@ -89,7 +89,7 @@ class StartGameSagaImpl implements StartGameSaga {
 
     private void validateStartRequest(Lobby lobby, UUID requestingPlayerId) {
         switch (lobby.requestStart(requestingPlayerId)) {
-            case StartOutcome.GameStarted() -> {}
+            case StartOutcome.GameStarted() -> { /* no action needed */ }
             case StartOutcome.NotHost() -> throw new NotLobbyHostException();
             case StartOutcome.NotEnoughPlayers(var count, var min) -> throw new NotEnoughPlayersException(count, min);
             case StartOutcome.HasDisconnectedPlayers(var ids) -> throw new DisconnectedPlayersException(ids);

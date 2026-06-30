@@ -134,7 +134,7 @@ class BandCalculator {
     }
 
     private void applySpecialShift(
-            Map<UUID, Map<UUID, Integer>> state, SubmittedAction.SpecialActionSubmission action) {
+            Map<UUID, Map<UUID, Integer>> unusedState, SubmittedAction.SpecialActionSubmission unusedAction) {
         // All special actions are resolved at timeline resolution time and do not shift probability bands.
     }
 

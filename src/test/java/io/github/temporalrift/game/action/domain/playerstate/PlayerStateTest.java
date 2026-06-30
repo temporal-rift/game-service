@@ -151,7 +151,8 @@ class PlayerStateTest {
 
         // when / then
         var c = card(CardType.PUSH);
+        var hand = ps.hand();
         assertThatExceptionOfType(UnsupportedOperationException.class)
-                .isThrownBy(() -> ps.hand().add(c));
+                .isThrownBy(() -> hand.add(c));
     }
 }
