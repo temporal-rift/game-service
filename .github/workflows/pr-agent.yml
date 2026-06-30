@@ -18,7 +18,7 @@ jobs:
         uses: the-pr-agent/pr-agent@main
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GEMINI.KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           config.model: "gemini/gemini-2.0-flash"
           github_action_config.auto_review: "true"
           github_action_config.auto_describe: "true"
