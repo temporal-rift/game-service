@@ -18,7 +18,7 @@ jobs:
         uses: the-pr-agent/pr-agent@main
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+          DEEPSEEK__KEY: ${{ secrets.DEEPSEEK_API_KEY }}
           config.model: "deepseek/deepseek-chat"
           config.fallback_models: '["deepseek/deepseek-chat"]'
           github_action_config.auto_review: "true"
