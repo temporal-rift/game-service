@@ -154,11 +154,40 @@ class StartGameSagaImplTest {
         saga.start(LOBBY_ID, REQUESTING_PLAYER_ID);
 
         // then
-        then(applicationEventPublisher).should().publishEvent(captor.capture());
-        assertThat(captor.getValue()).isInstanceOf(EraStarted.class);
-        var eraStarted = (EraStarted) captor.getValue();
+        then(applicationEventPublisher).should(times(3)).publishEvent(captor.capture());
+        var eraStarted = captor.getAllValues().stream()
+                .filter(EraStarted.class::isInstance)
+                .map(EraStarted.class::cast)
+                .findFirst()
+                .orElseThrow();
         assertThat(eraStarted.gameId()).isEqualTo(GAME_ID);
         assertThat(eraStarted.eraNumber()).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("happy path — FactionAssigned also published as typed Spring event per player")
+    void start_happyPath_publishesTypedFactionAssignedPerPlayer() {
+        // given
+        stubStartableLobby();
+        given(lobby.id()).willReturn(LOBBY_ID);
+        given(lobby.currentPlayers()).willReturn(TWO_PLAYERS);
+        given(futureEventCatalog.allEventIds()).willReturn(CATALOG_IDS);
+        var captor = ArgumentCaptor.forClass(Object.class);
+
+        // when
+        saga.start(LOBBY_ID, REQUESTING_PLAYER_ID);
+
+        // then
+        then(applicationEventPublisher).should(times(3)).publishEvent(captor.capture());
+        var factionAssignedEvents = captor.getAllValues().stream()
+                .filter(FactionAssigned.class::isInstance)
+                .map(FactionAssigned.class::cast)
+                .toList();
+        assertThat(factionAssignedEvents).hasSize(2);
+        assertThat(factionAssignedEvents).allSatisfy(e -> assertThat(e.gameId()).isEqualTo(GAME_ID));
+        assertThat(factionAssignedEvents.stream().map(FactionAssigned::playerId))
+                .containsExactlyInAnyOrderElementsOf(
+                        TWO_PLAYERS.stream().map(LobbyPlayer::playerId).toList());
     }
 
     @Test
