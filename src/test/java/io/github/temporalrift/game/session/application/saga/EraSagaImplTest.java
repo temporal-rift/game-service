@@ -211,6 +211,35 @@ class EraSagaImplTest {
     }
 
     @Test
+    @DisplayName("happy path — EventsDrawn also published as typed Spring event for internal projections")
+    void start_happyPath_publishesTypedEventsDrawn() {
+        // given
+        var game = new Game(GAME_ID, LOBBY_ID, buildDeck(DECK_SIZE));
+        given(gameRepository.findById(GAME_ID)).willReturn(Optional.of(game));
+        given(gameRules.eventsPerEra()).willReturn(EVENTS_PER_ERA);
+        given(gameRules.cardsPerHand()).willReturn(CARDS_PER_HAND);
+        given(futureEventCatalog.findByEventIds(any()))
+                .willReturn(IntStream.range(0, EVENTS_PER_ERA)
+                        .mapToObj(i -> buildEventDef())
+                        .toList());
+        var captor = ArgumentCaptor.forClass(Object.class);
+
+        // when
+        eraSaga.start(GAME_ID, ERA_NUMBER, PLAYER_IDS, List.of());
+
+        // then
+        then(applicationEventPublisher).should(times(2)).publishEvent(captor.capture());
+        var eventsDrawn = captor.getAllValues().stream()
+                .filter(EventsDrawn.class::isInstance)
+                .map(EventsDrawn.class::cast)
+                .findFirst()
+                .orElseThrow();
+        assertThat(eventsDrawn.gameId()).isEqualTo(GAME_ID);
+        assertThat(eventsDrawn.eraNumber()).isEqualTo(ERA_NUMBER);
+        assertThat(eventsDrawn.events()).isNotEmpty();
+    }
+
+    @Test
     @DisplayName("state manager initRunning called before any event is published")
     void start_initRunningCalledFirst() {
         // given

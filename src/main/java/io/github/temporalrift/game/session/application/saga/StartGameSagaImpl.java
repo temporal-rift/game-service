@@ -103,12 +103,12 @@ class StartGameSagaImpl implements StartGameSaga {
     }
 
     private void publishFactionEvents(UUID gameId, Lobby lobby, List<FactionAssignment> assignments) {
-        assignments.forEach(a -> eventPublisher.publish(EventEnvelope.create(
-                lobby.id(),
-                Lobby.AGGREGATE_TYPE,
-                gameId,
-                1,
-                new FactionAssigned(gameId, a.playerId(), a.faction().name()))));
+        assignments.forEach(a -> {
+            var factionAssigned =
+                    new FactionAssigned(gameId, a.playerId(), a.faction().name());
+            eventPublisher.publish(EventEnvelope.create(lobby.id(), Lobby.AGGREGATE_TYPE, gameId, 1, factionAssigned));
+            applicationEventPublisher.publishEvent(factionAssigned);
+        });
     }
 
     private void createAndSaveGame(UUID gameId, Lobby lobby, List<FactionAssignment> assignments) {
