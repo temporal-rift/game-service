@@ -84,6 +84,10 @@ class StartGameSagaImplTest {
     @InjectMocks
     StartGameSagaImpl saga;
 
+    private static EventEnvelope envelopeWithPayload(Class<?> payloadType) {
+        return argThat(envelope -> payloadType.isInstance(envelope.payload()));
+    }
+
     @Test
     @DisplayName("happy path — all events published in order, saga marked COMPLETED")
     void start_happyPath_publishesAllEventsInOrderAndCompletes() {
@@ -183,8 +187,9 @@ class StartGameSagaImplTest {
                 .filter(FactionAssigned.class::isInstance)
                 .map(FactionAssigned.class::cast)
                 .toList();
-        assertThat(factionAssignedEvents).hasSize(2);
-        assertThat(factionAssignedEvents).allSatisfy(e -> assertThat(e.gameId()).isEqualTo(GAME_ID));
+        assertThat(factionAssignedEvents)
+                .hasSize(2)
+                .allSatisfy(e -> assertThat(e.gameId()).isEqualTo(GAME_ID));
         assertThat(factionAssignedEvents.stream().map(FactionAssigned::playerId))
                 .containsExactlyInAnyOrderElementsOf(
                         TWO_PLAYERS.stream().map(LobbyPlayer::playerId).toList());
@@ -236,10 +241,6 @@ class StartGameSagaImplTest {
         assertThatExceptionOfType(DisconnectedPlayersException.class)
                 .isThrownBy(() -> saga.start(LOBBY_ID, REQUESTING_PLAYER_ID));
         then(stateManager).shouldHaveNoInteractions();
-    }
-
-    private static EventEnvelope envelopeWithPayload(Class<?> payloadType) {
-        return argThat(envelope -> payloadType.isInstance(envelope.payload()));
     }
 
     private void stubStartableLobby() {
