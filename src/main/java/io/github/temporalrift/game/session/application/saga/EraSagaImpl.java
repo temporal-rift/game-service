@@ -87,8 +87,9 @@ class EraSagaImpl implements EraSaga {
             Game game, UUID gameId, int eraNumber, List<UUID> drawnIds, List<UUID> cascadedIds) {
         var events = Stream.concat(toFutureEvents(drawnIds, false).stream(), toFutureEvents(cascadedIds, true).stream())
                 .toList();
-        eventPublisher.publish(EventEnvelope.create(
-                game.id(), Game.AGGREGATE_TYPE, gameId, 1, new EventsDrawn(gameId, eraNumber, events)));
+        var eventsDrawn = new EventsDrawn(gameId, eraNumber, events);
+        eventPublisher.publish(EventEnvelope.create(game.id(), Game.AGGREGATE_TYPE, gameId, 1, eventsDrawn));
+        applicationEventPublisher.publishEvent(eventsDrawn);
     }
 
     private List<EventsDrawn.FutureEvent> toFutureEvents(List<UUID> ids, boolean isCascaded) {
