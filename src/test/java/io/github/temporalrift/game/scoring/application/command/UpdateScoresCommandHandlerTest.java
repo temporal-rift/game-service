@@ -44,7 +44,7 @@ class UpdateScoresCommandHandlerTest {
 
         var savedScores = new ArrayList<PlayerScore>();
         PlayerScoreRepository repo = new FakePlayerScoreRepository(List.of(), savedScores);
-        EraScoringContextRepository ctxRepo = (gameId, era) -> context;
+        EraScoringContextRepository ctxRepo = new FakeEraScoringContextRepository(context);
 
         var handler =
                 new UpdateScoresCommandHandler(repo, ctxRepo, new EraScoreEvaluator(), scoringPublisher, appPublisher);
@@ -146,7 +146,7 @@ class UpdateScoresCommandHandlerTest {
 
         var savedScores = new ArrayList<PlayerScore>();
         PlayerScoreRepository repo = new FakePlayerScoreRepository(List.of(existingScore), savedScores);
-        EraScoringContextRepository ctxRepo = (gameId, era) -> context;
+        EraScoringContextRepository ctxRepo = new FakeEraScoringContextRepository(context);
 
         var handler =
                 new UpdateScoresCommandHandler(repo, ctxRepo, new EraScoreEvaluator(), scoringPublisher, appPublisher);
@@ -170,7 +170,7 @@ class UpdateScoresCommandHandlerTest {
 
     private UpdateScoresCommandHandler handler(EraScoringContext context, List<PlayerScore> existingScores) {
         PlayerScoreRepository repo = new FakePlayerScoreRepository(existingScores, new ArrayList<>());
-        EraScoringContextRepository ctxRepo = (gameId, era) -> context;
+        EraScoringContextRepository ctxRepo = new FakeEraScoringContextRepository(context);
         return new UpdateScoresCommandHandler(repo, ctxRepo, new EraScoreEvaluator(), scoringPublisher, appPublisher);
     }
 
@@ -193,6 +193,35 @@ class UpdateScoresCommandHandlerTest {
         public List<PlayerScore> saveAll(List<PlayerScore> scores) {
             saved.addAll(scores);
             return scores;
+        }
+    }
+
+    static class FakeEraScoringContextRepository implements EraScoringContextRepository {
+
+        private final EraScoringContext context;
+
+        FakeEraScoringContextRepository(EraScoringContext context) {
+            this.context = context;
+        }
+
+        @Override
+        public EraScoringContext getRequired(UUID gameId, int eraNumber) {
+            return context;
+        }
+
+        @Override
+        public int expectedOutcomeCount(UUID gameId, int eraNumber) {
+            throw new UnsupportedOperationException("not used by UpdateScoresCommandHandler");
+        }
+
+        @Override
+        public void upsertPlayerFaction(UUID gameId, UUID playerId, Faction faction) {
+            throw new UnsupportedOperationException("not used by UpdateScoresCommandHandler");
+        }
+
+        @Override
+        public void upsertExpectedOutcomeCount(UUID gameId, int eraNumber, int expectedOutcomeCount) {
+            throw new UnsupportedOperationException("not used by UpdateScoresCommandHandler");
         }
     }
 }
