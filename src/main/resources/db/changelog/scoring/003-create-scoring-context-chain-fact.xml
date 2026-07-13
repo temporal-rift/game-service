@@ -26,6 +26,11 @@
                 <constraints nullable="false"/>
             </column>
         </createTable>
+
+        <createIndex tableName="scoring_context_chain_fact" indexName="idx_scoring_context_chain_fact_game_consumed">
+            <column name="game_id"/>
+            <column name="consumed"/>
+        </createIndex>
     </changeSet>
 
 </databaseChangeLog>
