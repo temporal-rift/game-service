@@ -29,6 +29,9 @@
     <include file="db/changelog/action/004-create-action-round-saga-state.xml"/>
 
     <!-- Scoring module -->
+    <include file="db/changelog/scoring/001-create-scoring-context-player.xml"/>
+    <include file="db/changelog/scoring/002-create-scoring-context-era-outcome-expectation.xml"/>
+    <include file="db/changelog/scoring/003-create-scoring-context-chain-fact.xml"/>
 
 </databaseChangeLog>
 
