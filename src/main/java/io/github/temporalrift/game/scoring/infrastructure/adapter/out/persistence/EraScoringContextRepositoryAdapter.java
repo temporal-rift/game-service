@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.UUID;
 
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 import io.github.temporalrift.events.shared.Faction;
 import io.github.temporalrift.game.scoring.domain.context.ChainScoringFact;
@@ -30,6 +31,7 @@ class EraScoringContextRepositoryAdapter implements EraScoringContextRepository 
     }
 
     @Override
+    @Transactional
     public EraScoringContext getRequired(UUID gameId, int eraNumber) {
         var players = playerJpaRepository.findAllByGameId(gameId).stream()
                 .map(entity -> new PlayerFaction(entity.getPlayerId(), Faction.valueOf(entity.getFaction())))
@@ -38,7 +40,7 @@ class EraScoringContextRepositoryAdapter implements EraScoringContextRepository 
             throw new EraScoringContextNotFoundException(gameId, eraNumber);
         }
 
-        var unconsumedChainFacts = chainFactJpaRepository.findAllByGameIdAndConsumedFalse(gameId);
+        var unconsumedChainFacts = chainFactJpaRepository.findAllByGameIdAndConsumedFalseWithLock(gameId);
         var chainFacts = unconsumedChainFacts.stream()
                 .map(entity -> new ChainScoringFact(
                         entity.getPlayerId(), entity.getChainId(), ScoreReason.valueOf(entity.getReason())))

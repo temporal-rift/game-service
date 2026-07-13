@@ -58,7 +58,8 @@ class EraScoringContextRepositoryAdapterTest {
         chainFactEntity.setChainId(chainId);
         chainFactEntity.setReason(ScoreReason.CHAIN_COMPLETED.name());
         chainFactEntity.setConsumed(false);
-        given(chainFactJpaRepository.findAllByGameIdAndConsumedFalse(gameId)).willReturn(List.of(chainFactEntity));
+        given(chainFactJpaRepository.findAllByGameIdAndConsumedFalseWithLock(gameId))
+                .willReturn(List.of(chainFactEntity));
 
         var context = adapter.getRequired(gameId, 2);
 
@@ -88,7 +89,8 @@ class EraScoringContextRepositoryAdapterTest {
         chainFactEntity.setChainId(UUID.randomUUID());
         chainFactEntity.setReason(ScoreReason.CHAIN_LINK_ADDED.name());
         chainFactEntity.setConsumed(false);
-        given(chainFactJpaRepository.findAllByGameIdAndConsumedFalse(gameId)).willReturn(List.of(chainFactEntity));
+        given(chainFactJpaRepository.findAllByGameIdAndConsumedFalseWithLock(gameId))
+                .willReturn(List.of(chainFactEntity));
 
         adapter.getRequired(gameId, 1);
 
@@ -105,7 +107,7 @@ class EraScoringContextRepositoryAdapterTest {
 
         assertThatThrownBy(() -> adapter.getRequired(gameId, 1)).isInstanceOf(EraScoringContextNotFoundException.class);
 
-        then(chainFactJpaRepository).should(never()).findAllByGameIdAndConsumedFalse(any());
+        then(chainFactJpaRepository).should(never()).findAllByGameIdAndConsumedFalseWithLock(any());
     }
 
     @Test

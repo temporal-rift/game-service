@@ -40,7 +40,7 @@ class ActionRoundRepositoryAdapter implements ActionRoundRepository {
 
     @Override
     public Optional<ActionRound> findByIdForUpdate(UUID id) {
-        return jpaRepository.findByIdForUpdate(id).map(this::toDomain);
+        return jpaRepository.findByIdWithLock(id).map(this::toDomain);
     }
 
     private ActionRoundJpaEntity toEntity(ActionRound round) {
