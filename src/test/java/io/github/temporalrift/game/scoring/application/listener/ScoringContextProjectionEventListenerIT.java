@@ -13,6 +13,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Import;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import io.github.temporalrift.events.action.EventsDrawn;
 import io.github.temporalrift.events.session.FactionAssigned;
@@ -32,12 +33,16 @@ class ScoringContextProjectionEventListenerIT {
     @Autowired
     EraScoringContextRepository contextRepository;
 
+    @Autowired
+    TransactionTemplate transactionTemplate;
+
     @Test
     void factionAssigned_populatesScoringContextPlayer() {
         var gameId = UUID.randomUUID();
         var playerId = UUID.randomUUID();
 
-        applicationEventPublisher.publishEvent(new FactionAssigned(gameId, playerId, Faction.PROPHETS.name()));
+        transactionTemplate.executeWithoutResult(_ ->
+                applicationEventPublisher.publishEvent(new FactionAssigned(gameId, playerId, Faction.PROPHETS.name())));
 
         await().atMost(Duration.ofSeconds(10))
                 .untilAsserted(() -> assertThat(
@@ -57,7 +62,7 @@ class ScoringContextProjectionEventListenerIT {
                         new EventsDrawn.FutureEvent(UUID.randomUUID(), "B", List.of(), false),
                         new EventsDrawn.FutureEvent(UUID.randomUUID(), "C", List.of(), false)));
 
-        applicationEventPublisher.publishEvent(event);
+        transactionTemplate.executeWithoutResult(_ -> applicationEventPublisher.publishEvent(event));
 
         await().atMost(Duration.ofSeconds(10))
                 .untilAsserted(() -> assertThat(contextRepository.expectedOutcomeCount(gameId, eraNumber))
