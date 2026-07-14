@@ -3,6 +3,7 @@ package io.github.temporalrift.game.scoring.infrastructure.adapter.out.persisten
 import java.util.List;
 import java.util.UUID;
 
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Component;
 
 import io.github.temporalrift.events.timeline.OutcomeApplied;
@@ -19,12 +20,11 @@ class TimelineOutcomeInboxRepositoryAdapter implements TimelineOutcomeInboxRepos
 
     @Override
     public void save(OutcomeApplied outcome) {
-        var existing = jpaRepository.findByGameIdAndEraNumberAndEventId(
-                outcome.gameId(), outcome.eraNumber(), outcome.eventId());
-        if (existing.isPresent()) {
-            return;
+        try {
+            jpaRepository.saveAndFlush(ScoringTimelineOutcomeInboxJpaEntity.fromDomain(outcome));
+        } catch (DataIntegrityViolationException e) {
+            // Another transaction already stored this (gameId, eraNumber, eventId) — already idempotent.
         }
-        jpaRepository.save(ScoringTimelineOutcomeInboxJpaEntity.fromDomain(outcome));
     }
 
     @Override

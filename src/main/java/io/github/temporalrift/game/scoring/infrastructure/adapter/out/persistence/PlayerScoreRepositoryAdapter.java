@@ -44,22 +44,15 @@ class PlayerScoreRepositoryAdapter implements PlayerScoreRepository {
     }
 
     private void saveScoreAndNewHistory(PlayerScore score) {
-        var entity = jpaRepository.findById(score.id()).orElseGet(PlayerScoreJpaEntity::new);
-        if (entity.getId() == null) {
-            entity.setId(score.id());
-            entity.setGameId(score.gameId());
-            entity.setPlayerId(score.playerId());
-        }
-        entity.setFaction(score.faction().name());
-        entity.setTotalScore(score.totalScore());
-        jpaRepository.save(entity);
+        var persistedId = jpaRepository.upsert(
+                score.id(), score.gameId(), score.playerId(), score.faction().name(), score.totalScore());
 
-        var alreadyPersisted = (int) historyJpaRepository.countByPlayerScoreId(score.id());
+        var alreadyPersisted = (int) historyJpaRepository.countByPlayerScoreId(persistedId);
         var newEntries =
                 score.history().subList(alreadyPersisted, score.history().size());
         var newHistoryRows = newEntries.stream()
                 .map(entry ->
-                        PlayerScoreHistoryJpaEntity.fromDomain(score.id(), score.gameId(), score.playerId(), entry))
+                        PlayerScoreHistoryJpaEntity.fromDomain(persistedId, score.gameId(), score.playerId(), entry))
                 .toList();
         historyJpaRepository.saveAll(newHistoryRows);
     }
