@@ -19,4 +19,18 @@ interface PlayerScoreJpaRepository extends JpaRepository<PlayerScoreJpaEntity, U
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select p from PlayerScoreJpaEntity p where p.gameId = :gameId")
     List<PlayerScoreJpaEntity> findAllByGameIdWithLock(@Param("gameId") UUID gameId);
+
+    @Query(value = """
+                    INSERT INTO player_score (id, game_id, player_id, faction, total_score)
+                    VALUES (:id, :gameId, :playerId, :faction, :totalScore)
+                    ON CONFLICT (game_id, player_id)
+                    DO UPDATE SET faction = EXCLUDED.faction, total_score = EXCLUDED.total_score
+                    RETURNING id
+                    """, nativeQuery = true)
+    UUID upsert(
+            @Param("id") UUID id,
+            @Param("gameId") UUID gameId,
+            @Param("playerId") UUID playerId,
+            @Param("faction") String faction,
+            @Param("totalScore") int totalScore);
 }
