@@ -178,6 +178,17 @@ class ActionStateProjectionEventListenerTest {
     }
 
     @Test
+    void onFactionAssigned_skipsNullFactionWithoutSaving() {
+        var gameId = UUID.randomUUID();
+        var playerId = UUID.randomUUID();
+
+        listener.onFactionAssigned(new FactionAssigned(gameId, playerId, null));
+
+        then(playerStateRepository).should(never()).save(any());
+        then(playerStateRepository).should(never()).findByGameIdAndPlayerId(any(), any());
+    }
+
+    @Test
     void onFactionAssigned_rejectsConflictingFaction() {
         var existing = PlayerState.reconstitute(
                 UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), Faction.ERASERS, List.of(), false);
