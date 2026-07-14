@@ -4,22 +4,11 @@ import java.util.UUID;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
 @Entity
 @Table(name = "scoring_context_chain_fact")
-class ScoringContextChainFactJpaEntity {
-
-    @Id
-    @Column(name = "id", nullable = false)
-    private UUID id;
-
-    @Column(name = "game_id", nullable = false)
-    private UUID gameId;
-
-    @Column(name = "player_id", nullable = false)
-    private UUID playerId;
+class ScoringContextChainFactJpaEntity extends GamePlayerScopedJpaEntity {
 
     @Column(name = "chain_id", nullable = false)
     private UUID chainId;
@@ -31,30 +20,6 @@ class ScoringContextChainFactJpaEntity {
     private boolean consumed;
 
     protected ScoringContextChainFactJpaEntity() {}
-
-    UUID getId() {
-        return id;
-    }
-
-    void setId(UUID id) {
-        this.id = id;
-    }
-
-    UUID getGameId() {
-        return gameId;
-    }
-
-    void setGameId(UUID gameId) {
-        this.gameId = gameId;
-    }
-
-    UUID getPlayerId() {
-        return playerId;
-    }
-
-    void setPlayerId(UUID playerId) {
-        this.playerId = playerId;
-    }
 
     UUID getChainId() {
         return chainId;
