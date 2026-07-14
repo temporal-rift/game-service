@@ -4,6 +4,7 @@ import java.util.UUID;
 
 import io.github.temporalrift.events.shared.Faction;
 import io.github.temporalrift.game.scoring.domain.context.EraScoringContext;
+import io.github.temporalrift.game.scoring.domain.playerscore.ScoreReason;
 
 public interface EraScoringContextRepository {
 
@@ -14,4 +15,6 @@ public interface EraScoringContextRepository {
     void upsertPlayerFaction(UUID gameId, UUID playerId, Faction faction);
 
     void upsertExpectedOutcomeCount(UUID gameId, int eraNumber, int expectedOutcomeCount);
+
+    void recordChainFact(UUID gameId, UUID playerId, UUID chainId, ScoreReason reason);
 }

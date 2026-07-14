@@ -185,7 +185,12 @@ class UpdateScoresCommandHandlerTest {
         }
 
         @Override
-        public List<PlayerScore> findByGameIdForUpdate(UUID gameId) {
+        public List<PlayerScore> findAllByGameId(UUID gameId) {
+            return existing;
+        }
+
+        @Override
+        public List<PlayerScore> findAllByGameIdWithLock(UUID gameId) {
             return existing;
         }
 
@@ -221,6 +226,11 @@ class UpdateScoresCommandHandlerTest {
 
         @Override
         public void upsertExpectedOutcomeCount(UUID gameId, int eraNumber, int expectedOutcomeCount) {
+            throw new UnsupportedOperationException("not used by UpdateScoresCommandHandler");
+        }
+
+        @Override
+        public void recordChainFact(UUID gameId, UUID playerId, UUID chainId, ScoreReason reason) {
             throw new UnsupportedOperationException("not used by UpdateScoresCommandHandler");
         }
     }

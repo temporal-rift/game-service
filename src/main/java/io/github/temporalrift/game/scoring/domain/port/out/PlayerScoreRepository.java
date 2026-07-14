@@ -7,7 +7,9 @@ import io.github.temporalrift.game.scoring.domain.playerscore.PlayerScore;
 
 public interface PlayerScoreRepository {
 
-    List<PlayerScore> findByGameIdForUpdate(UUID gameId);
+    List<PlayerScore> findAllByGameId(UUID gameId);
+
+    List<PlayerScore> findAllByGameIdWithLock(UUID gameId);
 
     List<PlayerScore> saveAll(List<PlayerScore> scores);
 }

@@ -86,4 +86,16 @@ class EraScoringContextRepositoryAdapter implements EraScoringContextRepository 
         entity.setExpectedOutcomeCount(expectedOutcomeCount);
         eraOutcomeExpectationJpaRepository.save(entity);
     }
+
+    @Override
+    public void recordChainFact(UUID gameId, UUID playerId, UUID chainId, ScoreReason reason) {
+        var entity = new ScoringContextChainFactJpaEntity();
+        entity.setId(UUID.randomUUID());
+        entity.setGameId(gameId);
+        entity.setPlayerId(playerId);
+        entity.setChainId(chainId);
+        entity.setReason(reason.name());
+        entity.setConsumed(false);
+        chainFactJpaRepository.save(entity);
+    }
 }
