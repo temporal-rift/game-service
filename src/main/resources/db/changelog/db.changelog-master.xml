@@ -32,6 +32,9 @@
     <include file="db/changelog/scoring/001-create-scoring-context-player.xml"/>
     <include file="db/changelog/scoring/002-create-scoring-context-era-outcome-expectation.xml"/>
     <include file="db/changelog/scoring/003-create-scoring-context-chain-fact.xml"/>
+    <include file="db/changelog/scoring/004-create-player-score.xml"/>
+    <include file="db/changelog/scoring/005-create-scoring-era-completion.xml"/>
+    <include file="db/changelog/scoring/006-create-scoring-timeline-outcome-inbox.xml"/>
 
 </databaseChangeLog>
 

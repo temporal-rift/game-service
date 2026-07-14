@@ -10,6 +10,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.stereotype.Component;
 
 import io.github.temporalrift.events.envelope.EventEnvelope;
 import io.github.temporalrift.events.scoring.ScoresUpdated;
@@ -19,6 +20,7 @@ import io.github.temporalrift.game.scoring.domain.port.out.EraScoringContextRepo
 import io.github.temporalrift.game.scoring.domain.port.out.PlayerScoreRepository;
 import io.github.temporalrift.game.scoring.domain.port.out.ScoringEventPublisher;
 
+@Component
 public class UpdateScoresCommandHandler {
 
     private final PlayerScoreRepository playerScoreRepository;
@@ -44,7 +46,7 @@ public class UpdateScoresCommandHandler {
         var context = contextRepository.getRequired(command.gameId(), command.eraNumber());
 
         Map<UUID, PlayerScore> scoresByPlayer = new HashMap<>();
-        for (var existing : playerScoreRepository.findByGameIdForUpdate(command.gameId())) {
+        for (var existing : playerScoreRepository.findAllByGameIdWithLock(command.gameId())) {
             scoresByPlayer.put(existing.playerId(), existing);
         }
         for (var player : context.players()) {

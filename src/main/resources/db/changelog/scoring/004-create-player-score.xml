@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+            https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.29.xsd">
+
+    <changeSet id="scoring-004-create-player-score" author="game-service">
+        <createTable tableName="player_score">
+            <column name="id" type="UUID">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="game_id" type="UUID">
+                <constraints nullable="false"/>
+            </column>
+            <column name="player_id" type="UUID">
+                <constraints nullable="false"/>
+            </column>
+            <column name="faction" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="total_score" type="INT">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addUniqueConstraint
+                tableName="player_score"
+                columnNames="game_id,player_id"
+                constraintName="uq_player_score_game_player"/>
+    </changeSet>
+
+    <changeSet id="scoring-004-create-player-score-history" author="game-service">
+        <createTable tableName="player_score_history">
+            <column name="id" type="UUID">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="player_score_id" type="UUID">
+                <constraints nullable="false" foreignKeyName="fk_player_score_history_player_score"
+                             references="player_score(id)"/>
+            </column>
+            <column name="game_id" type="UUID">
+                <constraints nullable="false"/>
+            </column>
+            <column name="player_id" type="UUID">
+                <constraints nullable="false"/>
+            </column>
+            <column name="era_number" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="reason" type="VARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="points_delta" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="new_total" type="INT">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <createIndex tableName="player_score_history" indexName="idx_player_score_history_player_score">
+            <column name="player_score_id"/>
+        </createIndex>
+    </changeSet>
+
+</databaseChangeLog>
