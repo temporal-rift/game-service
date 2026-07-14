@@ -62,19 +62,10 @@ class ActionStateProjectionEventListener {
 
     @ApplicationModuleListener
     void onFactionAssigned(FactionAssigned event) {
-        if (event.faction() == null) {
+        var faction = Faction.tryParse(event.faction()).orElse(null);
+        if (faction == null) {
             log.warn(
-                    "Null faction for player {} in game {} — skipping action state projection",
-                    event.playerId(),
-                    event.gameId());
-            return;
-        }
-        Faction faction;
-        try {
-            faction = Faction.valueOf(event.faction());
-        } catch (IllegalArgumentException _) {
-            log.warn(
-                    "Unknown faction '{}' for player {} in game {} — skipping action state projection",
+                    "Invalid faction '{}' for player {} in game {} — skipping action state projection",
                     event.faction(),
                     event.playerId(),
                     event.gameId());
