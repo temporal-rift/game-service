@@ -134,6 +134,26 @@ class PlayerScoreRepositoryAdapterTest {
     }
 
     @Test
+    void saveAll_skipsHistoryWithoutThrowingWhenWinningRowAlreadyHasMoreHistoryThanThisAggregate() {
+        // simulates losing a first-insert race against a scoring pass that had already
+        // applied more decisions than this in-memory aggregate knows about: countByPlayerScoreId
+        // returns more rows than score.history() has, so subList(...) must not be attempted
+        var inMemoryId = UUID.randomUUID();
+        var winningId = UUID.randomUUID();
+        var gameId = UUID.randomUUID();
+        var playerId = UUID.randomUUID();
+        var score = PlayerScore.reconstitute(inMemoryId, gameId, playerId, Faction.ERASERS, 0, List.of());
+        score.apply(1, ScoreReason.ANNIHILATED_OUTCOME);
+        given(jpaRepository.upsert(inMemoryId, gameId, playerId, Faction.ERASERS.name(), 3))
+                .willReturn(winningId);
+        given(historyJpaRepository.countByPlayerScoreId(winningId)).willReturn(5L);
+
+        adapter.saveAll(List.of(score));
+
+        then(historyJpaRepository).should(never()).saveAll(any());
+    }
+
+    @Test
     void findAllByGameId_usesUnlockedQuery() {
         var gameId = UUID.randomUUID();
         given(jpaRepository.findAllByGameId(gameId)).willReturn(List.of());

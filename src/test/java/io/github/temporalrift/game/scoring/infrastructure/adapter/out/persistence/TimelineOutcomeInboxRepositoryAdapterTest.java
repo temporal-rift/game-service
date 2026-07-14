@@ -1,22 +1,20 @@
 package io.github.temporalrift.game.scoring.infrastructure.adapter.out.persistence;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
-import static org.mockito.BDDMockito.willThrow;
 
 import java.util.List;
 import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.dao.DataIntegrityViolationException;
+import tools.jackson.databind.ObjectMapper;
 
 import io.github.temporalrift.events.timeline.OutcomeApplied;
 
@@ -26,31 +24,28 @@ class TimelineOutcomeInboxRepositoryAdapterTest {
     @Mock
     ScoringTimelineOutcomeInboxJpaRepository jpaRepository;
 
+    @Mock
+    ObjectMapper objectMapper;
+
     @InjectMocks
     TimelineOutcomeInboxRepositoryAdapter adapter;
 
     @Test
-    void save_insertsOutcome() {
+    void save_insertsOutcomeViaConflictFreeNativeQuery() {
         var outcome = outcomeApplied();
+        given(objectMapper.writeValueAsString(outcome)).willReturn("{\"json\":true}");
 
         adapter.save(outcome);
 
-        var captor = ArgumentCaptor.forClass(ScoringTimelineOutcomeInboxJpaEntity.class);
-        then(jpaRepository).should().saveAndFlush(captor.capture());
-        assertThat(captor.getValue().getGameId()).isEqualTo(outcome.gameId());
-        assertThat(captor.getValue().getEraNumber()).isEqualTo(outcome.eraNumber());
-        assertThat(captor.getValue().getEventId()).isEqualTo(outcome.eventId());
-        assertThat(captor.getValue().getWinningOutcomeId()).isEqualTo(outcome.winningOutcomeId());
-    }
-
-    @Test
-    void save_swallowsConstraintViolationWhenAlreadyStoredConcurrently() {
-        var outcome = outcomeApplied();
-        willThrow(new DataIntegrityViolationException("duplicate"))
-                .given(jpaRepository)
-                .saveAndFlush(any());
-
-        assertThatCode(() -> adapter.save(outcome)).doesNotThrowAnyException();
+        then(jpaRepository)
+                .should()
+                .insertIfAbsent(
+                        any(),
+                        eq(outcome.gameId()),
+                        eq(outcome.eraNumber()),
+                        eq(outcome.eventId()),
+                        eq(outcome.winningOutcomeId()),
+                        eq("{\"json\":true}"));
     }
 
     @Test

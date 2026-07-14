@@ -48,6 +48,11 @@ class PlayerScoreRepositoryAdapter implements PlayerScoreRepository {
                 score.id(), score.gameId(), score.playerId(), score.faction().name(), score.totalScore());
 
         var alreadyPersisted = (int) historyJpaRepository.countByPlayerScoreId(persistedId);
+        if (alreadyPersisted >= score.history().size()) {
+            // Lost a first-insert race: the row upsert() returned already has at least as
+            // much history as this in-memory aggregate knows about — nothing new to add.
+            return;
+        }
         var newEntries =
                 score.history().subList(alreadyPersisted, score.history().size());
         var newHistoryRows = newEntries.stream()
