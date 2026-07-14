@@ -3,6 +3,8 @@ package io.github.temporalrift.game.action.application.saga;
 import java.util.List;
 import java.util.UUID;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.modulith.events.ApplicationModuleListener;
 import org.springframework.stereotype.Component;
 
@@ -16,6 +18,8 @@ import io.github.temporalrift.game.action.domain.port.out.PlayerStateRepository;
 
 @Component
 class ActionStateProjectionEventListener {
+
+    private static final Logger log = LoggerFactory.getLogger(ActionStateProjectionEventListener.class);
 
     private final PlayerStateRepository playerStateRepository;
     private final FutureEventDefinitionPort futureEventDefinitionPort;
@@ -58,7 +62,17 @@ class ActionStateProjectionEventListener {
 
     @ApplicationModuleListener
     void onFactionAssigned(FactionAssigned event) {
-        var faction = Faction.valueOf(event.faction());
+        Faction faction;
+        try {
+            faction = Faction.valueOf(event.faction());
+        } catch (IllegalArgumentException _) {
+            log.warn(
+                    "Unknown faction '{}' for player {} in game {} — skipping action state projection",
+                    event.faction(),
+                    event.playerId(),
+                    event.gameId());
+            return;
+        }
         var existing = playerStateRepository.findByGameIdAndPlayerId(event.gameId(), event.playerId());
         if (existing.isPresent() && existing.get().faction() == faction) {
             return;

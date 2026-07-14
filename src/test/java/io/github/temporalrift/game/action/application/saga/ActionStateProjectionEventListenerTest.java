@@ -167,6 +167,17 @@ class ActionStateProjectionEventListenerTest {
     }
 
     @Test
+    void onFactionAssigned_skipsUnknownFactionWithoutSaving() {
+        var gameId = UUID.randomUUID();
+        var playerId = UUID.randomUUID();
+
+        listener.onFactionAssigned(new FactionAssigned(gameId, playerId, "NOT_A_REAL_FACTION"));
+
+        then(playerStateRepository).should(never()).save(any());
+        then(playerStateRepository).should(never()).findByGameIdAndPlayerId(any(), any());
+    }
+
+    @Test
     void onFactionAssigned_rejectsConflictingFaction() {
         var existing = PlayerState.reconstitute(
                 UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), Faction.ERASERS, List.of(), false);

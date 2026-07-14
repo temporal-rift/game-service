@@ -1,6 +1,8 @@
 package io.github.temporalrift.game.scoring.application.listener;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.then;
+import static org.mockito.Mockito.never;
 
 import java.util.List;
 import java.util.UUID;
@@ -33,6 +35,16 @@ class ScoringContextProjectionEventListenerTest {
         listener.onFactionAssigned(new FactionAssigned(gameId, playerId, Faction.WEAVERS.name()));
 
         then(contextRepository).should().upsertPlayerFaction(gameId, playerId, Faction.WEAVERS);
+    }
+
+    @Test
+    void onFactionAssigned_skipsUnknownFactionWithoutUpserting() {
+        var gameId = UUID.randomUUID();
+        var playerId = UUID.randomUUID();
+
+        listener.onFactionAssigned(new FactionAssigned(gameId, playerId, "NOT_A_REAL_FACTION"));
+
+        then(contextRepository).should(never()).upsertPlayerFaction(any(), any(), any());
     }
 
     @Test
