@@ -23,6 +23,13 @@ class ScoringContextProjectionEventListener {
 
     @ApplicationModuleListener
     void onFactionAssigned(FactionAssigned event) {
+        if (event.faction() == null) {
+            log.warn(
+                    "Null faction for player {} in game {} — skipping scoring context projection",
+                    event.playerId(),
+                    event.gameId());
+            return;
+        }
         Faction faction;
         try {
             faction = Faction.valueOf(event.faction());

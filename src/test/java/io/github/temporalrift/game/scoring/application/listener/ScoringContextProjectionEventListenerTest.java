@@ -48,6 +48,16 @@ class ScoringContextProjectionEventListenerTest {
     }
 
     @Test
+    void onFactionAssigned_skipsNullFactionWithoutUpserting() {
+        var gameId = UUID.randomUUID();
+        var playerId = UUID.randomUUID();
+
+        listener.onFactionAssigned(new FactionAssigned(gameId, playerId, null));
+
+        then(contextRepository).should(never()).upsertPlayerFaction(any(), any(), any());
+    }
+
+    @Test
     void onEventsDrawn_upsertsExpectedOutcomeCountFromEventListSize() {
         var gameId = UUID.randomUUID();
         var event = new EventsDrawn(
