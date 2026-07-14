@@ -3,8 +3,8 @@ package io.github.temporalrift.game.scoring.infrastructure.adapter.out.persisten
 import java.util.List;
 import java.util.UUID;
 
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Component;
+import tools.jackson.databind.ObjectMapper;
 
 import io.github.temporalrift.events.timeline.OutcomeApplied;
 import io.github.temporalrift.game.scoring.domain.port.out.TimelineOutcomeInboxRepository;
@@ -13,18 +13,27 @@ import io.github.temporalrift.game.scoring.domain.port.out.TimelineOutcomeInboxR
 class TimelineOutcomeInboxRepositoryAdapter implements TimelineOutcomeInboxRepository {
 
     private final ScoringTimelineOutcomeInboxJpaRepository jpaRepository;
+    private final ObjectMapper objectMapper;
 
-    TimelineOutcomeInboxRepositoryAdapter(ScoringTimelineOutcomeInboxJpaRepository jpaRepository) {
+    TimelineOutcomeInboxRepositoryAdapter(
+            ScoringTimelineOutcomeInboxJpaRepository jpaRepository, ObjectMapper objectMapper) {
         this.jpaRepository = jpaRepository;
+        this.objectMapper = objectMapper;
     }
 
     @Override
     public void save(OutcomeApplied outcome) {
-        try {
-            jpaRepository.saveAndFlush(ScoringTimelineOutcomeInboxJpaEntity.fromDomain(outcome));
-        } catch (DataIntegrityViolationException _) {
-            // Another transaction already stored this (gameId, eraNumber, eventId) — already idempotent.
-        }
+        // Native ON CONFLICT DO NOTHING, not check-then-insert or catch-and-swallow: a failed
+        // statement inside this @Transactional(REQUIRES_NEW) handler aborts the whole Postgres
+        // transaction even if the Java exception is caught, poisoning every later write in the
+        // same call (score updates, era completion). A DB-level no-op conflict never aborts it.
+        jpaRepository.insertIfAbsent(
+                UUID.randomUUID(),
+                outcome.gameId(),
+                outcome.eraNumber(),
+                outcome.eventId(),
+                outcome.winningOutcomeId(),
+                objectMapper.writeValueAsString(outcome));
     }
 
     @Override
