@@ -22,7 +22,7 @@ class TimelineOutcomeInboxRepositoryAdapter implements TimelineOutcomeInboxRepos
     public void save(OutcomeApplied outcome) {
         try {
             jpaRepository.saveAndFlush(ScoringTimelineOutcomeInboxJpaEntity.fromDomain(outcome));
-        } catch (DataIntegrityViolationException e) {
+        } catch (DataIntegrityViolationException _) {
             // Another transaction already stored this (gameId, eraNumber, eventId) — already idempotent.
         }
     }
