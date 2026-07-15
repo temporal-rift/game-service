@@ -144,7 +144,7 @@ class ActionRoundSagaImplTest {
                     List.of(PLAYER_2, PLAYER_3),
                     TIMER_EXPIRES_AT);
             given(stateManager.markSubmitted(GAME_ID, ERA_NUMBER, ROUND_NUMBER, PLAYER_1))
-                    .willReturn(updatedState);
+                    .willReturn(Optional.of(updatedState));
 
             // when
             saga.handlePlayerSubmitted(GAME_ID, ERA_NUMBER, ROUND_NUMBER, PLAYER_1);
@@ -169,7 +169,7 @@ class ActionRoundSagaImplTest {
                     List.of(),
                     TIMER_EXPIRES_AT);
             given(stateManager.markSubmitted(GAME_ID, ERA_NUMBER, ROUND_NUMBER, PLAYER_1))
-                    .willReturn(updatedState);
+                    .willReturn(Optional.of(updatedState));
 
             var round = new ActionRound(roundId, GAME_ID, ERA_NUMBER, ROUND_NUMBER, List.of(), TIMER_SECONDS);
             given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumber(GAME_ID, ERA_NUMBER, ROUND_NUMBER))
@@ -183,6 +183,21 @@ class ActionRoundSagaImplTest {
             then(stateManager).should(times(1)).markClosing(GAME_ID, ERA_NUMBER, ROUND_NUMBER);
             then(actionRoundRepository).should(times(1)).findByIdForUpdate(roundId);
             then(stateManager).should(times(1)).complete(GAME_ID, ERA_NUMBER, ROUND_NUMBER);
+        }
+
+        @Test
+        @DisplayName("missing saga returns empty — never treated as ALL_SUBMITTED")
+        void handlePlayerSubmitted_missingSaga_doesNotClose() {
+            // given
+            given(stateManager.markSubmitted(GAME_ID, ERA_NUMBER, ROUND_NUMBER, PLAYER_1))
+                    .willReturn(Optional.empty());
+
+            // when
+            saga.handlePlayerSubmitted(GAME_ID, ERA_NUMBER, ROUND_NUMBER, PLAYER_1);
+
+            // then
+            then(stateManager).should(never()).markClosing(any(), any(int.class), any(int.class));
+            then(actionRoundRepository).should(never()).findByIdForUpdate(any());
         }
     }
 
@@ -291,7 +306,7 @@ class ActionRoundSagaImplTest {
                     List.of(),
                     TIMER_EXPIRES_AT);
             given(stateManager.markSubmitted(GAME_ID, ERA_NUMBER, ROUND_NUMBER, PLAYER_1))
-                    .willReturn(updatedState);
+                    .willReturn(Optional.of(updatedState));
 
             // when
             saga.handlePlayerSubmitted(GAME_ID, ERA_NUMBER, ROUND_NUMBER, PLAYER_1);
@@ -355,7 +370,7 @@ class ActionRoundSagaImplTest {
                     List.of(),
                     TIMER_EXPIRES_AT);
             given(stateManager.markSubmitted(GAME_ID, ERA_NUMBER, ROUND_NUMBER, PLAYER_1))
-                    .willReturn(updatedState);
+                    .willReturn(Optional.of(updatedState));
             saga.handlePlayerSubmitted(GAME_ID, ERA_NUMBER, ROUND_NUMBER, PLAYER_1);
 
             // then
@@ -392,7 +407,7 @@ class ActionRoundSagaImplTest {
                     ActionRoundSagaStatus.WAITING,
                     List.of(),
                     TIMER_EXPIRES_AT);
-            given(stateManager.markSubmitted(GAME_ID, ERA_NUMBER, 2, PLAYER_1)).willReturn(updatedState);
+            given(stateManager.markSubmitted(GAME_ID, ERA_NUMBER, 2, PLAYER_1)).willReturn(Optional.of(updatedState));
             saga.handlePlayerSubmitted(GAME_ID, ERA_NUMBER, 2, PLAYER_1);
 
             // then
@@ -420,7 +435,7 @@ class ActionRoundSagaImplTest {
                     ActionRoundSagaStatus.WAITING,
                     List.of(),
                     TIMER_EXPIRES_AT);
-            given(stateManager.markSubmitted(GAME_ID, ERA_NUMBER, 1, PLAYER_1)).willReturn(updatedState);
+            given(stateManager.markSubmitted(GAME_ID, ERA_NUMBER, 1, PLAYER_1)).willReturn(Optional.of(updatedState));
             saga.handlePlayerSubmitted(GAME_ID, ERA_NUMBER, 1, PLAYER_1);
 
             // then
@@ -467,7 +482,7 @@ class ActionRoundSagaImplTest {
                     List.of(),
                     TIMER_EXPIRES_AT);
             given(stateManager.markSubmitted(GAME_ID, ERA_NUMBER, ROUND_NUMBER, PLAYER_1))
-                    .willReturn(updatedState);
+                    .willReturn(Optional.of(updatedState));
             saga.handlePlayerSubmitted(GAME_ID, ERA_NUMBER, ROUND_NUMBER, PLAYER_1);
 
             // then
@@ -520,7 +535,7 @@ class ActionRoundSagaImplTest {
                     List.of(),
                     TIMER_EXPIRES_AT);
             given(stateManager.markSubmitted(GAME_ID, ERA_NUMBER, ROUND_NUMBER, PLAYER_1))
-                    .willReturn(updatedState);
+                    .willReturn(Optional.of(updatedState));
             saga.handlePlayerSubmitted(GAME_ID, ERA_NUMBER, ROUND_NUMBER, PLAYER_1);
 
             // then

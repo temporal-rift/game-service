@@ -41,26 +41,19 @@ class ActionRoundSagaStateManager {
     }
 
     @Transactional
-    ActionRoundSagaState markSubmitted(UUID gameId, int eraNumber, int roundNumber, UUID playerId) {
+    Optional<ActionRoundSagaState> markSubmitted(UUID gameId, int eraNumber, int roundNumber, UUID playerId) {
         var stateOpt = repository.findByGameIdAndEraNumberAndRoundNumberWithLock(gameId, eraNumber, roundNumber);
         if (stateOpt.isEmpty()) {
             log.warn("markSubmitted: saga not found for game {} era {} round {}", gameId, eraNumber, roundNumber);
-            return new ActionRoundSagaState(
-                    UUID.randomUUID(),
-                    gameId,
-                    eraNumber,
-                    roundNumber,
-                    ActionRoundSagaStatus.WAITING,
-                    List.of(),
-                    Instant.now());
+            return Optional.empty();
         }
         var state = stateOpt.get();
         if (state.status() != ActionRoundSagaStatus.WAITING) {
-            return state;
+            return Optional.of(state);
         }
         var updated = new ArrayList<>(state.pendingPlayerIds());
         updated.remove(playerId);
-        return repository.save(state.withPendingPlayerIds(updated));
+        return Optional.of(repository.save(state.withPendingPlayerIds(updated)));
     }
 
     @Transactional
