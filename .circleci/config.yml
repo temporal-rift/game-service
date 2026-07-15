@@ -7,7 +7,7 @@ orbs:
 jobs:
   format-check:
     docker:
-      - image: maven:3.9.13-eclipse-temurin-25
+      - image: maven:3.9.16-eclipse-temurin-26
     steps:
       - git-shallow-clone/checkout
       - restore_cache:
@@ -20,7 +20,7 @@ jobs:
 
   security-snyk:
     docker:
-      - image: maven:3.9.13-eclipse-temurin-25
+      - image: maven:3.9.16-eclipse-temurin-26
     steps:
       - git-shallow-clone/checkout
       - restore_cache:
@@ -38,7 +38,7 @@ jobs:
 
   build-test-analyze:
     docker:
-      - image: maven:3.9.13-eclipse-temurin-25
+      - image: maven:3.9.16-eclipse-temurin-26
     steps:
       - checkout:
           method: full
