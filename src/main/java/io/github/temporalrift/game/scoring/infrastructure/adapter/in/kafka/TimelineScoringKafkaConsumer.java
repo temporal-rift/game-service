@@ -61,16 +61,18 @@ class TimelineScoringKafkaConsumer {
         if (!SUPPORTED_EVENT_TYPES.contains(envelope.eventType())) {
             return;
         }
-        if (!processedEventRepository.tryMarkProcessed(envelope.eventId(), CONSUMER)) {
-            log.debug("Duplicate {} event {} ignored", envelope.eventType(), envelope.eventId());
-            return;
-        }
+        // Check version before claiming: claiming an unsupported version would permanently mark the
+        // event processed, so it could never be reprocessed once this consumer learns to handle it.
         if (envelope.version() != 1) {
             log.warn(
                     "Unsupported {} envelope version {} for event {} — skipping",
                     envelope.eventType(),
                     envelope.version(),
                     envelope.eventId());
+            return;
+        }
+        if (!processedEventRepository.tryMarkProcessed(envelope.eventId(), CONSUMER)) {
+            log.debug("Duplicate {} event {} ignored", envelope.eventType(), envelope.eventId());
             return;
         }
 

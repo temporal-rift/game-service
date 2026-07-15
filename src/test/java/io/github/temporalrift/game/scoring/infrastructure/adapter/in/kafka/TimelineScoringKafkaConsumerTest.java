@@ -86,15 +86,14 @@ class TimelineScoringKafkaConsumerTest {
     }
 
     @Test
-    @DisplayName("unsupported envelope version — claimed and skipped without mutation")
-    void handle_unsupportedVersion_claimedButSkipped() {
+    @DisplayName("unsupported envelope version — skipped without claiming so it can be reprocessed later")
+    void handle_unsupportedVersion_skippedWithoutClaiming() {
         var outcome = outcomeApplied();
         var envelope = EventEnvelope.create(GAME_ID, "FutureEvent", GAME_ID, 2, outcome);
-        given(processedEventRepository.tryMarkProcessed(envelope.eventId(), "scoring.timeline-events"))
-                .willReturn(true);
 
         consumer.handle(envelope);
 
+        then(processedEventRepository).should(never()).tryMarkProcessed(any(), any());
         then(outcomeInboxRepository).should(never()).save(any());
         then(updateScoresCommandHandler).should(never()).handle(any());
     }
