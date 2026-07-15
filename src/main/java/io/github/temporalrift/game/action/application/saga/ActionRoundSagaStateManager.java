@@ -42,7 +42,7 @@ class ActionRoundSagaStateManager {
 
     @Transactional
     ActionRoundSagaState markSubmitted(UUID gameId, int eraNumber, int roundNumber, UUID playerId) {
-        var stateOpt = repository.findByGameIdAndEraNumberAndRoundNumber(gameId, eraNumber, roundNumber);
+        var stateOpt = repository.findByGameIdAndEraNumberAndRoundNumberWithLock(gameId, eraNumber, roundNumber);
         if (stateOpt.isEmpty()) {
             log.warn("markSubmitted: saga not found for game {} era {} round {}", gameId, eraNumber, roundNumber);
             return new ActionRoundSagaState(

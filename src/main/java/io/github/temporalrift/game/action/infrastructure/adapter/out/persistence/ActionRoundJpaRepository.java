@@ -16,4 +16,10 @@ interface ActionRoundJpaRepository extends JpaRepository<ActionRoundJpaEntity, U
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select round from ActionRoundJpaEntity round where round.id = :id")
     Optional<ActionRoundJpaEntity> findByIdWithLock(@Param("id") UUID id);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select round from ActionRoundJpaEntity round "
+            + "where round.gameId = :gameId and round.eraNumber = :eraNumber and round.roundNumber = :roundNumber")
+    Optional<ActionRoundJpaEntity> findByGameIdAndEraNumberAndRoundNumberWithLock(
+            @Param("gameId") UUID gameId, @Param("eraNumber") int eraNumber, @Param("roundNumber") int roundNumber);
 }
