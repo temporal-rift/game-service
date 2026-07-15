@@ -38,7 +38,8 @@ class PlayCardCommandHandler implements PlayCardUseCase {
     @Transactional
     public Result handle(Command command) {
         var round = actionRoundRepository
-                .findByGameIdAndEraNumberAndRoundNumber(command.gameId(), command.eraNumber(), command.roundNumber())
+                .findByGameIdAndEraNumberAndRoundNumberWithLock(
+                        command.gameId(), command.eraNumber(), command.roundNumber())
                 .orElseThrow(
                         () -> new RoundNotFoundException(command.gameId(), command.eraNumber(), command.roundNumber()));
         var playerState = playerStateRepository

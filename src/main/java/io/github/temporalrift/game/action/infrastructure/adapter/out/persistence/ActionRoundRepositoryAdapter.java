@@ -39,6 +39,14 @@ class ActionRoundRepositoryAdapter implements ActionRoundRepository {
     }
 
     @Override
+    public Optional<ActionRound> findByGameIdAndEraNumberAndRoundNumberWithLock(
+            UUID gameId, int eraNumber, int roundNumber) {
+        return jpaRepository
+                .findByGameIdAndEraNumberAndRoundNumberWithLock(gameId, eraNumber, roundNumber)
+                .map(this::toDomain);
+    }
+
+    @Override
     public Optional<ActionRound> findByIdForUpdate(UUID id) {
         return jpaRepository.findByIdWithLock(id).map(this::toDomain);
     }

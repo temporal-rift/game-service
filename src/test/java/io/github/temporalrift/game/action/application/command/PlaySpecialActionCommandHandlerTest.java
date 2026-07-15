@@ -71,7 +71,7 @@ class PlaySpecialActionCommandHandlerTest {
         // given
         var command = new PlaySpecialActionUseCase.Command(
                 GAME_ID, ERA, ROUND, PLAYER_ID, SpecialAction.ANNIHILATE, UUID.randomUUID(), UUID.randomUUID(), null);
-        given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumber(GAME_ID, ERA, ROUND))
+        given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA, ROUND))
                 .willReturn(Optional.of(round));
         given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(playerState));
         given(playerState.faction()).willReturn(Faction.ERASERS);
@@ -103,7 +103,7 @@ class PlaySpecialActionCommandHandlerTest {
         // given
         var command = new PlaySpecialActionUseCase.Command(
                 GAME_ID, ERA, ROUND, PLAYER_ID, SpecialAction.SEAL, null, null, null);
-        given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumber(GAME_ID, ERA, ROUND))
+        given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA, ROUND))
                 .willReturn(Optional.of(round));
         given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(playerState));
         given(playerState.faction()).willReturn(Faction.PROPHETS);
@@ -126,7 +126,7 @@ class PlaySpecialActionCommandHandlerTest {
     @DisplayName("handle — round not found — throws RoundNotFoundException")
     void handleRoundNotFound() {
         // given
-        given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumber(GAME_ID, ERA, ROUND))
+        given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA, ROUND))
                 .willReturn(Optional.empty());
         var command = new PlaySpecialActionUseCase.Command(
                 GAME_ID, ERA, ROUND, PLAYER_ID, SpecialAction.SEAL, null, null, null);
@@ -139,7 +139,7 @@ class PlaySpecialActionCommandHandlerTest {
     @DisplayName("handle — player state not found — throws PlayerStateNotFoundException")
     void handlePlayerStateNotFound() {
         // given
-        given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumber(GAME_ID, ERA, ROUND))
+        given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA, ROUND))
                 .willReturn(Optional.of(round));
         given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.empty());
         var command = new PlaySpecialActionUseCase.Command(
@@ -155,7 +155,7 @@ class PlaySpecialActionCommandHandlerTest {
         // given
         var command = new PlaySpecialActionUseCase.Command(
                 GAME_ID, ERA, ROUND, PLAYER_ID, SpecialAction.SEAL, null, null, null);
-        given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumber(GAME_ID, ERA, ROUND))
+        given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA, ROUND))
                 .willReturn(Optional.of(round));
         given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(playerState));
         given(playerState.faction()).willReturn(null);
@@ -173,7 +173,7 @@ class PlaySpecialActionCommandHandlerTest {
         // given
         var command = new PlaySpecialActionUseCase.Command(
                 GAME_ID, ERA, ROUND, PLAYER_ID, SpecialAction.ANNIHILATE, null, null, null);
-        given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumber(GAME_ID, ERA, ROUND))
+        given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA, ROUND))
                 .willReturn(Optional.of(round));
         given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(playerState));
         given(playerState.faction()).willReturn(Faction.ERASERS);
@@ -190,7 +190,7 @@ class PlaySpecialActionCommandHandlerTest {
     @DisplayName("handle — round is closed — propagates ActionRoundClosedException")
     void handleRoundClosed() {
         // given
-        given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumber(GAME_ID, ERA, ROUND))
+        given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA, ROUND))
                 .willReturn(Optional.of(round));
         given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(playerState));
         given(playerState.faction()).willReturn(Faction.PROPHETS);
@@ -209,7 +209,7 @@ class PlaySpecialActionCommandHandlerTest {
     @DisplayName("handle — player already submitted — propagates DuplicateSubmissionException")
     void handleDuplicateSubmission() {
         // given
-        given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumber(GAME_ID, ERA, ROUND))
+        given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA, ROUND))
                 .willReturn(Optional.of(round));
         given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(playerState));
         given(playerState.faction()).willReturn(Faction.PROPHETS);
@@ -230,7 +230,7 @@ class PlaySpecialActionCommandHandlerTest {
         // given
         var command = new PlaySpecialActionUseCase.Command(
                 GAME_ID, ERA, ROUND, PLAYER_ID, SpecialAction.CORRUPT, null, null, UUID.randomUUID());
-        given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumber(GAME_ID, ERA, ROUND))
+        given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA, ROUND))
                 .willReturn(Optional.of(round));
         given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(playerState));
         given(playerState.faction()).willReturn(Faction.ERASERS);

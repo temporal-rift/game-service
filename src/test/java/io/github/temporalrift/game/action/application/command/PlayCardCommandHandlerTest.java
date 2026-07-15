@@ -71,7 +71,7 @@ class PlayCardCommandHandlerTest {
         var cardInstanceId = UUID.randomUUID();
         var command = new PlayCardUseCase.Command(
                 GAME_ID, ERA, ROUND, PLAYER_ID, cardInstanceId, UUID.randomUUID(), null, UUID.randomUUID());
-        given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumber(GAME_ID, ERA, ROUND))
+        given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA, ROUND))
                 .willReturn(Optional.of(round));
         given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(playerState));
         given(playerState.hand()).willReturn(List.of(new PlayerState.CardInstance(cardInstanceId, CardType.PUSH)));
@@ -102,7 +102,7 @@ class PlayCardCommandHandlerTest {
         // given
         var cardInstanceId = UUID.randomUUID();
         var command = new PlayCardUseCase.Command(GAME_ID, ERA, ROUND, PLAYER_ID, cardInstanceId, null, null, null);
-        given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumber(GAME_ID, ERA, ROUND))
+        given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA, ROUND))
                 .willReturn(Optional.of(round));
         given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(playerState));
         given(playerState.hand()).willReturn(List.of(new PlayerState.CardInstance(cardInstanceId, CardType.PUSH)));
@@ -124,7 +124,7 @@ class PlayCardCommandHandlerTest {
     @DisplayName("handle — round not found — throws RoundNotFoundException")
     void handleRoundNotFound() {
         // given
-        given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumber(GAME_ID, ERA, ROUND))
+        given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA, ROUND))
                 .willReturn(Optional.empty());
         var command = new PlayCardUseCase.Command(GAME_ID, ERA, ROUND, PLAYER_ID, UUID.randomUUID(), null, null, null);
 
@@ -136,7 +136,7 @@ class PlayCardCommandHandlerTest {
     @DisplayName("handle — player state not found — throws PlayerStateNotFoundException")
     void handlePlayerStateNotFound() {
         // given
-        given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumber(GAME_ID, ERA, ROUND))
+        given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA, ROUND))
                 .willReturn(Optional.of(round));
         given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.empty());
         var command = new PlayCardUseCase.Command(GAME_ID, ERA, ROUND, PLAYER_ID, UUID.randomUUID(), null, null, null);
@@ -149,7 +149,7 @@ class PlayCardCommandHandlerTest {
     @DisplayName("handle — round is closed — propagates ActionRoundClosedException")
     void handleRoundClosed() {
         // given
-        given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumber(GAME_ID, ERA, ROUND))
+        given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA, ROUND))
                 .willReturn(Optional.of(round));
         given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(playerState));
         given(playerState.hand()).willReturn(List.of(new PlayerState.CardInstance(CARD_INSTANCE_ID, CardType.PUSH)));
@@ -166,7 +166,7 @@ class PlayCardCommandHandlerTest {
     @DisplayName("handle — card not in hand — propagates CardNotInHandException")
     void handleCardNotInHand() {
         // given
-        given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumber(GAME_ID, ERA, ROUND))
+        given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA, ROUND))
                 .willReturn(Optional.of(round));
         given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(playerState));
         given(playerState.hand()).willReturn(List.of());
@@ -181,7 +181,7 @@ class PlayCardCommandHandlerTest {
     @DisplayName("handle — player already submitted — propagates DuplicateSubmissionException")
     void handleDuplicateSubmission() {
         // given
-        given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumber(GAME_ID, ERA, ROUND))
+        given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA, ROUND))
                 .willReturn(Optional.of(round));
         given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(playerState));
         given(playerState.hand()).willReturn(List.of(new PlayerState.CardInstance(CARD_INSTANCE_ID, CardType.PUSH)));
@@ -200,7 +200,7 @@ class PlayCardCommandHandlerTest {
         // given
         var c1 = new PlayerState.CardInstance(UUID.randomUUID(), CardType.PUSH);
         var c2 = new PlayerState.CardInstance(UUID.randomUUID(), CardType.JAM);
-        given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumber(GAME_ID, ERA, ROUND))
+        given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA, ROUND))
                 .willReturn(Optional.of(round));
         given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(playerState));
         given(playerState.hand()).willReturn(List.of(c1, c2));
@@ -239,7 +239,7 @@ class PlayCardCommandHandlerTest {
         var targetOutcomeId = UUID.randomUUID();
         var command = new PlayCardUseCase.Command(
                 GAME_ID, ERA, ROUND, PLAYER_ID, cardInstanceId, UUID.randomUUID(), sourceOutcomeId, targetOutcomeId);
-        given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumber(GAME_ID, ERA, ROUND))
+        given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA, ROUND))
                 .willReturn(Optional.of(round));
         given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(playerState));
         given(playerState.hand()).willReturn(List.of(new PlayerState.CardInstance(cardInstanceId, CardType.SWING)));

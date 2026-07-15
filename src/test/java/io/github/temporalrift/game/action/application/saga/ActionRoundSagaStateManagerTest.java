@@ -72,7 +72,7 @@ class ActionRoundSagaStateManagerTest {
                 ActionRoundSagaStatus.WAITING,
                 List.of(PLAYER_1, PLAYER_2),
                 TIMER_EXPIRES_AT);
-        given(repository.findByGameIdAndEraNumberAndRoundNumber(GAME_ID, ERA_NUMBER, ROUND_NUMBER))
+        given(repository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA_NUMBER, ROUND_NUMBER))
                 .willReturn(Optional.of(state));
         given(repository.save(any(ActionRoundSagaState.class))).willAnswer(invocation -> invocation.getArgument(0));
 
@@ -96,7 +96,7 @@ class ActionRoundSagaStateManagerTest {
                 ActionRoundSagaStatus.CLOSING,
                 List.of(PLAYER_1),
                 TIMER_EXPIRES_AT);
-        given(repository.findByGameIdAndEraNumberAndRoundNumber(GAME_ID, ERA_NUMBER, ROUND_NUMBER))
+        given(repository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA_NUMBER, ROUND_NUMBER))
                 .willReturn(Optional.of(state));
 
         // when
