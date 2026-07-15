@@ -47,7 +47,7 @@ class EraScoreEvaluator {
                         var reason = fact.writtenOutcomeId().equals(outcome.winningOutcomeId())
                                 ? ScoreReason.EVENT_RESOLVED_AS_WRITTEN
                                 : ScoreReason.EVENT_RESOLVED_DIFFERENTLY_THAN_WRITTEN;
-                        decisions.add(new PlayerScoreDecision(playerId, reason));
+                        decisions.add(new PlayerScoreDecision(playerId, reason, context.eraNumber()));
                     });
         }
         return decisions;
@@ -57,7 +57,8 @@ class EraScoreEvaluator {
         boolean anyFewer = context.eventOutcomes().stream()
                 .anyMatch(fact -> fact.endingOutcomeCount() < fact.startingOutcomeCount());
         if (anyFewer) {
-            return List.of(new PlayerScoreDecision(playerId, ScoreReason.ERA_ENDED_WITH_FEWER_OUTCOMES));
+            return List.of(
+                    new PlayerScoreDecision(playerId, ScoreReason.ERA_ENDED_WITH_FEWER_OUTCOMES, context.eraNumber()));
         }
         return List.of();
     }
@@ -65,14 +66,14 @@ class EraScoreEvaluator {
     private List<PlayerScoreDecision> weaverDecisions(UUID playerId, EraScoringContext context) {
         return context.chainFacts().stream()
                 .filter(fact -> fact.playerId().equals(playerId))
-                .map(fact -> new PlayerScoreDecision(playerId, fact.reason()))
+                .map(fact -> new PlayerScoreDecision(playerId, fact.reason(), fact.eraNumber()))
                 .toList();
     }
 
     private List<PlayerScoreDecision> actionDecisions(UUID playerId, EraScoringContext context) {
         return context.actionFacts().stream()
                 .filter(fact -> fact.playerId().equals(playerId))
-                .map(fact -> new PlayerScoreDecision(playerId, fact.reason()))
+                .map(fact -> new PlayerScoreDecision(playerId, fact.reason(), context.eraNumber()))
                 .toList();
     }
 

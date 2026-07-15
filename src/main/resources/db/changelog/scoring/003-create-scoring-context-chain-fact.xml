@@ -22,6 +22,9 @@
             <column name="reason" type="VARCHAR(50)">
                 <constraints nullable="false"/>
             </column>
+            <column name="era_number" type="INT">
+                <constraints nullable="false"/>
+            </column>
             <column name="consumed" type="BOOLEAN">
                 <constraints nullable="false"/>
             </column>

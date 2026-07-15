@@ -82,7 +82,7 @@ class UpdateScoresCommandHandlerTest {
                 List.of(new PlayerFaction(weaverId, Faction.WEAVERS), new PlayerFaction(eraserId, Faction.ERASERS)),
                 List.of(new EventOutcomeFact(UUID.randomUUID(), UUID.randomUUID(), null, 3, 3)),
                 List.of(),
-                List.of(new ChainScoringFact(weaverId, chainId, ScoreReason.CHAIN_COMPLETED)));
+                List.of(new ChainScoringFact(weaverId, chainId, ScoreReason.CHAIN_COMPLETED, ERA)));
 
         var handler = handler(context, List.<PlayerScore>of());
         handler.handle(new UpdateEraScoresCommand(GAME_ID, ERA, List.of()));
@@ -118,7 +118,7 @@ class UpdateScoresCommandHandlerTest {
                 List.of(new PlayerFaction(weaverId, Faction.WEAVERS)),
                 List.of(),
                 List.of(),
-                List.of(new ChainScoringFact(weaverId, chainId, ScoreReason.CHAIN_BROKEN)));
+                List.of(new ChainScoringFact(weaverId, chainId, ScoreReason.CHAIN_BROKEN, ERA)));
 
         var handler = handler(context, List.<PlayerScore>of());
         handler.handle(new UpdateEraScoresCommand(GAME_ID, ERA, List.of()));
@@ -156,6 +156,35 @@ class UpdateScoresCommandHandlerTest {
         var update = event.updates().get(0);
         assertThat(update.newTotal()).isEqualTo(8); // 4 + 4 (DECLARED_OUTCOME_WON)
         assertThat(update.pointsDelta()).isEqualTo(4);
+    }
+
+    @Test
+    @DisplayName("stamps player_score_history with the chain fact's own era, not the scoring pass's era")
+    void chainFactHistoryEntryUsesFactsOwnEraNotCommandEra() {
+        var weaverId = UUID.randomUUID();
+        var chainId = UUID.randomUUID();
+        var scoringPassEra = 3;
+        var factOwnEra = 1;
+
+        var context = new EraScoringContext(
+                GAME_ID,
+                scoringPassEra,
+                List.of(new PlayerFaction(weaverId, Faction.WEAVERS)),
+                List.of(),
+                List.of(),
+                List.of(new ChainScoringFact(weaverId, chainId, ScoreReason.CHAIN_COMPLETED, factOwnEra)));
+
+        var savedScores = new ArrayList<PlayerScore>();
+        PlayerScoreRepository repo = new FakePlayerScoreRepository(List.of(), savedScores);
+        EraScoringContextRepository ctxRepo = new FakeEraScoringContextRepository(context);
+
+        var handler =
+                new UpdateScoresCommandHandler(repo, ctxRepo, new EraScoreEvaluator(), scoringPublisher, appPublisher);
+        handler.handle(new UpdateEraScoresCommand(GAME_ID, scoringPassEra, List.of()));
+
+        assertThat(savedScores).hasSize(1);
+        assertThat(savedScores.get(0).history()).hasSize(1);
+        assertThat(savedScores.get(0).history().get(0).eraNumber()).isEqualTo(factOwnEra);
     }
 
     private EraScoringContext contextWithEraserPlayer(UUID playerId) {
@@ -230,7 +259,7 @@ class UpdateScoresCommandHandlerTest {
         }
 
         @Override
-        public void recordChainFact(UUID gameId, UUID playerId, UUID chainId, ScoreReason reason) {
+        public void recordChainFact(UUID gameId, UUID playerId, UUID chainId, ScoreReason reason, int eraNumber) {
             throw new UnsupportedOperationException("not used by UpdateScoresCommandHandler");
         }
     }

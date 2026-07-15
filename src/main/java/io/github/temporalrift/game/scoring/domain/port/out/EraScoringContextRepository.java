@@ -16,5 +16,5 @@ public interface EraScoringContextRepository {
 
     void upsertExpectedOutcomeCount(UUID gameId, int eraNumber, int expectedOutcomeCount);
 
-    void recordChainFact(UUID gameId, UUID playerId, UUID chainId, ScoreReason reason);
+    void recordChainFact(UUID gameId, UUID playerId, UUID chainId, ScoreReason reason, int eraNumber);
 }

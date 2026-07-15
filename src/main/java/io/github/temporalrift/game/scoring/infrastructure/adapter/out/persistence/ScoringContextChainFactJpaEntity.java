@@ -16,6 +16,9 @@ class ScoringContextChainFactJpaEntity extends GamePlayerScopedJpaEntity {
     @Column(name = "reason", nullable = false)
     private String reason;
 
+    @Column(name = "era_number", nullable = false)
+    private int eraNumber;
+
     @Column(name = "consumed", nullable = false)
     private boolean consumed;
 
@@ -35,6 +38,14 @@ class ScoringContextChainFactJpaEntity extends GamePlayerScopedJpaEntity {
 
     void setReason(String reason) {
         this.reason = reason;
+    }
+
+    int getEraNumber() {
+        return eraNumber;
+    }
+
+    void setEraNumber(int eraNumber) {
+        this.eraNumber = eraNumber;
     }
 
     boolean isConsumed() {

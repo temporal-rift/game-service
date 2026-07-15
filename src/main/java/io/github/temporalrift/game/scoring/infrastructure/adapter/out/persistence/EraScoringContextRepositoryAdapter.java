@@ -43,7 +43,10 @@ class EraScoringContextRepositoryAdapter implements EraScoringContextRepository 
         var unconsumedChainFacts = chainFactJpaRepository.findAllByGameIdAndConsumedFalseWithLock(gameId);
         var chainFacts = unconsumedChainFacts.stream()
                 .map(entity -> new ChainScoringFact(
-                        entity.getPlayerId(), entity.getChainId(), ScoreReason.valueOf(entity.getReason())))
+                        entity.getPlayerId(),
+                        entity.getChainId(),
+                        ScoreReason.valueOf(entity.getReason()),
+                        entity.getEraNumber()))
                 .toList();
         unconsumedChainFacts.forEach(entity -> entity.setConsumed(true));
         chainFactJpaRepository.saveAll(unconsumedChainFacts);
@@ -88,13 +91,14 @@ class EraScoringContextRepositoryAdapter implements EraScoringContextRepository 
     }
 
     @Override
-    public void recordChainFact(UUID gameId, UUID playerId, UUID chainId, ScoreReason reason) {
+    public void recordChainFact(UUID gameId, UUID playerId, UUID chainId, ScoreReason reason, int eraNumber) {
         var entity = new ScoringContextChainFactJpaEntity();
         entity.setId(UUID.randomUUID());
         entity.setGameId(gameId);
         entity.setPlayerId(playerId);
         entity.setChainId(chainId);
         entity.setReason(reason.name());
+        entity.setEraNumber(eraNumber);
         entity.setConsumed(false);
         chainFactJpaRepository.save(entity);
     }

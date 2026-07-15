@@ -44,7 +44,7 @@ class TimelineScoringKafkaConsumerIT {
 
         contextRepository.upsertPlayerFaction(gameId, playerId, Faction.WEAVERS);
         contextRepository.upsertExpectedOutcomeCount(gameId, eraNumber, 1);
-        contextRepository.recordChainFact(gameId, playerId, chainId, ScoreReason.CHAIN_LINK_ADDED);
+        contextRepository.recordChainFact(gameId, playerId, chainId, ScoreReason.CHAIN_LINK_ADDED, eraNumber);
 
         var outcome = new OutcomeApplied(gameId, eraNumber, UUID.randomUUID(), UUID.randomUUID(), List.of());
         var envelope = EventEnvelope.create(gameId, "FutureEvent", gameId, 1, outcome);
