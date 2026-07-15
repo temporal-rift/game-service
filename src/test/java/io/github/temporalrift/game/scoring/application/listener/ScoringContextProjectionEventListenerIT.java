@@ -45,6 +45,7 @@ class ScoringContextProjectionEventListenerIT {
                 applicationEventPublisher.publishEvent(new FactionAssigned(gameId, playerId, Faction.PROPHETS.name())));
 
         await().atMost(Duration.ofSeconds(10))
+                .ignoreException(EraScoringContextNotFoundException.class)
                 .untilAsserted(() -> assertThat(
                                 contextRepository.getRequired(gameId, 1).players())
                         .containsExactly(new PlayerFaction(playerId, Faction.PROPHETS)));
@@ -65,6 +66,7 @@ class ScoringContextProjectionEventListenerIT {
         transactionTemplate.executeWithoutResult(_ -> applicationEventPublisher.publishEvent(event));
 
         await().atMost(Duration.ofSeconds(10))
+                .ignoreException(EraScoringContextNotFoundException.class)
                 .untilAsserted(() -> assertThat(contextRepository.expectedOutcomeCount(gameId, eraNumber))
                         .isEqualTo(3));
     }
