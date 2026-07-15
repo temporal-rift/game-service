@@ -47,6 +47,7 @@ class EraScoreEvaluatorTest {
         assertThat(decisions).hasSize(1);
         assertThat(decisions.get(0).playerId()).isEqualTo(prophetId);
         assertThat(decisions.get(0).reason()).isEqualTo(ScoreReason.EVENT_RESOLVED_AS_WRITTEN);
+        assertThat(decisions.get(0).eraNumber()).isEqualTo(ERA);
     }
 
     @Test
@@ -113,6 +114,7 @@ class EraScoreEvaluatorTest {
 
         assertThat(decisions).hasSize(1);
         assertThat(decisions.get(0).reason()).isEqualTo(ScoreReason.ERA_ENDED_WITH_FEWER_OUTCOMES);
+        assertThat(decisions.get(0).eraNumber()).isEqualTo(ERA);
     }
 
     @Test
@@ -212,6 +214,7 @@ class EraScoreEvaluatorTest {
 
         assertThat(decisions).hasSize(1);
         assertThat(decisions.get(0).reason()).isEqualTo(ScoreReason.DECLARED_OUTCOME_WON);
+        assertThat(decisions.get(0).eraNumber()).isEqualTo(ERA);
     }
 
     @Test
