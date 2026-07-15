@@ -151,11 +151,11 @@ class TimelineScoringKafkaConsumerTest {
     }
 
     @Test
-    @DisplayName("ChainCompleted — records a chain fact for the completing player")
+    @DisplayName("ChainCompleted — records a chain fact for the completing player, stamped with the event's own era")
     void handle_chainCompleted_recordsChainFact() {
         var playerId = UUID.randomUUID();
         var chainId = UUID.randomUUID();
-        var chainCompleted = new ChainCompleted(GAME_ID, chainId, playerId, List.of());
+        var chainCompleted = new ChainCompleted(GAME_ID, 2, chainId, playerId, List.of());
         var envelope = EventEnvelope.create(GAME_ID, "WeaverChain", GAME_ID, 1, chainCompleted);
         given(processedEventRepository.tryMarkProcessed(envelope.eventId(), "scoring.timeline-events"))
                 .willReturn(true);
@@ -164,16 +164,17 @@ class TimelineScoringKafkaConsumerTest {
 
         consumer.handle(envelope);
 
-        then(contextRepository).should().recordChainFact(GAME_ID, playerId, chainId, ScoreReason.CHAIN_COMPLETED);
+        then(contextRepository).should().recordChainFact(GAME_ID, playerId, chainId, ScoreReason.CHAIN_COMPLETED, 2);
     }
 
     @Test
-    @DisplayName("ChainBroken — records a chain fact for the chain owner, not the breaker")
+    @DisplayName(
+            "ChainBroken — records a chain fact for the chain owner, not the breaker, stamped with the event's own era")
     void handle_chainBroken_recordsChainFactForTargetPlayer() {
         var brokenByPlayerId = UUID.randomUUID();
         var targetPlayerId = UUID.randomUUID();
         var chainId = UUID.randomUUID();
-        var chainBroken = new ChainBroken(GAME_ID, chainId, brokenByPlayerId, targetPlayerId, 2);
+        var chainBroken = new ChainBroken(GAME_ID, 3, chainId, brokenByPlayerId, targetPlayerId, 2);
         var envelope = EventEnvelope.create(GAME_ID, "WeaverChain", GAME_ID, 1, chainBroken);
         given(processedEventRepository.tryMarkProcessed(envelope.eventId(), "scoring.timeline-events"))
                 .willReturn(true);
@@ -181,7 +182,7 @@ class TimelineScoringKafkaConsumerTest {
 
         consumer.handle(envelope);
 
-        then(contextRepository).should().recordChainFact(GAME_ID, targetPlayerId, chainId, ScoreReason.CHAIN_BROKEN);
+        then(contextRepository).should().recordChainFact(GAME_ID, targetPlayerId, chainId, ScoreReason.CHAIN_BROKEN, 3);
     }
 
     private void assertThatCommand(UpdateEraScoresCommand command) {

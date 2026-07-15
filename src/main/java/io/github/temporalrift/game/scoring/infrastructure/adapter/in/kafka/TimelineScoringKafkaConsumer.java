@@ -101,12 +101,12 @@ class TimelineScoringKafkaConsumer {
     private void handleChainCompleted(EventEnvelope envelope) {
         var event = objectMapper.convertValue(envelope.payload(), ChainCompleted.class);
         contextRepository.recordChainFact(
-                event.gameId(), event.playerId(), event.chainId(), ScoreReason.CHAIN_COMPLETED);
+                event.gameId(), event.playerId(), event.chainId(), ScoreReason.CHAIN_COMPLETED, event.eraNumber());
     }
 
     private void handleChainBroken(EventEnvelope envelope) {
         var event = objectMapper.convertValue(envelope.payload(), ChainBroken.class);
         contextRepository.recordChainFact(
-                event.gameId(), event.targetPlayerId(), event.chainId(), ScoreReason.CHAIN_BROKEN);
+                event.gameId(), event.targetPlayerId(), event.chainId(), ScoreReason.CHAIN_BROKEN, event.eraNumber());
     }
 }

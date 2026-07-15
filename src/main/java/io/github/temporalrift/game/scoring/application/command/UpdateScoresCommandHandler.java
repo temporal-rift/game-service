@@ -63,7 +63,7 @@ public class UpdateScoresCommandHandler {
         for (var decision : decisions) {
             var score = scoresByPlayer.get(decision.playerId());
             if (score != null) {
-                score.apply(command.eraNumber(), decision.reason());
+                score.apply(decision.eraNumber(), decision.reason());
             }
         }
 

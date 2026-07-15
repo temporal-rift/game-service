@@ -97,12 +97,15 @@ class ScoringPersistenceIT {
         chainFact.setPlayerId(playerId);
         chainFact.setChainId(chainId);
         chainFact.setReason(ScoreReason.CHAIN_COMPLETED.name());
+        chainFact.setEraNumber(5);
         chainFact.setConsumed(false);
         chainFactJpaRepository.save(chainFact);
 
+        // getRequired is called for era 1, but the fact keeps its own era (5) — proves consuming a
+        // fact during a later scoring pass doesn't misattribute it to that pass's era.
         var firstContext = contextRepository.getRequired(gameId, 1);
         assertThat(firstContext.chainFacts())
-                .containsExactly(new ChainScoringFact(playerId, chainId, ScoreReason.CHAIN_COMPLETED));
+                .containsExactly(new ChainScoringFact(playerId, chainId, ScoreReason.CHAIN_COMPLETED, 5));
 
         var secondContext = contextRepository.getRequired(gameId, 2);
         assertThat(secondContext.chainFacts()).isEmpty();

@@ -57,6 +57,7 @@ class EraScoringContextRepositoryAdapterTest {
         chainFactEntity.setPlayerId(playerId);
         chainFactEntity.setChainId(chainId);
         chainFactEntity.setReason(ScoreReason.CHAIN_COMPLETED.name());
+        chainFactEntity.setEraNumber(1);
         chainFactEntity.setConsumed(false);
         given(chainFactJpaRepository.findAllByGameIdAndConsumedFalseWithLock(gameId))
                 .willReturn(List.of(chainFactEntity));
@@ -67,7 +68,7 @@ class EraScoringContextRepositoryAdapterTest {
         assertThat(context.eraNumber()).isEqualTo(2);
         assertThat(context.players()).containsExactly(new PlayerFaction(playerId, Faction.WEAVERS));
         assertThat(context.chainFacts())
-                .containsExactly(new ChainScoringFact(playerId, chainId, ScoreReason.CHAIN_COMPLETED));
+                .containsExactly(new ChainScoringFact(playerId, chainId, ScoreReason.CHAIN_COMPLETED, 1));
         assertThat(context.eventOutcomes()).isEmpty();
         assertThat(context.actionFacts()).isEmpty();
     }
@@ -108,6 +109,26 @@ class EraScoringContextRepositoryAdapterTest {
         assertThatThrownBy(() -> adapter.getRequired(gameId, 1)).isInstanceOf(EraScoringContextNotFoundException.class);
 
         then(chainFactJpaRepository).should(never()).findAllByGameIdAndConsumedFalseWithLock(any());
+    }
+
+    @Test
+    void recordChainFact_persistsUnconsumedFactWithItsOwnEraNumber() {
+        var gameId = UUID.randomUUID();
+        var playerId = UUID.randomUUID();
+        var chainId = UUID.randomUUID();
+
+        adapter.recordChainFact(gameId, playerId, chainId, ScoreReason.CHAIN_BROKEN, 2);
+
+        var captor = ArgumentCaptor.forClass(ScoringContextChainFactJpaEntity.class);
+        then(chainFactJpaRepository).should().save(captor.capture());
+        var saved = captor.getValue();
+        assertThat(saved.getId()).isNotNull();
+        assertThat(saved.getGameId()).isEqualTo(gameId);
+        assertThat(saved.getPlayerId()).isEqualTo(playerId);
+        assertThat(saved.getChainId()).isEqualTo(chainId);
+        assertThat(saved.getReason()).isEqualTo(ScoreReason.CHAIN_BROKEN.name());
+        assertThat(saved.getEraNumber()).isEqualTo(2);
+        assertThat(saved.isConsumed()).isFalse();
     }
 
     @Test

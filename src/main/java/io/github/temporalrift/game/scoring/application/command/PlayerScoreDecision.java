@@ -4,4 +4,4 @@ import java.util.UUID;
 
 import io.github.temporalrift.game.scoring.domain.playerscore.ScoreReason;
 
-record PlayerScoreDecision(UUID playerId, ScoreReason reason) {}
+record PlayerScoreDecision(UUID playerId, ScoreReason reason, int eraNumber) {}

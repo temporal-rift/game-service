@@ -145,7 +145,7 @@ class EraScoreEvaluatorTest {
                 List.of(new PlayerFaction(weaverId, Faction.WEAVERS)),
                 List.of(),
                 List.of(),
-                List.of(new ChainScoringFact(weaverId, chainId, ScoreReason.CHAIN_COMPLETED)));
+                List.of(new ChainScoringFact(weaverId, chainId, ScoreReason.CHAIN_COMPLETED, ERA)));
 
         var decisions = evaluator.evaluate(context, List.of());
 
@@ -165,12 +165,34 @@ class EraScoreEvaluatorTest {
                 List.of(new PlayerFaction(weaverId, Faction.WEAVERS)),
                 List.of(),
                 List.of(),
-                List.of(new ChainScoringFact(weaverId, chainId, ScoreReason.CHAIN_BROKEN)));
+                List.of(new ChainScoringFact(weaverId, chainId, ScoreReason.CHAIN_BROKEN, ERA)));
 
         var decisions = evaluator.evaluate(context, List.of());
 
         assertThat(decisions).hasSize(1);
         assertThat(decisions.get(0).reason()).isEqualTo(ScoreReason.CHAIN_BROKEN);
+    }
+
+    @Test
+    @DisplayName("weaver chain-fact decision is stamped with the fact's own era, not the scoring pass's era")
+    void weaverChainDecisionUsesFactsOwnEra() {
+        var weaverId = UUID.randomUUID();
+        var chainId = UUID.randomUUID();
+        var scoringPassEra = 3;
+        var factOwnEra = 2;
+
+        var context = new EraScoringContext(
+                GAME_ID,
+                scoringPassEra,
+                List.of(new PlayerFaction(weaverId, Faction.WEAVERS)),
+                List.of(),
+                List.of(),
+                List.of(new ChainScoringFact(weaverId, chainId, ScoreReason.CHAIN_COMPLETED, factOwnEra)));
+
+        var decisions = evaluator.evaluate(context, List.of());
+
+        assertThat(decisions).hasSize(1);
+        assertThat(decisions.get(0).eraNumber()).isEqualTo(factOwnEra);
     }
 
     @Test
@@ -206,8 +228,8 @@ class EraScoreEvaluatorTest {
                 List.of(),
                 List.of(),
                 List.of(
-                        new ChainScoringFact(id2, chainId, ScoreReason.CHAIN_COMPLETED),
-                        new ChainScoringFact(id1, chainId, ScoreReason.CHAIN_LINK_ADDED)));
+                        new ChainScoringFact(id2, chainId, ScoreReason.CHAIN_COMPLETED, ERA),
+                        new ChainScoringFact(id1, chainId, ScoreReason.CHAIN_LINK_ADDED, ERA)));
 
         var decisions = evaluator.evaluate(context, List.of());
 
