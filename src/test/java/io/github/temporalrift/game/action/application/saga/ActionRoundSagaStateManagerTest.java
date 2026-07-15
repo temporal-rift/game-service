@@ -77,7 +77,9 @@ class ActionRoundSagaStateManagerTest {
         given(repository.save(any(ActionRoundSagaState.class))).willAnswer(invocation -> invocation.getArgument(0));
 
         // when
-        var updated = stateManager.markSubmitted(GAME_ID, ERA_NUMBER, ROUND_NUMBER, PLAYER_1);
+        var updated = stateManager
+                .markSubmitted(GAME_ID, ERA_NUMBER, ROUND_NUMBER, PLAYER_1)
+                .orElseThrow();
 
         // then
         then(repository).should().save(argThat(saved -> saved.pendingPlayerIds().equals(List.of(PLAYER_2))));
@@ -103,7 +105,22 @@ class ActionRoundSagaStateManagerTest {
         var updated = stateManager.markSubmitted(GAME_ID, ERA_NUMBER, ROUND_NUMBER, PLAYER_1);
 
         // then
-        assertThat(updated).isEqualTo(state);
+        assertThat(updated).contains(state);
+        then(repository).should(never()).save(any());
+    }
+
+    @Test
+    @DisplayName("markSubmitted returns empty without saving when the saga row is missing")
+    void markSubmitted_missingSaga_returnsEmptyWithoutSaving() {
+        // given
+        given(repository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA_NUMBER, ROUND_NUMBER))
+                .willReturn(Optional.empty());
+
+        // when
+        var updated = stateManager.markSubmitted(GAME_ID, ERA_NUMBER, ROUND_NUMBER, PLAYER_1);
+
+        // then
+        assertThat(updated).isEmpty();
         then(repository).should(never()).save(any());
     }
 

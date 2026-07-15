@@ -73,11 +73,12 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
     @Override
     @Transactional(propagation = REQUIRES_NEW)
     public void handlePlayerSubmitted(UUID gameId, int eraNumber, int roundNumber, UUID playerId) {
-        var updatedState = stateManager.markSubmitted(gameId, eraNumber, roundNumber, playerId);
-        if (!updatedState.pendingPlayerIds().isEmpty()) {
-            return;
-        }
-        tryClose(gameId, eraNumber, roundNumber, "ALL_SUBMITTED");
+        // A missing saga yields Optional.empty() and must never be treated as "all submitted": only an
+        // existing saga whose pending list is now empty may trigger the ALL_SUBMITTED close.
+        stateManager
+                .markSubmitted(gameId, eraNumber, roundNumber, playerId)
+                .filter(state -> state.pendingPlayerIds().isEmpty())
+                .ifPresent(state -> tryClose(gameId, eraNumber, roundNumber, "ALL_SUBMITTED"));
     }
 
     void handleTimerExpiry(UUID sagaId) {
