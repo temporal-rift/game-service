@@ -104,12 +104,12 @@ class ActionPersistenceIT {
 
     @Test
     @Transactional
-    void actionRound_findByGameIdAndEraNumberAndRoundNumberWithLock_returnsRound() {
+    void actionRound_findByIdWithLock_returnsRound() {
         var gameId = UUID.randomUUID();
         var round = new ActionRound(UUID.randomUUID(), gameId, 1, 1, List.of(UUID.randomUUID()), 60);
         actionRoundRepository.save(round);
 
-        var loaded = actionRoundRepository.findByIdForUpdate(round.id());
+        var loaded = actionRoundRepository.findByIdWithLock(round.id());
 
         assertThat(loaded).isPresent();
         assertThat(loaded.get().id()).isEqualTo(round.id());
