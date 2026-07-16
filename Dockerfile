@@ -7,6 +7,9 @@ RUN mvn package -DskipTests -q -Dspotless.skip=true -Dcheckstyle.skip=true
 
 FROM eclipse-temurin:26
 WORKDIR /app
+RUN groupadd --system app && useradd --system --gid app --no-create-home app
 COPY --from=build /app/target/*.jar app.jar
+RUN chown app:app app.jar
 EXPOSE 8080
+USER app
 ENTRYPOINT ["java", "-Djava.security.egd=file:/dev/./urandom", "-jar", "app.jar"]
