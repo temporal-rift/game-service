@@ -386,6 +386,7 @@ class ActionRoundTest {
         var events = round.pullEvents();
         assertThat(events)
                 .filteredOn(PlayerSkipped.class::isInstance)
+                .hasSize(2)
                 .allSatisfy(
                         event -> assertThat(((PlayerSkipped) event).reason()).isEqualTo("HOST_ABORTED"));
     }
