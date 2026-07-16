@@ -59,6 +59,16 @@ game:
       3: 60
       4: 45
       5: 30
+    stabilization-winner-factions:
+      - PROPHETS
+      - WEAVERS
+    bands:
+      card-shifts:
+        PUSH: 20
+        SUPPRESS: -20
+      swing-shift: 30
+      low-max-probability: 30
+      medium-max-probability: 60
 
 logging:
   level:

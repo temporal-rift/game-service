@@ -6,7 +6,6 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
-import java.util.Set;
 import java.util.UUID;
 
 import org.springframework.context.ApplicationEventPublisher;
@@ -22,7 +21,6 @@ import io.github.temporalrift.events.session.EraStarted;
 import io.github.temporalrift.events.session.GameEndedAbnormally;
 import io.github.temporalrift.events.session.TimelineStabilized;
 import io.github.temporalrift.events.session.WinConditionMet;
-import io.github.temporalrift.events.shared.Faction;
 import io.github.temporalrift.events.timeline.ResolutionStarted;
 import io.github.temporalrift.game.action.StartActionRoundRequested;
 import io.github.temporalrift.game.session.domain.game.Game;
@@ -39,7 +37,6 @@ import io.github.temporalrift.game.session.domain.saga.EraSagaStatus;
 class EraSagaAdvancer {
 
     private static final int FINAL_ROUND = 3;
-    private static final Set<Faction> STABILIZATION_WINNERS = Set.of(Faction.PROPHETS, Faction.WEAVERS);
 
     private final EraSagaRepository eraSagaRepository;
     private final GameRepository gameRepository;
@@ -173,7 +170,7 @@ class EraSagaAdvancer {
         for (var update : su.updates()) {
             var result = new TimelineStabilized.PlayerFactionResult(
                     update.playerId(), update.faction().name(), null);
-            if (STABILIZATION_WINNERS.contains(update.faction())) {
+            if (gameRules.stabilizationWinnerFactions().contains(update.faction())) {
                 winners.add(result);
             } else {
                 losers.add(result);

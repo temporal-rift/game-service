@@ -13,10 +13,17 @@ import io.github.temporalrift.events.timeline.BandedProbabilityPublished;
 import io.github.temporalrift.events.timeline.BandedProbabilityPublished.ProbabilityBand;
 import io.github.temporalrift.game.action.domain.actionround.InvalidActionTargetException;
 import io.github.temporalrift.game.action.domain.actionround.SubmittedAction;
+import io.github.temporalrift.game.action.domain.port.out.BandRulesPort;
 import io.github.temporalrift.game.action.domain.port.out.FutureEventDefinitionPort;
 
 @Component
 class BandCalculator {
+
+    private final BandRulesPort bandRules;
+
+    BandCalculator(BandRulesPort bandRules) {
+        this.bandRules = bandRules;
+    }
 
     List<BandedProbabilityPublished.EventBandState> computeBands(
             List<SubmittedAction> round1Actions,
@@ -67,10 +74,10 @@ class BandCalculator {
     }
 
     private ProbabilityBand assignBand(int probability) {
-        if (probability <= 30) {
+        if (probability <= bandRules.bandLowMaxProbability()) {
             return ProbabilityBand.LOW;
         }
-        if (probability <= 60) {
+        if (probability <= bandRules.bandMediumMaxProbability()) {
             return ProbabilityBand.MEDIUM;
         }
         return ProbabilityBand.HIGH;
@@ -96,24 +103,8 @@ class BandCalculator {
             return;
         }
 
-        var shift =
-                switch (action.cardType()) {
-                    case PUSH -> 20;
-                    case SUPPRESS -> -20;
-                    case AMPLIFY -> 0; // Amplify doubles the next card's effect — handled at resolution time
-                    case INTERCEPT -> 0;
-                    case SCAN -> 0;
-                    case TRACE -> 0;
-                    case DECOY -> 0;
-                    case JAM -> 0;
-                    case STALL -> 0;
-                    case REDIRECT -> 0;
-                    case NULLIFY -> 0;
-                    case COLLIDE -> 0;
-                    case STABILIZE -> 0;
-                    case DETONATE -> 0;
-                    case SWING -> 0;
-                };
+        // Non-shifter cards (Amplify, Jam, etc.) return 0 and are resolved at timeline resolution time.
+        var shift = bandRules.cardShift(action.cardType());
         if (shift != 0) {
             outcomeMap.merge(action.targetOutcomeId(), shift, Integer::sum);
         }
@@ -129,8 +120,8 @@ class BandCalculator {
         if (!outcomeMap.containsKey(action.sourceOutcomeId()) || !outcomeMap.containsKey(action.targetOutcomeId())) {
             return;
         }
-        outcomeMap.merge(action.sourceOutcomeId(), -30, Integer::sum);
-        outcomeMap.merge(action.targetOutcomeId(), 30, Integer::sum);
+        outcomeMap.merge(action.sourceOutcomeId(), -bandRules.swingShift(), Integer::sum);
+        outcomeMap.merge(action.targetOutcomeId(), bandRules.swingShift(), Integer::sum);
     }
 
     @SuppressWarnings("java:S1172")

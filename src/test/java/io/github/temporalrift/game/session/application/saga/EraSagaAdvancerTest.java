@@ -10,6 +10,7 @@ import static org.mockito.Mockito.verify;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 import org.junit.jupiter.api.DisplayName;
@@ -274,6 +275,7 @@ class EraSagaAdvancerTest {
         given(eraSagaRepository.findByGameIdWithLock(GAME_ID)).willReturn(Optional.of(state));
         given(gameRules.winScoreThreshold()).willReturn(WIN_THRESHOLD);
         given(gameRules.maxEras()).willReturn(MAX_ERAS);
+        given(gameRules.stabilizationWinnerFactions()).willReturn(Set.of(Faction.PROPHETS, Faction.WEAVERS));
         // eraCounter == maxEras so endEra() sets ENDED_BY_STABILIZATION
         var game = Game.reconstitute(GAME_ID, LOBBY_ID, List.of(), MAX_ERAS, 0, GameStatus.IN_PROGRESS);
         given(gameRepository.findById(GAME_ID)).willReturn(Optional.of(game));
@@ -323,6 +325,7 @@ class EraSagaAdvancerTest {
         given(gameRules.maxEras()).willReturn(MAX_ERAS);
         var game = Game.reconstitute(GAME_ID, LOBBY_ID, List.of(), MAX_ERAS, 0, GameStatus.IN_PROGRESS);
         given(gameRepository.findById(GAME_ID)).willReturn(Optional.of(game));
+        given(gameRules.stabilizationWinnerFactions()).willReturn(Set.of(Faction.PROPHETS, Faction.WEAVERS));
         var captor = ArgumentCaptor.forClass(Object.class);
 
         // when
@@ -349,6 +352,7 @@ class EraSagaAdvancerTest {
         given(gameRules.maxEras()).willReturn(MAX_ERAS);
         var game = Game.reconstitute(GAME_ID, LOBBY_ID, List.of(), MAX_ERAS, 0, GameStatus.IN_PROGRESS);
         given(gameRepository.findById(GAME_ID)).willReturn(Optional.of(game));
+        given(gameRules.stabilizationWinnerFactions()).willReturn(Set.of(Faction.PROPHETS, Faction.WEAVERS));
 
         var updates = List.of(
                 new ScoresUpdated.ScoreUpdate(PLAYER_1, Faction.PROPHETS, 2, "bonus", 10),

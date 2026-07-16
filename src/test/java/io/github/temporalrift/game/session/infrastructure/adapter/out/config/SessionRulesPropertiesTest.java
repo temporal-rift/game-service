@@ -3,14 +3,17 @@ package io.github.temporalrift.game.session.infrastructure.adapter.out.config;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.Map;
+import java.util.Set;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import io.github.temporalrift.events.shared.Faction;
+
 class SessionRulesPropertiesTest {
 
     static SessionRulesProperties properties(Map<Integer, Integer> timers) {
-        return new SessionRulesProperties(2, 8, 4, 3, 5, 7, 100, 30, timers);
+        return new SessionRulesProperties(2, 8, 4, 3, 5, 7, 100, 30, timers, Set.of(Faction.PROPHETS, Faction.WEAVERS));
     }
 
     @Test

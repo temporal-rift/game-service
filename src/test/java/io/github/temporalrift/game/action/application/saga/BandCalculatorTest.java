@@ -19,6 +19,7 @@ import io.github.temporalrift.events.timeline.BandedProbabilityPublished.Outcome
 import io.github.temporalrift.events.timeline.BandedProbabilityPublished.ProbabilityBand;
 import io.github.temporalrift.game.action.domain.actionround.InvalidActionTargetException;
 import io.github.temporalrift.game.action.domain.actionround.SubmittedAction;
+import io.github.temporalrift.game.action.domain.port.out.BandRulesPort;
 import io.github.temporalrift.game.action.domain.port.out.FutureEventDefinitionPort;
 
 class BandCalculatorTest {
@@ -28,7 +29,34 @@ class BandCalculatorTest {
     static final UUID OUTCOME_2 = UUID.randomUUID();
     static final UUID PLAYER_ID = UUID.randomUUID();
 
-    final BandCalculator calculator = new BandCalculator();
+    // Mirrors the GDD default balance values wired in application.yml (game.rules.bands).
+    static final BandRulesPort GDD_BAND_RULES = new BandRulesPort() {
+        @Override
+        public int cardShift(CardType cardType) {
+            return switch (cardType) {
+                case PUSH -> 20;
+                case SUPPRESS -> -20;
+                default -> 0;
+            };
+        }
+
+        @Override
+        public int swingShift() {
+            return 30;
+        }
+
+        @Override
+        public int bandLowMaxProbability() {
+            return 30;
+        }
+
+        @Override
+        public int bandMediumMaxProbability() {
+            return 60;
+        }
+    };
+
+    final BandCalculator calculator = new BandCalculator(GDD_BAND_RULES);
 
     @Test
     @DisplayName("computeBands applies card shifts cumulatively across both rounds")
