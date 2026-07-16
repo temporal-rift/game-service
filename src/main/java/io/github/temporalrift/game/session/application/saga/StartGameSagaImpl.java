@@ -71,8 +71,12 @@ class StartGameSagaImpl implements StartGameSaga {
         var gameId = lobby.gameId();
         validateStartRequest(lobby, requestingPlayerId);
 
+        // Generated here rather than inside initRunning so it is available to the catch block even
+        // though the RUNNING row it identifies never durably commits — compensate() runs in its own
+        // transaction and cannot see writes from this (about to roll back) one.
+        var sagaId = UUID.randomUUID();
         try {
-            stateManager.initRunning(gameId, lobby.id());
+            stateManager.initRunning(sagaId, gameId, lobby.id());
 
             var assignments = drawFactionAssignments(lobby.currentPlayers());
             applyFactionAssignments(lobby, assignments);
@@ -82,7 +86,7 @@ class StartGameSagaImpl implements StartGameSaga {
             stateManager.complete(gameId, lobby.id());
             return gameId;
         } catch (Exception e) {
-            compensator.compensate(gameId, e.getMessage());
+            compensator.compensate(sagaId, gameId, lobby.id(), e.getMessage());
             throw e;
         }
     }

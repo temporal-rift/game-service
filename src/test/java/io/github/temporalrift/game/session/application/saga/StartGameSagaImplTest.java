@@ -103,17 +103,18 @@ class StartGameSagaImplTest {
         // then
         assertThat(result).isEqualTo(GAME_ID);
         var ordered = inOrder(stateManager, eventPublisher);
-        then(stateManager).should(ordered).initRunning(GAME_ID, LOBBY_ID);
+        then(stateManager).should(ordered).initRunning(any(), eq(GAME_ID), eq(LOBBY_ID));
         then(eventPublisher).should(ordered, times(2)).publish(envelopeWithPayload(FactionAssigned.class));
         then(eventPublisher).should(ordered).publish(envelopeWithPayload(FactionsDrawn.class));
         then(eventPublisher).should(ordered).publish(envelopeWithPayload(GameStarted.class));
         then(eventPublisher).should(ordered).publish(envelopeWithPayload(EraStarted.class));
         then(stateManager).should(ordered).complete(GAME_ID, LOBBY_ID);
-        then(compensator).should(never()).compensate(any(), any());
+        then(compensator).should(never()).compensate(any(), any(), any(), any());
     }
 
     @Test
-    @DisplayName("faction assignment fails — compensate called with gameId, exception rethrown, COMPLETED never saved")
+    @DisplayName("faction assignment fails — compensate called with gameId/lobbyId, exception rethrown, "
+            + "COMPLETED never saved")
     void start_factionAssignmentFails_compensatesAndRethrows() {
         // given
         stubStartableLobby();
@@ -123,8 +124,28 @@ class StartGameSagaImplTest {
 
         // when / then
         assertThatExceptionOfType(RuntimeException.class).isThrownBy(() -> saga.start(LOBBY_ID, REQUESTING_PLAYER_ID));
-        then(compensator).should().compensate(eq(GAME_ID), any());
+        then(compensator).should().compensate(any(), eq(GAME_ID), eq(LOBBY_ID), any());
         then(stateManager).should(never()).complete(any(), any());
+    }
+
+    @Test
+    @DisplayName("compensate receives the same sagaId that was passed to initRunning for this attempt")
+    void start_factionAssignmentFails_compensatesWithSameSagaIdAsInitRunning() {
+        // given
+        stubStartableLobby();
+        given(lobby.id()).willReturn(LOBBY_ID);
+        given(lobby.currentPlayers()).willReturn(TWO_PLAYERS);
+        willThrow(new RuntimeException("duplicate faction")).given(lobby).assignFaction(any(), any());
+
+        // when
+        assertThatExceptionOfType(RuntimeException.class).isThrownBy(() -> saga.start(LOBBY_ID, REQUESTING_PLAYER_ID));
+
+        // then
+        var initRunningSagaId = ArgumentCaptor.forClass(UUID.class);
+        var compensateSagaId = ArgumentCaptor.forClass(UUID.class);
+        then(stateManager).should().initRunning(initRunningSagaId.capture(), eq(GAME_ID), eq(LOBBY_ID));
+        then(compensator).should().compensate(compensateSagaId.capture(), eq(GAME_ID), eq(LOBBY_ID), any());
+        assertThat(compensateSagaId.getValue()).isEqualTo(initRunningSagaId.getValue());
     }
 
     @Test
@@ -139,9 +160,9 @@ class StartGameSagaImplTest {
 
         // when / then
         assertThatExceptionOfType(RuntimeException.class).isThrownBy(() -> saga.start(LOBBY_ID, REQUESTING_PLAYER_ID));
-        then(stateManager).should().initRunning(GAME_ID, LOBBY_ID);
+        then(stateManager).should().initRunning(any(), eq(GAME_ID), eq(LOBBY_ID));
         then(stateManager).should().complete(GAME_ID, LOBBY_ID);
-        then(compensator).should().compensate(eq(GAME_ID), any());
+        then(compensator).should().compensate(any(), eq(GAME_ID), eq(LOBBY_ID), any());
     }
 
     @Test

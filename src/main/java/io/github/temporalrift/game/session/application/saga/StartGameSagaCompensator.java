@@ -2,6 +2,7 @@ package io.github.temporalrift.game.session.application.saga;
 
 import static org.springframework.transaction.annotation.Propagation.REQUIRES_NEW;
 
+import java.util.List;
 import java.util.UUID;
 
 import org.springframework.stereotype.Component;
@@ -14,6 +15,7 @@ import io.github.temporalrift.game.session.domain.lobby.Lobby;
 import io.github.temporalrift.game.session.domain.port.out.LobbyRepository;
 import io.github.temporalrift.game.session.domain.port.out.SessionEventPublisher;
 import io.github.temporalrift.game.session.domain.port.out.StartGameSagaRepository;
+import io.github.temporalrift.game.session.domain.saga.StartGameSagaState;
 import io.github.temporalrift.game.session.domain.saga.StartGameSagaStatus;
 
 @Component
@@ -53,25 +55,21 @@ class StartGameSagaCompensator {
     }
 
     @Transactional(propagation = REQUIRES_NEW)
-    public void compensate(UUID gameId, String reason) {
-        startGameSagaRepository.findByGameIdWithLock(gameId).ifPresent(state -> {
-            startGameSagaRepository.save(state.withStatus(StartGameSagaStatus.COMPENSATING));
+    public void compensate(UUID sagaId, UUID gameId, UUID lobbyId, String reason) {
+        // The RUNNING row start() wrote never commits — its transaction rolls back after this method
+        // returns — so there is nothing to read here. Write the terminal FAILED record directly from
+        // the identifiers the caller already had, instead of looking up state that cannot be visible
+        // to this (separate, REQUIRES_NEW) transaction.
+        startGameSagaRepository.save(
+                new StartGameSagaState(sagaId, gameId, lobbyId, StartGameSagaStatus.FAILED, List.of()));
 
-            var lobby = lobbyRepository
-                    .findById(state.lobbyId())
-                    .orElseThrow(() ->
-                            new IllegalStateException(LOBBY_NOT_FOUND.formatted(state.lobbyId(), state.sagaId())));
-            lobby.resetFactionAssignments();
-            lobbyRepository.save(lobby);
+        var lobby = lobbyRepository
+                .findById(lobbyId)
+                .orElseThrow(() -> new IllegalStateException(LOBBY_NOT_FOUND.formatted(lobbyId, sagaId)));
+        lobby.resetFactionAssignments();
+        lobbyRepository.save(lobby);
 
-            eventPublisher.publish(EventEnvelope.create(
-                    lobby.id(),
-                    Lobby.AGGREGATE_TYPE,
-                    state.gameId(),
-                    1,
-                    new GameStartFailed(state.gameId(), state.lobbyId(), reason)));
-
-            startGameSagaRepository.save(state.withStatus(StartGameSagaStatus.FAILED));
-        });
+        eventPublisher.publish(EventEnvelope.create(
+                lobby.id(), Lobby.AGGREGATE_TYPE, gameId, 1, new GameStartFailed(gameId, lobbyId, reason)));
     }
 }

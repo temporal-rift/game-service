@@ -40,7 +40,7 @@ class StartGameSagaStateManagerTest {
     @DisplayName("initRunning — saves new saga state with RUNNING status")
     void initRunning_savesNewRunningState() {
         // when
-        stateManager.initRunning(GAME_ID, LOBBY_ID);
+        stateManager.initRunning(SAGA_ID, GAME_ID, LOBBY_ID);
 
         // then
         var captor = ArgumentCaptor.forClass(StartGameSagaState.class);
@@ -49,7 +49,7 @@ class StartGameSagaStateManagerTest {
         assertThat(saved.gameId()).isEqualTo(GAME_ID);
         assertThat(saved.lobbyId()).isEqualTo(LOBBY_ID);
         assertThat(saved.status()).isEqualTo(StartGameSagaStatus.RUNNING);
-        assertThat(saved.sagaId()).isNotNull();
+        assertThat(saved.sagaId()).isEqualTo(SAGA_ID);
     }
 
     @Test
