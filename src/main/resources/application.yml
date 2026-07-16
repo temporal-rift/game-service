@@ -66,6 +66,19 @@ game:
       card-shifts:
         PUSH: 20
         SUPPRESS: -20
+        # Non-shifter cards: resolved at timeline resolution time, not during the band preview.
+        AMPLIFY: 0
+        INTERCEPT: 0
+        SCAN: 0
+        TRACE: 0
+        DECOY: 0
+        JAM: 0
+        STALL: 0
+        REDIRECT: 0
+        NULLIFY: 0
+        COLLIDE: 0
+        STABILIZE: 0
+        DETONATE: 0
       swing-shift: 30
       low-max-probability: 30
       medium-max-probability: 60

@@ -1,6 +1,8 @@
 package io.github.temporalrift.game.action.infrastructure.adapter.out.config;
 
+import java.util.Arrays;
 import java.util.Map;
+import java.util.Objects;
 
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
@@ -20,9 +22,19 @@ public record ScoringRulesProperties(
         implements BandRulesPort {
 
     public ScoringRulesProperties {
+        Objects.requireNonNull(cardShifts, "game.rules.scoring.card-shifts must not be null");
         if (lowMaxProbability > mediumMaxProbability) {
             throw new IllegalArgumentException(
                     "game.rules.scoring.low-max-probability must be <= medium-max-probability");
+        }
+        // SWING is configured separately via swingShift; every other card type must have an explicit
+        // entry (0 for non-shifters) so a newly added CardType with no config entry fails fast at
+        // startup instead of silently defaulting to a 0 shift in cardShift(CardType).
+        var missing = Arrays.stream(CardType.values())
+                .filter(cardType -> cardType != CardType.SWING && !cardShifts.containsKey(cardType))
+                .toList();
+        if (!missing.isEmpty()) {
+            throw new IllegalArgumentException("game.rules.scoring.card-shifts is missing entries for: " + missing);
         }
     }
 
