@@ -100,15 +100,10 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
         // breadcrumb. If the process dies mid-close, startup recovery can resume from that state.
         stateManager.markClosing(gameId, eraNumber, roundNumber);
 
-        var roundId = actionRoundRepository
-                .findByGameIdAndEraNumberAndRoundNumber(gameId, eraNumber, roundNumber)
-                .orElseThrow(() -> new IllegalStateException(
-                        "ActionRound not found for game " + gameId + " era " + eraNumber + " round " + roundNumber))
-                .id();
-
         var round = actionRoundRepository
-                .findByIdForUpdate(roundId)
-                .orElseThrow(() -> new IllegalStateException("ActionRound " + roundId + " not found for update"));
+                .findByGameIdAndEraNumberAndRoundNumberWithLock(gameId, eraNumber, roundNumber)
+                .orElseThrow(() -> new IllegalStateException(
+                        "ActionRound not found for game " + gameId + " era " + eraNumber + " round " + roundNumber));
 
         var outcome = round.close(closeReason);
 

@@ -151,7 +151,9 @@ class ActionRoundSagaImplTest {
 
             // then
             then(stateManager).should(never()).markClosing(any(), any(int.class), any(int.class));
-            then(actionRoundRepository).should(never()).findByIdForUpdate(any());
+            then(actionRoundRepository)
+                    .should(never())
+                    .findByGameIdAndEraNumberAndRoundNumberWithLock(any(), any(int.class), any(int.class));
         }
 
         @Test
@@ -172,16 +174,18 @@ class ActionRoundSagaImplTest {
                     .willReturn(Optional.of(updatedState));
 
             var round = new ActionRound(roundId, GAME_ID, ERA_NUMBER, ROUND_NUMBER, List.of(), TIMER_SECONDS);
-            given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumber(GAME_ID, ERA_NUMBER, ROUND_NUMBER))
+            given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(
+                            GAME_ID, ERA_NUMBER, ROUND_NUMBER))
                     .willReturn(Optional.of(round));
-            given(actionRoundRepository.findByIdForUpdate(roundId)).willReturn(Optional.of(round));
 
             // when
             saga.handlePlayerSubmitted(GAME_ID, ERA_NUMBER, ROUND_NUMBER, PLAYER_1);
 
             // then
             then(stateManager).should(times(1)).markClosing(GAME_ID, ERA_NUMBER, ROUND_NUMBER);
-            then(actionRoundRepository).should(times(1)).findByIdForUpdate(roundId);
+            then(actionRoundRepository)
+                    .should(times(1))
+                    .findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA_NUMBER, ROUND_NUMBER);
             then(stateManager).should(times(1)).complete(GAME_ID, ERA_NUMBER, ROUND_NUMBER);
         }
 
@@ -197,7 +201,9 @@ class ActionRoundSagaImplTest {
 
             // then
             then(stateManager).should(never()).markClosing(any(), any(int.class), any(int.class));
-            then(actionRoundRepository).should(never()).findByIdForUpdate(any());
+            then(actionRoundRepository)
+                    .should(never())
+                    .findByGameIdAndEraNumberAndRoundNumberWithLock(any(), any(int.class), any(int.class));
         }
     }
 
@@ -259,16 +265,18 @@ class ActionRoundSagaImplTest {
 
             var round = new ActionRound(
                     roundId, GAME_ID, ERA_NUMBER, ROUND_NUMBER, List.of(PLAYER_2, PLAYER_3), TIMER_SECONDS);
-            given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumber(GAME_ID, ERA_NUMBER, ROUND_NUMBER))
+            given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(
+                            GAME_ID, ERA_NUMBER, ROUND_NUMBER))
                     .willReturn(Optional.of(round));
-            given(actionRoundRepository.findByIdForUpdate(roundId)).willReturn(Optional.of(round));
 
             // when
             saga.handleTimerExpiry(sagaId);
 
             // then
             then(stateManager).should(times(1)).markClosing(GAME_ID, ERA_NUMBER, ROUND_NUMBER);
-            then(actionRoundRepository).should(times(1)).findByIdForUpdate(roundId);
+            then(actionRoundRepository)
+                    .should(times(1))
+                    .findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA_NUMBER, ROUND_NUMBER);
             then(stateManager).should(times(1)).complete(GAME_ID, ERA_NUMBER, ROUND_NUMBER);
         }
     }
@@ -292,9 +300,9 @@ class ActionRoundSagaImplTest {
                     "TIMER_EXPIRED",
                     List.of(),
                     List.of());
-            given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumber(GAME_ID, ERA_NUMBER, ROUND_NUMBER))
+            given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(
+                            GAME_ID, ERA_NUMBER, ROUND_NUMBER))
                     .willReturn(Optional.of(round));
-            given(actionRoundRepository.findByIdForUpdate(roundId)).willReturn(Optional.of(round));
 
             // markSubmitted must return a state with empty pending to trigger tryClose
             var updatedState = new ActionRoundSagaState(
@@ -325,9 +333,9 @@ class ActionRoundSagaImplTest {
             var roundId = UUID.randomUUID();
             var round = new ActionRound(
                     roundId, GAME_ID, ERA_NUMBER, ROUND_NUMBER, List.of(PLAYER_2, PLAYER_3), TIMER_SECONDS);
-            given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumber(GAME_ID, ERA_NUMBER, ROUND_NUMBER))
+            given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(
+                            GAME_ID, ERA_NUMBER, ROUND_NUMBER))
                     .willReturn(Optional.of(round));
-            given(actionRoundRepository.findByIdForUpdate(roundId)).willReturn(Optional.of(round));
 
             // when — simulate timer expiry path by calling handleTimerExpiry
             var sagaId = UUID.randomUUID();
@@ -356,9 +364,9 @@ class ActionRoundSagaImplTest {
             // given
             var roundId = UUID.randomUUID();
             var round = new ActionRound(roundId, GAME_ID, ERA_NUMBER, ROUND_NUMBER, List.of(), TIMER_SECONDS);
-            given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumber(GAME_ID, ERA_NUMBER, ROUND_NUMBER))
+            given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(
+                            GAME_ID, ERA_NUMBER, ROUND_NUMBER))
                     .willReturn(Optional.of(round));
-            given(actionRoundRepository.findByIdForUpdate(roundId)).willReturn(Optional.of(round));
 
             // when — simulate all-submitted path
             var updatedState = new ActionRoundSagaState(
@@ -389,9 +397,8 @@ class ActionRoundSagaImplTest {
             var round2 = new ActionRound(round2Id, GAME_ID, ERA_NUMBER, 2, List.of(), TIMER_SECONDS);
             var round1 = new ActionRound(round1Id, GAME_ID, ERA_NUMBER, 1, List.of(), TIMER_SECONDS);
 
-            given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumber(GAME_ID, ERA_NUMBER, 2))
+            given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA_NUMBER, 2))
                     .willReturn(Optional.of(round2));
-            given(actionRoundRepository.findByIdForUpdate(round2Id)).willReturn(Optional.of(round2));
             given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumber(GAME_ID, ERA_NUMBER, 1))
                     .willReturn(Optional.of(round1));
             given(futureEventDefinitionPort.findByGameIdAndEraNumber(GAME_ID, ERA_NUMBER))
@@ -422,9 +429,8 @@ class ActionRoundSagaImplTest {
             // given
             var roundId = UUID.randomUUID();
             var round = new ActionRound(roundId, GAME_ID, ERA_NUMBER, 1, List.of(), TIMER_SECONDS);
-            given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumber(GAME_ID, ERA_NUMBER, 1))
+            given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA_NUMBER, 1))
                     .willReturn(Optional.of(round));
-            given(actionRoundRepository.findByIdForUpdate(roundId)).willReturn(Optional.of(round));
 
             // when
             var updatedState = new ActionRoundSagaState(
@@ -468,9 +474,9 @@ class ActionRoundSagaImplTest {
                     targetOutcomeId,
                     List.of(cardInstanceId));
 
-            given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumber(GAME_ID, ERA_NUMBER, ROUND_NUMBER))
+            given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(
+                            GAME_ID, ERA_NUMBER, ROUND_NUMBER))
                     .willReturn(Optional.of(round));
-            given(actionRoundRepository.findByIdForUpdate(roundId)).willReturn(Optional.of(round));
 
             // when — trigger close via all-submitted
             var updatedState = new ActionRoundSagaState(
@@ -521,9 +527,9 @@ class ActionRoundSagaImplTest {
             round.submitSpecial(
                     PLAYER_1, Faction.ERASERS, SpecialAction.ANNIHILATE, targetEventId, targetOutcomeId, null, false);
 
-            given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumber(GAME_ID, ERA_NUMBER, ROUND_NUMBER))
+            given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(
+                            GAME_ID, ERA_NUMBER, ROUND_NUMBER))
                     .willReturn(Optional.of(round));
-            given(actionRoundRepository.findByIdForUpdate(roundId)).willReturn(Optional.of(round));
 
             // when
             var updatedState = new ActionRoundSagaState(
@@ -568,9 +574,9 @@ class ActionRoundSagaImplTest {
             var round = new ActionRound(
                     roundId, GAME_ID, ERA_NUMBER, ROUND_NUMBER, List.of(PLAYER_2, PLAYER_3), TIMER_SECONDS);
 
-            given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumber(GAME_ID, ERA_NUMBER, ROUND_NUMBER))
+            given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(
+                            GAME_ID, ERA_NUMBER, ROUND_NUMBER))
                     .willReturn(Optional.of(round));
-            given(actionRoundRepository.findByIdForUpdate(roundId)).willReturn(Optional.of(round));
 
             // when — timer expiry path with pending players
             var sagaId = UUID.randomUUID();
@@ -613,9 +619,9 @@ class ActionRoundSagaImplTest {
             var roundId = UUID.randomUUID();
             var round = new ActionRound(
                     roundId, GAME_ID, ERA_NUMBER, ROUND_NUMBER, List.of(PLAYER_2, PLAYER_3), TIMER_SECONDS);
-            given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumber(GAME_ID, ERA_NUMBER, ROUND_NUMBER))
+            given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(
+                            GAME_ID, ERA_NUMBER, ROUND_NUMBER))
                     .willReturn(Optional.of(round));
-            given(actionRoundRepository.findByIdForUpdate(roundId)).willReturn(Optional.of(round));
 
             var sagaId = UUID.randomUUID();
             var state = new ActionRoundSagaState(
@@ -658,7 +664,9 @@ class ActionRoundSagaImplTest {
 
             // then
             then(stateManager).should(never()).markClosing(any(), any(int.class), any(int.class));
-            then(actionRoundRepository).should(never()).findByIdForUpdate(any());
+            then(actionRoundRepository)
+                    .should(never())
+                    .findByGameIdAndEraNumberAndRoundNumberWithLock(any(), any(int.class), any(int.class));
         }
     }
 
@@ -673,9 +681,9 @@ class ActionRoundSagaImplTest {
             var roundId = UUID.randomUUID();
             var round = new ActionRound(
                     roundId, GAME_ID, ERA_NUMBER, ROUND_NUMBER, List.of(PLAYER_2, PLAYER_3), TIMER_SECONDS);
-            given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumber(GAME_ID, ERA_NUMBER, ROUND_NUMBER))
+            given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(
+                            GAME_ID, ERA_NUMBER, ROUND_NUMBER))
                     .willReturn(Optional.of(round));
-            given(actionRoundRepository.findByIdForUpdate(roundId)).willReturn(Optional.of(round));
 
             var sagaId = UUID.randomUUID();
             var state = new ActionRoundSagaState(
