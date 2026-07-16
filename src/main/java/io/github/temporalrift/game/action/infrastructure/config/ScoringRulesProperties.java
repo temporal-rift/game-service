@@ -10,11 +10,6 @@ import org.springframework.validation.annotation.Validated;
 import io.github.temporalrift.events.shared.CardType;
 import io.github.temporalrift.game.action.domain.port.out.BandRulesPort;
 
-/**
- * Externalised scoring/balance rules (see {@code game.rules.scoring} in {@code application.yml}): card
- * shift magnitudes, swing magnitude, and probability-band thresholds. Keeping these in configuration lets
- * provisional balance values be tuned during playtesting without a code change.
- */
 @ConfigurationProperties("game.rules.scoring")
 @Validated
 public record ScoringRulesProperties(

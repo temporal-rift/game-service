@@ -2,10 +2,6 @@ package io.github.temporalrift.game.action.domain.port.out;
 
 import io.github.temporalrift.events.shared.CardType;
 
-/**
- * Tunable probability-band rules used when computing the banded reveal. These are game-balance values
- * (provisional until playtesting) and therefore configured rather than hard-coded.
- */
 public interface BandRulesPort {
 
     /**
