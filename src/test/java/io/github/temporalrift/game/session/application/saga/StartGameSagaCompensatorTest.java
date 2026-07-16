@@ -107,19 +107,22 @@ class StartGameSagaCompensatorTest {
     }
 
     @Test
-    @DisplayName("compensate — marks COMPENSATING, resets lobby, publishes GameStartFailed, marks FAILED")
-    void compensate_sagaFound_fullCompensationFlow() {
-        // given
-        given(startGameSagaRepository.findByGameIdWithLock(GAME_ID)).willReturn(Optional.of(RUNNING_STATE));
+    @DisplayName("compensate — writes terminal FAILED record without reading any prior state, resets lobby, "
+            + "publishes GameStartFailed")
+    void compensate_writesFailedRecordAndPublishesEvent() {
+        // given — no stub for findByGameIdWithLock: compensate must not depend on reading state written
+        // by the (rolled-back) transaction it is compensating for
         given(lobbyRepository.findById(LOBBY_ID)).willReturn(Optional.of(lobby));
         given(lobby.id()).willReturn(LOBBY_ID);
 
         // when
-        compensator.compensate(GAME_ID, REASON);
+        compensator.compensate(SAGA_ID, GAME_ID, LOBBY_ID, REASON);
 
         // then
         var ordered = inOrder(startGameSagaRepository, lobbyRepository, eventPublisher);
-        then(startGameSagaRepository).should(ordered).save(RUNNING_STATE.withStatus(StartGameSagaStatus.COMPENSATING));
+        then(startGameSagaRepository)
+                .should(ordered)
+                .save(new StartGameSagaState(SAGA_ID, GAME_ID, LOBBY_ID, StartGameSagaStatus.FAILED, List.of()));
         then(lobby).should().resetFactionAssignments();
         then(lobbyRepository).should(ordered).save(lobby);
 
@@ -130,35 +133,17 @@ class StartGameSagaCompensatorTest {
         assertThat(payload.gameId()).isEqualTo(GAME_ID);
         assertThat(payload.lobbyId()).isEqualTo(LOBBY_ID);
         assertThat(payload.reason()).isEqualTo(REASON);
-
-        then(startGameSagaRepository).should(ordered).save(RUNNING_STATE.withStatus(StartGameSagaStatus.FAILED));
     }
 
     @Test
     @DisplayName("compensate — lobby not found — throws IllegalStateException")
     void compensate_lobbyNotFound_throwsIllegalStateException() {
         // given
-        given(startGameSagaRepository.findByGameIdWithLock(GAME_ID)).willReturn(Optional.of(RUNNING_STATE));
         given(lobbyRepository.findById(LOBBY_ID)).willReturn(Optional.empty());
 
         // when / then
         assertThatExceptionOfType(IllegalStateException.class)
-                .isThrownBy(() -> compensator.compensate(GAME_ID, REASON));
-        then(eventPublisher).shouldHaveNoInteractions();
-    }
-
-    @Test
-    @DisplayName("compensate — no saga found for gameId — takes no action")
-    void compensate_sagaNotFound_takesNoAction() {
-        // given
-        given(startGameSagaRepository.findByGameIdWithLock(GAME_ID)).willReturn(Optional.empty());
-
-        // when
-        compensator.compensate(GAME_ID, REASON);
-
-        // then
-        then(startGameSagaRepository).should().findByGameIdWithLock(GAME_ID);
-        then(startGameSagaRepository).shouldHaveNoMoreInteractions();
+                .isThrownBy(() -> compensator.compensate(SAGA_ID, GAME_ID, LOBBY_ID, REASON));
         then(eventPublisher).shouldHaveNoInteractions();
     }
 }

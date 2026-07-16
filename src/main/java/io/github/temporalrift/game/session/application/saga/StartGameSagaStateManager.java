@@ -20,9 +20,9 @@ class StartGameSagaStateManager {
     }
 
     @Transactional
-    public void initRunning(UUID gameId, UUID lobbyId) {
+    public void initRunning(UUID sagaId, UUID gameId, UUID lobbyId) {
         startGameSagaRepository.save(
-                new StartGameSagaState(UUID.randomUUID(), gameId, lobbyId, StartGameSagaStatus.RUNNING, List.of()));
+                new StartGameSagaState(sagaId, gameId, lobbyId, StartGameSagaStatus.RUNNING, List.of()));
     }
 
     @Transactional
