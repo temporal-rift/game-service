@@ -19,6 +19,13 @@ public record ScoringRulesProperties(
         @Min(0) int mediumMaxProbability)
         implements BandRulesPort {
 
+    public ScoringRulesProperties {
+        if (lowMaxProbability > mediumMaxProbability) {
+            throw new IllegalArgumentException(
+                    "game.rules.scoring.low-max-probability must be <= medium-max-probability");
+        }
+    }
+
     @Override
     public int cardShift(CardType cardType) {
         return cardShifts.getOrDefault(cardType, 0);
