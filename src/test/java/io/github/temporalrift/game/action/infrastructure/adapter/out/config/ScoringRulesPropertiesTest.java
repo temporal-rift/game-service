@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 
 import java.util.Arrays;
-import java.util.HashMap;
+import java.util.EnumMap;
 import java.util.Map;
 
 import org.junit.jupiter.api.DisplayName;
@@ -15,7 +15,7 @@ import io.github.temporalrift.events.shared.CardType;
 class ScoringRulesPropertiesTest {
 
     static Map<CardType, Integer> exhaustiveCardShifts() {
-        var shifts = new HashMap<CardType, Integer>();
+        var shifts = new EnumMap<CardType, Integer>(CardType.class);
         Arrays.stream(CardType.values())
                 .filter(cardType -> cardType != CardType.SWING)
                 .forEach(cardType -> shifts.put(cardType, 0));

@@ -33,7 +33,7 @@ class KafkaErrorHandlingConfig {
         // Partition -1 lets the broker choose the DLQ partition, so game.dlq does not need the same
         // partition count as the source topics.
         return new DeadLetterPublishingRecoverer(
-                kafkaOperations, (record, exception) -> new TopicPartition(DEAD_LETTER_TOPIC, -1));
+                kafkaOperations, (consumerRecord, exception) -> new TopicPartition(DEAD_LETTER_TOPIC, -1));
     }
 
     @Bean
