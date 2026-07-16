@@ -29,7 +29,7 @@ class BandCalculatorTest {
     static final UUID OUTCOME_2 = UUID.randomUUID();
     static final UUID PLAYER_ID = UUID.randomUUID();
 
-    // Mirrors the GDD default balance values wired in application.yml (game.rules.bands).
+    // Mirrors the GDD default balance values wired in application.yml (game.rules.scoring).
     static final BandRulesPort GDD_BAND_RULES = new BandRulesPort() {
         @Override
         public int cardShift(CardType cardType) {
