@@ -119,6 +119,7 @@ class PlayCardConcurrencyIT {
 
         var holdMillis = 1_000L;
         var lockAcquiredByFirst = new CountDownLatch(1);
+        var secondReady = new CountDownLatch(1);
         var secondBlockedMillis = new AtomicLong();
         var executor = Executors.newFixedThreadPool(2);
         try {
@@ -127,11 +128,13 @@ class PlayCardConcurrencyIT {
                         .findByGameIdAndEraNumberAndRoundNumberWithLock(gameId, ERA, ROUND)
                         .orElseThrow();
                 lockAcquiredByFirst.countDown();
+                await(secondReady);
                 sleep(holdMillis);
             }));
 
             Future<?> second = executor.submit(() -> {
                 lockAcquiredByFirst.await();
+                secondReady.countDown();
                 var start = System.nanoTime();
                 transactionTemplate.executeWithoutResult(_ -> actionRoundRepository
                         .findByGameIdAndEraNumberAndRoundNumberWithLock(gameId, ERA, ROUND)
@@ -170,6 +173,15 @@ class PlayCardConcurrencyIT {
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new IllegalStateException("interrupted while holding lock", e);
+        }
+    }
+
+    private static void await(CountDownLatch latch) {
+        try {
+            latch.await();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("interrupted while waiting for second worker", e);
         }
     }
 }
