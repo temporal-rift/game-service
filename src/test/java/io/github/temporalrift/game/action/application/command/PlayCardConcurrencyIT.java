@@ -1,6 +1,7 @@
 package io.github.temporalrift.game.action.application.command;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.awaitility.Awaitility.await;
 
 import java.time.Duration;
 import java.util.List;
@@ -10,7 +11,6 @@ import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicLong;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -117,10 +117,9 @@ class PlayCardConcurrencyIT {
         transactionTemplate.executeWithoutResult(_ -> actionRoundRepository.save(
                 new ActionRound(roundId, gameId, ERA, ROUND, List.of(UUID.randomUUID()), TIMER_SECONDS)));
 
-        var holdMillis = 1_000L;
         var lockAcquiredByFirst = new CountDownLatch(1);
-        var secondReady = new CountDownLatch(1);
-        var secondBlockedMillis = new AtomicLong();
+        var secondAttempting = new CountDownLatch(1);
+        var releaseLock = new CountDownLatch(1);
         var executor = Executors.newFixedThreadPool(2);
         try {
             Future<?> first = executor.submit(() -> transactionTemplate.executeWithoutResult(_ -> {
@@ -128,33 +127,33 @@ class PlayCardConcurrencyIT {
                         .findByGameIdAndEraNumberAndRoundNumberWithLock(gameId, ERA, ROUND)
                         .orElseThrow();
                 lockAcquiredByFirst.countDown();
-                await(secondReady);
-                sleep(holdMillis);
+                awaitLatch(releaseLock);
             }));
 
             Future<?> second = executor.submit(() -> {
                 lockAcquiredByFirst.await();
-                secondReady.countDown();
-                var start = System.nanoTime();
+                secondAttempting.countDown();
                 transactionTemplate.executeWithoutResult(_ -> actionRoundRepository
                         .findByGameIdAndEraNumberAndRoundNumberWithLock(gameId, ERA, ROUND)
                         .orElseThrow());
-                secondBlockedMillis.set(
-                        Duration.ofNanos(System.nanoTime() - start).toMillis());
                 return null;
             });
 
+            secondAttempting.await();
+            await().alias("second transaction should stay blocked while the first still holds the lock")
+                    .during(Duration.ofMillis(300))
+                    .atMost(Duration.ofMillis(600))
+                    .until(() -> !second.isDone());
+
+            releaseLock.countDown();
             first.get(30, TimeUnit.SECONDS);
+            await().alias("second transaction should unblock once the first releases the lock")
+                    .atMost(Duration.ofSeconds(5))
+                    .until(second::isDone);
             second.get(30, TimeUnit.SECONDS);
         } finally {
             executor.shutdownNow();
         }
-
-        // The second transaction started its locked read right after the first acquired the lock, so it
-        // must have waited for roughly the hold duration rather than reading a stale, unlocked snapshot.
-        assertThat(secondBlockedMillis.get())
-                .as("second transaction should block on the row lock until the first commits")
-                .isGreaterThanOrEqualTo(holdMillis / 2);
     }
 
     private PlayCardUseCase.Command command(UUID gameId, UUID playerId, UUID cardInstanceId) {
@@ -167,21 +166,12 @@ class PlayCardConcurrencyIT {
         return state;
     }
 
-    private static void sleep(long millis) {
-        try {
-            Thread.sleep(millis);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw new IllegalStateException("interrupted while holding lock", e);
-        }
-    }
-
-    private static void await(CountDownLatch latch) {
+    private static void awaitLatch(CountDownLatch latch) {
         try {
             latch.await();
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            throw new IllegalStateException("interrupted while waiting for second worker", e);
+            throw new IllegalStateException("interrupted while waiting for latch", e);
         }
     }
 }
