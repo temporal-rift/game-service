@@ -62,7 +62,7 @@ game:
     stabilization-winner-factions:
       - PROPHETS
       - WEAVERS
-    bands:
+    scoring:
       card-shifts:
         PUSH: 20
         SUPPRESS: -20
