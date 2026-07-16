@@ -18,6 +18,7 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.IntStream;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -26,6 +27,8 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import io.github.temporalrift.events.envelope.EventEnvelope;
 import io.github.temporalrift.events.session.EraStarted;
@@ -88,6 +91,13 @@ class StartGameSagaImplTest {
         return argThat(envelope -> payloadType.isInstance(envelope.payload()));
     }
 
+    @AfterEach
+    void clearSynchronization() {
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.clearSynchronization();
+        }
+    }
+
     @Test
     @DisplayName("happy path — all events published in order, saga marked COMPLETED")
     void start_happyPath_publishesAllEventsInOrderAndCompletes() {
@@ -146,6 +156,33 @@ class StartGameSagaImplTest {
         then(stateManager).should().initRunning(initRunningSagaId.capture(), eq(GAME_ID), eq(LOBBY_ID));
         then(compensator).should().compensate(compensateSagaId.capture(), eq(GAME_ID), eq(LOBBY_ID), any());
         assertThat(compensateSagaId.getValue()).isEqualTo(initRunningSagaId.getValue());
+    }
+
+    @Test
+    @DisplayName("failure inside an active transaction — compensate is deferred until the transaction completes")
+    void start_failureWithActiveTransaction_defersCompensateUntilAfterCompletion() {
+        // given
+        stubStartableLobby();
+        given(lobby.id()).willReturn(LOBBY_ID);
+        given(lobby.currentPlayers()).willReturn(TWO_PLAYERS);
+        willThrow(new RuntimeException("duplicate faction")).given(lobby).assignFaction(any(), any());
+        TransactionSynchronizationManager.initSynchronization();
+
+        // when
+        assertThatExceptionOfType(RuntimeException.class).isThrownBy(() -> saga.start(LOBBY_ID, REQUESTING_PLAYER_ID));
+
+        // then — not yet: calling compensate() here would run its own REQUIRES_NEW transaction while
+        // this (failed) transaction is still open, risking a block on locks it still holds
+        then(compensator).shouldHaveNoInteractions();
+        assertThat(TransactionSynchronizationManager.getSynchronizations()).hasSize(1);
+
+        // when the transaction actually finishes (rolls back)
+        TransactionSynchronizationManager.getSynchronizations()
+                .getFirst()
+                .afterCompletion(TransactionSynchronization.STATUS_ROLLED_BACK);
+
+        // then
+        then(compensator).should().compensate(any(), eq(GAME_ID), eq(LOBBY_ID), any());
     }
 
     @Test

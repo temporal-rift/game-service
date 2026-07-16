@@ -13,6 +13,8 @@ import java.util.stream.IntStream;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import io.github.temporalrift.events.envelope.EventEnvelope;
 import io.github.temporalrift.events.session.EraStarted;
@@ -86,8 +88,26 @@ class StartGameSagaImpl implements StartGameSaga {
             stateManager.complete(gameId, lobby.id());
             return gameId;
         } catch (Exception e) {
-            compensator.compensate(sagaId, gameId, lobby.id(), e.getMessage());
+            compensateAfterRollback(sagaId, gameId, lobby.id(), e.getMessage());
             throw e;
+        }
+    }
+
+    private void compensateAfterRollback(UUID sagaId, UUID gameId, UUID lobbyId, String reason) {
+        // Calling compensate() here directly would run its REQUIRES_NEW transaction while this
+        // transaction is only suspended, not yet rolled back — its locks (e.g. the pessimistic lock
+        // on the lobby row from findByIdWithLock) are still held, and the nested transaction can block
+        // on them. Deferring to afterCompletion runs it once this transaction has actually finished
+        // and released everything it held.
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCompletion(int status) {
+                    compensator.compensate(sagaId, gameId, lobbyId, reason);
+                }
+            });
+        } else {
+            compensator.compensate(sagaId, gameId, lobbyId, reason);
         }
     }
 
