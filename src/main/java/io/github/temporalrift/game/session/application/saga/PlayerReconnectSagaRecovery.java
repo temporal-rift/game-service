@@ -1,6 +1,6 @@
 package io.github.temporalrift.game.session.application.saga;
 
-import java.time.Instant;
+import java.time.Clock;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,19 +16,22 @@ class PlayerReconnectSagaRecovery implements ApplicationListener<ApplicationStar
     private final PlayerReconnectSagaStateManager stateManager;
     private final PlayerReconnectTimerScheduler timerScheduler;
     private final PlayerReconnectTimeoutProcessor timeoutProcessor;
+    private final Clock clock;
 
     PlayerReconnectSagaRecovery(
             PlayerReconnectSagaStateManager stateManager,
             PlayerReconnectTimerScheduler timerScheduler,
-            PlayerReconnectTimeoutProcessor timeoutProcessor) {
+            PlayerReconnectTimeoutProcessor timeoutProcessor,
+            Clock clock) {
         this.stateManager = stateManager;
         this.timerScheduler = timerScheduler;
         this.timeoutProcessor = timeoutProcessor;
+        this.clock = clock;
     }
 
     @Override
     public void onApplicationEvent(ApplicationStartedEvent event) {
-        var now = Instant.now();
+        var now = clock.instant();
         var inFlight = stateManager.findAllInGracePeriod();
 
         if (inFlight.isEmpty()) {

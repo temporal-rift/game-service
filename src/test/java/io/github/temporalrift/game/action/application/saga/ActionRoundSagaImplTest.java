@@ -11,17 +11,19 @@ import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 
+import java.time.Clock;
 import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -56,6 +58,8 @@ class ActionRoundSagaImplTest {
     static final List<UUID> PLAYER_IDS = List.of(PLAYER_1, PLAYER_2, PLAYER_3);
     static final int TIMER_SECONDS = 60;
     static final Instant TIMER_EXPIRES_AT = Instant.parse("2099-01-01T00:00:00Z");
+    static final Instant NOW = Instant.parse("2026-01-01T00:00:00Z");
+    static final Clock CLOCK = Clock.fixed(NOW, ZoneOffset.UTC);
 
     @Mock
     ActionRoundRepository actionRoundRepository;
@@ -75,8 +79,19 @@ class ActionRoundSagaImplTest {
     @Mock
     BandCalculator bandCalculator;
 
-    @InjectMocks
     ActionRoundSagaImpl saga;
+
+    @BeforeEach
+    void setUp() {
+        saga = new ActionRoundSagaImpl(
+                actionRoundRepository,
+                actionEventPublisher,
+                stateManager,
+                gameRules,
+                futureEventDefinitionPort,
+                bandCalculator,
+                CLOCK);
+    }
 
     private static EventEnvelope envelopeWithPayload(Class<?> payloadType) {
         return argThat(envelope -> payloadType.isInstance(envelope.payload()));
@@ -105,12 +120,12 @@ class ActionRoundSagaImplTest {
                             eq(ERA_NUMBER),
                             eq(ROUND_NUMBER),
                             eq(PLAYER_IDS),
-                            any(Instant.class));
+                            eq(NOW.plusSeconds(TIMER_SECONDS)));
             then(actionRoundRepository).should(times(1)).save(any(ActionRound.class));
             then(actionEventPublisher).should(times(1)).publish(envelopeWithPayload(ActionRoundStarted.class));
             then(actionEventPublisher).should(times(1)).publishInternally(any(ActionRoundStarted.class));
             assertThat(result.sagaId()).isEqualTo(captor.getValue());
-            assertThat(result.timerExpiresAt()).isNotNull();
+            assertThat(result.timerExpiresAt()).isEqualTo(NOW.plusSeconds(TIMER_SECONDS));
         }
 
         @Test

@@ -2,7 +2,7 @@ package io.github.temporalrift.game.session.application.saga;
 
 import static org.springframework.transaction.annotation.Propagation.REQUIRES_NEW;
 
-import java.time.Instant;
+import java.time.Clock;
 import java.util.UUID;
 
 import org.slf4j.Logger;
@@ -38,6 +38,7 @@ class PlayerReconnectSagaImpl implements PlayerReconnectSaga {
     private final PlayerReconnectSagaStateManager stateManager;
     private final SessionGameRulesPort gameRules;
     private final PlayerReconnectTimerRegistry timerRegistry;
+    private final Clock clock;
 
     PlayerReconnectSagaImpl(
             LobbyRepository lobbyRepository,
@@ -46,7 +47,8 @@ class PlayerReconnectSagaImpl implements PlayerReconnectSaga {
             ApplicationEventPublisher applicationEventPublisher,
             PlayerReconnectSagaStateManager stateManager,
             SessionGameRulesPort gameRules,
-            PlayerReconnectTimerRegistry timerRegistry) {
+            PlayerReconnectTimerRegistry timerRegistry,
+            Clock clock) {
         this.lobbyRepository = lobbyRepository;
         this.gameRepository = gameRepository;
         this.eventPublisher = eventPublisher;
@@ -54,6 +56,7 @@ class PlayerReconnectSagaImpl implements PlayerReconnectSaga {
         this.stateManager = stateManager;
         this.gameRules = gameRules;
         this.timerRegistry = timerRegistry;
+        this.clock = clock;
     }
 
     @Override
@@ -64,7 +67,7 @@ class PlayerReconnectSagaImpl implements PlayerReconnectSaga {
                 lobbyRepository.findById(game.lobbyId()).orElseThrow(() -> new LobbyNotFoundException(game.lobbyId()));
 
         var sagaId = UUID.randomUUID();
-        var graceExpiresAt = Instant.now().plusSeconds(gameRules.reconnectGracePeriodSeconds());
+        var graceExpiresAt = clock.instant().plusSeconds(gameRules.reconnectGracePeriodSeconds());
         stateManager.initGracePeriod(sagaId, gameId, playerId, graceExpiresAt);
 
         lobby.markPlayerDisconnected(playerId);
