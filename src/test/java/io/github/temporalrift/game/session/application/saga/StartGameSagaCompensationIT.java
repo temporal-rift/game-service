@@ -78,6 +78,8 @@ class StartGameSagaCompensationIT {
         // this is exactly the scenario the compensator exists for.
         given(futureEventCatalog.allEventIds()).willThrow(new RuntimeException("catalog unavailable"));
 
+        var outboxRowsBeforeStart = gameStartFailedOutboxRows();
+
         assertThatException().isThrownBy(() -> startGameSaga.start(lobbyId, hostPlayerId));
 
         // start()'s own transaction rolled back: the lobby must still be WAITING, never STARTED.
@@ -91,7 +93,7 @@ class StartGameSagaCompensationIT {
         assertThat(failedState.status()).isEqualTo(StartGameSagaStatus.FAILED);
         assertThat(failedState.lobbyId()).isEqualTo(lobbyId);
 
-        assertThat(gameStartFailedOutboxRows()).isPositive();
+        assertThat(gameStartFailedOutboxRows()).isEqualTo(outboxRowsBeforeStart + 1);
     }
 
     private Integer gameStartFailedOutboxRows() {
