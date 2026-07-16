@@ -3,6 +3,7 @@ package io.github.temporalrift.game.scoring.infrastructure.adapter.in.kafka;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.List;
 import java.util.Objects;
@@ -22,10 +23,9 @@ import io.github.temporalrift.game.TestcontainersConfiguration;
 
 /**
  * Verifies that the configured dead-letter recoverer parks an unprocessable record on {@code game.dlq}
- * rather than dropping it. The recoverer is exercised directly (the way {@code DefaultErrorHandler}
- * invokes it once retries are exhausted) because driving a real {@code EventEnvelope} end-to-end through
- * the listener is blocked by an unrelated Kafka {@code JsonSerializer} limitation (the app's envelopes
- * use Jackson 3, while the Kafka serializer is Jackson 2 and cannot serialize {@code Instant}).
+ * rather than dropping it. The recoverer is exercised directly, the way {@code DefaultErrorHandler}
+ * invokes it once retries are exhausted; the end-to-end listener path is covered by
+ * {@code TimelineEventsConsumerGroupsIT}.
  */
 @SpringBootTest
 @Import(TestcontainersConfiguration.class)
@@ -53,7 +53,7 @@ class TimelineScoringDeadLetterIT {
             var parked = await().atMost(Duration.ofSeconds(30))
                     .until(() -> pollForValue(consumer, payload), Objects::nonNull);
 
-            assertThat(parked).isEqualTo(payload);
+            assertThat(parked).contains(payload);
         }
     }
 
@@ -61,9 +61,9 @@ class TimelineScoringDeadLetterIT {
         var records = consumer.poll(Duration.ofMillis(500));
         return StreamSupport.stream(records.spliterator(), false)
                 .map(ConsumerRecord::value)
-                .filter(String.class::isInstance)
-                .map(String.class::cast)
-                .filter(expected::equals)
+                .filter(byte[].class::isInstance)
+                .map(value -> new String((byte[]) value, StandardCharsets.UTF_8))
+                .filter(value -> value.contains(expected))
                 .findFirst()
                 .orElse(null);
     }
