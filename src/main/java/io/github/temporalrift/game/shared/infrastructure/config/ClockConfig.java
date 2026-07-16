@@ -1,4 +1,4 @@
-package io.github.temporalrift.game.session.infrastructure.adapter.out.config;
+package io.github.temporalrift.game.shared.infrastructure.config;
 
 import java.time.Clock;
 

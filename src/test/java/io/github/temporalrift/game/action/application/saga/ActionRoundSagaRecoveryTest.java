@@ -4,8 +4,10 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.mock;
 
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.UUID;
 
@@ -27,6 +29,7 @@ class ActionRoundSagaRecoveryTest {
 
     static final UUID SAGA_ID = UUID.randomUUID();
     static final UUID GAME_ID = UUID.randomUUID();
+    static final Clock CLOCK = Clock.fixed(Instant.parse("2026-01-01T00:00:00Z"), ZoneOffset.UTC);
 
     @Mock
     ActionRoundSagaStateManager stateManager;
@@ -41,7 +44,7 @@ class ActionRoundSagaRecoveryTest {
     @DisplayName("startup reschedules waiting sagas whose timer has not expired")
     void onApplicationEvent_waitingSagaInFuture_reschedules() {
         // given
-        var recovery = new ActionRoundSagaRecovery(stateManager, timerScheduler, timeoutProcessor);
+        var recovery = new ActionRoundSagaRecovery(stateManager, timerScheduler, timeoutProcessor, CLOCK);
         var state = new ActionRoundSagaState(
                 SAGA_ID,
                 GAME_ID,
@@ -65,7 +68,7 @@ class ActionRoundSagaRecoveryTest {
     @DisplayName("startup immediately expires waiting sagas whose timer already elapsed")
     void onApplicationEvent_waitingSagaExpired_processesImmediately() {
         // given
-        var recovery = new ActionRoundSagaRecovery(stateManager, timerScheduler, timeoutProcessor);
+        var recovery = new ActionRoundSagaRecovery(stateManager, timerScheduler, timeoutProcessor, CLOCK);
         var state = new ActionRoundSagaState(
                 SAGA_ID,
                 GAME_ID,
@@ -89,7 +92,7 @@ class ActionRoundSagaRecoveryTest {
     @DisplayName("startup resumes all closing sagas through the timeout processor")
     void onApplicationEvent_closingSagas_resumeThroughTimeoutProcessor() {
         // given
-        var recovery = new ActionRoundSagaRecovery(stateManager, timerScheduler, timeoutProcessor);
+        var recovery = new ActionRoundSagaRecovery(stateManager, timerScheduler, timeoutProcessor, CLOCK);
         var state = new ActionRoundSagaState(
                 SAGA_ID,
                 GAME_ID,

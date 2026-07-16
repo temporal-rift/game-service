@@ -2,7 +2,7 @@ package io.github.temporalrift.game.action.application.saga;
 
 import static org.springframework.transaction.annotation.Propagation.REQUIRES_NEW;
 
-import java.time.Instant;
+import java.time.Clock;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -40,6 +40,7 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
     private final GameRulesPort gameRules;
     private final FutureEventDefinitionPort futureEventDefinitionPort;
     private final BandCalculator bandCalculator;
+    private final Clock clock;
 
     ActionRoundSagaImpl(
             ActionRoundRepository actionRoundRepository,
@@ -47,13 +48,15 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
             ActionRoundSagaStateManager stateManager,
             GameRulesPort gameRules,
             FutureEventDefinitionPort futureEventDefinitionPort,
-            BandCalculator bandCalculator) {
+            BandCalculator bandCalculator,
+            Clock clock) {
         this.actionRoundRepository = actionRoundRepository;
         this.actionEventPublisher = actionEventPublisher;
         this.stateManager = stateManager;
         this.gameRules = gameRules;
         this.futureEventDefinitionPort = futureEventDefinitionPort;
         this.bandCalculator = bandCalculator;
+        this.clock = clock;
     }
 
     @Override
@@ -61,7 +64,7 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
     public StartResult start(UUID gameId, int eraNumber, int roundNumber, List<UUID> playerIds) {
         var sagaId = UUID.randomUUID();
         var timerSeconds = gameRules.actionRoundTimerSeconds(playerIds.size());
-        var timerExpiresAt = Instant.now().plusSeconds(timerSeconds);
+        var timerExpiresAt = clock.instant().plusSeconds(timerSeconds);
 
         stateManager.initWaiting(sagaId, gameId, eraNumber, roundNumber, playerIds, timerExpiresAt);
         var round = new ActionRound(UUID.randomUUID(), gameId, eraNumber, roundNumber, playerIds, timerSeconds);

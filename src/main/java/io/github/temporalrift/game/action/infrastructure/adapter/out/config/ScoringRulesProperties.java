@@ -1,4 +1,4 @@
-package io.github.temporalrift.game.action.infrastructure.config;
+package io.github.temporalrift.game.action.infrastructure.adapter.out.config;
 
 import java.util.Map;
 

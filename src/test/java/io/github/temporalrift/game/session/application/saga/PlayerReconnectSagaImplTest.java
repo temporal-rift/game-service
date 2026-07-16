@@ -14,10 +14,10 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
@@ -70,8 +70,20 @@ class PlayerReconnectSagaImplTest {
     @Mock
     PlayerReconnectTimerRegistry timerRegistry;
 
-    @InjectMocks
     PlayerReconnectSagaImpl saga;
+
+    @BeforeEach
+    void setUp() {
+        saga = new PlayerReconnectSagaImpl(
+                lobbyRepository,
+                gameRepository,
+                eventPublisher,
+                applicationEventPublisher,
+                stateManager,
+                gameRules,
+                timerRegistry,
+                TEST_CLOCK);
+    }
 
     private static EventEnvelope envelopeWithPayload(Class<?> payloadType) {
         return argThat(envelope -> payloadType.isInstance(envelope.payload()));
@@ -104,19 +116,22 @@ class PlayerReconnectSagaImplTest {
                 PLAYER_ID,
                 PlayerReconnectSagaStatus.GRACE_PERIOD,
                 BASE_INSTANT.plusSeconds(GRACE_SECONDS));
-        given(stateManager.initGracePeriod(any(), eq(GAME_ID), eq(PLAYER_ID), any()))
+        given(stateManager.initGracePeriod(
+                        any(), eq(GAME_ID), eq(PLAYER_ID), eq(BASE_INSTANT.plusSeconds(GRACE_SECONDS))))
                 .willReturn(state);
 
         // when
         var result = saga.start(GAME_ID, PLAYER_ID);
 
         // then
-        then(stateManager).should().initGracePeriod(any(), eq(GAME_ID), eq(PLAYER_ID), any());
+        then(stateManager)
+                .should()
+                .initGracePeriod(any(), eq(GAME_ID), eq(PLAYER_ID), eq(BASE_INSTANT.plusSeconds(GRACE_SECONDS)));
         then(lobbyRepository).should().save(any());
         then(eventPublisher).should().publish(envelopeWithPayload(PlayerDisconnected.class));
         then(timerRegistry).shouldHaveNoInteractions();
         assertThat(result.sagaId()).isNotNull();
-        assertThat(result.graceExpiresAt()).isNotNull();
+        assertThat(result.graceExpiresAt()).isEqualTo(BASE_INSTANT.plusSeconds(GRACE_SECONDS));
     }
 
     @Test

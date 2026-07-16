@@ -4,8 +4,10 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.mock;
 
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.UUID;
 
@@ -28,6 +30,7 @@ class PlayerReconnectSagaRecoveryTest {
     static final UUID SAGA_ID = UUID.randomUUID();
     static final UUID GAME_ID = UUID.randomUUID();
     static final UUID PLAYER_ID = UUID.randomUUID();
+    static final Clock CLOCK = Clock.fixed(Instant.parse("2026-01-01T00:00:00Z"), ZoneOffset.UTC);
 
     @Mock
     PlayerReconnectSagaStateManager stateManager;
@@ -42,7 +45,7 @@ class PlayerReconnectSagaRecoveryTest {
     @DisplayName("startup does nothing when there are no in-flight grace periods")
     void onApplicationEvent_noInflightSagas_noop() {
         // given
-        var recovery = new PlayerReconnectSagaRecovery(stateManager, timerScheduler, timeoutProcessor);
+        var recovery = new PlayerReconnectSagaRecovery(stateManager, timerScheduler, timeoutProcessor, CLOCK);
         given(stateManager.findAllInGracePeriod()).willReturn(List.of());
 
         // when
@@ -58,7 +61,7 @@ class PlayerReconnectSagaRecoveryTest {
     @DisplayName("startup immediately processes expired grace periods")
     void onApplicationEvent_expiredGracePeriod_processesImmediately() {
         // given
-        var recovery = new PlayerReconnectSagaRecovery(stateManager, timerScheduler, timeoutProcessor);
+        var recovery = new PlayerReconnectSagaRecovery(stateManager, timerScheduler, timeoutProcessor, CLOCK);
         var state = new PlayerReconnectSagaState(
                 SAGA_ID,
                 GAME_ID,
@@ -79,7 +82,7 @@ class PlayerReconnectSagaRecoveryTest {
     @DisplayName("startup reschedules non-expired grace periods")
     void onApplicationEvent_futureGracePeriod_reschedules() {
         // given
-        var recovery = new PlayerReconnectSagaRecovery(stateManager, timerScheduler, timeoutProcessor);
+        var recovery = new PlayerReconnectSagaRecovery(stateManager, timerScheduler, timeoutProcessor, CLOCK);
         var state = new PlayerReconnectSagaState(
                 SAGA_ID,
                 GAME_ID,

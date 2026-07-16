@@ -1,6 +1,6 @@
 package io.github.temporalrift.game.action.application.saga;
 
-import java.time.Instant;
+import java.time.Clock;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,19 +24,22 @@ class ActionRoundSagaRecovery implements ApplicationListener<ApplicationStartedE
     private final ActionRoundSagaStateManager stateManager;
     private final ActionRoundTimerScheduler timerScheduler;
     private final ActionRoundTimeoutProcessor timeoutProcessor;
+    private final Clock clock;
 
     ActionRoundSagaRecovery(
             ActionRoundSagaStateManager stateManager,
             ActionRoundTimerScheduler timerScheduler,
-            ActionRoundTimeoutProcessor timeoutProcessor) {
+            ActionRoundTimeoutProcessor timeoutProcessor,
+            Clock clock) {
         this.stateManager = stateManager;
         this.timerScheduler = timerScheduler;
         this.timeoutProcessor = timeoutProcessor;
+        this.clock = clock;
     }
 
     @Override
     public void onApplicationEvent(ApplicationStartedEvent event) {
-        var now = Instant.now();
+        var now = clock.instant();
 
         // Recover WAITING sagas
         for (var state : stateManager.findAllWaiting()) {
