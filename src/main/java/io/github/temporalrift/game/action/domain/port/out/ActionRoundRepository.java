@@ -14,6 +14,4 @@ public interface ActionRoundRepository {
     Optional<ActionRound> findByGameIdAndEraNumberAndRoundNumber(UUID gameId, int eraNumber, int roundNumber);
 
     Optional<ActionRound> findByGameIdAndEraNumberAndRoundNumberWithLock(UUID gameId, int eraNumber, int roundNumber);
-
-    Optional<ActionRound> findByIdWithLock(UUID id);
 }
