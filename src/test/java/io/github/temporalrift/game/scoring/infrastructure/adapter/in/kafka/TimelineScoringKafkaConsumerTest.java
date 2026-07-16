@@ -88,6 +88,9 @@ class TimelineScoringKafkaConsumerTest {
     @Test
     @DisplayName("unsupported envelope version — skipped without claiming so it can be reprocessed later")
     void handle_unsupportedVersion_skippedWithoutClaiming() {
+        // eventType is derived from the payload class (OutcomeApplied -> a supported type), not from
+        // the "FutureEvent" aggregateType argument below — this must reach the version check, not the
+        // unsupported-event-type check.
         var outcome = outcomeApplied();
         var envelope = EventEnvelope.create(GAME_ID, "FutureEvent", GAME_ID, 2, outcome);
 
