@@ -11,7 +11,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
 import org.springframework.context.annotation.Import;
-import org.springframework.transaction.annotation.Transactional;
 
 import io.github.temporalrift.events.shared.CardType;
 import io.github.temporalrift.events.shared.Faction;
@@ -100,19 +99,6 @@ class ActionPersistenceIT {
                     assertThat(card.sourceOutcomeId()).isEqualTo(sourceOutcomeId);
                     assertThat(card.targetOutcomeId()).isEqualTo(targetOutcomeId);
                 });
-    }
-
-    @Test
-    @Transactional
-    void actionRound_findByIdWithLock_returnsRound() {
-        var gameId = UUID.randomUUID();
-        var round = new ActionRound(UUID.randomUUID(), gameId, 1, 1, List.of(UUID.randomUUID()), 60);
-        actionRoundRepository.save(round);
-
-        var loaded = actionRoundRepository.findByIdWithLock(round.id());
-
-        assertThat(loaded).isPresent();
-        assertThat(loaded.get().id()).isEqualTo(round.id());
     }
 
     @Test

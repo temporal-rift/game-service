@@ -46,11 +46,6 @@ class ActionRoundRepositoryAdapter implements ActionRoundRepository {
                 .map(this::toDomain);
     }
 
-    @Override
-    public Optional<ActionRound> findByIdWithLock(UUID id) {
-        return jpaRepository.findByIdWithLock(id).map(this::toDomain);
-    }
-
     private ActionRoundJpaEntity toEntity(ActionRound round) {
         var entity = new ActionRoundJpaEntity();
         entity.setId(round.id());
