@@ -11,12 +11,13 @@ import io.github.temporalrift.events.shared.CardType;
 import io.github.temporalrift.game.action.domain.port.out.BandRulesPort;
 
 /**
- * Externalised probability-band rules (see {@code game.rules.bands} in {@code application.yml}). Keeping
- * these in configuration lets balance values be tuned during playtesting without a code change.
+ * Externalised scoring/balance rules (see {@code game.rules.scoring} in {@code application.yml}): card
+ * shift magnitudes, swing magnitude, and probability-band thresholds. Keeping these in configuration lets
+ * provisional balance values be tuned during playtesting without a code change.
  */
-@ConfigurationProperties("game.rules.bands")
+@ConfigurationProperties("game.rules.scoring")
 @Validated
-public record BandRulesProperties(
+public record ScoringRulesProperties(
         @NotNull Map<CardType, Integer> cardShifts,
         @Min(0) int swingShift,
         @Min(0) int lowMaxProbability,
