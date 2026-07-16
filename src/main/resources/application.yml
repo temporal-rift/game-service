@@ -26,12 +26,19 @@ spring:
       group-id: game-service
       auto-offset-reset: earliest
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
-      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
-      properties:
-        spring.json.trusted.packages: "io.github.temporalrift.events.*"
+      # Raw bytes in, then spring-modulith-events-kafka's ByteArrayJacksonJsonMessageConverter
+      # (auto-wired into the listener container factory) converts to the listener parameter type.
+      # A JSON value-deserializer here would double-convert and fail with
+      # "Only String, Bytes, or byte[] supported".
+      value-deserializer: org.apache.kafka.common.serialization.ByteArrayDeserializer
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
-      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      # JacksonJsonSerializer (Jackson 3) — the Jackson 2 based JsonSerializer cannot handle
+      # java.time.Instant (EventEnvelope.occurredAt) without extra modules. Type headers stay off
+      # so consumers convert by listener parameter type, keeping the wire format header-free JSON.
+      value-serializer: org.springframework.kafka.support.serializer.JacksonJsonSerializer
+      properties:
+        spring.json.add.type.headers: false
   security:
     oauth2:
       resourceserver:
