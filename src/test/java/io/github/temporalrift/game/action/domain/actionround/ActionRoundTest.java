@@ -373,6 +373,24 @@ class ActionRoundTest {
     }
 
     @Test
+    @DisplayName("close with a non-timer reason — PlayerSkipped carries that reason, not a hardcoded one")
+    void closeWithOtherReasonRegistersSkippedWithThatReason() {
+        // given
+        var round = openRound(List.of(PLAYER_A, PLAYER_B));
+        round.pullEvents();
+
+        // when
+        round.close("HOST_ABORTED");
+
+        // then
+        var events = round.pullEvents();
+        assertThat(events)
+                .filteredOn(PlayerSkipped.class::isInstance)
+                .allSatisfy(
+                        event -> assertThat(((PlayerSkipped) event).reason()).isEqualTo("HOST_ABORTED"));
+    }
+
+    @Test
     @DisplayName("close — round already CLOSING — returns AlreadyClosing and registers no new events")
     void closeAlreadyClosingReturnsAlreadyClosing() {
         // given

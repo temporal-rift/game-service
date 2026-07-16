@@ -192,8 +192,8 @@ public class ActionRound extends AggregateRoot {
         // Never persisted — save() writes CLOSED after this returns.
         status = RoundStatus.CLOSING;
         var skippedPlayerIds = List.copyOf(pendingPlayerIds);
-        skippedPlayerIds.forEach(skippedId ->
-                registerEvent(new PlayerSkipped(gameId, eraNumber, roundNumber, skippedId, "TIMER_EXPIRED")));
+        skippedPlayerIds.forEach(
+                skippedId -> registerEvent(new PlayerSkipped(gameId, eraNumber, roundNumber, skippedId, closedReason)));
         pendingPlayerIds.clear();
 
         status = RoundStatus.CLOSED;
