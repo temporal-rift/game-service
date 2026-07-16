@@ -1,12 +1,14 @@
 package io.github.temporalrift.game.session.infrastructure.adapter.out.config;
 
 import java.util.Map;
+import java.util.Set;
 
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotEmpty;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.validation.annotation.Validated;
 
+import io.github.temporalrift.events.shared.Faction;
 import io.github.temporalrift.game.session.domain.port.out.SessionGameRulesPort;
 
 @ConfigurationProperties("game.rules")
@@ -20,7 +22,8 @@ public record SessionRulesProperties(
         @Min(1) int cardsPerHand,
         @Min(1) int winScoreThreshold,
         @Min(1) int reconnectGracePeriodSeconds,
-        @NotEmpty Map<Integer, Integer> actionRoundTimerSeconds)
+        @NotEmpty Map<Integer, Integer> actionRoundTimerSeconds,
+        @NotEmpty Set<Faction> stabilizationWinnerFactions)
         implements SessionGameRulesPort {
 
     private static final int DEFAULT_ACTION_ROUND_TIMER_SECONDS = 60;
