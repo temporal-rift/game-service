@@ -1,5 +1,6 @@
 package io.github.temporalrift.game.session.domain.port.out;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -15,7 +16,7 @@ public interface PlayerReconnectSagaRepository {
 
     Optional<PlayerReconnectSagaState> findByGameIdAndPlayerId(UUID gameId, UUID playerId);
 
-    List<PlayerReconnectSagaState> findAllByStatus(PlayerReconnectSagaStatus status);
+    List<PlayerReconnectSagaState> findByStatusDueBy(PlayerReconnectSagaStatus status, Instant deadline);
 
     long countByGameIdAndStatus(UUID gameId, PlayerReconnectSagaStatus status);
 }

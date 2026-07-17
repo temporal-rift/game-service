@@ -81,16 +81,16 @@ class ActionRoundSagaAdapterTest {
     }
 
     @Test
-    @DisplayName("findAllWaiting and findAllClosing map repository lists to domain lists")
+    @DisplayName("findWaitingDueBy and findAllClosing map repository lists to domain lists")
     void collectionMethods_mapRepositoryLists() {
         // given
         var waitingEntity = entity(ActionRoundSagaStatus.WAITING);
         var closingEntity = entity(ActionRoundSagaStatus.CLOSING);
-        given(jpaRepository.findAllWaiting()).willReturn(List.of(waitingEntity));
+        given(jpaRepository.findWaitingDueBy(EXPIRES_AT)).willReturn(List.of(waitingEntity));
         given(jpaRepository.findAllClosing()).willReturn(List.of(closingEntity));
 
         // when
-        var waiting = adapter.findAllWaiting();
+        var waiting = adapter.findWaitingDueBy(EXPIRES_AT);
         var closing = adapter.findAllClosing();
 
         // then

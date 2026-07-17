@@ -1,5 +1,6 @@
 package io.github.temporalrift.game.session.infrastructure.adapter.out.persistence;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -36,8 +37,8 @@ public class PlayerReconnectSagaAdapter implements PlayerReconnectSagaRepository
     }
 
     @Override
-    public List<PlayerReconnectSagaState> findAllByStatus(PlayerReconnectSagaStatus status) {
-        return jpaRepository.findAllByStatus(status.name()).stream()
+    public List<PlayerReconnectSagaState> findByStatusDueBy(PlayerReconnectSagaStatus status, Instant deadline) {
+        return jpaRepository.findAllByStatusAndGraceExpiresAtLessThanEqual(status.name(), deadline).stream()
                 .map(this::toDomain)
                 .toList();
     }

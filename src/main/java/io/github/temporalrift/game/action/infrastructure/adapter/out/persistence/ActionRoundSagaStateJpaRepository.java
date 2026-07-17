@@ -1,5 +1,6 @@
 package io.github.temporalrift.game.action.infrastructure.adapter.out.persistence;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -21,8 +22,9 @@ interface ActionRoundSagaStateJpaRepository extends JpaRepository<ActionRoundSag
     Optional<ActionRoundSagaStateJpaEntity> findByGameIdAndEraNumberAndRoundNumberWithLock(
             @Param("gameId") UUID gameId, @Param("eraNumber") int eraNumber, @Param("roundNumber") int roundNumber);
 
-    @Query("SELECT s FROM ActionRoundSagaStateJpaEntity s WHERE s.status = 'WAITING'")
-    List<ActionRoundSagaStateJpaEntity> findAllWaiting();
+    @Query("SELECT s FROM ActionRoundSagaStateJpaEntity s "
+            + "WHERE s.status = 'WAITING' AND s.timerExpiresAt <= :deadline")
+    List<ActionRoundSagaStateJpaEntity> findWaitingDueBy(@Param("deadline") Instant deadline);
 
     @Query("SELECT s FROM ActionRoundSagaStateJpaEntity s WHERE s.status = 'CLOSING'")
     List<ActionRoundSagaStateJpaEntity> findAllClosing();

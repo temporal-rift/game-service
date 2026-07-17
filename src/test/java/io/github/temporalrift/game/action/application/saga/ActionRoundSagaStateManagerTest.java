@@ -183,12 +183,12 @@ class ActionRoundSagaStateManagerTest {
                 List.of(),
                 TIMER_EXPIRES_AT));
         given(repository.findBySagaId(SAGA_ID)).willReturn(waiting.stream().findFirst());
-        given(repository.findAllWaiting()).willReturn(waiting);
+        given(repository.findWaitingDueBy(TIMER_EXPIRES_AT)).willReturn(waiting);
         given(repository.findAllClosing()).willReturn(closing);
 
         // when
         var bySagaId = stateManager.findBySagaId(SAGA_ID);
-        var waitingStates = stateManager.findAllWaiting();
+        var waitingStates = stateManager.findWaitingDueBy(TIMER_EXPIRES_AT);
         var closingStates = stateManager.findAllClosing();
 
         // then

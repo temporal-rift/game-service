@@ -60,8 +60,8 @@ class PlayerReconnectSagaStateManager {
         return repository.findByGameIdAndPlayerId(gameId, playerId);
     }
 
-    List<PlayerReconnectSagaState> findAllInGracePeriod() {
-        return repository.findAllByStatus(PlayerReconnectSagaStatus.GRACE_PERIOD);
+    List<PlayerReconnectSagaState> findGracePeriodDueBy(Instant deadline) {
+        return repository.findByStatusDueBy(PlayerReconnectSagaStatus.GRACE_PERIOD, deadline);
     }
 
     long countActiveGracePeriodForGame(UUID gameId) {

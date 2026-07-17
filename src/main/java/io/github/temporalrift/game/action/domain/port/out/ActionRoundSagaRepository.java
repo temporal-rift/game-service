@@ -1,5 +1,6 @@
 package io.github.temporalrift.game.action.domain.port.out;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -17,7 +18,7 @@ public interface ActionRoundSagaRepository {
     Optional<ActionRoundSagaState> findByGameIdAndEraNumberAndRoundNumberWithLock(
             UUID gameId, int eraNumber, int roundNumber);
 
-    List<ActionRoundSagaState> findAllWaiting();
+    List<ActionRoundSagaState> findWaitingDueBy(Instant deadline);
 
     List<ActionRoundSagaState> findAllClosing();
 }
