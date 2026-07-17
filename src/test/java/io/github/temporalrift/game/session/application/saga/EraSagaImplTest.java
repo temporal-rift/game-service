@@ -227,8 +227,8 @@ class EraSagaImplTest {
         // when
         eraSaga.start(GAME_ID, ERA_NUMBER, PLAYER_IDS, List.of());
 
-        // then
-        then(applicationEventPublisher).should(times(2)).publishEvent(captor.capture());
+        // then — EventsDrawn + one HandDealt per player + StartActionRoundRequested
+        then(applicationEventPublisher).should(times(4)).publishEvent(captor.capture());
         var eventsDrawn = captor.getAllValues().stream()
                 .filter(EventsDrawn.class::isInstance)
                 .map(EventsDrawn.class::cast)
@@ -237,6 +237,33 @@ class EraSagaImplTest {
         assertThat(eventsDrawn.gameId()).isEqualTo(GAME_ID);
         assertThat(eventsDrawn.eraNumber()).isEqualTo(ERA_NUMBER);
         assertThat(eventsDrawn.events()).isNotEmpty();
+    }
+
+    @Test
+    @DisplayName("happy path — HandDealt also published as typed Spring event so the action module projects hands")
+    void start_happyPath_publishesTypedHandDealtPerPlayer() {
+        // given
+        var game = new Game(GAME_ID, LOBBY_ID, buildDeck(DECK_SIZE));
+        given(gameRepository.findById(GAME_ID)).willReturn(Optional.of(game));
+        given(gameRules.eventsPerEra()).willReturn(EVENTS_PER_ERA);
+        given(gameRules.cardsPerHand()).willReturn(CARDS_PER_HAND);
+        given(futureEventCatalog.findByEventIds(any()))
+                .willReturn(IntStream.range(0, EVENTS_PER_ERA)
+                        .mapToObj(i -> buildEventDef())
+                        .toList());
+        var captor = ArgumentCaptor.forClass(Object.class);
+
+        // when
+        eraSaga.start(GAME_ID, ERA_NUMBER, PLAYER_IDS, List.of());
+
+        // then
+        then(applicationEventPublisher).should(times(4)).publishEvent(captor.capture());
+        var handsDealt = captor.getAllValues().stream()
+                .filter(HandDealt.class::isInstance)
+                .map(HandDealt.class::cast)
+                .toList();
+        assertThat(handsDealt).extracting(HandDealt::playerId).containsExactlyInAnyOrderElementsOf(PLAYER_IDS);
+        assertThat(handsDealt).allSatisfy(hand -> assertThat(hand.cards()).hasSize(CARDS_PER_HAND));
     }
 
     @Test

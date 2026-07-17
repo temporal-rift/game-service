@@ -19,13 +19,16 @@ import io.github.temporalrift.events.session.EraStarted;
 import io.github.temporalrift.game.TestcontainersConfiguration;
 import io.github.temporalrift.game.action.domain.actionround.ActionRound;
 import io.github.temporalrift.game.action.domain.actionround.RoundStatus;
+import io.github.temporalrift.game.action.domain.playerstate.PlayerState;
 import io.github.temporalrift.game.action.domain.port.out.ActionRoundRepository;
 import io.github.temporalrift.game.action.domain.port.out.ActionRoundSagaRepository;
+import io.github.temporalrift.game.action.domain.port.out.PlayerStateRepository;
 import io.github.temporalrift.game.action.domain.saga.ActionRoundSagaState;
 import io.github.temporalrift.game.action.domain.saga.ActionRoundSagaStatus;
 import io.github.temporalrift.game.session.domain.game.Game;
 import io.github.temporalrift.game.session.domain.port.out.FutureEventCatalogPort;
 import io.github.temporalrift.game.session.domain.port.out.GameRepository;
+import io.github.temporalrift.game.session.domain.port.out.SessionGameRulesPort;
 import io.github.temporalrift.game.shared.GameRulesPort;
 
 @SpringBootTest
@@ -49,6 +52,12 @@ class EraStartedToRoundStartIT {
 
     @Autowired
     GameRulesPort gameRules;
+
+    @Autowired
+    SessionGameRulesPort sessionGameRules;
+
+    @Autowired
+    PlayerStateRepository playerStateRepository;
 
     @Autowired
     TransactionTemplate transactionTemplate;
@@ -77,6 +86,35 @@ class EraStartedToRoundStartIT {
         assertThat(sagaState.status()).isEqualTo(ActionRoundSagaStatus.WAITING);
         assertThat(sagaState.pendingPlayerIds()).containsExactlyInAnyOrderElementsOf(playerIds);
         assertThat(sagaState.timerExpiresAt()).isNotNull();
+    }
+
+    /**
+     * Regression coverage for the dormant-listener bug (issue #70): {@code EraSagaImpl} published
+     * {@code HandDealt} only as a Kafka envelope, so the action module never projected hands and
+     * every card play failed.
+     */
+    @Test
+    void eraStarted_dealsHands_andProjectsThemIntoPlayerState() {
+        var gameId = UUID.randomUUID();
+        var playerIds = List.of(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID());
+
+        transactionTemplate.executeWithoutResult(_ -> {
+            gameRepository.save(new Game(gameId, UUID.randomUUID(), futureEventCatalog.allEventIds()));
+            applicationEventPublisher.publishEvent(new EraStarted(gameId, 1, List.of(), playerIds));
+        });
+
+        for (var playerId : playerIds) {
+            var playerState = awaitPlayerStateWithHand(gameId, playerId);
+            assertThat(playerState.hand()).hasSize(sessionGameRules.cardsPerHand());
+        }
+    }
+
+    private PlayerState awaitPlayerStateWithHand(UUID gameId, UUID playerId) {
+        return await().atMost(Duration.ofSeconds(10))
+                .until(
+                        () -> playerStateRepository.findByGameIdAndPlayerId(gameId, playerId),
+                        state -> state.map(s -> !s.hand().isEmpty()).orElse(false))
+                .orElseThrow();
     }
 
     private ActionRound awaitActionRound(UUID gameId, int eraNumber, int roundNumber) {
