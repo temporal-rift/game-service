@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import org.springframework.data.domain.Limit;
 import org.springframework.stereotype.Component;
 
 import io.github.temporalrift.game.session.domain.port.out.PlayerReconnectSagaRepository;
@@ -36,11 +37,24 @@ public class PlayerReconnectSagaAdapter implements PlayerReconnectSagaRepository
         return jpaRepository.findByGameIdAndPlayerId(gameId, playerId).map(this::toDomain);
     }
 
+    // Bounded so a mass expiry cannot balloon one sweep run; the fixed-delay reschedule drains the
+    // remainder within the next intervals.
+    private static final int SWEEP_BATCH_SIZE = 200;
+
     @Override
     public List<PlayerReconnectSagaState> findByStatusDueBy(PlayerReconnectSagaStatus status, Instant deadline) {
-        return jpaRepository.findAllByStatusAndGraceExpiresAtLessThanEqual(status.name(), deadline).stream()
+        return jpaRepository
+                .findAllByStatusAndGraceExpiresAtLessThanEqualOrderByGraceExpiresAt(
+                        status.name(), deadline, Limit.of(SWEEP_BATCH_SIZE))
+                .stream()
                 .map(this::toDomain)
                 .toList();
+    }
+
+    @Override
+    public boolean compareAndSetStatus(
+            UUID sagaId, PlayerReconnectSagaStatus expected, PlayerReconnectSagaStatus next) {
+        return jpaRepository.compareAndSetStatus(sagaId, expected.name(), next.name()) == 1;
     }
 
     @Override
