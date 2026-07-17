@@ -13,8 +13,13 @@ class ActionRoundTimerRegistry {
     private final Map<UUID, ScheduledFuture<?>> scheduledTimers = new ConcurrentHashMap<>();
 
     void register(UUID sagaId, ScheduledFuture<?> future) {
-        if (future != null) {
-            scheduledTimers.put(sagaId, future);
+        if (future == null) {
+            return;
+        }
+        // Replacing a still-armed timer must cancel it, or the orphan fires anyway.
+        var previous = scheduledTimers.put(sagaId, future);
+        if (previous != null) {
+            previous.cancel(false);
         }
     }
 

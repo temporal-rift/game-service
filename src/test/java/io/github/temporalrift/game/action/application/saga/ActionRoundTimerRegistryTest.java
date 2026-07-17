@@ -1,4 +1,4 @@
-package io.github.temporalrift.game.session.application.saga;
+package io.github.temporalrift.game.action.application.saga;
 
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.never;
@@ -13,7 +13,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
-class PlayerReconnectTimerRegistryTest {
+class ActionRoundTimerRegistryTest {
 
     @Mock
     ScheduledFuture<?> future;
@@ -25,7 +25,7 @@ class PlayerReconnectTimerRegistryTest {
     @DisplayName("register ignores null futures")
     void register_nullFuture_ignoresIt() {
         // given
-        var registry = new PlayerReconnectTimerRegistry();
+        var registry = new ActionRoundTimerRegistry();
 
         // when
         registry.register(UUID.randomUUID(), null);
@@ -39,7 +39,7 @@ class PlayerReconnectTimerRegistryTest {
     @DisplayName("cancel removes and cancels an existing scheduled future")
     void cancel_existingFuture_cancelsIt() {
         // given
-        var registry = new PlayerReconnectTimerRegistry();
+        var registry = new ActionRoundTimerRegistry();
         var sagaId = UUID.randomUUID();
         registry.register(sagaId, future);
 
@@ -54,7 +54,7 @@ class PlayerReconnectTimerRegistryTest {
     @DisplayName("register cancels a replaced still-armed timer")
     void register_replacingExistingFuture_cancelsPrevious() {
         // given
-        var registry = new PlayerReconnectTimerRegistry();
+        var registry = new ActionRoundTimerRegistry();
         var sagaId = UUID.randomUUID();
         registry.register(sagaId, future);
 
@@ -70,7 +70,7 @@ class PlayerReconnectTimerRegistryTest {
     @DisplayName("remove drops the future without cancelling it")
     void remove_existingFuture_doesNotCancelIt() {
         // given
-        var registry = new PlayerReconnectTimerRegistry();
+        var registry = new ActionRoundTimerRegistry();
         var sagaId = UUID.randomUUID();
         registry.register(sagaId, future);
 
