@@ -55,7 +55,7 @@ class TimelineScoringKafkaConsumer {
         this.objectMapper = objectMapper;
     }
 
-    @KafkaListener(topics = "timeline.events")
+    @KafkaListener(topics = "timeline.events", groupId = "game-service.scoring.timeline-events")
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void handle(EventEnvelope envelope) {
         if (!SUPPORTED_EVENT_TYPES.contains(envelope.eventType())) {

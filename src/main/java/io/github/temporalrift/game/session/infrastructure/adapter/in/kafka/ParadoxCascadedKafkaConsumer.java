@@ -63,10 +63,20 @@ class ParadoxCascadedKafkaConsumer {
         this.objectMapper = objectMapper;
     }
 
-    @KafkaListener(topics = "timeline.events")
+    @KafkaListener(topics = "timeline.events", groupId = "game-service.session.paradox-cascaded")
     @Transactional(propagation = REQUIRES_NEW)
     public void handle(EventEnvelope envelope) {
         if (!EVENT_TYPE.equals(envelope.eventType())) {
+            return;
+        }
+        // Check version before claiming: claiming an unsupported version would permanently mark the
+        // event processed, so it could never be reprocessed once this consumer learns to handle it.
+        if (envelope.version() != 1) {
+            log.warn(
+                    "Unsupported {} envelope version {} for event {} — skipping",
+                    EVENT_TYPE,
+                    envelope.version(),
+                    envelope.eventId());
             return;
         }
         if (!processedEventRepository.tryMarkProcessed(envelope.eventId(), CONSUMER)) {
