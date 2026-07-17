@@ -109,7 +109,8 @@ class EraSagaImpl implements EraSaga {
                 .mapToObj(
                         i -> new HandDealt.CardInstance(UUID.randomUUID(), CARD_POOL[random.nextInt(CARD_POOL.length)]))
                 .toList();
-        eventPublisher.publish(EventEnvelope.create(
-                game.id(), Game.AGGREGATE_TYPE, gameId, 1, new HandDealt(gameId, eraNumber, playerId, cards)));
+        var handDealt = new HandDealt(gameId, eraNumber, playerId, cards);
+        eventPublisher.publish(EventEnvelope.create(game.id(), Game.AGGREGATE_TYPE, gameId, 1, handDealt));
+        applicationEventPublisher.publishEvent(handDealt);
     }
 }
