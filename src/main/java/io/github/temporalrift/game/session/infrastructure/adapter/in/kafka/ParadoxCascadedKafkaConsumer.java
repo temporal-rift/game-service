@@ -23,11 +23,12 @@ import io.github.temporalrift.game.session.domain.game.Game;
 import io.github.temporalrift.game.session.domain.game.GameAlreadyOverException;
 import io.github.temporalrift.game.session.domain.game.GameNotFoundException;
 import io.github.temporalrift.game.session.domain.game.GameStatus;
+import io.github.temporalrift.game.session.domain.lobby.LobbyNotFoundException;
+import io.github.temporalrift.game.session.domain.lobby.LobbyPlayer;
 import io.github.temporalrift.game.session.domain.port.out.GameRepository;
+import io.github.temporalrift.game.session.domain.port.out.LobbyRepository;
 import io.github.temporalrift.game.session.domain.port.out.SessionEventPublisher;
 import io.github.temporalrift.game.session.domain.port.out.SessionGameRulesPort;
-import io.github.temporalrift.game.session.domain.port.out.StartGameSagaRepository;
-import io.github.temporalrift.game.session.domain.saga.FactionAssignment;
 import io.github.temporalrift.game.shared.ProcessedEventRepository;
 
 @Component
@@ -40,7 +41,7 @@ class ParadoxCascadedKafkaConsumer {
 
     private final ProcessedEventRepository processedEventRepository;
     private final GameRepository gameRepository;
-    private final StartGameSagaRepository startGameSagaRepository;
+    private final LobbyRepository lobbyRepository;
     private final SessionEventPublisher eventPublisher;
     private final ApplicationEventPublisher applicationEventPublisher;
     private final SessionGameRulesPort gameRules;
@@ -49,14 +50,14 @@ class ParadoxCascadedKafkaConsumer {
     ParadoxCascadedKafkaConsumer(
             ProcessedEventRepository processedEventRepository,
             GameRepository gameRepository,
-            StartGameSagaRepository startGameSagaRepository,
+            LobbyRepository lobbyRepository,
             SessionEventPublisher eventPublisher,
             ApplicationEventPublisher applicationEventPublisher,
             SessionGameRulesPort gameRules,
             ObjectMapper objectMapper) {
         this.processedEventRepository = processedEventRepository;
         this.gameRepository = gameRepository;
-        this.startGameSagaRepository = startGameSagaRepository;
+        this.lobbyRepository = lobbyRepository;
         this.eventPublisher = eventPublisher;
         this.applicationEventPublisher = applicationEventPublisher;
         this.gameRules = gameRules;
@@ -97,24 +98,27 @@ class ParadoxCascadedKafkaConsumer {
         gameRepository.save(game);
 
         if (game.status() == GameStatus.ENDED_BY_COLLAPSE) {
-            var assignments = startGameSagaRepository
-                    .findByGameId(gameId)
-                    .orElseThrow(() -> new GameNotFoundException(gameId))
-                    .factionAssignments();
+            // The lobby roster is the system of record for assigned factions; saga state is
+            // workflow bookkeeping and must not be read as game data.
+            var players = lobbyRepository
+                    .findById(game.lobbyId())
+                    .orElseThrow(() -> new LobbyNotFoundException(game.lobbyId()))
+                    .currentPlayers();
 
-            var collapsed = buildTimelineCollapsed(gameId, paradox.eraNumber(), assignments);
+            var collapsed = buildTimelineCollapsed(gameId, paradox.eraNumber(), players);
             eventPublisher.publish(EventEnvelope.create(gameId, Game.AGGREGATE_TYPE, gameId, 1, collapsed));
             applicationEventPublisher.publishEvent(collapsed);
         }
     }
 
-    private TimelineCollapsed buildTimelineCollapsed(UUID gameId, int eraNumber, List<FactionAssignment> assignments) {
+    private TimelineCollapsed buildTimelineCollapsed(UUID gameId, int eraNumber, List<LobbyPlayer> players) {
         var winners = new ArrayList<TimelineCollapsed.PlayerFactionResult>();
         var losers = new ArrayList<TimelineCollapsed.PlayerFactionResult>();
-        for (var assignment : assignments) {
+        for (var player : players) {
+            var faction = player.faction();
             var result = new TimelineCollapsed.PlayerFactionResult(
-                    assignment.playerId(), assignment.faction().name());
-            if (COLLAPSE_WINNERS.contains(assignment.faction())) {
+                    player.playerId(), faction == null ? null : faction.name());
+            if (faction != null && COLLAPSE_WINNERS.contains(faction)) {
                 winners.add(result);
             } else {
                 losers.add(result);
