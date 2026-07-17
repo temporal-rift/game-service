@@ -1,5 +1,6 @@
 package io.github.temporalrift.game.action.infrastructure.adapter.in.rest;
 
+import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -14,26 +15,50 @@ import io.github.temporalrift.game.action.domain.actionround.JammedPlayerExcepti
 import io.github.temporalrift.game.action.domain.actionround.RoundNotFoundException;
 import io.github.temporalrift.game.action.domain.playerstate.PlayerStateNotFoundException;
 
+// Must outrank GlobalExceptionHandler: advice order decides handler lookup across advices, not
+// exception-type specificity, so the shared Exception catch-all would otherwise swallow these.
+@Order(0)
 @RestControllerAdvice(basePackageClasses = ActionController.class)
 class ActionExceptionHandler {
 
     @ExceptionHandler({RoundNotFoundException.class, PlayerStateNotFoundException.class})
     ProblemDetail handleNotFound(RuntimeException ex) {
-        return ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
+        return problem(HttpStatus.NOT_FOUND, ex.getMessage(), "404-01");
     }
 
-    @ExceptionHandler({ActionRoundClosedException.class, DuplicateSubmissionException.class})
-    ProblemDetail handleConflict(RuntimeException ex) {
-        return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
+    @ExceptionHandler(ActionRoundClosedException.class)
+    ProblemDetail handleRoundClosed(ActionRoundClosedException ex) {
+        return problem(HttpStatus.CONFLICT, ex.getMessage(), "409-01");
     }
 
-    @ExceptionHandler({
-        CardNotInHandException.class,
-        FactionRequiredException.class,
-        JammedPlayerException.class,
-        InvalidActionTargetException.class
-    })
-    ProblemDetail handleUnprocessable(RuntimeException ex) {
-        return ProblemDetail.forStatusAndDetail(HttpStatus.UNPROCESSABLE_CONTENT, ex.getMessage());
+    @ExceptionHandler(DuplicateSubmissionException.class)
+    ProblemDetail handleDuplicateSubmission(DuplicateSubmissionException ex) {
+        return problem(HttpStatus.CONFLICT, ex.getMessage(), "409-02");
+    }
+
+    @ExceptionHandler(CardNotInHandException.class)
+    ProblemDetail handleCardNotInHand(CardNotInHandException ex) {
+        return problem(HttpStatus.UNPROCESSABLE_CONTENT, ex.getMessage(), "422-01");
+    }
+
+    @ExceptionHandler(JammedPlayerException.class)
+    ProblemDetail handleJammedPlayer(JammedPlayerException ex) {
+        return problem(HttpStatus.UNPROCESSABLE_CONTENT, ex.getMessage(), "422-02");
+    }
+
+    @ExceptionHandler(InvalidActionTargetException.class)
+    ProblemDetail handleInvalidTarget(InvalidActionTargetException ex) {
+        return problem(HttpStatus.UNPROCESSABLE_CONTENT, ex.getMessage(), "422-03");
+    }
+
+    @ExceptionHandler(FactionRequiredException.class)
+    ProblemDetail handleFactionRequired(FactionRequiredException ex) {
+        return problem(HttpStatus.UNPROCESSABLE_CONTENT, ex.getMessage(), "422-04");
+    }
+
+    private static ProblemDetail problem(HttpStatus status, String detail, String code) {
+        var problemDetail = ProblemDetail.forStatusAndDetail(status, detail);
+        problemDetail.setProperty("code", code);
+        return problemDetail;
     }
 }

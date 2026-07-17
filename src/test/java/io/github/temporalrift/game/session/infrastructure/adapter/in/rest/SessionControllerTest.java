@@ -30,11 +30,13 @@ import io.github.temporalrift.game.session.application.port.in.LeaveLobbyUseCase
 import io.github.temporalrift.game.session.application.port.in.StartGameUseCase;
 import io.github.temporalrift.game.session.domain.game.GameNotFoundException;
 import io.github.temporalrift.game.session.domain.game.GameStatus;
+import io.github.temporalrift.game.session.domain.lobby.DisconnectedPlayersException;
 import io.github.temporalrift.game.session.domain.lobby.LobbyAlreadyStartedException;
 import io.github.temporalrift.game.session.domain.lobby.LobbyFullException;
 import io.github.temporalrift.game.session.domain.lobby.LobbyNotFoundException;
 import io.github.temporalrift.game.session.domain.lobby.NotEnoughPlayersException;
 import io.github.temporalrift.game.session.domain.lobby.NotLobbyHostException;
+import io.github.temporalrift.game.session.domain.lobby.PlayerAlreadyInLobbyException;
 import io.github.temporalrift.game.session.domain.lobby.PlayerNotInLobbyException;
 import io.github.temporalrift.game.shared.PlayerPrincipal;
 import io.github.temporalrift.game.shared.infrastructure.config.PlayerAuthenticationToken;
@@ -168,7 +170,8 @@ class SessionControllerTest {
                         .content("""
                                 {"playerName": "Alice"}
                                 """))
-                .andExpect(status().isNotFound());
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("404-01"));
     }
 
     @Test
@@ -179,7 +182,8 @@ class SessionControllerTest {
 
         // when / then
         mockMvc.perform(delete("/lobbies/{lobbyId}/players/me", LOBBY_ID).with(auth()))
-                .andExpect(status().isNotFound());
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("404-03"));
     }
 
     @Test
@@ -195,7 +199,25 @@ class SessionControllerTest {
                         .content("""
                                 {"playerName": "Alice"}
                                 """))
-                .andExpect(status().isConflict());
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("409-01"));
+    }
+
+    @Test
+    @DisplayName("Given PlayerAlreadyInLobbyException, then 409 with code 409-02")
+    void joinLobby_playerAlreadyInLobby_returns409() throws Exception {
+        // given
+        given(joinLobbyUseCase.handle(any())).willThrow(new PlayerAlreadyInLobbyException(PLAYER_ID));
+
+        // when / then
+        mockMvc.perform(post("/lobbies/{lobbyId}/join", LOBBY_ID)
+                        .with(auth())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"playerName": "Alice"}
+                                """))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("409-02"));
     }
 
     @Test
@@ -211,7 +233,8 @@ class SessionControllerTest {
                         .content("""
                                 {"playerName": "Alice"}
                                 """))
-                .andExpect(status().is(422));
+                .andExpect(status().is(422))
+                .andExpect(jsonPath("$.code").value("422-01"));
     }
 
     @Test
@@ -221,7 +244,9 @@ class SessionControllerTest {
         given(startGameUseCase.handle(any())).willThrow(new NotEnoughPlayersException());
 
         // when / then
-        mockMvc.perform(post("/lobbies/{lobbyId}/start", LOBBY_ID).with(auth())).andExpect(status().is(422));
+        mockMvc.perform(post("/lobbies/{lobbyId}/start", LOBBY_ID).with(auth()))
+                .andExpect(status().is(422))
+                .andExpect(jsonPath("$.code").value("422-02"));
     }
 
     @Test
@@ -231,7 +256,23 @@ class SessionControllerTest {
         given(startGameUseCase.handle(any())).willThrow(new NotLobbyHostException());
 
         // when / then
-        mockMvc.perform(post("/lobbies/{lobbyId}/start", LOBBY_ID).with(auth())).andExpect(status().isForbidden());
+        mockMvc.perform(post("/lobbies/{lobbyId}/start", LOBBY_ID).with(auth()))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("403-02"));
+    }
+
+    @Test
+    @DisplayName("Given DisconnectedPlayersException, then 409 with code 409-03 and blocking player ids")
+    void startGame_disconnectedPlayers_returns409() throws Exception {
+        // given
+        var disconnectedId = UUID.randomUUID();
+        given(startGameUseCase.handle(any())).willThrow(new DisconnectedPlayersException(List.of(disconnectedId)));
+
+        // when / then
+        mockMvc.perform(post("/lobbies/{lobbyId}/start", LOBBY_ID).with(auth()))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("409-03"))
+                .andExpect(jsonPath("$.disconnectedPlayerIds[0]").value(disconnectedId.toString()));
     }
 
     @Test
@@ -241,6 +282,20 @@ class SessionControllerTest {
         given(getGameStateUseCase.handle(any())).willThrow(new GameNotFoundException(GAME_ID));
 
         // when / then
-        mockMvc.perform(get("/games/{gameId}", GAME_ID).with(auth())).andExpect(status().isNotFound());
+        mockMvc.perform(get("/games/{gameId}", GAME_ID).with(auth()))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("404-02"));
+    }
+
+    @Test
+    @DisplayName("Given an unexpected exception, then sanitized 500 without internal details")
+    void anyEndpoint_unexpectedException_returnsSanitized500() throws Exception {
+        // given
+        given(leaveLobbyUseCase.handle(any())).willThrow(new IllegalStateException("internal connection string"));
+
+        // when / then
+        mockMvc.perform(delete("/lobbies/{lobbyId}/players/me", LOBBY_ID).with(auth()))
+                .andExpect(status().isInternalServerError())
+                .andExpect(jsonPath("$.detail").value("An unexpected error occurred"));
     }
 }
