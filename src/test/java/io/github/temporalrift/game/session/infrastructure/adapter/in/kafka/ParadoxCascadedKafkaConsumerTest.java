@@ -171,6 +171,22 @@ class ParadoxCascadedKafkaConsumerTest {
     }
 
     @Test
+    @DisplayName("unsupported envelope version — skipped without claiming the eventId")
+    void handle_unsupportedVersion_skippedWithoutClaim() {
+        // given
+        var envelope = EventEnvelope.create(GAME_ID, "Game", GAME_ID, 2, paradoxCascaded(1));
+
+        // when
+        consumer.handle(envelope);
+
+        // then
+        then(processedEventRepository).should(never()).tryMarkProcessed(any(), any());
+        then(gameRepository).should(never()).findById(any());
+        then(eventPublisher).should(never()).publish(any());
+        then(applicationEventPublisher).should(never()).publishEvent(any());
+    }
+
+    @Test
     @DisplayName("duplicate eventId — ignored without mutating game state")
     void handle_duplicateEventId_ignored() {
         // given
