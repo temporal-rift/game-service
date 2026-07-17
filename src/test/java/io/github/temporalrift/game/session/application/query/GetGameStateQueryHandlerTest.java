@@ -46,6 +46,7 @@ class GetGameStateQueryHandlerTest {
 
     static final UUID GAME_ID = UUID.randomUUID();
     static final UUID LOBBY_ID = UUID.randomUUID();
+    static final UUID CALLER = UUID.randomUUID();
 
     @Test
     @DisplayName("game exists — returns result with all fields populated from game and lobby")
@@ -59,11 +60,11 @@ class GetGameStateQueryHandlerTest {
         given(game.eraCounter()).willReturn(2);
         given(game.cascadedParadoxCounter()).willReturn(1);
         var players = List.of(
-                new LobbyPlayer(UUID.randomUUID(), "Alice", null, Instant.parse("2026-01-01T00:00:00Z"), true),
+                new LobbyPlayer(CALLER, "Alice", null, Instant.parse("2026-01-01T00:00:00Z"), true),
                 new LobbyPlayer(UUID.randomUUID(), "Bob", null, Instant.parse("2026-01-01T00:00:00Z"), true),
                 new LobbyPlayer(UUID.randomUUID(), "Carol", null, Instant.parse("2026-01-01T00:00:00Z"), true));
         given(lobby.currentPlayers()).willReturn(players);
-        var query = new GetGameStateUseCase.Query(GAME_ID);
+        var query = new GetGameStateUseCase.Query(GAME_ID, CALLER);
 
         // when
         var result = handler.handle(query);
@@ -81,10 +82,26 @@ class GetGameStateQueryHandlerTest {
     void handle_gameNotFound_throwsGameNotFoundException() {
         // given
         given(gameRepository.findById(GAME_ID)).willReturn(Optional.empty());
-        var query = new GetGameStateUseCase.Query(GAME_ID);
+        var query = new GetGameStateUseCase.Query(GAME_ID, CALLER);
 
         // when / then
         assertThatExceptionOfType(GameNotFoundException.class).isThrownBy(() -> handler.handle(query));
         then(lobbyRepository).shouldHaveNoInteractions();
+    }
+
+    @Test
+    @DisplayName("caller is not a participant — throws the same GameNotFoundException as an unknown game")
+    void handle_callerNotParticipant_throwsGameNotFoundException() {
+        // given
+        given(gameRepository.findById(GAME_ID)).willReturn(Optional.of(game));
+        given(game.lobbyId()).willReturn(LOBBY_ID);
+        given(lobbyRepository.findById(LOBBY_ID)).willReturn(Optional.of(lobby));
+        given(lobby.currentPlayers())
+                .willReturn(List.of(
+                        new LobbyPlayer(UUID.randomUUID(), "Bob", null, Instant.parse("2026-01-01T00:00:00Z"), true)));
+        var query = new GetGameStateUseCase.Query(GAME_ID, CALLER);
+
+        // when / then
+        assertThatExceptionOfType(GameNotFoundException.class).isThrownBy(() -> handler.handle(query));
     }
 }

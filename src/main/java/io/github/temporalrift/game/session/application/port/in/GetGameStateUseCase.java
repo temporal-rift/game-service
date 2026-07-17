@@ -8,7 +8,7 @@ public interface GetGameStateUseCase {
 
     Result handle(Query query);
 
-    record Query(UUID gameId) {}
+    record Query(UUID gameId, UUID callerPlayerId) {}
 
     record Result(UUID gameId, GameStatus status, int eraNumber, int playerCount, int cascadedParadoxCount) {}
 }

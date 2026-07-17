@@ -3,6 +3,8 @@ package io.github.temporalrift.game.action.application.query;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.then;
+import static org.mockito.Mockito.lenient;
 
 import java.time.Clock;
 import java.time.Instant;
@@ -11,6 +13,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -23,8 +26,10 @@ import io.github.temporalrift.game.action.domain.actionround.ActionRound;
 import io.github.temporalrift.game.action.domain.actionround.RoundNotFoundException;
 import io.github.temporalrift.game.action.domain.actionround.RoundStatus;
 import io.github.temporalrift.game.action.domain.actionround.SubmittedAction;
+import io.github.temporalrift.game.action.domain.playerstate.PlayerState;
 import io.github.temporalrift.game.action.domain.port.out.ActionRoundRepository;
 import io.github.temporalrift.game.action.domain.port.out.ActionRoundSagaRepository;
+import io.github.temporalrift.game.action.domain.port.out.PlayerStateRepository;
 import io.github.temporalrift.game.action.domain.saga.ActionRoundSagaState;
 import io.github.temporalrift.game.action.domain.saga.ActionRoundSagaStatus;
 
@@ -33,6 +38,7 @@ import io.github.temporalrift.game.action.domain.saga.ActionRoundSagaStatus;
 class GetRoundStatusQueryHandlerTest {
 
     static final UUID GAME_ID = UUID.randomUUID();
+    static final UUID CALLER = UUID.randomUUID();
     static final int ERA = 2;
     static final int ROUND = 1;
     static final Instant NOW = Instant.parse("2026-06-08T10:00:00Z");
@@ -45,7 +51,32 @@ class GetRoundStatusQueryHandlerTest {
     ActionRoundSagaRepository actionRoundSagaRepository;
 
     @Mock
+    PlayerStateRepository playerStateRepository;
+
+    @Mock
     ActionRound round;
+
+    @BeforeEach
+    void stubCallerIsParticipant() {
+        // Lenient: the not-a-participant test overrides this stub with Optional.empty().
+        lenient()
+                .when(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, CALLER))
+                .thenReturn(Optional.of(new PlayerState(UUID.randomUUID(), GAME_ID, CALLER)));
+    }
+
+    @Test
+    @DisplayName("handle — caller is not a participant — throws RoundNotFoundException without reading the round")
+    void handleCallerNotParticipant() {
+        // given
+        given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, CALLER)).willReturn(Optional.empty());
+        var handler = new GetRoundStatusQueryHandler(
+                actionRoundRepository, actionRoundSagaRepository, playerStateRepository, CLOCK);
+        var query = new GetRoundStatusUseCase.Query(GAME_ID, ERA, ROUND, CALLER);
+
+        // when / then
+        assertThatExceptionOfType(RoundNotFoundException.class).isThrownBy(() -> handler.handle(query));
+        then(actionRoundRepository).shouldHaveNoInteractions();
+    }
 
     @Test
     @DisplayName("handle — open round with saga state — returns public status and remaining timer")
@@ -64,10 +95,11 @@ class GetRoundStatusQueryHandlerTest {
         var sagaState = sagaState(NOW.plusSeconds(42), List.of(pendingPlayer));
         given(actionRoundSagaRepository.findByGameIdAndEraNumberAndRoundNumber(GAME_ID, ERA, ROUND))
                 .willReturn(Optional.of(sagaState));
-        var handler = new GetRoundStatusQueryHandler(actionRoundRepository, actionRoundSagaRepository, CLOCK);
+        var handler = new GetRoundStatusQueryHandler(
+                actionRoundRepository, actionRoundSagaRepository, playerStateRepository, CLOCK);
 
         // when
-        var result = handler.handle(new GetRoundStatusUseCase.Query(GAME_ID, ERA, ROUND));
+        var result = handler.handle(new GetRoundStatusUseCase.Query(GAME_ID, ERA, ROUND, CALLER));
 
         // then
         assertThat(result.eraNumber()).isEqualTo(ERA);
@@ -93,10 +125,11 @@ class GetRoundStatusQueryHandlerTest {
         given(round.roundNumber()).willReturn(ROUND);
         given(round.status()).willReturn(RoundStatus.CLOSED);
         given(round.submittedActions()).willReturn(List.of(submittedAction));
-        var handler = new GetRoundStatusQueryHandler(actionRoundRepository, actionRoundSagaRepository, CLOCK);
+        var handler = new GetRoundStatusQueryHandler(
+                actionRoundRepository, actionRoundSagaRepository, playerStateRepository, CLOCK);
 
         // when
-        var result = handler.handle(new GetRoundStatusUseCase.Query(GAME_ID, ERA, ROUND));
+        var result = handler.handle(new GetRoundStatusUseCase.Query(GAME_ID, ERA, ROUND, CALLER));
 
         // then
         assertThat(result.status()).isEqualTo("CLOSED");
@@ -117,10 +150,11 @@ class GetRoundStatusQueryHandlerTest {
         given(round.roundNumber()).willReturn(ROUND);
         given(round.status()).willReturn(RoundStatus.CLOSED);
         given(round.submittedActions()).willReturn(List.of());
-        var handler = new GetRoundStatusQueryHandler(actionRoundRepository, actionRoundSagaRepository, CLOCK);
+        var handler = new GetRoundStatusQueryHandler(
+                actionRoundRepository, actionRoundSagaRepository, playerStateRepository, CLOCK);
 
         // when
-        var result = handler.handle(new GetRoundStatusUseCase.Query(GAME_ID, ERA, ROUND));
+        var result = handler.handle(new GetRoundStatusUseCase.Query(GAME_ID, ERA, ROUND, CALLER));
 
         // then
         assertThat(result.status()).isEqualTo("CLOSED");
@@ -138,10 +172,11 @@ class GetRoundStatusQueryHandlerTest {
         given(round.roundNumber()).willReturn(ROUND);
         given(round.status()).willReturn(RoundStatus.OPEN);
         given(round.submittedActions()).willReturn(List.of());
-        var handler = new GetRoundStatusQueryHandler(actionRoundRepository, actionRoundSagaRepository, CLOCK);
+        var handler = new GetRoundStatusQueryHandler(
+                actionRoundRepository, actionRoundSagaRepository, playerStateRepository, CLOCK);
 
         // when
-        var result = handler.handle(new GetRoundStatusUseCase.Query(GAME_ID, ERA, ROUND));
+        var result = handler.handle(new GetRoundStatusUseCase.Query(GAME_ID, ERA, ROUND, CALLER));
 
         // then
         assertThat(result.timerRemainingSeconds()).isZero();
@@ -159,10 +194,11 @@ class GetRoundStatusQueryHandlerTest {
         given(round.roundNumber()).willReturn(ROUND);
         given(round.status()).willReturn(RoundStatus.OPEN);
         given(round.submittedActions()).willReturn(List.of());
-        var handler = new GetRoundStatusQueryHandler(actionRoundRepository, actionRoundSagaRepository, CLOCK);
+        var handler = new GetRoundStatusQueryHandler(
+                actionRoundRepository, actionRoundSagaRepository, playerStateRepository, CLOCK);
 
         // when
-        var result = handler.handle(new GetRoundStatusUseCase.Query(GAME_ID, ERA, ROUND));
+        var result = handler.handle(new GetRoundStatusUseCase.Query(GAME_ID, ERA, ROUND, CALLER));
 
         // then
         assertThat(result.timerRemainingSeconds()).isEqualTo(Integer.MAX_VALUE);
@@ -181,10 +217,11 @@ class GetRoundStatusQueryHandlerTest {
         given(round.status()).willReturn(RoundStatus.CLOSING);
         given(round.pendingPlayerIds()).willReturn(List.of());
         given(round.submittedActions()).willReturn(List.of());
-        var handler = new GetRoundStatusQueryHandler(actionRoundRepository, actionRoundSagaRepository, CLOCK);
+        var handler = new GetRoundStatusQueryHandler(
+                actionRoundRepository, actionRoundSagaRepository, playerStateRepository, CLOCK);
 
         // when
-        var result = handler.handle(new GetRoundStatusUseCase.Query(GAME_ID, ERA, ROUND));
+        var result = handler.handle(new GetRoundStatusUseCase.Query(GAME_ID, ERA, ROUND, CALLER));
 
         // then
         assertThat(result.status()).isEqualTo("CLOSED");
@@ -197,8 +234,9 @@ class GetRoundStatusQueryHandlerTest {
         // given
         given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumber(GAME_ID, ERA, ROUND))
                 .willReturn(Optional.empty());
-        var handler = new GetRoundStatusQueryHandler(actionRoundRepository, actionRoundSagaRepository, CLOCK);
-        var query = new GetRoundStatusUseCase.Query(GAME_ID, ERA, ROUND);
+        var handler = new GetRoundStatusQueryHandler(
+                actionRoundRepository, actionRoundSagaRepository, playerStateRepository, CLOCK);
+        var query = new GetRoundStatusUseCase.Query(GAME_ID, ERA, ROUND, CALLER);
 
         // when / then
         assertThatExceptionOfType(RoundNotFoundException.class).isThrownBy(() -> handler.handle(query));

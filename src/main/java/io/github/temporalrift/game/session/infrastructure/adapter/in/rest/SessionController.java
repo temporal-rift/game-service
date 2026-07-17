@@ -75,7 +75,7 @@ class SessionController implements SessionApi {
 
     @Override
     public ResponseEntity<GameSummaryResponse> getGame(UUID gameId) {
-        var result = getGameStateUseCase.handle(new GetGameStateUseCase.Query(gameId));
+        var result = getGameStateUseCase.handle(new GetGameStateUseCase.Query(gameId, callerPlayerId()));
         var apiStatus =
                 switch (result.status()) {
                     case IN_PROGRESS -> GameStatus.IN_PROGRESS;
