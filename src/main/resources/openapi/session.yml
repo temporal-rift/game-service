@@ -132,7 +132,7 @@ paths:
           content:
             application/problem+json:
               schema:
-                $ref: '#/components/schemas/ProblemDetail'
+                $ref: '#/components/schemas/DisconnectedPlayersProblemDetail'
         '422':
           description: |
             Fewer than 3 players (`code: 422-02`).
@@ -259,6 +259,19 @@ components:
           type: integer
         cascadedParadoxCount:
           type: integer
+
+    DisconnectedPlayersProblemDetail:
+      allOf:
+        - $ref: '#/components/schemas/ProblemDetail'
+        - type: object
+          required: [ disconnectedPlayerIds ]
+          properties:
+            disconnectedPlayerIds:
+              type: array
+              description: Players whose disconnection is blocking the game start.
+              items:
+                type: string
+                format: uuid
 
     ProblemDetail:
       type: object
