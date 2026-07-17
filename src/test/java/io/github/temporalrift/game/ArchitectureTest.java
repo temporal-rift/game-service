@@ -65,8 +65,11 @@ public class ArchitectureTest {
             .as("Every @RestControllerAdvice must declare @Order(RestAdviceOrder.MODULE); "
                     + "only the shared fallback uses RestAdviceOrder.GLOBAL_FALLBACK");
 
+    private static final String GLOBAL_FALLBACK_ADVICE =
+            "io.github.temporalrift.game.shared.infrastructure.adapter.in.rest.GlobalExceptionHandler";
+
     private static ArchCondition<JavaClass> declareExplicitAdviceOrder() {
-        return new ArchCondition<>("declare an explicit advice order above the global fallback") {
+        return new ArchCondition<>("declare the exact advice-order constant for their role") {
             @Override
             public void check(JavaClass javaClass, ConditionEvents events) {
                 if (!javaClass.isAnnotatedWith(Order.class)) {
@@ -75,11 +78,16 @@ public class ArchitectureTest {
                     return;
                 }
                 var order = javaClass.getAnnotationOfType(Order.class).value();
-                var isSharedFallback = javaClass.getPackageName().contains(".shared.");
-                if (!isSharedFallback && order >= RestAdviceOrder.GLOBAL_FALLBACK) {
+                if (javaClass.getFullName().equals(GLOBAL_FALLBACK_ADVICE)) {
+                    if (order != RestAdviceOrder.GLOBAL_FALLBACK) {
+                        events.add(SimpleConditionEvent.violated(
+                                javaClass,
+                                javaClass.getName() + " is the designated fallback and must use"
+                                        + " @Order(RestAdviceOrder.GLOBAL_FALLBACK)"));
+                    }
+                } else if (order != RestAdviceOrder.MODULE) {
                     events.add(SimpleConditionEvent.violated(
-                            javaClass,
-                            javaClass.getName() + " must outrank the global fallback — use RestAdviceOrder.MODULE"));
+                            javaClass, javaClass.getName() + " must use @Order(RestAdviceOrder.MODULE)"));
                 }
             }
         };
