@@ -55,6 +55,8 @@ spring:
       verification-enabled: true
 
 game:
+  rate-limit:
+    requests-per-minute: 120
   rules:
     min-players: 3
     max-players: 5

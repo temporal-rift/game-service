@@ -7,6 +7,7 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.access.intercept.AuthorizationFilter;
 import tools.jackson.databind.ObjectMapper;
 
 @EnableWebSecurity
@@ -14,7 +15,8 @@ import tools.jackson.databind.ObjectMapper;
 public class SecurityConfig {
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http, ObjectMapper objectMapper) {
+    public SecurityFilterChain securityFilterChain(
+            HttpSecurity http, ObjectMapper objectMapper, PlayerRateLimiter rateLimiter) {
         return http.csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth.requestMatchers("/actuator/health/**")
@@ -26,6 +28,7 @@ public class SecurityConfig {
                                 .jwt(jwt -> jwt.jwtAuthenticationConverter(new PlayerAuthenticationConverter())))
                 .exceptionHandling(
                         exceptions -> exceptions.accessDeniedHandler(new PlayerAccessDeniedHandler(objectMapper)))
+                .addFilterAfter(new PlayerRateLimitFilter(rateLimiter, objectMapper), AuthorizationFilter.class)
                 .build();
     }
 }
