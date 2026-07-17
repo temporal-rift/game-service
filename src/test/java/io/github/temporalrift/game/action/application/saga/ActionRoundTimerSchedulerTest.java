@@ -59,6 +59,7 @@ class ActionRoundTimerSchedulerTest {
 
         // then
         then(taskScheduler).should().schedule(any(Runnable.class), eq(expiresAt));
+        then(timerRegistry).should().removeIfCurrent(sagaId, scheduledFuture);
         then(timeoutProcessor).should().handleTimerExpiry(sagaId);
     }
 
