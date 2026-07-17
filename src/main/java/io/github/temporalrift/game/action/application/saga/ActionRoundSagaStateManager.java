@@ -86,8 +86,8 @@ class ActionRoundSagaStateManager {
         return repository.findBySagaId(sagaId);
     }
 
-    List<ActionRoundSagaState> findAllWaiting() {
-        return repository.findAllWaiting();
+    List<ActionRoundSagaState> findWaitingDueBy(Instant deadline) {
+        return repository.findWaitingDueBy(deadline);
     }
 
     List<ActionRoundSagaState> findAllClosing() {

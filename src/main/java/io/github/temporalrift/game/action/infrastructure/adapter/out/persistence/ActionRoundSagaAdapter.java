@@ -1,5 +1,6 @@
 package io.github.temporalrift.game.action.infrastructure.adapter.out.persistence;
 
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
@@ -48,8 +49,10 @@ public class ActionRoundSagaAdapter implements ActionRoundSagaRepository {
     }
 
     @Override
-    public List<ActionRoundSagaState> findAllWaiting() {
-        return jpaRepository.findAllWaiting().stream().map(this::toDomain).toList();
+    public List<ActionRoundSagaState> findWaitingDueBy(Instant deadline) {
+        return jpaRepository.findWaitingDueBy(deadline).stream()
+                .map(this::toDomain)
+                .toList();
     }
 
     @Override

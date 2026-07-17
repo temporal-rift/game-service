@@ -1,5 +1,6 @@
 package io.github.temporalrift.game.session.infrastructure.adapter.out.persistence;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -10,7 +11,8 @@ public interface PlayerReconnectSagaStateJpaRepository extends JpaRepository<Pla
 
     Optional<PlayerReconnectSagaStateJpaEntity> findByGameIdAndPlayerId(UUID gameId, UUID playerId);
 
-    List<PlayerReconnectSagaStateJpaEntity> findAllByStatus(String status);
+    List<PlayerReconnectSagaStateJpaEntity> findAllByStatusAndGraceExpiresAtLessThanEqual(
+            String status, Instant deadline);
 
     long countByGameIdAndStatus(UUID gameId, String status);
 }
