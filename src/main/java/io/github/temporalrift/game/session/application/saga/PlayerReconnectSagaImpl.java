@@ -127,7 +127,13 @@ class PlayerReconnectSagaImpl implements PlayerReconnectSaga {
                 1,
                 new PlayerAbandoned(saga.gameId(), saga.playerId())));
 
-        var game = gameRepository.findById(saga.gameId()).orElseThrow(() -> new GameNotFoundException(saga.gameId()));
+        // Locked game read: the last-player check below is a cross-saga decision. Without
+        // serialization, two final grace periods expiring concurrently each see the other's
+        // uncommitted saga as still GRACE_PERIOD and both skip the game-over publication.
+        // Whoever locks second re-counts after the first commit and publishes exactly once.
+        var game = gameRepository
+                .findByIdWithLock(saga.gameId())
+                .orElseThrow(() -> new GameNotFoundException(saga.gameId()));
         var lobby =
                 lobbyRepository.findById(game.lobbyId()).orElseThrow(() -> new LobbyNotFoundException(game.lobbyId()));
 
