@@ -40,6 +40,10 @@ class CreateLobbyCommandHandler implements CreateLobbyUseCase {
         var lobbyId = UUID.randomUUID();
         var gameId = UUID.randomUUID();
         var now = clock.instant();
+        // No collision retry by design: a join-code clash in a ~6.6e11 space is rarer than any
+        // other transaction failure, would only surface at commit-time flush (outside this method's
+        // reach anyway), and an attacker cannot force one. The unique index turns the theoretical
+        // loser into an ordinary retryable 500.
         var joinCode = joinCodePort.generate();
         var host = new LobbyPlayer(command.playerId(), command.playerName(), null, now, true);
         var config = new LobbyConfig(joinCode, gameRules.minPlayers(), gameRules.maxPlayers(), clock);
