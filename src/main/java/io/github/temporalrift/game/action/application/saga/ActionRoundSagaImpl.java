@@ -40,6 +40,7 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
     private final GameRulesPort gameRules;
     private final FutureEventDefinitionPort futureEventDefinitionPort;
     private final BandCalculator bandCalculator;
+    private final ActionRoundTimerRegistry timerRegistry;
     private final Clock clock;
 
     ActionRoundSagaImpl(
@@ -49,6 +50,7 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
             GameRulesPort gameRules,
             FutureEventDefinitionPort futureEventDefinitionPort,
             BandCalculator bandCalculator,
+            ActionRoundTimerRegistry timerRegistry,
             Clock clock) {
         this.actionRoundRepository = actionRoundRepository;
         this.actionEventPublisher = actionEventPublisher;
@@ -56,6 +58,7 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
         this.gameRules = gameRules;
         this.futureEventDefinitionPort = futureEventDefinitionPort;
         this.bandCalculator = bandCalculator;
+        this.timerRegistry = timerRegistry;
         this.clock = clock;
     }
 
@@ -81,7 +84,7 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
         stateManager
                 .markSubmitted(gameId, eraNumber, roundNumber, playerId)
                 .filter(state -> state.pendingPlayerIds().isEmpty())
-                .ifPresent(state -> tryClose(gameId, eraNumber, roundNumber, "ALL_SUBMITTED"));
+                .ifPresent(state -> tryClose(state.sagaId(), gameId, eraNumber, roundNumber, "ALL_SUBMITTED"));
     }
 
     void handleTimerExpiry(UUID sagaId) {
@@ -95,10 +98,10 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
             log.debug("handleTimerExpiry: saga {} already COMPLETED", sagaId);
             return;
         }
-        tryClose(state.gameId(), state.eraNumber(), state.roundNumber(), "TIMER_EXPIRED");
+        tryClose(sagaId, state.gameId(), state.eraNumber(), state.roundNumber(), "TIMER_EXPIRED");
     }
 
-    private void tryClose(UUID gameId, int eraNumber, int roundNumber, String closeReason) {
+    private void tryClose(UUID sagaId, UUID gameId, int eraNumber, int roundNumber, String closeReason) {
         // markClosing joins this transaction, so CLOSING is never durably visible on its own — a
         // crash mid-close rolls everything back to WAITING and the timer sweep retries at expiry.
         // Its value is the saga-row lock it takes, which serializes concurrent closers before the
@@ -139,6 +142,10 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
                 }
 
                 stateManager.complete(gameId, eraNumber, roundNumber);
+                // Best-effort: an all-submitted close no longer leaves the in-memory timer to fire
+                // a pointless expiry later. If this transaction rolls back after the cancel, the
+                // database sweep still closes the round at expiry.
+                timerRegistry.cancel(sagaId);
             }
         }
     }

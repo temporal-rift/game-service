@@ -79,6 +79,9 @@ class ActionRoundSagaImplTest {
     @Mock
     BandCalculator bandCalculator;
 
+    @Mock
+    ActionRoundTimerRegistry timerRegistry;
+
     ActionRoundSagaImpl saga;
 
     @BeforeEach
@@ -90,6 +93,7 @@ class ActionRoundSagaImplTest {
                 gameRules,
                 futureEventDefinitionPort,
                 bandCalculator,
+                timerRegistry,
                 CLOCK);
     }
 
