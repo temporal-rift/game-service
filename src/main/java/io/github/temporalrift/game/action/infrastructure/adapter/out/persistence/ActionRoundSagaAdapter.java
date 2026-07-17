@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Component;
 
 import io.github.temporalrift.game.action.domain.port.out.ActionRoundSagaRepository;
@@ -48,16 +49,15 @@ public class ActionRoundSagaAdapter implements ActionRoundSagaRepository {
                 .map(this::toDomain);
     }
 
-    @Override
-    public List<ActionRoundSagaState> findWaitingDueBy(Instant deadline) {
-        return jpaRepository.findWaitingDueBy(deadline).stream()
-                .map(this::toDomain)
-                .toList();
-    }
+    // Bounded so a mass expiry cannot balloon one sweep run; the fixed-delay reschedule drains the
+    // remainder within the next intervals.
+    private static final int SWEEP_BATCH_SIZE = 200;
 
     @Override
-    public List<ActionRoundSagaState> findAllClosing() {
-        return jpaRepository.findAllClosing().stream().map(this::toDomain).toList();
+    public List<ActionRoundSagaState> findWaitingDueBy(Instant deadline) {
+        return jpaRepository.findWaitingDueBy(deadline, PageRequest.ofSize(SWEEP_BATCH_SIZE)).stream()
+                .map(this::toDomain)
+                .toList();
     }
 
     private ActionRoundSagaStateJpaEntity toEntity(ActionRoundSagaState state) {

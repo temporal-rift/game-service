@@ -99,8 +99,10 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
     }
 
     private void tryClose(UUID gameId, int eraNumber, int roundNumber, String closeReason) {
-        // Marking the saga as CLOSING before taking the round lock gives recovery code a durable
-        // breadcrumb. If the process dies mid-close, startup recovery can resume from that state.
+        // markClosing joins this transaction, so CLOSING is never durably visible on its own — a
+        // crash mid-close rolls everything back to WAITING and the timer sweep retries at expiry.
+        // Its value is the saga-row lock it takes, which serializes concurrent closers before the
+        // round lock.
         stateManager.markClosing(gameId, eraNumber, roundNumber);
 
         var round = actionRoundRepository

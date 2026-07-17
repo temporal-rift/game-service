@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+            https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.29.xsd">
+
+    <changeSet id="action-005-index-action-round-saga-due" author="game-service">
+        <comment>
+            Partial index for the timer sweep's due-WAITING query: the table accumulates COMPLETED
+            rows for every closed round, while the sweep polls every second and only ever cares
+            about the few WAITING rows.
+        </comment>
+        <sql>
+            CREATE INDEX idx_action_round_saga_waiting_due
+                ON action_round_saga_state (timer_expires_at)
+                WHERE status = 'WAITING'
+        </sql>
+        <rollback>
+            DROP INDEX idx_action_round_saga_waiting_due
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

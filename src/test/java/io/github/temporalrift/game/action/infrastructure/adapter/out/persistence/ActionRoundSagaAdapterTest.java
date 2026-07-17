@@ -1,6 +1,8 @@
 package io.github.temporalrift.game.action.infrastructure.adapter.out.persistence;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 
@@ -16,6 +18,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Pageable;
 
 import io.github.temporalrift.game.action.domain.saga.ActionRoundSagaState;
 import io.github.temporalrift.game.action.domain.saga.ActionRoundSagaStatus;
@@ -81,25 +84,20 @@ class ActionRoundSagaAdapterTest {
     }
 
     @Test
-    @DisplayName("findWaitingDueBy and findAllClosing map repository lists to domain lists")
-    void collectionMethods_mapRepositoryLists() {
+    @DisplayName("findWaitingDueBy maps the bounded repository page to a domain list")
+    void findWaitingDueBy_mapsRepositoryList() {
         // given
         var waitingEntity = entity(ActionRoundSagaStatus.WAITING);
-        var closingEntity = entity(ActionRoundSagaStatus.CLOSING);
-        given(jpaRepository.findWaitingDueBy(EXPIRES_AT)).willReturn(List.of(waitingEntity));
-        given(jpaRepository.findAllClosing()).willReturn(List.of(closingEntity));
+        given(jpaRepository.findWaitingDueBy(eq(EXPIRES_AT), any(Pageable.class)))
+                .willReturn(List.of(waitingEntity));
 
         // when
         var waiting = adapter.findWaitingDueBy(EXPIRES_AT);
-        var closing = adapter.findAllClosing();
 
         // then
         assertThat(waiting)
                 .singleElement()
                 .satisfies(state -> assertThat(state.status()).isEqualTo(ActionRoundSagaStatus.WAITING));
-        assertThat(closing)
-                .singleElement()
-                .satisfies(state -> assertThat(state.status()).isEqualTo(ActionRoundSagaStatus.CLOSING));
     }
 
     private ActionRoundSagaStateJpaEntity entity(ActionRoundSagaStatus status) {
