@@ -1,7 +1,6 @@
 package io.github.temporalrift.game.action.application.saga;
 
 import java.util.List;
-import java.util.UUID;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -47,11 +46,10 @@ class ActionStateProjectionEventListener {
 
     @ApplicationModuleListener
     void onHandDealt(HandDealt event) {
-        // Locked read: this listener and onFactionAssigned run in independent post-commit
-        // transactions and both save the whole row, so an unlocked read-modify-write lets the last
-        // writer erase the other's field.
-        var existing = playerStateRepository.findByGameIdAndPlayerIdWithLock(event.gameId(), event.playerId());
-        var state = existing.orElseGet(() -> new PlayerState(UUID.randomUUID(), event.gameId(), event.playerId()));
+        // Find-or-create under lock: this listener and onFactionAssigned run in independent
+        // post-commit transactions and both save the whole row, so an unlocked (or unguarded-create)
+        // read-modify-write lets the last writer erase the other's field.
+        var state = playerStateRepository.findOrCreateWithLock(event.gameId(), event.playerId());
         playerStateRepository.save(PlayerState.reconstitute(
                 state.id(),
                 state.gameId(),
@@ -74,16 +72,13 @@ class ActionStateProjectionEventListener {
                     event.gameId());
             return;
         }
-        var existing = playerStateRepository.findByGameIdAndPlayerIdWithLock(event.gameId(), event.playerId());
-        if (existing.isPresent() && existing.get().faction() == faction) {
+        var state = playerStateRepository.findOrCreateWithLock(event.gameId(), event.playerId());
+        if (state.faction() == faction) {
             return;
         }
-        if (existing.isPresent()
-                && existing.get().faction() != null
-                && existing.get().faction() != faction) {
+        if (state.faction() != null) {
             throw new IllegalStateException("Conflicting faction assignment for player " + event.playerId());
         }
-        var state = existing.orElseGet(() -> new PlayerState(UUID.randomUUID(), event.gameId(), event.playerId()));
         playerStateRepository.save(PlayerState.reconstitute(
                 state.id(), state.gameId(), state.playerId(), faction, List.copyOf(state.hand()), state.isJammed()));
     }

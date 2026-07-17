@@ -11,7 +11,6 @@ import static org.mockito.BDDMockito.willReturn;
 import static org.mockito.Mockito.never;
 
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
@@ -76,8 +75,8 @@ class ActionStateProjectionEventListenerTest {
                 1,
                 existing.playerId(),
                 List.of(new HandDealt.CardInstance(UUID.randomUUID(), CardType.PUSH)));
-        given(playerStateRepository.findByGameIdAndPlayerIdWithLock(existing.gameId(), existing.playerId()))
-                .willReturn(Optional.of(existing));
+        given(playerStateRepository.findOrCreateWithLock(existing.gameId(), existing.playerId()))
+                .willReturn(existing);
 
         listener.onHandDealt(event);
 
@@ -96,8 +95,8 @@ class ActionStateProjectionEventListenerTest {
         var playerId = UUID.randomUUID();
         var card = new HandDealt.CardInstance(UUID.randomUUID(), CardType.SCAN);
         var event = new HandDealt(gameId, 1, playerId, List.of(card));
-        given(playerStateRepository.findByGameIdAndPlayerIdWithLock(gameId, playerId))
-                .willReturn(Optional.empty());
+        given(playerStateRepository.findOrCreateWithLock(gameId, playerId))
+                .willReturn(new PlayerState(UUID.randomUUID(), gameId, playerId));
 
         listener.onHandDealt(event);
 
@@ -120,8 +119,8 @@ class ActionStateProjectionEventListenerTest {
                 null,
                 List.of(new PlayerState.CardInstance(UUID.randomUUID(), CardType.JAM)),
                 true);
-        given(playerStateRepository.findByGameIdAndPlayerIdWithLock(existing.gameId(), existing.playerId()))
-                .willReturn(Optional.of(existing));
+        given(playerStateRepository.findOrCreateWithLock(existing.gameId(), existing.playerId()))
+                .willReturn(existing);
 
         listener.onFactionAssigned(new FactionAssigned(existing.gameId(), existing.playerId(), Faction.WEAVERS.name()));
 
@@ -136,8 +135,8 @@ class ActionStateProjectionEventListenerTest {
     void onFactionAssigned_createsPlayerStateWhenMissing() {
         var gameId = UUID.randomUUID();
         var playerId = UUID.randomUUID();
-        given(playerStateRepository.findByGameIdAndPlayerIdWithLock(gameId, playerId))
-                .willReturn(Optional.empty());
+        given(playerStateRepository.findOrCreateWithLock(gameId, playerId))
+                .willReturn(new PlayerState(UUID.randomUUID(), gameId, playerId));
 
         listener.onFactionAssigned(new FactionAssigned(gameId, playerId, Faction.ACTIVISTS.name()));
 
@@ -159,8 +158,8 @@ class ActionStateProjectionEventListenerTest {
                 Faction.PROPHETS,
                 List.of(new PlayerState.CardInstance(UUID.randomUUID(), CardType.TRACE)),
                 false);
-        given(playerStateRepository.findByGameIdAndPlayerIdWithLock(existing.gameId(), existing.playerId()))
-                .willReturn(Optional.of(existing));
+        given(playerStateRepository.findOrCreateWithLock(existing.gameId(), existing.playerId()))
+                .willReturn(existing);
 
         listener.onFactionAssigned(
                 new FactionAssigned(existing.gameId(), existing.playerId(), Faction.PROPHETS.name()));
@@ -176,7 +175,7 @@ class ActionStateProjectionEventListenerTest {
         listener.onFactionAssigned(new FactionAssigned(gameId, playerId, "NOT_A_REAL_FACTION"));
 
         then(playerStateRepository).should(never()).save(any());
-        then(playerStateRepository).should(never()).findByGameIdAndPlayerIdWithLock(any(), any());
+        then(playerStateRepository).should(never()).findOrCreateWithLock(any(), any());
     }
 
     @Test
@@ -187,16 +186,14 @@ class ActionStateProjectionEventListenerTest {
         listener.onFactionAssigned(new FactionAssigned(gameId, playerId, null));
 
         then(playerStateRepository).should(never()).save(any());
-        then(playerStateRepository).should(never()).findByGameIdAndPlayerIdWithLock(any(), any());
+        then(playerStateRepository).should(never()).findOrCreateWithLock(any(), any());
     }
 
     @Test
     void onFactionAssigned_rejectsConflictingFaction() {
         var existing = PlayerState.reconstitute(
                 UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), Faction.ERASERS, List.of(), false);
-        willReturn(Optional.of(existing))
-                .given(playerStateRepository)
-                .findByGameIdAndPlayerIdWithLock(existing.gameId(), existing.playerId());
+        willReturn(existing).given(playerStateRepository).findOrCreateWithLock(existing.gameId(), existing.playerId());
 
         assertThatIllegalStateException()
                 .isThrownBy(() -> listener.onFactionAssigned(
