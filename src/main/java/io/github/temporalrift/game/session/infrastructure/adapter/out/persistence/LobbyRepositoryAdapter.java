@@ -56,11 +56,6 @@ class LobbyRepositoryAdapter implements LobbyRepository {
         return jpaRepository.findByJoinCode(joinCode).map(this::toDomain);
     }
 
-    @Override
-    public boolean existsByJoinCode(String joinCode) {
-        return jpaRepository.existsByJoinCode(joinCode);
-    }
-
     private LobbyJpaEntity toEntity(Lobby lobby) {
         var entity = new LobbyJpaEntity();
         entity.setId(lobby.id());

@@ -14,6 +14,4 @@ public interface LobbyRepository {
     Optional<Lobby> findByIdWithLock(UUID id);
 
     Optional<Lobby> findByJoinCode(String joinCode);
-
-    boolean existsByJoinCode(String joinCode);
 }

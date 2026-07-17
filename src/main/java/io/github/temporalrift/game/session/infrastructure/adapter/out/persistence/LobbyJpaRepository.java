@@ -16,6 +16,4 @@ interface LobbyJpaRepository extends JpaRepository<LobbyJpaEntity, UUID> {
     Optional<LobbyJpaEntity> findByIdWithLock(@Param("id") UUID id);
 
     Optional<LobbyJpaEntity> findByJoinCode(String joinCode);
-
-    boolean existsByJoinCode(String joinCode);
 }
