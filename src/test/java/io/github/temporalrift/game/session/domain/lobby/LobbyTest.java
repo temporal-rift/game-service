@@ -179,8 +179,9 @@ class LobbyTest {
         var lobby = emptyLobby();
         var p = player();
         lobby.join(p);
+        var duplicateId = p.playerId();
         assertThatExceptionOfType(PlayerAlreadyInLobbyException.class)
-                .isThrownBy(() -> lobby.join(p.playerId(), "Other Name"));
+                .isThrownBy(() -> lobby.join(duplicateId, "Other Name"));
         assertThat(lobby.currentPlayers()).hasSize(1);
     }
 
@@ -192,8 +193,9 @@ class LobbyTest {
         for (int i = 1; i < MAX_PLAYERS; i++) {
             lobby.join(player());
         }
+        var duplicateId = p.playerId();
         assertThatExceptionOfType(PlayerAlreadyInLobbyException.class)
-                .isThrownBy(() -> lobby.join(p.playerId(), "Other Name"));
+                .isThrownBy(() -> lobby.join(duplicateId, "Other Name"));
     }
 
     @Test
