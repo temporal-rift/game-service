@@ -19,8 +19,10 @@ class JoinLobbyCommandHandler implements JoinLobbyUseCase {
     @Override
     @Transactional
     public Result handle(Command command) {
+        // Pessimistic lock: concurrent joins must serialize so the max-players check cannot be
+        // passed by two transactions at once.
         var lobby = lobbyRepository
-                .findById(command.lobbyId())
+                .findByIdWithLock(command.lobbyId())
                 .orElseThrow(() -> new LobbyNotFoundException(command.lobbyId()));
 
         lobby.join(command.playerId(), command.playerName());

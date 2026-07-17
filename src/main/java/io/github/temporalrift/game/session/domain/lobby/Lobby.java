@@ -75,6 +75,9 @@ public class Lobby extends AggregateRoot {
 
     private void join(UUID playerId, String playerName, Faction faction) {
         requireWaiting();
+        if (currentPlayers.stream().anyMatch(player -> player.playerId().equals(playerId))) {
+            throw new PlayerAlreadyInLobbyException(playerId);
+        }
         if (currentPlayers.size() >= config.maxPlayers()) {
             throw new LobbyFullException();
         }

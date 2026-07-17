@@ -48,7 +48,7 @@ class JoinLobbyCommandHandlerTest {
      * Stubs needed when the handler runs to completion (join succeeds).
      */
     private void stubSuccessfulJoin() {
-        given(lobbyRepository.findById(lobbyId)).willReturn(Optional.of(lobby));
+        given(lobbyRepository.findByIdWithLock(lobbyId)).willReturn(Optional.of(lobby));
         given(lobbyRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
         given(lobby.id()).willReturn(lobbyId);
     }
@@ -122,7 +122,7 @@ class JoinLobbyCommandHandlerTest {
     @DisplayName("throws LobbyNotFoundException when lobby does not exist")
     void handle_lobbyNotFound_throwsLobbyNotFoundException() {
         // given
-        given(lobbyRepository.findById(any())).willReturn(Optional.empty());
+        given(lobbyRepository.findByIdWithLock(any())).willReturn(Optional.empty());
         var command = new JoinLobbyUseCase.Command(UUID.randomUUID(), playerId, "Alice");
 
         // when / then
@@ -133,7 +133,7 @@ class JoinLobbyCommandHandlerTest {
     @DisplayName("propagates LobbyFullException thrown by the aggregate")
     void handle_lobbyFull_propagatesLobbyFullException() {
         // given
-        given(lobbyRepository.findById(lobbyId)).willReturn(Optional.of(lobby));
+        given(lobbyRepository.findByIdWithLock(lobbyId)).willReturn(Optional.of(lobby));
         willThrow(new LobbyFullException()).given(lobby).join(any(), any());
         var command = new JoinLobbyUseCase.Command(lobbyId, playerId, "Alice");
 
@@ -145,7 +145,7 @@ class JoinLobbyCommandHandlerTest {
     @DisplayName("propagates LobbyAlreadyStartedException thrown by the aggregate")
     void handle_lobbyAlreadyStarted_propagatesLobbyAlreadyStartedException() {
         // given
-        given(lobbyRepository.findById(lobbyId)).willReturn(Optional.of(lobby));
+        given(lobbyRepository.findByIdWithLock(lobbyId)).willReturn(Optional.of(lobby));
         willThrow(new LobbyAlreadyStartedException()).given(lobby).join(any(), any());
         var command = new JoinLobbyUseCase.Command(lobbyId, playerId, "Alice");
 

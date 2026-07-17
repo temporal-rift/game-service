@@ -65,7 +65,7 @@ paths:
                 $ref: '#/components/schemas/ProblemDetail'
         '409':
           description: |
-            Lobby already started (`code: 409-01`).
+            Lobby already started (`code: 409-01`) or player already in the lobby (`code: 409-02`).
           content:
             application/problem+json:
               schema:

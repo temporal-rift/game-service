@@ -11,6 +11,7 @@ import io.github.temporalrift.game.session.domain.lobby.LobbyFullException;
 import io.github.temporalrift.game.session.domain.lobby.LobbyNotFoundException;
 import io.github.temporalrift.game.session.domain.lobby.NotEnoughPlayersException;
 import io.github.temporalrift.game.session.domain.lobby.NotLobbyHostException;
+import io.github.temporalrift.game.session.domain.lobby.PlayerAlreadyInLobbyException;
 import io.github.temporalrift.game.session.domain.lobby.PlayerNotInLobbyException;
 
 @RestControllerAdvice(basePackageClasses = SessionController.class)
@@ -21,8 +22,8 @@ class SessionExceptionHandler {
         return ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
     }
 
-    @ExceptionHandler(LobbyAlreadyStartedException.class)
-    ProblemDetail handleConflict(LobbyAlreadyStartedException ex) {
+    @ExceptionHandler({LobbyAlreadyStartedException.class, PlayerAlreadyInLobbyException.class})
+    ProblemDetail handleConflict(RuntimeException ex) {
         return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
     }
 
