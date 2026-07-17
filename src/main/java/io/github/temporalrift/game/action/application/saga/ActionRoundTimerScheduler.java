@@ -1,10 +1,7 @@
 package io.github.temporalrift.game.action.application.saga;
 
 import java.time.Instant;
-import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ScheduledFuture;
 
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
@@ -26,13 +23,15 @@ class ActionRoundTimerScheduler {
 
     private final TaskScheduler taskScheduler;
     private final ActionRoundTimeoutProcessor timeoutProcessor;
-    private final Map<UUID, ScheduledFuture<?>> scheduledTimers = new ConcurrentHashMap<>();
+    private final ActionRoundTimerRegistry timerRegistry;
 
     ActionRoundTimerScheduler(
             @Qualifier("actionTaskScheduler") TaskScheduler taskScheduler,
-            ActionRoundTimeoutProcessor timeoutProcessor) {
+            ActionRoundTimeoutProcessor timeoutProcessor,
+            ActionRoundTimerRegistry timerRegistry) {
         this.taskScheduler = taskScheduler;
         this.timeoutProcessor = timeoutProcessor;
+        this.timerRegistry = timerRegistry;
     }
 
     void scheduleAfterCommit(ActionRoundSaga.StartResult startResult) {
@@ -42,11 +41,11 @@ class ActionRoundTimerScheduler {
     void reschedule(UUID sagaId, Instant timerExpiresAt) {
         var future = taskScheduler.schedule(
                 () -> {
-                    scheduledTimers.remove(sagaId);
+                    timerRegistry.remove(sagaId);
                     timeoutProcessor.handleTimerExpiry(sagaId);
                 },
                 timerExpiresAt);
-        scheduledTimers.put(sagaId, future);
+        timerRegistry.register(sagaId, future);
     }
 
     private void scheduleAfterCommit(UUID sagaId, Instant timerExpiresAt) {

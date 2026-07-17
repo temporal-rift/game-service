@@ -31,6 +31,9 @@ class ActionRoundTimerSchedulerTest {
     ActionRoundTimeoutProcessor timeoutProcessor;
 
     @Mock
+    ActionRoundTimerRegistry timerRegistry;
+
+    @Mock
     ScheduledFuture<Object> scheduledFuture;
 
     @AfterEach
@@ -44,7 +47,7 @@ class ActionRoundTimerSchedulerTest {
     @DisplayName("reschedule schedules timeout callback and invokes the processor when fired")
     void reschedule_schedulesCallbackThatInvokesTimeoutProcessor() {
         // given
-        var scheduler = new ActionRoundTimerScheduler(taskScheduler, timeoutProcessor);
+        var scheduler = new ActionRoundTimerScheduler(taskScheduler, timeoutProcessor, timerRegistry);
         var sagaId = UUID.randomUUID();
         var expiresAt = Instant.parse("2099-01-01T00:00:10Z");
         var runnableCaptor = ArgumentCaptor.forClass(Runnable.class);
@@ -63,7 +66,7 @@ class ActionRoundTimerSchedulerTest {
     @DisplayName("scheduleAfterCommit delays scheduling until after transaction commit")
     void scheduleAfterCommit_withSynchronization_registersAfterCommitHook() {
         // given
-        var scheduler = new ActionRoundTimerScheduler(taskScheduler, timeoutProcessor);
+        var scheduler = new ActionRoundTimerScheduler(taskScheduler, timeoutProcessor, timerRegistry);
         var result = new ActionRoundSaga.StartResult(UUID.randomUUID(), Instant.parse("2099-01-01T00:00:15Z"));
         TransactionSynchronizationManager.initSynchronization();
         doReturn(scheduledFuture).when(taskScheduler).schedule(any(Runnable.class), eq(result.timerExpiresAt()));
@@ -82,7 +85,7 @@ class ActionRoundTimerSchedulerTest {
     @DisplayName("scheduleAfterCommit schedules immediately when no transaction synchronization is active")
     void scheduleAfterCommit_withoutSynchronization_schedulesImmediately() {
         // given
-        var scheduler = new ActionRoundTimerScheduler(taskScheduler, timeoutProcessor);
+        var scheduler = new ActionRoundTimerScheduler(taskScheduler, timeoutProcessor, timerRegistry);
         var result = new ActionRoundSaga.StartResult(UUID.randomUUID(), Instant.parse("2099-01-01T00:00:15Z"));
         doReturn(scheduledFuture).when(taskScheduler).schedule(any(Runnable.class), eq(result.timerExpiresAt()));
 
