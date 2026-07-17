@@ -37,6 +37,11 @@ class PlayerStateRepositoryAdapter implements PlayerStateRepository {
     }
 
     @Override
+    public Optional<PlayerState> findByGameIdAndPlayerIdWithLock(UUID gameId, UUID playerId) {
+        return jpaRepository.findByGameIdAndPlayerIdWithLock(gameId, playerId).map(this::toDomain);
+    }
+
+    @Override
     public List<PlayerState> findAllByGameId(UUID gameId) {
         return jpaRepository.findAllByGameId(gameId).stream()
                 .map(this::toDomain)
