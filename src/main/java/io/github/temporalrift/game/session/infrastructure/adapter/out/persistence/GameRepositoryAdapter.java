@@ -30,6 +30,11 @@ class GameRepositoryAdapter implements GameRepository {
         return jpaRepository.findById(id).map(this::toDomain);
     }
 
+    @Override
+    public Optional<Game> findByIdWithLock(UUID id) {
+        return jpaRepository.findByIdWithLock(id).map(this::toDomain);
+    }
+
     private GameJpaEntity toEntity(Game game) {
         var entity = new GameJpaEntity();
         entity.setId(game.id());
