@@ -228,4 +228,24 @@ class PlayerReconnectSagaImplTest {
         then(stateManager).should(never()).tryAbandon(any());
         then(eventPublisher).should(never()).publish(any());
     }
+
+    @Test
+    @DisplayName("handleTimerExpiry — saga found but claim lost the race, no side effects run")
+    void handleTimerExpiry_claimLost_noSideEffects() {
+        // given — the saga row exists (e.g. already RECONNECTED, or ABANDONED by a concurrent
+        // sweep/instance), but this trigger did not win the atomic transition.
+        var gracePeriodState = new PlayerReconnectSagaState(
+                SAGA_ID, GAME_ID, PLAYER_ID, PlayerReconnectSagaStatus.GRACE_PERIOD, BASE_INSTANT.minusSeconds(1));
+        given(stateManager.findBySagaId(SAGA_ID)).willReturn(Optional.of(gracePeriodState));
+        given(stateManager.tryAbandon(SAGA_ID)).willReturn(false);
+
+        // when
+        saga.handleTimerExpiry(SAGA_ID);
+
+        // then
+        then(timerRegistry).should(never()).remove(any());
+        then(eventPublisher).should(never()).publish(any());
+        then(gameRepository).should(never()).findById(any());
+        then(applicationEventPublisher).should(never()).publishEvent(any());
+    }
 }
