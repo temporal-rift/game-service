@@ -28,13 +28,14 @@ import io.github.temporalrift.events.shared.Faction;
 import io.github.temporalrift.events.timeline.ParadoxCascaded;
 import io.github.temporalrift.game.session.domain.game.Game;
 import io.github.temporalrift.game.session.domain.game.GameStatus;
+import io.github.temporalrift.game.session.domain.lobby.Lobby;
+import io.github.temporalrift.game.session.domain.lobby.LobbyConfig;
+import io.github.temporalrift.game.session.domain.lobby.LobbyPlayer;
+import io.github.temporalrift.game.session.domain.lobby.LobbyStatus;
 import io.github.temporalrift.game.session.domain.port.out.GameRepository;
+import io.github.temporalrift.game.session.domain.port.out.LobbyRepository;
 import io.github.temporalrift.game.session.domain.port.out.SessionEventPublisher;
 import io.github.temporalrift.game.session.domain.port.out.SessionGameRulesPort;
-import io.github.temporalrift.game.session.domain.port.out.StartGameSagaRepository;
-import io.github.temporalrift.game.session.domain.saga.FactionAssignment;
-import io.github.temporalrift.game.session.domain.saga.StartGameSagaState;
-import io.github.temporalrift.game.session.domain.saga.StartGameSagaStatus;
 import io.github.temporalrift.game.shared.ProcessedEventRepository;
 
 @ExtendWith(MockitoExtension.class)
@@ -54,7 +55,7 @@ class ParadoxCascadedKafkaConsumerTest {
     GameRepository gameRepository;
 
     @Mock
-    StartGameSagaRepository startGameSagaRepository;
+    LobbyRepository lobbyRepository;
 
     @Mock
     SessionEventPublisher eventPublisher;
@@ -104,7 +105,10 @@ class ParadoxCascadedKafkaConsumerTest {
         var game = Game.reconstitute(GAME_ID, LOBBY_ID, List.of(), 1, 2, GameStatus.IN_PROGRESS);
         given(gameRepository.findById(GAME_ID)).willReturn(Optional.of(game));
         given(gameRules.maxCascadedParadoxes()).willReturn(MAX_CASCADED);
-        given(startGameSagaRepository.findByGameId(GAME_ID)).willReturn(Optional.of(startGameSagaState()));
+        given(lobbyRepository.findById(LOBBY_ID))
+                .willReturn(Optional.of(startedLobby(List.of(
+                        new LobbyPlayer(PLAYER_1, "P1", Faction.PROPHETS, java.time.Instant.EPOCH, true),
+                        new LobbyPlayer(PLAYER_2, "P2", Faction.WEAVERS, java.time.Instant.EPOCH, true)))));
         var paradox = paradoxCascaded(2);
         given(objectMapper.convertValue(any(), eq(ParadoxCascaded.class))).willReturn(paradox);
         var envelope = envelopeFor(paradox);
@@ -126,12 +130,11 @@ class ParadoxCascadedKafkaConsumerTest {
         var game = Game.reconstitute(GAME_ID, LOBBY_ID, List.of(), 1, 2, GameStatus.IN_PROGRESS);
         given(gameRepository.findById(GAME_ID)).willReturn(Optional.of(game));
         given(gameRules.maxCascadedParadoxes()).willReturn(MAX_CASCADED);
-        var assignments = List.of(
-                new FactionAssignment(PLAYER_1, Faction.ERASERS),
-                new FactionAssignment(PLAYER_2, Faction.REVISIONISTS),
-                new FactionAssignment(PLAYER_3, Faction.PROPHETS));
-        given(startGameSagaRepository.findByGameId(GAME_ID))
-                .willReturn(Optional.of(startGameSagaStateWithAssignments(assignments)));
+        given(lobbyRepository.findById(LOBBY_ID))
+                .willReturn(Optional.of(startedLobby(List.of(
+                        new LobbyPlayer(PLAYER_1, "P1", Faction.ERASERS, java.time.Instant.EPOCH, true),
+                        new LobbyPlayer(PLAYER_2, "P2", Faction.REVISIONISTS, java.time.Instant.EPOCH, true),
+                        new LobbyPlayer(PLAYER_3, "P3", Faction.PROPHETS, java.time.Instant.EPOCH, true)))));
         var paradox = paradoxCascaded(2);
         given(objectMapper.convertValue(any(), eq(ParadoxCascaded.class))).willReturn(paradox);
         var envelope = envelopeFor(paradox);
@@ -215,12 +218,9 @@ class ParadoxCascadedKafkaConsumerTest {
         return EventEnvelope.create(GAME_ID, "Game", GAME_ID, 1, paradox);
     }
 
-    private StartGameSagaState startGameSagaState() {
-        return startGameSagaStateWithAssignments(List.of(
-                new FactionAssignment(PLAYER_1, Faction.PROPHETS), new FactionAssignment(PLAYER_2, Faction.WEAVERS)));
-    }
-
-    private StartGameSagaState startGameSagaStateWithAssignments(List<FactionAssignment> assignments) {
-        return new StartGameSagaState(UUID.randomUUID(), GAME_ID, LOBBY_ID, StartGameSagaStatus.COMPLETED, assignments);
+    private static Lobby startedLobby(List<LobbyPlayer> players) {
+        var config = new LobbyConfig("ABCD2345", 3, 5, java.time.Clock.systemUTC());
+        return Lobby.reconstitute(
+                LOBBY_ID, GAME_ID, players.getFirst().playerId(), players, LobbyStatus.STARTED, config);
     }
 }
