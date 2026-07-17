@@ -25,6 +25,10 @@ class PlayerReconnectTimerRegistry {
         delegate.remove(sagaId);
     }
 
+    void removeIfCurrent(UUID sagaId, ScheduledFuture<?> expectedFuture) {
+        delegate.removeIfCurrent(sagaId, expectedFuture);
+    }
+
     void cancel(UUID sagaId) {
         delegate.cancel(sagaId);
     }

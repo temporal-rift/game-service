@@ -59,7 +59,7 @@ class PlayerReconnectTimerSchedulerTest {
 
         // then
         then(timerRegistry).should().register(sagaId, future);
-        then(timerRegistry).should().remove(sagaId);
+        then(timerRegistry).should().removeIfCurrent(sagaId, future);
         then(timeoutProcessor).should().handleTimerExpiry(sagaId);
     }
 

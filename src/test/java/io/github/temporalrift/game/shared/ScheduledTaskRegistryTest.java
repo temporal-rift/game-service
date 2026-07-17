@@ -26,10 +26,11 @@ class ScheduledTaskRegistryTest {
     void register_nullFuture_ignoresIt() {
         // given
         var registry = new ScheduledTaskRegistry();
+        var sagaId = UUID.randomUUID();
 
         // when
-        registry.register(UUID.randomUUID(), null);
-        registry.cancel(UUID.randomUUID());
+        registry.register(sagaId, null);
+        registry.cancel(sagaId);
 
         // then
         then(future).should(never()).cancel(false);
@@ -64,6 +65,41 @@ class ScheduledTaskRegistryTest {
 
         // then
         then(future).should().cancel(false);
+    }
+
+    @Test
+    @DisplayName("removeIfCurrent leaves a concurrent replacement tracked and armed")
+    void removeIfCurrent_staleFutureFiringAfterReplacement_doesNotRemoveReplacement() {
+        // given — future was registered, then replaced by replacement before it fired (register()
+        // already cancelled future at this point; this reproduces its fire-callback running anyway,
+        // e.g. because cancel(false) does not stop an already-started task).
+        var registry = new ScheduledTaskRegistry();
+        var sagaId = UUID.randomUUID();
+        registry.register(sagaId, future);
+        registry.register(sagaId, replacement);
+
+        // when — the stale future's own callback cleans itself up, unaware it was replaced
+        registry.removeIfCurrent(sagaId, future);
+
+        // then — the replacement is still tracked: a later cancel finds and cancels it
+        registry.cancel(sagaId);
+        then(replacement).should().cancel(false);
+    }
+
+    @Test
+    @DisplayName("removeIfCurrent removes a matching entry")
+    void removeIfCurrent_matchingFuture_removesIt() {
+        // given
+        var registry = new ScheduledTaskRegistry();
+        var sagaId = UUID.randomUUID();
+        registry.register(sagaId, future);
+
+        // when
+        registry.removeIfCurrent(sagaId, future);
+        registry.cancel(sagaId);
+
+        // then — nothing left to cancel
+        then(future).should(never()).cancel(false);
     }
 
     @Test

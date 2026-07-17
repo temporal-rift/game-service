@@ -3,6 +3,7 @@ package io.github.temporalrift.game.session.application.saga;
 import java.time.Instant;
 import java.util.UUID;
 import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.springframework.scheduling.TaskScheduler;
 import org.springframework.stereotype.Component;
@@ -30,12 +31,19 @@ class PlayerReconnectTimerScheduler {
     }
 
     void reschedule(UUID sagaId, Instant graceExpiresAt) {
+        // The callback needs to identify "am I still the current timer for this sagaId" so a fire
+        // racing a concurrent replacement removes only itself — never the replacement. It can't
+        // close over `future` directly (not yet assigned when the lambda is built), so the box
+        // is set immediately after scheduling; graceExpiresAt is always in the future here, which
+        // gives that assignment time to happen before the task could possibly run.
+        var selfRef = new AtomicReference<ScheduledFuture<?>>();
         ScheduledFuture<?> future = taskScheduler.schedule(
                 () -> {
-                    timerRegistry.remove(sagaId);
+                    timerRegistry.removeIfCurrent(sagaId, selfRef.get());
                     timeoutProcessor.handleTimerExpiry(sagaId);
                 },
                 graceExpiresAt);
+        selfRef.set(future);
         timerRegistry.register(sagaId, future);
     }
 
