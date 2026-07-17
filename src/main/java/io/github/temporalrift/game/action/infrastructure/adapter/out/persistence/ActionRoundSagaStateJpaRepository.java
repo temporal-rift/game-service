@@ -6,6 +6,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 import jakarta.persistence.LockModeType;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
@@ -23,9 +24,6 @@ interface ActionRoundSagaStateJpaRepository extends JpaRepository<ActionRoundSag
             @Param("gameId") UUID gameId, @Param("eraNumber") int eraNumber, @Param("roundNumber") int roundNumber);
 
     @Query("SELECT s FROM ActionRoundSagaStateJpaEntity s "
-            + "WHERE s.status = 'WAITING' AND s.timerExpiresAt <= :deadline")
-    List<ActionRoundSagaStateJpaEntity> findWaitingDueBy(@Param("deadline") Instant deadline);
-
-    @Query("SELECT s FROM ActionRoundSagaStateJpaEntity s WHERE s.status = 'CLOSING'")
-    List<ActionRoundSagaStateJpaEntity> findAllClosing();
+            + "WHERE s.status = 'WAITING' AND s.timerExpiresAt <= :deadline ORDER BY s.timerExpiresAt")
+    List<ActionRoundSagaStateJpaEntity> findWaitingDueBy(@Param("deadline") Instant deadline, Pageable page);
 }

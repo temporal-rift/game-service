@@ -37,20 +37,17 @@ class ActionRoundTimerSweepTest {
     }
 
     @Test
-    @DisplayName("due WAITING and lingering CLOSING sagas are processed")
-    void sweep_processesDueWaitingAndClosing() {
+    @DisplayName("due WAITING sagas are processed")
+    void sweep_processesDueWaiting() {
         // given
         var dueWaiting = state(ActionRoundSagaStatus.WAITING);
-        var lingeringClosing = state(ActionRoundSagaStatus.CLOSING);
         given(stateManager.findWaitingDueBy(NOW)).willReturn(List.of(dueWaiting));
-        given(stateManager.findAllClosing()).willReturn(List.of(lingeringClosing));
 
         // when
         sweep().sweep();
 
         // then
         then(timeoutProcessor).should().handleTimerExpiry(dueWaiting.sagaId());
-        then(timeoutProcessor).should().handleTimerExpiry(lingeringClosing.sagaId());
     }
 
     @Test
@@ -58,7 +55,6 @@ class ActionRoundTimerSweepTest {
     void sweep_nothingDue_noProcessing() {
         // given
         given(stateManager.findWaitingDueBy(NOW)).willReturn(List.of());
-        given(stateManager.findAllClosing()).willReturn(List.of());
 
         // when
         sweep().sweep();
@@ -74,7 +70,6 @@ class ActionRoundTimerSweepTest {
         var failing = state(ActionRoundSagaStatus.WAITING);
         var healthy = state(ActionRoundSagaStatus.WAITING);
         given(stateManager.findWaitingDueBy(NOW)).willReturn(List.of(failing, healthy));
-        given(stateManager.findAllClosing()).willReturn(List.of());
         willThrow(new IllegalStateException("round row missing"))
                 .given(timeoutProcessor)
                 .handleTimerExpiry(failing.sagaId());

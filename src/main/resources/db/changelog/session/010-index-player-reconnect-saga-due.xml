@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+            https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.29.xsd">
+
+    <changeSet id="session-010-index-player-reconnect-saga-due" author="game-service">
+        <comment>
+            Partial index for the reconnect sweep's due-GRACE_PERIOD query: the table accumulates
+            RECONNECTED/ABANDONED rows for every past disconnect, while the sweep polls every second
+            and only ever cares about the few active grace periods.
+        </comment>
+        <sql>
+            CREATE INDEX idx_player_reconnect_saga_grace_due
+                ON player_reconnect_saga_state (grace_expires_at)
+                WHERE status = 'GRACE_PERIOD'
+        </sql>
+        <rollback>
+            DROP INDEX idx_player_reconnect_saga_grace_due
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

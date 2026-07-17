@@ -21,12 +21,14 @@
     <include file="db/changelog/session/006-create-era-saga-state.xml"/>
     <include file="db/changelog/session/007-create-end-game-saga-state.xml"/>
     <include file="db/changelog/session/008-create-player-reconnect-saga-state.xml"/>
+    <include file="db/changelog/session/010-index-player-reconnect-saga-due.xml"/>
 
     <!-- Action module -->
     <include file="db/changelog/action/001-create-action-round.xml"/>
     <include file="db/changelog/action/002-create-player-state.xml"/>
     <include file="db/changelog/action/003-create-action-future-event-definition.xml"/>
     <include file="db/changelog/action/004-create-action-round-saga-state.xml"/>
+    <include file="db/changelog/action/005-index-action-round-saga-due.xml"/>
 
     <!-- Scoring module -->
     <include file="db/changelog/scoring/001-create-scoring-context-player.xml"/>

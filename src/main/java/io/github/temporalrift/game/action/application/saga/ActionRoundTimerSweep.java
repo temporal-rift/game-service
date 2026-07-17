@@ -17,8 +17,8 @@ import io.github.temporalrift.game.action.domain.saga.ActionRoundSagaState;
  *
  * <p>Every instance sweeps concurrently without coordination: the close path's pessimistic locks
  * make duplicate processing converge on a single {@code ActionRoundClosed}, exactly like the
- * timer-vs-submission race. CLOSING sagas are swept too, so a crash mid-close resumes within one
- * sweep interval instead of waiting for a restart.
+ * timer-vs-submission race. A crash mid-close rolls the whole close back to WAITING, so the sweep's
+ * WAITING scan is also the crash-recovery path — no separate resumable state exists.
  */
 @Component
 @ConditionalOnBean(ActionRoundSagaImpl.class)
@@ -39,9 +39,7 @@ class ActionRoundTimerSweep {
 
     @Scheduled(fixedDelayString = "${game.timers.action-round-sweep-ms:1000}")
     void sweep() {
-        var now = clock.instant();
-        stateManager.findWaitingDueBy(now).forEach(this::process);
-        stateManager.findAllClosing().forEach(this::process);
+        stateManager.findWaitingDueBy(clock.instant()).forEach(this::process);
     }
 
     private void process(ActionRoundSagaState state) {

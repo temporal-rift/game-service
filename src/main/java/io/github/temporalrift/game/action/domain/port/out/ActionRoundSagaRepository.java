@@ -19,6 +19,4 @@ public interface ActionRoundSagaRepository {
             UUID gameId, int eraNumber, int roundNumber);
 
     List<ActionRoundSagaState> findWaitingDueBy(Instant deadline);
-
-    List<ActionRoundSagaState> findAllClosing();
 }

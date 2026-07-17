@@ -174,26 +174,15 @@ class ActionRoundSagaStateManagerTest {
                 ActionRoundSagaStatus.WAITING,
                 List.of(PLAYER_1),
                 TIMER_EXPIRES_AT));
-        var closing = List.of(new ActionRoundSagaState(
-                SAGA_ID,
-                GAME_ID,
-                ERA_NUMBER,
-                ROUND_NUMBER,
-                ActionRoundSagaStatus.CLOSING,
-                List.of(),
-                TIMER_EXPIRES_AT));
         given(repository.findBySagaId(SAGA_ID)).willReturn(waiting.stream().findFirst());
         given(repository.findWaitingDueBy(TIMER_EXPIRES_AT)).willReturn(waiting);
-        given(repository.findAllClosing()).willReturn(closing);
 
         // when
         var bySagaId = stateManager.findBySagaId(SAGA_ID);
         var waitingStates = stateManager.findWaitingDueBy(TIMER_EXPIRES_AT);
-        var closingStates = stateManager.findAllClosing();
 
         // then
         assertThat(bySagaId).contains(waiting.getFirst());
         assertThat(waitingStates).isEqualTo(waiting);
-        assertThat(closingStates).isEqualTo(closing);
     }
 }
