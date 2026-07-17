@@ -7,12 +7,21 @@ import java.util.UUID;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 interface PlayerStateJpaRepository extends JpaRepository<PlayerStateJpaEntity, UUID> {
 
     Optional<PlayerStateJpaEntity> findByGameIdAndPlayerId(UUID gameId, UUID playerId);
+
+    @Modifying
+    @Query(value = """
+                    INSERT INTO player_state (id, game_id, player_id, jammed)
+                    VALUES (:id, :gameId, :playerId, false)
+                    ON CONFLICT (game_id, player_id) DO NOTHING
+                    """, nativeQuery = true)
+    int insertIfAbsent(@Param("id") UUID id, @Param("gameId") UUID gameId, @Param("playerId") UUID playerId);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select state from PlayerStateJpaEntity state "

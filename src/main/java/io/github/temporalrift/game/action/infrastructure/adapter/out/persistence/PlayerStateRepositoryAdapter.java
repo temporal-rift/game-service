@@ -37,8 +37,13 @@ class PlayerStateRepositoryAdapter implements PlayerStateRepository {
     }
 
     @Override
-    public Optional<PlayerState> findByGameIdAndPlayerIdWithLock(UUID gameId, UUID playerId) {
-        return jpaRepository.findByGameIdAndPlayerIdWithLock(gameId, playerId).map(this::toDomain);
+    public PlayerState findOrCreateWithLock(UUID gameId, UUID playerId) {
+        jpaRepository.insertIfAbsent(UUID.randomUUID(), gameId, playerId);
+        return jpaRepository
+                .findByGameIdAndPlayerIdWithLock(gameId, playerId)
+                .map(this::toDomain)
+                .orElseThrow(() -> new IllegalStateException(
+                        "player_state row missing after insertIfAbsent for game " + gameId + " player " + playerId));
     }
 
     @Override

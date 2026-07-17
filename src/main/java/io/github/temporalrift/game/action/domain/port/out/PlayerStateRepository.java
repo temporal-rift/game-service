@@ -15,11 +15,13 @@ public interface PlayerStateRepository {
     Optional<PlayerState> findByGameIdAndPlayerId(UUID gameId, UUID playerId);
 
     /**
-     * Pessimistically locked variant for read-modify-write updates. Concurrent writers (e.g. the
-     * faction and hand projection listeners firing after independent commits) must serialize on the
-     * row or the last writer erases the other's field.
+     * Atomically creates the player state if absent, then returns it under a pessimistic write
+     * lock. For read-modify-write updates from concurrent writers (e.g. the faction and hand
+     * projection listeners firing after independent commits): the lock serializes updates on the
+     * row, and the create step must be conflict-free because a lock on a nonexistent row protects
+     * nothing.
      */
-    Optional<PlayerState> findByGameIdAndPlayerIdWithLock(UUID gameId, UUID playerId);
+    PlayerState findOrCreateWithLock(UUID gameId, UUID playerId);
 
     List<PlayerState> findAllByGameId(UUID gameId);
 }
