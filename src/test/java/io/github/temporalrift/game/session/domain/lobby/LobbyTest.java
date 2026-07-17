@@ -175,6 +175,16 @@ class LobbyTest {
     }
 
     @Test
+    void join_samePlayerTwice_throws() {
+        var lobby = emptyLobby();
+        var p = player();
+        lobby.join(p);
+        assertThatExceptionOfType(PlayerAlreadyInLobbyException.class)
+                .isThrownBy(() -> lobby.join(p.playerId(), "Other Name"));
+        assertThat(lobby.currentPlayers()).hasSize(1);
+    }
+
+    @Test
     @DisplayName("join registers PlayerJoinedLobby with correct playerId and playerName")
     void join_registersPlayerJoinedLobbyEvent() {
         // given
