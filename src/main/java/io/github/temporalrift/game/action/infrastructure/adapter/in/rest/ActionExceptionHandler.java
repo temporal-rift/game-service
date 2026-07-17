@@ -14,10 +14,9 @@ import io.github.temporalrift.game.action.domain.actionround.InvalidActionTarget
 import io.github.temporalrift.game.action.domain.actionround.JammedPlayerException;
 import io.github.temporalrift.game.action.domain.actionround.RoundNotFoundException;
 import io.github.temporalrift.game.action.domain.playerstate.PlayerStateNotFoundException;
+import io.github.temporalrift.game.shared.RestAdviceOrder;
 
-// Must outrank GlobalExceptionHandler: advice order decides handler lookup across advices, not
-// exception-type specificity, so the shared Exception catch-all would otherwise swallow these.
-@Order(0)
+@Order(RestAdviceOrder.MODULE)
 @RestControllerAdvice(basePackageClasses = ActionController.class)
 class ActionExceptionHandler {
 

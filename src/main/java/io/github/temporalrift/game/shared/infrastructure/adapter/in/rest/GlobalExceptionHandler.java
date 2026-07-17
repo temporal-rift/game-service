@@ -2,13 +2,14 @@ package io.github.temporalrift.game.shared.infrastructure.adapter.in.rest;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
+
+import io.github.temporalrift.game.shared.RestAdviceOrder;
 
 /**
  * Last-resort advice: anything not mapped by a module advice becomes a sanitized 500 instead of the
@@ -18,7 +19,7 @@ import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExcep
  * body, unsupported media type, missing path variable, ...) keep their proper 4xx mappings instead
  * of being swallowed by the {@code Exception} catch-all below.
  */
-@Order(Ordered.LOWEST_PRECEDENCE)
+@Order(RestAdviceOrder.GLOBAL_FALLBACK)
 @RestControllerAdvice
 class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
