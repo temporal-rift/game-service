@@ -33,8 +33,8 @@ class PlayerRateLimitFilter extends OncePerRequestFilter {
             throws ServletException, IOException {
         var authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication != null
-                && authentication.getPrincipal() instanceof PlayerPrincipal principal
-                && !rateLimiter.tryAcquire(principal.playerId())) {
+                && authentication.getPrincipal() instanceof PlayerPrincipal(var playerId)
+                && !rateLimiter.tryAcquire(playerId)) {
             var problem = ProblemDetail.forStatusAndDetail(HttpStatus.TOO_MANY_REQUESTS, "Request rate limit exceeded");
             response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
             response.setContentType("application/problem+json");
