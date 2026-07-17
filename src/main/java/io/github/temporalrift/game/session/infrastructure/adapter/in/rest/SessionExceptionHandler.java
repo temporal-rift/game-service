@@ -15,10 +15,9 @@ import io.github.temporalrift.game.session.domain.lobby.NotEnoughPlayersExceptio
 import io.github.temporalrift.game.session.domain.lobby.NotLobbyHostException;
 import io.github.temporalrift.game.session.domain.lobby.PlayerAlreadyInLobbyException;
 import io.github.temporalrift.game.session.domain.lobby.PlayerNotInLobbyException;
+import io.github.temporalrift.game.shared.RestAdviceOrder;
 
-// Must outrank GlobalExceptionHandler: advice order decides handler lookup across advices, not
-// exception-type specificity, so the shared Exception catch-all would otherwise swallow these.
-@Order(0)
+@Order(RestAdviceOrder.MODULE)
 @RestControllerAdvice(basePackageClasses = SessionController.class)
 class SessionExceptionHandler {
 
