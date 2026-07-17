@@ -2,6 +2,7 @@ package io.github.temporalrift.game.shared.infrastructure.config;
 
 import java.time.Duration;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.modulith.events.IncompleteEventPublications;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -13,23 +14,28 @@ import org.springframework.stereotype.Component;
  * merely in flight on live instances — and it leaves events from a crashed instance undelivered
  * until something happens to restart.
  *
- * <p>The age threshold keeps in-flight publications out of the sweep; only publications that have
- * been incomplete far longer than any healthy listener takes are resubmitted. A permanently failing
- * listener is retried on every sweep — deliberately loud in the logs rather than silently parked.
+ * <p>The age threshold is a heuristic, not an in-flight guard: Modulith tracks completion, not
+ * execution, so a listener still running past the threshold gets resubmitted concurrently. The
+ * threshold is therefore a declared upper bound on listener runtime — keep it well above the
+ * slowest listener, and keep listeners redelivery-tolerant (Modulith is at-least-once regardless).
+ * A permanently failing listener is retried on every sweep — deliberately loud in the logs rather
+ * than silently parked.
  */
 @Component
 class IncompleteEventPublicationResubmitter {
 
-    private static final Duration MIN_AGE = Duration.ofMinutes(1);
-
     private final IncompleteEventPublications incompletePublications;
+    private final Duration minAge;
 
-    IncompleteEventPublicationResubmitter(IncompleteEventPublications incompletePublications) {
+    IncompleteEventPublicationResubmitter(
+            IncompleteEventPublications incompletePublications,
+            @Value("${game.timers.event-resubmit-min-age:PT2M}") Duration minAge) {
         this.incompletePublications = incompletePublications;
+        this.minAge = minAge;
     }
 
     @Scheduled(fixedDelayString = "${game.timers.event-resubmit-ms:30000}")
     void resubmitStale() {
-        incompletePublications.resubmitIncompletePublicationsOlderThan(MIN_AGE);
+        incompletePublications.resubmitIncompletePublicationsOlderThan(minAge);
     }
 }
