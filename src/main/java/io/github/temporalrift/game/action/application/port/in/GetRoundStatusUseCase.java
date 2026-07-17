@@ -10,7 +10,7 @@ public interface GetRoundStatusUseCase {
 
     Result handle(Query query);
 
-    record Query(UUID gameId, int eraNumber, int roundNumber) {}
+    record Query(UUID gameId, int eraNumber, int roundNumber, UUID callerPlayerId) {}
 
     record Result(
             int eraNumber,

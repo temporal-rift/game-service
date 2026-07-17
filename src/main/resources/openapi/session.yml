@@ -153,7 +153,8 @@ paths:
                 $ref: '#/components/schemas/GameSummaryResponse'
         '404':
           description: |
-            Game not found (`code: 404-02`).
+            Game not found (`code: 404-02`). Also returned when the requesting player is not a
+            participant of the game, so game existence is never disclosed to outsiders.
           content:
             application/problem+json:
               schema:

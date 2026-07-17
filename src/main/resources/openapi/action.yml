@@ -100,7 +100,9 @@ paths:
                 $ref: '#/components/schemas/RoundStatusResponse'
         '404':
           description: |
-            Game or round not found (`code: 404-01`).
+            Game or round not found (`code: 404-01`). Also returned when the requesting player is
+            not a participant of the game, so game and round existence is never disclosed to
+            outsiders.
           content:
             application/problem+json:
               schema:

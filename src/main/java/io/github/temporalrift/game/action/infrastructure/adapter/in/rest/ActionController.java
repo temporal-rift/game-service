@@ -61,7 +61,8 @@ class ActionController implements ActionApi {
 
     @Override
     public ResponseEntity<RoundStatusResponse> getRoundStatus(UUID gameId, Integer eraNumber, Integer roundNumber) {
-        var result = getRoundStatusUseCase.handle(new GetRoundStatusUseCase.Query(gameId, eraNumber, roundNumber));
+        var result = getRoundStatusUseCase.handle(
+                new GetRoundStatusUseCase.Query(gameId, eraNumber, roundNumber, callerPlayerId()));
         return ResponseEntity.ok(new RoundStatusResponse(
                 result.eraNumber(),
                 result.roundNumber(),
