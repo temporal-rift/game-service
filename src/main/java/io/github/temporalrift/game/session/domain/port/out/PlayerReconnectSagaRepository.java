@@ -18,5 +18,12 @@ public interface PlayerReconnectSagaRepository {
 
     List<PlayerReconnectSagaState> findByStatusDueBy(PlayerReconnectSagaStatus status, Instant deadline);
 
+    /**
+     * Atomic status transition: succeeds only when the row is still in {@code expected}. Callers
+     * gate their side effects on the returned claim so a duplicate trigger (in-memory timer vs
+     * sweep, or concurrent instances) runs the transition's consequences exactly once.
+     */
+    boolean compareAndSetStatus(UUID sagaId, PlayerReconnectSagaStatus expected, PlayerReconnectSagaStatus next);
+
     long countByGameIdAndStatus(UUID gameId, PlayerReconnectSagaStatus status);
 }

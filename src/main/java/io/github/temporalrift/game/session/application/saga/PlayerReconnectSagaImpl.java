@@ -24,7 +24,6 @@ import io.github.temporalrift.game.session.domain.port.out.GameRepository;
 import io.github.temporalrift.game.session.domain.port.out.LobbyRepository;
 import io.github.temporalrift.game.session.domain.port.out.SessionEventPublisher;
 import io.github.temporalrift.game.session.domain.port.out.SessionGameRulesPort;
-import io.github.temporalrift.game.session.domain.saga.PlayerReconnectSagaStatus;
 
 @Service
 class PlayerReconnectSagaImpl implements PlayerReconnectSaga {
@@ -82,17 +81,19 @@ class PlayerReconnectSagaImpl implements PlayerReconnectSaga {
     @Override
     @Transactional(propagation = REQUIRES_NEW)
     public void handleReconnect(UUID gameId, UUID playerId) {
-        var sagaOpt = stateManager
-                .findByGameIdAndPlayerId(gameId, playerId)
-                .filter(s -> s.status() == PlayerReconnectSagaStatus.GRACE_PERIOD);
-
+        var sagaOpt = stateManager.findByGameIdAndPlayerId(gameId, playerId);
         if (sagaOpt.isEmpty()) {
-            log.info("Reconnect rejected for player {} in game {} — saga not in GRACE_PERIOD", playerId, gameId);
+            log.info("Reconnect rejected for player {} in game {} — no reconnect saga", playerId, gameId);
             return;
         }
 
         var saga = sagaOpt.get();
-        stateManager.reconnect(saga.sagaId());
+        // The atomic claim, not the read above, decides who acts: reconnect races timer expiry
+        // (in-memory timer, sweep, other instances) and only one transition may win.
+        if (!stateManager.tryReconnect(saga.sagaId())) {
+            log.info("Reconnect rejected for player {} in game {} — saga not in GRACE_PERIOD", playerId, gameId);
+            return;
+        }
         timerRegistry.cancel(saga.sagaId());
 
         var game = gameRepository.findById(gameId).orElseThrow(() -> new GameNotFoundException(gameId));
@@ -103,16 +104,20 @@ class PlayerReconnectSagaImpl implements PlayerReconnectSaga {
     }
 
     void handleTimerExpiry(UUID sagaId) {
-        var sagaOpt =
-                stateManager.findBySagaId(sagaId).filter(s -> s.status() == PlayerReconnectSagaStatus.GRACE_PERIOD);
-
+        var sagaOpt = stateManager.findBySagaId(sagaId);
         if (sagaOpt.isEmpty()) {
-            log.debug("Timer expiry ignored for saga {} — not in GRACE_PERIOD (idempotent)", sagaId);
+            log.debug("Timer expiry ignored for saga {} — unknown saga", sagaId);
             return;
         }
 
         var saga = sagaOpt.get();
-        stateManager.abandon(sagaId);
+        // The atomic claim, not the read above, decides who acts: the in-memory timer, the sweep on
+        // this and every other instance, and a concurrent reconnect all race for this transition,
+        // and PlayerAbandoned must be published exactly once.
+        if (!stateManager.tryAbandon(sagaId)) {
+            log.debug("Timer expiry ignored for saga {} — not in GRACE_PERIOD (idempotent)", sagaId);
+            return;
+        }
         timerRegistry.remove(sagaId);
 
         eventPublisher.publish(EventEnvelope.create(

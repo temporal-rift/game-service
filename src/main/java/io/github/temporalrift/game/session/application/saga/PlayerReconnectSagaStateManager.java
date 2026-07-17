@@ -29,20 +29,25 @@ class PlayerReconnectSagaStateManager {
                 sagaId, gameId, playerId, PlayerReconnectSagaStatus.GRACE_PERIOD, graceExpiresAt));
     }
 
-    @Transactional(propagation = REQUIRES_NEW)
-    void reconnect(UUID sagaId) {
-        repository
-                .findBySagaId(sagaId)
-                .filter(s -> s.status() == PlayerReconnectSagaStatus.GRACE_PERIOD)
-                .ifPresent(s -> repository.save(s.withStatus(PlayerReconnectSagaStatus.RECONNECTED)));
+    /**
+     * Atomically claims the GRACE_PERIOD → RECONNECTED transition. Joins the caller's transaction
+     * so the claim and the caller's side effects commit or roll back together; only the caller
+     * whose claim succeeded may run them (reconnect races timer expiry and concurrent sweeps).
+     */
+    @Transactional
+    boolean tryReconnect(UUID sagaId) {
+        return repository.compareAndSetStatus(
+                sagaId, PlayerReconnectSagaStatus.GRACE_PERIOD, PlayerReconnectSagaStatus.RECONNECTED);
     }
 
-    @Transactional(propagation = REQUIRES_NEW)
-    void abandon(UUID sagaId) {
-        repository
-                .findBySagaId(sagaId)
-                .filter(s -> s.status() == PlayerReconnectSagaStatus.GRACE_PERIOD)
-                .ifPresent(s -> repository.save(s.withStatus(PlayerReconnectSagaStatus.ABANDONED)));
+    /**
+     * Atomically claims the GRACE_PERIOD → ABANDONED transition. Same contract as
+     * {@link #tryReconnect}.
+     */
+    @Transactional
+    boolean tryAbandon(UUID sagaId) {
+        return repository.compareAndSetStatus(
+                sagaId, PlayerReconnectSagaStatus.GRACE_PERIOD, PlayerReconnectSagaStatus.ABANDONED);
     }
 
     boolean hasActiveGracePeriod(UUID gameId, UUID playerId) {
