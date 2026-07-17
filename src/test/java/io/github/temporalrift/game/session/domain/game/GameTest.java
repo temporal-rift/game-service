@@ -17,6 +17,8 @@ class GameTest {
     static final int MAX_CASCADED_PARADOXES = 3;
     static final int EVENTS_PER_ERA = 3;
     static final int NUMBER_OF_EVENTS = 30;
+    static final UUID GAME_ID = UUID.randomUUID();
+    static final UUID LOBBY_ID = UUID.randomUUID();
 
     Game newGame() {
         var eventIds = IntStream.range(0, NUMBER_OF_EVENTS)
@@ -187,6 +189,14 @@ class GameTest {
                 .isThrownBy(() -> game.recordCascadedParadox(MAX_CASCADED_PARADOXES));
     }
 
+    @Test
+    void recordCascadedParadox_counterAlreadyBeyondThreshold_stillEndsGame() {
+        var game = Game.reconstitute(
+                GAME_ID, LOBBY_ID, new ArrayList<>(), 1, MAX_CASCADED_PARADOXES + 1, GameStatus.IN_PROGRESS);
+        game.recordCascadedParadox(MAX_CASCADED_PARADOXES);
+        assertThat(game.status()).isEqualTo(GameStatus.ENDED_BY_COLLAPSE);
+    }
+
     // --- endEra() ---
 
     @Test
@@ -212,6 +222,13 @@ class GameTest {
         var game = newGame();
         game.end();
         assertThatExceptionOfType(GameAlreadyOverException.class).isThrownBy(() -> game.endEra(MAX_ERAS));
+    }
+
+    @Test
+    void endEra_counterAlreadyBeyondMaxEras_stillEndsGame() {
+        var game = Game.reconstitute(GAME_ID, LOBBY_ID, new ArrayList<>(), MAX_ERAS + 1, 0, GameStatus.IN_PROGRESS);
+        game.endEra(MAX_ERAS);
+        assertThat(game.status()).isEqualTo(GameStatus.ENDED_BY_STABILIZATION);
     }
 
     // --- end() ---

@@ -72,14 +72,15 @@ public class Game extends AggregateRoot {
     public void recordCascadedParadox(int maxCascadedParadoxes) {
         requireInProgress();
         cascadedParadoxCounter++;
-        if (cascadedParadoxCounter == maxCascadedParadoxes) {
+        // >= so a threshold lowered mid-game (or a counter past the limit) still ends the game.
+        if (cascadedParadoxCounter >= maxCascadedParadoxes) {
             status = GameStatus.ENDED_BY_COLLAPSE;
         }
     }
 
     public void endEra(int maxEras) {
         requireInProgress();
-        if (eraCounter == maxEras) {
+        if (eraCounter >= maxEras) {
             status = GameStatus.ENDED_BY_STABILIZATION;
         }
     }
