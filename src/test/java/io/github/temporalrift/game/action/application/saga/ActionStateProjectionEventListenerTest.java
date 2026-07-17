@@ -76,7 +76,7 @@ class ActionStateProjectionEventListenerTest {
                 1,
                 existing.playerId(),
                 List.of(new HandDealt.CardInstance(UUID.randomUUID(), CardType.PUSH)));
-        given(playerStateRepository.findByGameIdAndPlayerId(existing.gameId(), existing.playerId()))
+        given(playerStateRepository.findByGameIdAndPlayerIdWithLock(existing.gameId(), existing.playerId()))
                 .willReturn(Optional.of(existing));
 
         listener.onHandDealt(event);
@@ -96,7 +96,8 @@ class ActionStateProjectionEventListenerTest {
         var playerId = UUID.randomUUID();
         var card = new HandDealt.CardInstance(UUID.randomUUID(), CardType.SCAN);
         var event = new HandDealt(gameId, 1, playerId, List.of(card));
-        given(playerStateRepository.findByGameIdAndPlayerId(gameId, playerId)).willReturn(Optional.empty());
+        given(playerStateRepository.findByGameIdAndPlayerIdWithLock(gameId, playerId))
+                .willReturn(Optional.empty());
 
         listener.onHandDealt(event);
 
@@ -119,7 +120,7 @@ class ActionStateProjectionEventListenerTest {
                 null,
                 List.of(new PlayerState.CardInstance(UUID.randomUUID(), CardType.JAM)),
                 true);
-        given(playerStateRepository.findByGameIdAndPlayerId(existing.gameId(), existing.playerId()))
+        given(playerStateRepository.findByGameIdAndPlayerIdWithLock(existing.gameId(), existing.playerId()))
                 .willReturn(Optional.of(existing));
 
         listener.onFactionAssigned(new FactionAssigned(existing.gameId(), existing.playerId(), Faction.WEAVERS.name()));
@@ -135,7 +136,8 @@ class ActionStateProjectionEventListenerTest {
     void onFactionAssigned_createsPlayerStateWhenMissing() {
         var gameId = UUID.randomUUID();
         var playerId = UUID.randomUUID();
-        given(playerStateRepository.findByGameIdAndPlayerId(gameId, playerId)).willReturn(Optional.empty());
+        given(playerStateRepository.findByGameIdAndPlayerIdWithLock(gameId, playerId))
+                .willReturn(Optional.empty());
 
         listener.onFactionAssigned(new FactionAssigned(gameId, playerId, Faction.ACTIVISTS.name()));
 
@@ -157,7 +159,7 @@ class ActionStateProjectionEventListenerTest {
                 Faction.PROPHETS,
                 List.of(new PlayerState.CardInstance(UUID.randomUUID(), CardType.TRACE)),
                 false);
-        given(playerStateRepository.findByGameIdAndPlayerId(existing.gameId(), existing.playerId()))
+        given(playerStateRepository.findByGameIdAndPlayerIdWithLock(existing.gameId(), existing.playerId()))
                 .willReturn(Optional.of(existing));
 
         listener.onFactionAssigned(
@@ -174,7 +176,7 @@ class ActionStateProjectionEventListenerTest {
         listener.onFactionAssigned(new FactionAssigned(gameId, playerId, "NOT_A_REAL_FACTION"));
 
         then(playerStateRepository).should(never()).save(any());
-        then(playerStateRepository).should(never()).findByGameIdAndPlayerId(any(), any());
+        then(playerStateRepository).should(never()).findByGameIdAndPlayerIdWithLock(any(), any());
     }
 
     @Test
@@ -185,7 +187,7 @@ class ActionStateProjectionEventListenerTest {
         listener.onFactionAssigned(new FactionAssigned(gameId, playerId, null));
 
         then(playerStateRepository).should(never()).save(any());
-        then(playerStateRepository).should(never()).findByGameIdAndPlayerId(any(), any());
+        then(playerStateRepository).should(never()).findByGameIdAndPlayerIdWithLock(any(), any());
     }
 
     @Test
@@ -194,7 +196,7 @@ class ActionStateProjectionEventListenerTest {
                 UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), Faction.ERASERS, List.of(), false);
         willReturn(Optional.of(existing))
                 .given(playerStateRepository)
-                .findByGameIdAndPlayerId(existing.gameId(), existing.playerId());
+                .findByGameIdAndPlayerIdWithLock(existing.gameId(), existing.playerId());
 
         assertThatIllegalStateException()
                 .isThrownBy(() -> listener.onFactionAssigned(

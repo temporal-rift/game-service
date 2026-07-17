@@ -47,7 +47,10 @@ class ActionStateProjectionEventListener {
 
     @ApplicationModuleListener
     void onHandDealt(HandDealt event) {
-        var existing = playerStateRepository.findByGameIdAndPlayerId(event.gameId(), event.playerId());
+        // Locked read: this listener and onFactionAssigned run in independent post-commit
+        // transactions and both save the whole row, so an unlocked read-modify-write lets the last
+        // writer erase the other's field.
+        var existing = playerStateRepository.findByGameIdAndPlayerIdWithLock(event.gameId(), event.playerId());
         var state = existing.orElseGet(() -> new PlayerState(UUID.randomUUID(), event.gameId(), event.playerId()));
         playerStateRepository.save(PlayerState.reconstitute(
                 state.id(),
@@ -71,7 +74,7 @@ class ActionStateProjectionEventListener {
                     event.gameId());
             return;
         }
-        var existing = playerStateRepository.findByGameIdAndPlayerId(event.gameId(), event.playerId());
+        var existing = playerStateRepository.findByGameIdAndPlayerIdWithLock(event.gameId(), event.playerId());
         if (existing.isPresent() && existing.get().faction() == faction) {
             return;
         }
