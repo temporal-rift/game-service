@@ -174,7 +174,8 @@ class ActionControllerTest {
         // when / then
         mockMvc.perform(get("/games/{gameId}/eras/{eraNumber}/rounds/{roundNumber}/status", GAME_ID, ERA, ROUND)
                         .with(auth()))
-                .andExpect(status().isNotFound());
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("404-01"));
     }
 
     @Test
@@ -188,7 +189,8 @@ class ActionControllerTest {
                         .with(auth())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(cardJson()))
-                .andExpect(status().isConflict());
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("409-01"));
     }
 
     @Test
@@ -202,7 +204,8 @@ class ActionControllerTest {
                         .with(auth())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(cardJson()))
-                .andExpect(status().isConflict());
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("409-02"));
     }
 
     @Test
@@ -216,7 +219,8 @@ class ActionControllerTest {
                         .with(auth())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(cardJson()))
-                .andExpect(status().is(422));
+                .andExpect(status().is(422))
+                .andExpect(jsonPath("$.code").value("422-01"));
     }
 
     @Test
@@ -230,7 +234,8 @@ class ActionControllerTest {
                         .with(auth())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(specialJson()))
-                .andExpect(status().is(422));
+                .andExpect(status().is(422))
+                .andExpect(jsonPath("$.code").value("422-02"));
     }
 
     @Test
@@ -244,7 +249,8 @@ class ActionControllerTest {
                         .with(auth())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(specialJson()))
-                .andExpect(status().is(422));
+                .andExpect(status().is(422))
+                .andExpect(jsonPath("$.code").value("422-04"));
     }
 
     @Test
@@ -260,7 +266,8 @@ class ActionControllerTest {
                         .with(auth())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(cardJson()))
-                .andExpect(status().is(422));
+                .andExpect(status().is(422))
+                .andExpect(jsonPath("$.code").value("422-03"));
     }
 
     private static String cardJson() {

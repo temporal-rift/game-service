@@ -63,6 +63,7 @@ paths:
             - Card not in hand (`code: 422-01`)
             - Player jammed (`code: 422-02`)
             - Invalid target (`code: 422-03`)
+            - Faction required for special action (`code: 422-04`)
           content:
             application/problem+json:
               schema:
