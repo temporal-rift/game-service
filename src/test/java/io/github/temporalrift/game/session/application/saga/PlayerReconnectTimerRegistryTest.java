@@ -26,10 +26,11 @@ class PlayerReconnectTimerRegistryTest {
     void register_nullFuture_ignoresIt() {
         // given
         var registry = new PlayerReconnectTimerRegistry();
+        var sagaId = UUID.randomUUID();
 
         // when
-        registry.register(UUID.randomUUID(), null);
-        registry.cancel(UUID.randomUUID());
+        registry.register(sagaId, null);
+        registry.cancel(sagaId);
 
         // then
         then(future).should(never()).cancel(false);
