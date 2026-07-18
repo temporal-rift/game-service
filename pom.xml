@@ -54,24 +54,38 @@
 
         <domain-events.version>1.2.0</domain-events.version>
         <session-event.version>1.0.1</session-event.version>
+        <action-event.version>1.0.1</action-event.version>
+        <scoring-event.version>1.0.1</scoring-event.version>
         <spring-retry.version>2.0.13</spring-retry.version>
         <archunit-junit5.version>1.4.2</archunit-junit5.version>
     </properties>
 
     <dependencies>
+        <!-- TODO remove once EventEnvelope-based publishing is fully retired in favor of the generated
+             producers below - domain-events itself is no longer used for event/enum types. -->
         <dependency>
             <groupId>io.github.temporal-rift</groupId>
             <artifactId>domain-events</artifactId>
             <version>${domain-events.version}</version>
         </dependency>
 
-        <!-- Spec-only: bundles session bounded-context asyncapi.yml, no compiled code. Codegen for it is
-             driven by the zenwave-sdk-maven-plugin execution below (plugin identity + shared defaults are
+        <!-- Spec-only: bundles each bounded context's asyncapi.yml, no compiled code. Codegen for these is
+             driven by the zenwave-sdk-maven-plugin executions below (plugin identity + shared defaults are
              managed in temporal-rift-bom). -->
         <dependency>
             <groupId>io.github.temporal-rift</groupId>
             <artifactId>session-event</artifactId>
             <version>${session-event.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.github.temporal-rift</groupId>
+            <artifactId>action-event</artifactId>
+            <version>${action-event.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.github.temporal-rift</groupId>
+            <artifactId>scoring-event</artifactId>
+            <version>${scoring-event.version}</version>
         </dependency>
 
         <dependency>
@@ -311,6 +325,9 @@
                 <artifactId>maven-dependency-plugin</artifactId>
                 <version>3.8.1</version>
                 <executions>
+                    <!-- Separate output dirs per module - session-event, action-event and scoring-event all
+                         package their spec at the same internal path (asyncapi/asyncapi.yml), so a shared
+                         output directory would have each unpack silently overwrite the previous one. -->
                     <execution>
                         <id>unpack-session-event-spec</id>
                         <phase>generate-sources</phase>
@@ -320,7 +337,31 @@
                         <configuration>
                             <includeArtifactIds>session-event</includeArtifactIds>
                             <includes>asyncapi/**</includes>
-                            <outputDirectory>${project.build.directory}/dependency-specs</outputDirectory>
+                            <outputDirectory>${project.build.directory}/dependency-specs/session</outputDirectory>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>unpack-action-event-spec</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>unpack-dependencies</goal>
+                        </goals>
+                        <configuration>
+                            <includeArtifactIds>action-event</includeArtifactIds>
+                            <includes>asyncapi/**</includes>
+                            <outputDirectory>${project.build.directory}/dependency-specs/action</outputDirectory>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>unpack-scoring-event-spec</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>unpack-dependencies</goal>
+                        </goals>
+                        <configuration>
+                            <includeArtifactIds>scoring-event</includeArtifactIds>
+                            <includes>asyncapi/**</includes>
+                            <outputDirectory>${project.build.directory}/dependency-specs/scoring</outputDirectory>
                         </configuration>
                     </execution>
                 </executions>
@@ -336,11 +377,41 @@
                             <goal>generate</goal>
                         </goals>
                         <configuration>
-                            <inputSpec>${project.build.directory}/dependency-specs/asyncapi/asyncapi.yml</inputSpec>
+                            <inputSpec>${project.build.directory}/dependency-specs/session/asyncapi/asyncapi.yml</inputSpec>
                             <configOptions>
                                 <role>provider</role>
                                 <modelPackage>io.github.temporalrift.game.session.infrastructure.adapter.out.kafka.model</modelPackage>
                                 <producerApiPackage>io.github.temporalrift.game.session.infrastructure.adapter.out.kafka.producer</producerApiPackage>
+                            </configOptions>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>generate-action-events</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>generate</goal>
+                        </goals>
+                        <configuration>
+                            <inputSpec>${project.build.directory}/dependency-specs/action/asyncapi/asyncapi.yml</inputSpec>
+                            <configOptions>
+                                <role>provider</role>
+                                <modelPackage>io.github.temporalrift.game.action.infrastructure.adapter.out.kafka.model</modelPackage>
+                                <producerApiPackage>io.github.temporalrift.game.action.infrastructure.adapter.out.kafka.producer</producerApiPackage>
+                            </configOptions>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>generate-scoring-events</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>generate</goal>
+                        </goals>
+                        <configuration>
+                            <inputSpec>${project.build.directory}/dependency-specs/scoring/asyncapi/asyncapi.yml</inputSpec>
+                            <configOptions>
+                                <role>provider</role>
+                                <modelPackage>io.github.temporalrift.game.scoring.infrastructure.adapter.out.kafka.model</modelPackage>
+                                <producerApiPackage>io.github.temporalrift.game.scoring.infrastructure.adapter.out.kafka.producer</producerApiPackage>
                             </configOptions>
                         </configuration>
                     </execution>
