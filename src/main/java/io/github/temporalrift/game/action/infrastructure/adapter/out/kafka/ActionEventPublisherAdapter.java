@@ -1,5 +1,7 @@
 package io.github.temporalrift.game.action.infrastructure.adapter.out.kafka;
 
+import java.util.HashMap;
+
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 
@@ -21,6 +23,10 @@ import io.github.temporalrift.game.shared.DomainEventEnvelope;
  * <p>Each event's local payload is mapped to its generated wire type and published through the
  * ZenWave-generated {@link DefaultServiceEventsProducer}, which itself calls {@link
  * ApplicationEventPublisher#publishEvent} internally (transactionalOutbox=modulith).
+ *
+ * <p>Every generated {@code XxxPayloadHeaders} class is a distinct static nested type but they all
+ * extend plain {@code HashMap<String,Object>}, so {@link #headers} populates the six common fields
+ * generically instead of repeating the same six lines per case.
  */
 @Component
 class ActionEventPublisherAdapter implements ActionEventPublisher {
@@ -44,87 +50,48 @@ class ActionEventPublisherAdapter implements ActionEventPublisher {
             case ActionRoundStarted e ->
                 producer.publishActionRoundStarted(
                         mapper.toWire(e),
-                        new DefaultServiceEventsProducer.ActionRoundStartedPayloadHeaders()
-                                .set("eventId", event.eventId().toString())
-                                .set("aggregateId", event.aggregateId().toString())
-                                .set("aggregateType", event.aggregateType())
-                                .set("gameId", event.gameId().toString())
-                                .set("occurredAt", event.occurredAt())
-                                .set("version", event.version()));
+                        headers(new DefaultServiceEventsProducer.ActionRoundStartedPayloadHeaders(), event));
             case CardPlayed e ->
                 producer.publishCardPlayed(
-                        mapper.toWire(e),
-                        new DefaultServiceEventsProducer.CardPlayedPayloadHeaders()
-                                .set("eventId", event.eventId().toString())
-                                .set("aggregateId", event.aggregateId().toString())
-                                .set("aggregateType", event.aggregateType())
-                                .set("gameId", event.gameId().toString())
-                                .set("occurredAt", event.occurredAt())
-                                .set("version", event.version()));
+                        mapper.toWire(e), headers(new DefaultServiceEventsProducer.CardPlayedPayloadHeaders(), event));
             case SpecialActionPlayed e ->
                 producer.publishSpecialActionPlayed(
                         mapper.toWire(e),
-                        new DefaultServiceEventsProducer.SpecialActionPlayedPayloadHeaders()
-                                .set("eventId", event.eventId().toString())
-                                .set("aggregateId", event.aggregateId().toString())
-                                .set("aggregateType", event.aggregateType())
-                                .set("gameId", event.gameId().toString())
-                                .set("occurredAt", event.occurredAt())
-                                .set("version", event.version()));
+                        headers(new DefaultServiceEventsProducer.SpecialActionPlayedPayloadHeaders(), event));
             case ActionRoundTimerExpired e ->
                 producer.publishActionRoundTimerExpired(
                         mapper.toWire(e),
-                        new DefaultServiceEventsProducer.ActionRoundTimerExpiredPayloadHeaders()
-                                .set("eventId", event.eventId().toString())
-                                .set("aggregateId", event.aggregateId().toString())
-                                .set("aggregateType", event.aggregateType())
-                                .set("gameId", event.gameId().toString())
-                                .set("occurredAt", event.occurredAt())
-                                .set("version", event.version()));
+                        headers(new DefaultServiceEventsProducer.ActionRoundTimerExpiredPayloadHeaders(), event));
             case PlayerSkipped e ->
                 producer.publishPlayerSkipped(
                         mapper.toWire(e),
-                        new DefaultServiceEventsProducer.PlayerSkippedPayloadHeaders()
-                                .set("eventId", event.eventId().toString())
-                                .set("aggregateId", event.aggregateId().toString())
-                                .set("aggregateType", event.aggregateType())
-                                .set("gameId", event.gameId().toString())
-                                .set("occurredAt", event.occurredAt())
-                                .set("version", event.version()));
+                        headers(new DefaultServiceEventsProducer.PlayerSkippedPayloadHeaders(), event));
             case ActionRoundClosed e ->
                 producer.publishActionRoundClosed(
                         mapper.toWire(e),
-                        new DefaultServiceEventsProducer.ActionRoundClosedPayloadHeaders()
-                                .set("eventId", event.eventId().toString())
-                                .set("aggregateId", event.aggregateId().toString())
-                                .set("aggregateType", event.aggregateType())
-                                .set("gameId", event.gameId().toString())
-                                .set("occurredAt", event.occurredAt())
-                                .set("version", event.version()));
+                        headers(new DefaultServiceEventsProducer.ActionRoundClosedPayloadHeaders(), event));
             case RoundSummaryPublished e ->
                 producer.publishRoundSummaryPublished(
                         mapper.toWire(e),
-                        new DefaultServiceEventsProducer.RoundSummaryPublishedPayloadHeaders()
-                                .set("eventId", event.eventId().toString())
-                                .set("aggregateId", event.aggregateId().toString())
-                                .set("aggregateType", event.aggregateType())
-                                .set("gameId", event.gameId().toString())
-                                .set("occurredAt", event.occurredAt())
-                                .set("version", event.version()));
+                        headers(new DefaultServiceEventsProducer.RoundSummaryPublishedPayloadHeaders(), event));
             case BandedProbabilityPublished e ->
                 producer.publishBandedProbabilityPublished(
                         mapper.toWire(e),
-                        new DefaultServiceEventsProducer.BandedProbabilityPublishedPayloadHeaders()
-                                .set("eventId", event.eventId().toString())
-                                .set("aggregateId", event.aggregateId().toString())
-                                .set("aggregateType", event.aggregateType())
-                                .set("gameId", event.gameId().toString())
-                                .set("occurredAt", event.occurredAt())
-                                .set("version", event.version()));
+                        headers(new DefaultServiceEventsProducer.BandedProbabilityPublishedPayloadHeaders(), event));
             default ->
                 throw new IllegalArgumentException(
                         "Unsupported action event payload: " + event.payload().getClass());
         }
+    }
+
+    private static <H extends HashMap<String, Object>> H headers(H headers, DomainEventEnvelope event) {
+        headers.put("eventId", event.eventId().toString());
+        headers.put("aggregateId", event.aggregateId().toString());
+        headers.put("aggregateType", event.aggregateType());
+        headers.put("gameId", event.gameId().toString());
+        headers.put("occurredAt", event.occurredAt());
+        headers.put("version", event.version());
+        return headers;
     }
 
     @Override

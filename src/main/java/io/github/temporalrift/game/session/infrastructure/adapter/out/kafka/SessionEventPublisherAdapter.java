@@ -44,10 +44,9 @@ import io.github.temporalrift.game.shared.DomainEventEnvelope;
  * ApplicationEventPublisher.publishEvent} internally (transactionalOutbox=modulith) - Spring
  * Modulith's JPA event publication still intercepts it the same way it always has.
  *
- * <p>Every generated {@code XxxPayloadHeaders} class carries the same six fields but is a distinct
- * static nested type with no shared supertype beyond {@code HashMap<String,Object>}, so each
- * publish call constructs its own - there's no way to share one instance across the differently
- * typed method signatures.
+ * <p>Every generated {@code XxxPayloadHeaders} class is a distinct static nested type but they all
+ * extend plain {@code HashMap<String,Object>}, so {@link #headers} populates the six common fields
+ * generically instead of repeating the same six lines per case.
  *
  * <p>{@code ResolutionStarted} has no apis spec entry yet (never modeled, unlike the other events
  * migrated in this PR) - {@link #publishResolutionStartedManually} hand-builds the exact {@link
@@ -77,233 +76,87 @@ class SessionEventPublisherAdapter implements SessionEventPublisher {
             case LobbyCreated e ->
                 producer.publishLobbyCreated(
                         mapper.toWire(e),
-                        new DefaultServiceEventsProducer.LobbyCreatedPayloadHeaders()
-                                .set("eventId", event.eventId().toString())
-                                .set("aggregateId", event.aggregateId().toString())
-                                .set("aggregateType", event.aggregateType())
-                                .set("gameId", event.gameId().toString())
-                                .set("occurredAt", event.occurredAt())
-                                .set("version", event.version()));
+                        headers(new DefaultServiceEventsProducer.LobbyCreatedPayloadHeaders(), event));
             case PlayerJoinedLobby e ->
                 producer.publishPlayerJoinedLobby(
                         mapper.toWire(e),
-                        new DefaultServiceEventsProducer.PlayerJoinedLobbyPayloadHeaders()
-                                .set("eventId", event.eventId().toString())
-                                .set("aggregateId", event.aggregateId().toString())
-                                .set("aggregateType", event.aggregateType())
-                                .set("gameId", event.gameId().toString())
-                                .set("occurredAt", event.occurredAt())
-                                .set("version", event.version()));
+                        headers(new DefaultServiceEventsProducer.PlayerJoinedLobbyPayloadHeaders(), event));
             case PlayerLeftLobby e ->
                 producer.publishPlayerLeftLobby(
                         mapper.toWire(e),
-                        new DefaultServiceEventsProducer.PlayerLeftLobbyPayloadHeaders()
-                                .set("eventId", event.eventId().toString())
-                                .set("aggregateId", event.aggregateId().toString())
-                                .set("aggregateType", event.aggregateType())
-                                .set("gameId", event.gameId().toString())
-                                .set("occurredAt", event.occurredAt())
-                                .set("version", event.version()));
+                        headers(new DefaultServiceEventsProducer.PlayerLeftLobbyPayloadHeaders(), event));
             case LobbyClosed e ->
                 producer.publishLobbyClosed(
-                        mapper.toWire(e),
-                        new DefaultServiceEventsProducer.LobbyClosedPayloadHeaders()
-                                .set("eventId", event.eventId().toString())
-                                .set("aggregateId", event.aggregateId().toString())
-                                .set("aggregateType", event.aggregateType())
-                                .set("gameId", event.gameId().toString())
-                                .set("occurredAt", event.occurredAt())
-                                .set("version", event.version()));
+                        mapper.toWire(e), headers(new DefaultServiceEventsProducer.LobbyClosedPayloadHeaders(), event));
             case HostTransferred e ->
                 producer.publishHostTransferred(
                         mapper.toWire(e),
-                        new DefaultServiceEventsProducer.HostTransferredPayloadHeaders()
-                                .set("eventId", event.eventId().toString())
-                                .set("aggregateId", event.aggregateId().toString())
-                                .set("aggregateType", event.aggregateType())
-                                .set("gameId", event.gameId().toString())
-                                .set("occurredAt", event.occurredAt())
-                                .set("version", event.version()));
+                        headers(new DefaultServiceEventsProducer.HostTransferredPayloadHeaders(), event));
             case EraStarted e ->
                 producer.publishEraStarted(
-                        mapper.toWire(e),
-                        new DefaultServiceEventsProducer.EraStartedPayloadHeaders()
-                                .set("eventId", event.eventId().toString())
-                                .set("aggregateId", event.aggregateId().toString())
-                                .set("aggregateType", event.aggregateType())
-                                .set("gameId", event.gameId().toString())
-                                .set("occurredAt", event.occurredAt())
-                                .set("version", event.version()));
+                        mapper.toWire(e), headers(new DefaultServiceEventsProducer.EraStartedPayloadHeaders(), event));
             case EraEnded e ->
                 producer.publishEraEnded(
-                        mapper.toWire(e),
-                        new DefaultServiceEventsProducer.EraEndedPayloadHeaders()
-                                .set("eventId", event.eventId().toString())
-                                .set("aggregateId", event.aggregateId().toString())
-                                .set("aggregateType", event.aggregateType())
-                                .set("gameId", event.gameId().toString())
-                                .set("occurredAt", event.occurredAt())
-                                .set("version", event.version()));
+                        mapper.toWire(e), headers(new DefaultServiceEventsProducer.EraEndedPayloadHeaders(), event));
             case EraFailed e ->
                 producer.publishEraFailed(
-                        mapper.toWire(e),
-                        new DefaultServiceEventsProducer.EraFailedPayloadHeaders()
-                                .set("eventId", event.eventId().toString())
-                                .set("aggregateId", event.aggregateId().toString())
-                                .set("aggregateType", event.aggregateType())
-                                .set("gameId", event.gameId().toString())
-                                .set("occurredAt", event.occurredAt())
-                                .set("version", event.version()));
+                        mapper.toWire(e), headers(new DefaultServiceEventsProducer.EraFailedPayloadHeaders(), event));
             case FactionAssigned e ->
                 producer.publishFactionAssigned(
                         mapper.toWire(e),
-                        new DefaultServiceEventsProducer.FactionAssignedPayloadHeaders()
-                                .set("eventId", event.eventId().toString())
-                                .set("aggregateId", event.aggregateId().toString())
-                                .set("aggregateType", event.aggregateType())
-                                .set("gameId", event.gameId().toString())
-                                .set("occurredAt", event.occurredAt())
-                                .set("version", event.version()));
+                        headers(new DefaultServiceEventsProducer.FactionAssignedPayloadHeaders(), event));
             case FactionsDrawn e ->
                 producer.publishFactionsDrawn(
                         mapper.toWire(e),
-                        new DefaultServiceEventsProducer.FactionsDrawnPayloadHeaders()
-                                .set("eventId", event.eventId().toString())
-                                .set("aggregateId", event.aggregateId().toString())
-                                .set("aggregateType", event.aggregateType())
-                                .set("gameId", event.gameId().toString())
-                                .set("occurredAt", event.occurredAt())
-                                .set("version", event.version()));
+                        headers(new DefaultServiceEventsProducer.FactionsDrawnPayloadHeaders(), event));
             case GameStartCancelled e ->
                 producer.publishGameStartCancelled(
                         mapper.toWire(e),
-                        new DefaultServiceEventsProducer.GameStartCancelledPayloadHeaders()
-                                .set("eventId", event.eventId().toString())
-                                .set("aggregateId", event.aggregateId().toString())
-                                .set("aggregateType", event.aggregateType())
-                                .set("gameId", event.gameId().toString())
-                                .set("occurredAt", event.occurredAt())
-                                .set("version", event.version()));
+                        headers(new DefaultServiceEventsProducer.GameStartCancelledPayloadHeaders(), event));
             case GameStartFailed e ->
                 producer.publishGameStartFailed(
                         mapper.toWire(e),
-                        new DefaultServiceEventsProducer.GameStartFailedPayloadHeaders()
-                                .set("eventId", event.eventId().toString())
-                                .set("aggregateId", event.aggregateId().toString())
-                                .set("aggregateType", event.aggregateType())
-                                .set("gameId", event.gameId().toString())
-                                .set("occurredAt", event.occurredAt())
-                                .set("version", event.version()));
+                        headers(new DefaultServiceEventsProducer.GameStartFailedPayloadHeaders(), event));
             case GameStarted e ->
                 producer.publishGameStarted(
-                        mapper.toWire(e),
-                        new DefaultServiceEventsProducer.GameStartedPayloadHeaders()
-                                .set("eventId", event.eventId().toString())
-                                .set("aggregateId", event.aggregateId().toString())
-                                .set("aggregateType", event.aggregateType())
-                                .set("gameId", event.gameId().toString())
-                                .set("occurredAt", event.occurredAt())
-                                .set("version", event.version()));
+                        mapper.toWire(e), headers(new DefaultServiceEventsProducer.GameStartedPayloadHeaders(), event));
             case PlayerAbandoned e ->
                 producer.publishPlayerAbandoned(
                         mapper.toWire(e),
-                        new DefaultServiceEventsProducer.PlayerAbandonedPayloadHeaders()
-                                .set("eventId", event.eventId().toString())
-                                .set("aggregateId", event.aggregateId().toString())
-                                .set("aggregateType", event.aggregateType())
-                                .set("gameId", event.gameId().toString())
-                                .set("occurredAt", event.occurredAt())
-                                .set("version", event.version()));
+                        headers(new DefaultServiceEventsProducer.PlayerAbandonedPayloadHeaders(), event));
             case PlayerDisconnected e ->
                 producer.publishPlayerDisconnected(
                         mapper.toWire(e),
-                        new DefaultServiceEventsProducer.PlayerDisconnectedPayloadHeaders()
-                                .set("eventId", event.eventId().toString())
-                                .set("aggregateId", event.aggregateId().toString())
-                                .set("aggregateType", event.aggregateType())
-                                .set("gameId", event.gameId().toString())
-                                .set("occurredAt", event.occurredAt())
-                                .set("version", event.version()));
+                        headers(new DefaultServiceEventsProducer.PlayerDisconnectedPayloadHeaders(), event));
             case WinConditionMet e ->
                 producer.publishWinConditionMet(
                         mapper.toWire(e),
-                        new DefaultServiceEventsProducer.WinConditionMetPayloadHeaders()
-                                .set("eventId", event.eventId().toString())
-                                .set("aggregateId", event.aggregateId().toString())
-                                .set("aggregateType", event.aggregateType())
-                                .set("gameId", event.gameId().toString())
-                                .set("occurredAt", event.occurredAt())
-                                .set("version", event.version()));
+                        headers(new DefaultServiceEventsProducer.WinConditionMetPayloadHeaders(), event));
             case GameEndedAbnormally e ->
                 producer.publishGameEndedAbnormally(
                         mapper.toWire(e),
-                        new DefaultServiceEventsProducer.GameEndedAbnormallyPayloadHeaders()
-                                .set("eventId", event.eventId().toString())
-                                .set("aggregateId", event.aggregateId().toString())
-                                .set("aggregateType", event.aggregateType())
-                                .set("gameId", event.gameId().toString())
-                                .set("occurredAt", event.occurredAt())
-                                .set("version", event.version()));
+                        headers(new DefaultServiceEventsProducer.GameEndedAbnormallyPayloadHeaders(), event));
             case GameEnded e ->
                 producer.publishGameEnded(
-                        mapper.toWire(e),
-                        new DefaultServiceEventsProducer.GameEndedPayloadHeaders()
-                                .set("eventId", event.eventId().toString())
-                                .set("aggregateId", event.aggregateId().toString())
-                                .set("aggregateType", event.aggregateType())
-                                .set("gameId", event.gameId().toString())
-                                .set("occurredAt", event.occurredAt())
-                                .set("version", event.version()));
+                        mapper.toWire(e), headers(new DefaultServiceEventsProducer.GameEndedPayloadHeaders(), event));
             case TimelineCollapsed e ->
                 producer.publishTimelineCollapsed(
                         mapper.toWire(e),
-                        new DefaultServiceEventsProducer.TimelineCollapsedPayloadHeaders()
-                                .set("eventId", event.eventId().toString())
-                                .set("aggregateId", event.aggregateId().toString())
-                                .set("aggregateType", event.aggregateType())
-                                .set("gameId", event.gameId().toString())
-                                .set("occurredAt", event.occurredAt())
-                                .set("version", event.version()));
+                        headers(new DefaultServiceEventsProducer.TimelineCollapsedPayloadHeaders(), event));
             case TimelineStabilized e ->
                 producer.publishTimelineStabilized(
                         mapper.toWire(e),
-                        new DefaultServiceEventsProducer.TimelineStabilizedPayloadHeaders()
-                                .set("eventId", event.eventId().toString())
-                                .set("aggregateId", event.aggregateId().toString())
-                                .set("aggregateType", event.aggregateType())
-                                .set("gameId", event.gameId().toString())
-                                .set("occurredAt", event.occurredAt())
-                                .set("version", event.version()));
+                        headers(new DefaultServiceEventsProducer.TimelineStabilizedPayloadHeaders(), event));
             case FactionRevealed e ->
                 producer.publishFactionRevealed(
                         mapper.toWire(e),
-                        new DefaultServiceEventsProducer.FactionRevealedPayloadHeaders()
-                                .set("eventId", event.eventId().toString())
-                                .set("aggregateId", event.aggregateId().toString())
-                                .set("aggregateType", event.aggregateType())
-                                .set("gameId", event.gameId().toString())
-                                .set("occurredAt", event.occurredAt())
-                                .set("version", event.version()));
+                        headers(new DefaultServiceEventsProducer.FactionRevealedPayloadHeaders(), event));
             case EventsDrawn e ->
                 producer.publishEventsDrawn(
-                        mapper.toWire(e),
-                        new DefaultServiceEventsProducer.EventsDrawnPayloadHeaders()
-                                .set("eventId", event.eventId().toString())
-                                .set("aggregateId", event.aggregateId().toString())
-                                .set("aggregateType", event.aggregateType())
-                                .set("gameId", event.gameId().toString())
-                                .set("occurredAt", event.occurredAt())
-                                .set("version", event.version()));
+                        mapper.toWire(e), headers(new DefaultServiceEventsProducer.EventsDrawnPayloadHeaders(), event));
             case HandDealt e ->
                 producer.publishHandDealt(
-                        mapper.toWire(e),
-                        new DefaultServiceEventsProducer.HandDealtPayloadHeaders()
-                                .set("eventId", event.eventId().toString())
-                                .set("aggregateId", event.aggregateId().toString())
-                                .set("aggregateType", event.aggregateType())
-                                .set("gameId", event.gameId().toString())
-                                .set("occurredAt", event.occurredAt())
-                                .set("version", event.version()));
+                        mapper.toWire(e), headers(new DefaultServiceEventsProducer.HandDealtPayloadHeaders(), event));
             case ResolutionStarted e -> publishResolutionStartedManually(event, e);
             default ->
                 throw new IllegalArgumentException(
@@ -311,16 +164,20 @@ class SessionEventPublisherAdapter implements SessionEventPublisher {
         }
     }
 
-    private void publishResolutionStartedManually(DomainEventEnvelope event, ResolutionStarted payload) {
-        var headers = new HashMap<String, Object>();
-        headers.put("spring.cloud.stream.sendto.destination", "Sessionpublish-resolution-started-out");
+    private static <H extends HashMap<String, Object>> H headers(H headers, DomainEventEnvelope event) {
         headers.put("eventId", event.eventId().toString());
         headers.put("aggregateId", event.aggregateId().toString());
         headers.put("aggregateType", event.aggregateType());
         headers.put("gameId", event.gameId().toString());
         headers.put("occurredAt", event.occurredAt());
         headers.put("version", event.version());
-        Message<ResolutionStarted> message = MessageBuilder.createMessage(payload, new MessageHeaders(headers));
+        return headers;
+    }
+
+    private void publishResolutionStartedManually(DomainEventEnvelope event, ResolutionStarted payload) {
+        var messageHeaders = headers(new HashMap<String, Object>(), event);
+        messageHeaders.put("spring.cloud.stream.sendto.destination", "Sessionpublish-resolution-started-out");
+        Message<ResolutionStarted> message = MessageBuilder.createMessage(payload, new MessageHeaders(messageHeaders));
         applicationEventPublisher.publishEvent(message);
     }
 }

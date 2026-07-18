@@ -1,5 +1,7 @@
 package io.github.temporalrift.game.scoring.infrastructure.adapter.out.kafka;
 
+import java.util.HashMap;
+
 import org.springframework.stereotype.Component;
 
 import io.github.temporalrift.game.scoring.ScoresUpdated;
@@ -24,16 +26,20 @@ class ScoringEventPublisherAdapter implements ScoringEventPublisher {
             case ScoresUpdated e ->
                 producer.publishScoresUpdated(
                         mapper.toWire(e),
-                        new DefaultServiceEventsProducer.ScoresUpdatedPayloadHeaders()
-                                .set("eventId", event.eventId().toString())
-                                .set("aggregateId", event.aggregateId().toString())
-                                .set("aggregateType", event.aggregateType())
-                                .set("gameId", event.gameId().toString())
-                                .set("occurredAt", event.occurredAt())
-                                .set("version", event.version()));
+                        headers(new DefaultServiceEventsProducer.ScoresUpdatedPayloadHeaders(), event));
             default ->
                 throw new IllegalArgumentException(
                         "Unsupported scoring event payload: " + event.payload().getClass());
         }
+    }
+
+    private static <H extends HashMap<String, Object>> H headers(H headers, DomainEventEnvelope event) {
+        headers.put("eventId", event.eventId().toString());
+        headers.put("aggregateId", event.aggregateId().toString());
+        headers.put("aggregateType", event.aggregateType());
+        headers.put("gameId", event.gameId().toString());
+        headers.put("occurredAt", event.occurredAt());
+        headers.put("version", event.version());
+        return headers;
     }
 }
