@@ -22,18 +22,17 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 
-import io.github.temporalrift.game.action.domain.event.ActionRoundClosed;
 import io.github.temporalrift.events.envelope.EventEnvelope;
+import io.github.temporalrift.game.action.StartActionRoundRequested;
+import io.github.temporalrift.game.action.domain.event.ActionRoundClosed;
 import io.github.temporalrift.game.scoring.domain.event.ScoresUpdated;
 import io.github.temporalrift.game.session.domain.event.EraEnded;
 import io.github.temporalrift.game.session.domain.event.EraFailed;
 import io.github.temporalrift.game.session.domain.event.EraStarted;
 import io.github.temporalrift.game.session.domain.event.GameEndedAbnormally;
+import io.github.temporalrift.game.session.domain.event.ResolutionStarted;
 import io.github.temporalrift.game.session.domain.event.TimelineStabilized;
 import io.github.temporalrift.game.session.domain.event.WinConditionMet;
-import io.github.temporalrift.game.shared.Faction;
-import io.github.temporalrift.game.session.domain.event.ResolutionStarted;
-import io.github.temporalrift.game.action.StartActionRoundRequested;
 import io.github.temporalrift.game.session.domain.game.Game;
 import io.github.temporalrift.game.session.domain.game.GameStatus;
 import io.github.temporalrift.game.session.domain.port.out.EraSagaRepository;
@@ -42,6 +41,7 @@ import io.github.temporalrift.game.session.domain.port.out.SessionEventPublisher
 import io.github.temporalrift.game.session.domain.port.out.SessionGameRulesPort;
 import io.github.temporalrift.game.session.domain.saga.EraSagaState;
 import io.github.temporalrift.game.session.domain.saga.EraSagaStatus;
+import io.github.temporalrift.game.shared.Faction;
 
 @ExtendWith(MockitoExtension.class)
 class EraSagaAdvancerTest {

@@ -16,8 +16,8 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import io.github.temporalrift.events.envelope.EventEnvelope;
-import io.github.temporalrift.game.session.domain.event.LobbyCreated;
 import io.github.temporalrift.game.TestcontainersConfiguration;
+import io.github.temporalrift.game.session.domain.event.LobbyCreated;
 import io.github.temporalrift.game.session.domain.lobby.Lobby;
 import io.github.temporalrift.game.session.domain.lobby.LobbyConfig;
 import io.github.temporalrift.game.session.domain.lobby.LobbyStatus;

@@ -1,8 +1,7 @@
 package io.github.temporalrift.game.shared.infrastructure.config;
 
-import org.springframework.context.annotation.Configuration;
-
 import io.zenwave360.modulith.events.scs.config.EnableSpringCloudStreamEventExternalization;
+import org.springframework.context.annotation.Configuration;
 
 /**
  * Bridges Spring Modulith's transactional outbox relay to Spring Cloud Stream. Generated ZenWave

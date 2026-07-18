@@ -6,10 +6,10 @@ import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 
-import io.github.temporalrift.game.shared.CardType;
-import io.github.temporalrift.game.shared.Faction;
 import io.github.temporalrift.game.action.domain.CardNotInHandException;
 import io.github.temporalrift.game.shared.AggregateRoot;
+import io.github.temporalrift.game.shared.CardType;
+import io.github.temporalrift.game.shared.Faction;
 
 public class PlayerState extends AggregateRoot {
 

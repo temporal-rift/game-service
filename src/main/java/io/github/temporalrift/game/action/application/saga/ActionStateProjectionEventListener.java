@@ -7,13 +7,13 @@ import org.slf4j.LoggerFactory;
 import org.springframework.modulith.events.ApplicationModuleListener;
 import org.springframework.stereotype.Component;
 
+import io.github.temporalrift.game.action.domain.playerstate.PlayerState;
+import io.github.temporalrift.game.action.domain.port.out.FutureEventDefinitionPort;
+import io.github.temporalrift.game.action.domain.port.out.PlayerStateRepository;
 import io.github.temporalrift.game.session.domain.event.EventsDrawn;
 import io.github.temporalrift.game.session.domain.event.FactionAssigned;
 import io.github.temporalrift.game.session.domain.event.HandDealt;
 import io.github.temporalrift.game.shared.Faction;
-import io.github.temporalrift.game.action.domain.playerstate.PlayerState;
-import io.github.temporalrift.game.action.domain.port.out.FutureEventDefinitionPort;
-import io.github.temporalrift.game.action.domain.port.out.PlayerStateRepository;
 
 @Component
 class ActionStateProjectionEventListener {

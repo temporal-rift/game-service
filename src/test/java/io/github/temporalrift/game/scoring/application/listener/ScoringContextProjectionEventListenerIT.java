@@ -15,13 +15,13 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Import;
 import org.springframework.transaction.support.TransactionTemplate;
 
-import io.github.temporalrift.game.session.domain.event.EventsDrawn;
-import io.github.temporalrift.game.session.domain.event.FactionAssigned;
-import io.github.temporalrift.game.shared.Faction;
 import io.github.temporalrift.game.TestcontainersConfiguration;
 import io.github.temporalrift.game.scoring.domain.context.EraScoringContextNotFoundException;
 import io.github.temporalrift.game.scoring.domain.context.PlayerFaction;
 import io.github.temporalrift.game.scoring.domain.port.out.EraScoringContextRepository;
+import io.github.temporalrift.game.session.domain.event.EventsDrawn;
+import io.github.temporalrift.game.session.domain.event.FactionAssigned;
+import io.github.temporalrift.game.shared.Faction;
 
 @SpringBootTest
 @Import(TestcontainersConfiguration.class)

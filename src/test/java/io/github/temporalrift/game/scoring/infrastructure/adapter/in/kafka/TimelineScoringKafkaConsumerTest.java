@@ -21,11 +21,11 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import tools.jackson.databind.ObjectMapper;
 
 import io.github.temporalrift.events.envelope.EventEnvelope;
+import io.github.temporalrift.game.scoring.application.command.UpdateEraScoresCommand;
+import io.github.temporalrift.game.scoring.application.command.UpdateScoresCommandHandler;
 import io.github.temporalrift.game.scoring.domain.event.ChainBroken;
 import io.github.temporalrift.game.scoring.domain.event.ChainCompleted;
 import io.github.temporalrift.game.scoring.domain.event.OutcomeApplied;
-import io.github.temporalrift.game.scoring.application.command.UpdateEraScoresCommand;
-import io.github.temporalrift.game.scoring.application.command.UpdateScoresCommandHandler;
 import io.github.temporalrift.game.scoring.domain.playerscore.ScoreReason;
 import io.github.temporalrift.game.scoring.domain.port.out.EraScoringContextRepository;
 import io.github.temporalrift.game.scoring.domain.port.out.ScoringEraCompletionRepository;

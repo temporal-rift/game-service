@@ -13,6 +13,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import io.github.temporalrift.events.envelope.EventEnvelope;
+import io.github.temporalrift.game.action.StartActionRoundRequested;
 import io.github.temporalrift.game.action.domain.event.ActionRoundClosed;
 import io.github.temporalrift.game.scoring.domain.event.ScoresUpdated;
 import io.github.temporalrift.game.session.domain.event.EraEnded;
@@ -22,7 +23,6 @@ import io.github.temporalrift.game.session.domain.event.GameEndedAbnormally;
 import io.github.temporalrift.game.session.domain.event.ResolutionStarted;
 import io.github.temporalrift.game.session.domain.event.TimelineStabilized;
 import io.github.temporalrift.game.session.domain.event.WinConditionMet;
-import io.github.temporalrift.game.action.StartActionRoundRequested;
 import io.github.temporalrift.game.session.domain.game.Game;
 import io.github.temporalrift.game.session.domain.game.GameNotFoundException;
 import io.github.temporalrift.game.session.domain.game.GameStatus;

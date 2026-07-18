@@ -21,7 +21,6 @@ import io.github.temporalrift.game.session.domain.event.EraStarted;
 import io.github.temporalrift.game.session.domain.event.FactionAssigned;
 import io.github.temporalrift.game.session.domain.event.FactionsDrawn;
 import io.github.temporalrift.game.session.domain.event.GameStarted;
-import io.github.temporalrift.game.shared.Faction;
 import io.github.temporalrift.game.session.domain.game.Game;
 import io.github.temporalrift.game.session.domain.lobby.DisconnectedPlayersException;
 import io.github.temporalrift.game.session.domain.lobby.Lobby;
@@ -35,6 +34,7 @@ import io.github.temporalrift.game.session.domain.port.out.GameRepository;
 import io.github.temporalrift.game.session.domain.port.out.LobbyRepository;
 import io.github.temporalrift.game.session.domain.port.out.SessionEventPublisher;
 import io.github.temporalrift.game.session.domain.saga.FactionAssignment;
+import io.github.temporalrift.game.shared.Faction;
 
 @Service
 class StartGameSagaImpl implements StartGameSaga {

@@ -20,14 +20,14 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import io.github.temporalrift.game.session.domain.event.EventsDrawn;
-import io.github.temporalrift.game.session.domain.event.HandDealt;
-import io.github.temporalrift.game.session.domain.event.FactionAssigned;
-import io.github.temporalrift.game.shared.CardType;
-import io.github.temporalrift.game.shared.Faction;
 import io.github.temporalrift.game.action.domain.playerstate.PlayerState;
 import io.github.temporalrift.game.action.domain.port.out.FutureEventDefinitionPort;
 import io.github.temporalrift.game.action.domain.port.out.PlayerStateRepository;
+import io.github.temporalrift.game.session.domain.event.EventsDrawn;
+import io.github.temporalrift.game.session.domain.event.FactionAssigned;
+import io.github.temporalrift.game.session.domain.event.HandDealt;
+import io.github.temporalrift.game.shared.CardType;
+import io.github.temporalrift.game.shared.Faction;
 
 @ExtendWith(MockitoExtension.class)
 class ActionStateProjectionEventListenerTest {
