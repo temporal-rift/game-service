@@ -18,7 +18,6 @@ import tools.jackson.databind.ObjectMapper;
 import io.github.temporalrift.events.envelope.EventEnvelope;
 import io.github.temporalrift.game.session.domain.event.ParadoxCascaded;
 import io.github.temporalrift.game.session.domain.event.TimelineCollapsed;
-import io.github.temporalrift.game.shared.Faction;
 import io.github.temporalrift.game.session.domain.game.Game;
 import io.github.temporalrift.game.session.domain.game.GameAlreadyOverException;
 import io.github.temporalrift.game.session.domain.game.GameNotFoundException;
@@ -29,6 +28,7 @@ import io.github.temporalrift.game.session.domain.port.out.GameRepository;
 import io.github.temporalrift.game.session.domain.port.out.LobbyRepository;
 import io.github.temporalrift.game.session.domain.port.out.SessionEventPublisher;
 import io.github.temporalrift.game.session.domain.port.out.SessionGameRulesPort;
+import io.github.temporalrift.game.shared.Faction;
 import io.github.temporalrift.game.shared.ProcessedEventRepository;
 
 @Component

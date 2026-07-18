@@ -11,16 +11,16 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 
-import io.github.temporalrift.game.shared.CardType;
-import io.github.temporalrift.game.shared.Faction;
-import io.github.temporalrift.game.shared.SpecialAction;
-import io.github.temporalrift.game.action.domain.event.BandedProbabilityPublished.EventBandState;
-import io.github.temporalrift.game.action.domain.event.BandedProbabilityPublished.OutcomeBandState;
-import io.github.temporalrift.game.shared.ProbabilityBand;
 import io.github.temporalrift.game.action.domain.actionround.InvalidActionTargetException;
 import io.github.temporalrift.game.action.domain.actionround.SubmittedAction;
+import io.github.temporalrift.game.action.domain.event.BandedProbabilityPublished.EventBandState;
+import io.github.temporalrift.game.action.domain.event.BandedProbabilityPublished.OutcomeBandState;
 import io.github.temporalrift.game.action.domain.port.out.BandRulesPort;
 import io.github.temporalrift.game.action.domain.port.out.FutureEventDefinitionPort;
+import io.github.temporalrift.game.shared.CardType;
+import io.github.temporalrift.game.shared.Faction;
+import io.github.temporalrift.game.shared.ProbabilityBand;
+import io.github.temporalrift.game.shared.SpecialAction;
 
 class BandCalculatorTest {
 

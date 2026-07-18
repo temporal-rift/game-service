@@ -7,9 +7,9 @@ import java.util.UUID;
 
 import org.springframework.stereotype.Component;
 
-import io.github.temporalrift.game.shared.Faction;
 import io.github.temporalrift.game.action.domain.playerstate.PlayerState;
 import io.github.temporalrift.game.action.domain.port.out.PlayerStateRepository;
+import io.github.temporalrift.game.shared.Faction;
 
 @Component
 class PlayerStateRepositoryAdapter implements PlayerStateRepository {

@@ -8,10 +8,10 @@ import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import io.github.temporalrift.game.session.domain.event.GameEnded;
 import io.github.temporalrift.game.scoring.PlayerScoreQuery;
 import io.github.temporalrift.game.scoring.domain.playerscore.PlayerScore;
 import io.github.temporalrift.game.scoring.domain.port.out.PlayerScoreRepository;
+import io.github.temporalrift.game.session.domain.event.GameEnded;
 
 @Service
 @Transactional(readOnly = true)

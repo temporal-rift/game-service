@@ -2,8 +2,8 @@ package io.github.temporalrift.game.scoring.domain.context;
 
 import java.util.UUID;
 
-import io.github.temporalrift.game.shared.Faction;
 import io.github.temporalrift.game.scoring.domain.playerscore.ScoreReason;
+import io.github.temporalrift.game.shared.Faction;
 
 /**
  * An explicit scoring fact produced by a player action during the era.

@@ -23,7 +23,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import io.github.temporalrift.events.envelope.EventEnvelope;
 import io.github.temporalrift.game.session.domain.event.FactionRevealed;
 import io.github.temporalrift.game.session.domain.event.GameEnded;
-import io.github.temporalrift.game.shared.Faction;
 import io.github.temporalrift.game.session.domain.game.Game;
 import io.github.temporalrift.game.session.domain.game.GameStatus;
 import io.github.temporalrift.game.session.domain.port.out.FinalScoreQueryPort;
@@ -34,6 +33,7 @@ import io.github.temporalrift.game.session.domain.saga.EndGameTrigger;
 import io.github.temporalrift.game.session.domain.saga.FactionAssignment;
 import io.github.temporalrift.game.session.domain.saga.StartGameSagaState;
 import io.github.temporalrift.game.session.domain.saga.StartGameSagaStatus;
+import io.github.temporalrift.game.shared.Faction;
 
 @ExtendWith(MockitoExtension.class)
 class EndGameSagaImplTest {

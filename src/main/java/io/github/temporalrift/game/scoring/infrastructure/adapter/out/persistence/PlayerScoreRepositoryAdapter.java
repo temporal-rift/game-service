@@ -5,9 +5,9 @@ import java.util.UUID;
 
 import org.springframework.stereotype.Component;
 
-import io.github.temporalrift.game.shared.Faction;
 import io.github.temporalrift.game.scoring.domain.playerscore.PlayerScore;
 import io.github.temporalrift.game.scoring.domain.port.out.PlayerScoreRepository;
+import io.github.temporalrift.game.shared.Faction;
 
 @Component
 class PlayerScoreRepositoryAdapter implements PlayerScoreRepository {

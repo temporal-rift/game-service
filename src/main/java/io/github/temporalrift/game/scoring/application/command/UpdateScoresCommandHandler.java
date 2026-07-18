@@ -14,11 +14,11 @@ import org.springframework.stereotype.Component;
 
 import io.github.temporalrift.events.envelope.EventEnvelope;
 import io.github.temporalrift.game.scoring.domain.event.ScoresUpdated;
-import io.github.temporalrift.game.shared.Faction;
 import io.github.temporalrift.game.scoring.domain.playerscore.PlayerScore;
 import io.github.temporalrift.game.scoring.domain.port.out.EraScoringContextRepository;
 import io.github.temporalrift.game.scoring.domain.port.out.PlayerScoreRepository;
 import io.github.temporalrift.game.scoring.domain.port.out.ScoringEventPublisher;
+import io.github.temporalrift.game.shared.Faction;
 
 @Component
 public class UpdateScoresCommandHandler {

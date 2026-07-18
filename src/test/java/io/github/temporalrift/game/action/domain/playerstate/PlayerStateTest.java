@@ -9,9 +9,9 @@ import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import io.github.temporalrift.game.action.domain.CardNotInHandException;
 import io.github.temporalrift.game.shared.CardType;
 import io.github.temporalrift.game.shared.Faction;
-import io.github.temporalrift.game.action.domain.CardNotInHandException;
 
 @DisplayName("PlayerState")
 class PlayerStateTest {

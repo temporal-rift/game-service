@@ -8,8 +8,8 @@ import jakarta.validation.constraints.NotEmpty;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.validation.annotation.Validated;
 
-import io.github.temporalrift.game.shared.Faction;
 import io.github.temporalrift.game.session.domain.port.out.SessionGameRulesPort;
+import io.github.temporalrift.game.shared.Faction;
 
 @ConfigurationProperties("game.rules")
 @Validated

@@ -380,6 +380,7 @@
                             <inputSpec>${project.build.directory}/dependency-specs/session/asyncapi/asyncapi.yml</inputSpec>
                             <configOptions>
                                 <role>provider</role>
+                                <componentPrefix>Session</componentPrefix>
                                 <modelPackage>io.github.temporalrift.game.session.infrastructure.adapter.out.kafka.model</modelPackage>
                                 <producerApiPackage>io.github.temporalrift.game.session.infrastructure.adapter.out.kafka.producer</producerApiPackage>
                             </configOptions>
@@ -395,6 +396,7 @@
                             <inputSpec>${project.build.directory}/dependency-specs/action/asyncapi/asyncapi.yml</inputSpec>
                             <configOptions>
                                 <role>provider</role>
+                                <componentPrefix>Action</componentPrefix>
                                 <modelPackage>io.github.temporalrift.game.action.infrastructure.adapter.out.kafka.model</modelPackage>
                                 <producerApiPackage>io.github.temporalrift.game.action.infrastructure.adapter.out.kafka.producer</producerApiPackage>
                             </configOptions>
@@ -410,6 +412,7 @@
                             <inputSpec>${project.build.directory}/dependency-specs/scoring/asyncapi/asyncapi.yml</inputSpec>
                             <configOptions>
                                 <role>provider</role>
+                                <componentPrefix>Scoring</componentPrefix>
                                 <modelPackage>io.github.temporalrift.game.scoring.infrastructure.adapter.out.kafka.model</modelPackage>
                                 <producerApiPackage>io.github.temporalrift.game.scoring.infrastructure.adapter.out.kafka.producer</producerApiPackage>
                             </configOptions>
