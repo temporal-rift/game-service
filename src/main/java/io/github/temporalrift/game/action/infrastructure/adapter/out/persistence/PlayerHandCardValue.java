@@ -5,7 +5,7 @@ import java.util.UUID;
 import jakarta.persistence.Column;
 import jakarta.persistence.Embeddable;
 
-import io.github.temporalrift.events.shared.CardType;
+import io.github.temporalrift.game.shared.CardType;
 import io.github.temporalrift.game.action.domain.playerstate.PlayerState;
 
 @Embeddable

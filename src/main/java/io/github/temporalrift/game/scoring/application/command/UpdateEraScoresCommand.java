@@ -4,7 +4,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 
-import io.github.temporalrift.events.timeline.OutcomeApplied;
+import io.github.temporalrift.game.scoring.domain.event.OutcomeApplied;
 import io.github.temporalrift.game.scoring.domain.playerscore.InvalidScoreEraException;
 
 public record UpdateEraScoresCommand(UUID gameId, int eraNumber, List<OutcomeApplied> outcomes) {

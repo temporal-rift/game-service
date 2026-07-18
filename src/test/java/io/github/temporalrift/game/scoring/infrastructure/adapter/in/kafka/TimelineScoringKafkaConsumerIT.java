@@ -12,8 +12,8 @@ import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 import io.github.temporalrift.events.envelope.EventEnvelope;
-import io.github.temporalrift.events.shared.Faction;
-import io.github.temporalrift.events.timeline.OutcomeApplied;
+import io.github.temporalrift.game.shared.Faction;
+import io.github.temporalrift.game.scoring.domain.event.OutcomeApplied;
 import io.github.temporalrift.game.TestcontainersConfiguration;
 import io.github.temporalrift.game.scoring.domain.playerscore.ScoreReason;
 import io.github.temporalrift.game.scoring.domain.port.out.EraScoringContextRepository;

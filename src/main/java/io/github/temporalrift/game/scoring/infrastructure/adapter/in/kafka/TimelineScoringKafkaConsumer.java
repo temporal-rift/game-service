@@ -11,9 +11,9 @@ import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.ObjectMapper;
 
 import io.github.temporalrift.events.envelope.EventEnvelope;
-import io.github.temporalrift.events.timeline.ChainBroken;
-import io.github.temporalrift.events.timeline.ChainCompleted;
-import io.github.temporalrift.events.timeline.OutcomeApplied;
+import io.github.temporalrift.game.scoring.domain.event.ChainBroken;
+import io.github.temporalrift.game.scoring.domain.event.ChainCompleted;
+import io.github.temporalrift.game.scoring.domain.event.OutcomeApplied;
 import io.github.temporalrift.game.scoring.application.command.UpdateEraScoresCommand;
 import io.github.temporalrift.game.scoring.application.command.UpdateScoresCommandHandler;
 import io.github.temporalrift.game.scoring.domain.playerscore.ScoreReason;

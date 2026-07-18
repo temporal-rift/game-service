@@ -23,9 +23,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 
 import io.github.temporalrift.events.envelope.EventEnvelope;
-import io.github.temporalrift.events.session.GameEndedAbnormally;
-import io.github.temporalrift.events.session.PlayerAbandoned;
-import io.github.temporalrift.events.session.PlayerDisconnected;
+import io.github.temporalrift.game.session.domain.event.GameEndedAbnormally;
+import io.github.temporalrift.game.session.domain.event.PlayerAbandoned;
+import io.github.temporalrift.game.session.domain.event.PlayerDisconnected;
 import io.github.temporalrift.game.session.domain.game.Game;
 import io.github.temporalrift.game.session.domain.lobby.Lobby;
 import io.github.temporalrift.game.session.domain.lobby.LobbyConfig;

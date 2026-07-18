@@ -16,7 +16,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import io.github.temporalrift.events.shared.Faction;
+import io.github.temporalrift.game.shared.Faction;
 import io.github.temporalrift.game.session.domain.saga.FactionAssignment;
 import io.github.temporalrift.game.session.domain.saga.StartGameSagaState;
 import io.github.temporalrift.game.session.domain.saga.StartGameSagaStatus;

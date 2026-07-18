@@ -95,7 +95,7 @@ class ActionController implements ActionApi {
                 eraNumber,
                 roundNumber,
                 playerId,
-                io.github.temporalrift.events.shared.SpecialAction.valueOf(
+                io.github.temporalrift.game.shared.SpecialAction.valueOf(
                         request.getSpecialAction().name()),
                 request.getTargetEventId(),
                 request.getTargetOutcomeId(),

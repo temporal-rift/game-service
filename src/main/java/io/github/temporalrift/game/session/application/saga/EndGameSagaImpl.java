@@ -15,8 +15,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import io.github.temporalrift.events.envelope.EventEnvelope;
-import io.github.temporalrift.events.session.FactionRevealed;
-import io.github.temporalrift.events.session.GameEnded;
+import io.github.temporalrift.game.session.domain.event.FactionRevealed;
+import io.github.temporalrift.game.session.domain.event.GameEnded;
 import io.github.temporalrift.game.session.domain.game.Game;
 import io.github.temporalrift.game.session.domain.game.GameAlreadyOverException;
 import io.github.temporalrift.game.session.domain.game.GameNotFoundException;

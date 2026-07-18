@@ -9,7 +9,7 @@ import jakarta.validation.constraints.NotNull;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.validation.annotation.Validated;
 
-import io.github.temporalrift.events.shared.CardType;
+import io.github.temporalrift.game.shared.CardType;
 import io.github.temporalrift.game.action.domain.port.out.BandRulesPort;
 
 @ConfigurationProperties("game.rules.scoring")

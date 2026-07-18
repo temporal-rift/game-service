@@ -18,7 +18,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import io.github.temporalrift.events.shared.Faction;
+import io.github.temporalrift.game.shared.Faction;
 import io.github.temporalrift.game.scoring.domain.context.ChainScoringFact;
 import io.github.temporalrift.game.scoring.domain.context.EraScoringContextNotFoundException;
 import io.github.temporalrift.game.scoring.domain.context.PlayerFaction;

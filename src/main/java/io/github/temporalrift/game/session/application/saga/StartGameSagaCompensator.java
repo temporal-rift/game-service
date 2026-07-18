@@ -9,8 +9,8 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import io.github.temporalrift.events.envelope.EventEnvelope;
-import io.github.temporalrift.events.session.GameStartCancelled;
-import io.github.temporalrift.events.session.GameStartFailed;
+import io.github.temporalrift.game.session.domain.event.GameStartCancelled;
+import io.github.temporalrift.game.session.domain.event.GameStartFailed;
 import io.github.temporalrift.game.session.domain.lobby.Lobby;
 import io.github.temporalrift.game.session.domain.port.out.LobbyRepository;
 import io.github.temporalrift.game.session.domain.port.out.SessionEventPublisher;

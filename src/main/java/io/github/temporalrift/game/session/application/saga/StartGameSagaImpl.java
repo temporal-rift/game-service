@@ -17,11 +17,11 @@ import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import io.github.temporalrift.events.envelope.EventEnvelope;
-import io.github.temporalrift.events.session.EraStarted;
-import io.github.temporalrift.events.session.FactionAssigned;
-import io.github.temporalrift.events.session.FactionsDrawn;
-import io.github.temporalrift.events.session.GameStarted;
-import io.github.temporalrift.events.shared.Faction;
+import io.github.temporalrift.game.session.domain.event.EraStarted;
+import io.github.temporalrift.game.session.domain.event.FactionAssigned;
+import io.github.temporalrift.game.session.domain.event.FactionsDrawn;
+import io.github.temporalrift.game.session.domain.event.GameStarted;
+import io.github.temporalrift.game.shared.Faction;
 import io.github.temporalrift.game.session.domain.game.Game;
 import io.github.temporalrift.game.session.domain.lobby.DisconnectedPlayersException;
 import io.github.temporalrift.game.session.domain.lobby.Lobby;

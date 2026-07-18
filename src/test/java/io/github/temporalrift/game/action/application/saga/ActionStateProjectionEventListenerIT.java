@@ -15,9 +15,9 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Import;
 import org.springframework.transaction.support.TransactionTemplate;
 
-import io.github.temporalrift.events.action.EventsDrawn;
-import io.github.temporalrift.events.session.FactionAssigned;
-import io.github.temporalrift.events.shared.Faction;
+import io.github.temporalrift.game.session.domain.event.EventsDrawn;
+import io.github.temporalrift.game.session.domain.event.FactionAssigned;
+import io.github.temporalrift.game.shared.Faction;
 import io.github.temporalrift.game.TestcontainersConfiguration;
 import io.github.temporalrift.game.action.domain.playerstate.PlayerState;
 import io.github.temporalrift.game.action.domain.port.out.FutureEventDefinitionPort;

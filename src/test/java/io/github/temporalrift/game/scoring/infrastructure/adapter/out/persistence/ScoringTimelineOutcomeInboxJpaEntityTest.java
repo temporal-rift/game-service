@@ -7,7 +7,7 @@ import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
 
-import io.github.temporalrift.events.timeline.OutcomeApplied;
+import io.github.temporalrift.game.scoring.domain.event.OutcomeApplied;
 
 class ScoringTimelineOutcomeInboxJpaEntityTest {
 

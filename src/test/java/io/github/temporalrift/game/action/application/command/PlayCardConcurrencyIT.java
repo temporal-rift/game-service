@@ -19,7 +19,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.transaction.support.TransactionTemplate;
 
-import io.github.temporalrift.events.shared.CardType;
+import io.github.temporalrift.game.shared.CardType;
 import io.github.temporalrift.game.TestcontainersConfiguration;
 import io.github.temporalrift.game.action.application.port.in.PlayCardUseCase;
 import io.github.temporalrift.game.action.domain.actionround.ActionRound;

@@ -2,7 +2,7 @@ package io.github.temporalrift.game.action.domain.actionround;
 
 import java.util.UUID;
 
-import io.github.temporalrift.events.shared.CardType;
+import io.github.temporalrift.game.shared.CardType;
 
 public class InvalidActionTargetException extends RuntimeException {
 

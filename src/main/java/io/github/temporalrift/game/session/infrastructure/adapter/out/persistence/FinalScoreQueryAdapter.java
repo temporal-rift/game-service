@@ -5,7 +5,7 @@ import java.util.UUID;
 
 import org.springframework.stereotype.Component;
 
-import io.github.temporalrift.events.session.GameEnded;
+import io.github.temporalrift.game.session.domain.event.GameEnded;
 import io.github.temporalrift.game.scoring.PlayerScoreQuery;
 import io.github.temporalrift.game.session.domain.port.out.FinalScoreQueryPort;
 

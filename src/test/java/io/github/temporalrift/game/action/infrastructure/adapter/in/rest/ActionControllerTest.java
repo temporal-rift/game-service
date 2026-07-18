@@ -131,7 +131,7 @@ class ActionControllerTest {
         assertThat(captor.getValue().roundNumber()).isEqualTo(ROUND);
         assertThat(captor.getValue().playerId()).isEqualTo(PLAYER_ID);
         assertThat(captor.getValue().specialAction())
-                .isEqualTo(io.github.temporalrift.events.shared.SpecialAction.CORRUPT);
+                .isEqualTo(io.github.temporalrift.game.shared.SpecialAction.CORRUPT);
         assertThat(captor.getValue().targetEventId()).isEqualTo(TARGET_EVENT_ID);
         assertThat(captor.getValue().targetOutcomeId()).isEqualTo(TARGET_OUTCOME_ID);
         assertThat(captor.getValue().targetPlayerId()).isEqualTo(TARGET_PLAYER_ID);
@@ -259,7 +259,7 @@ class ActionControllerTest {
         // given
         given(playCardUseCase.handle(any()))
                 .willThrow(new InvalidActionTargetException(
-                        io.github.temporalrift.events.shared.CardType.SWING, SOURCE_OUTCOME_ID, SOURCE_OUTCOME_ID));
+                        io.github.temporalrift.game.shared.CardType.SWING, SOURCE_OUTCOME_ID, SOURCE_OUTCOME_ID));
 
         // when / then
         mockMvc.perform(post("/games/{gameId}/eras/{eraNumber}/rounds/{roundNumber}/actions", GAME_ID, ERA, ROUND)

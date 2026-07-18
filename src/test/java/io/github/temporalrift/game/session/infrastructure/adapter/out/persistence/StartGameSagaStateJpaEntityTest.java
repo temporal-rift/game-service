@@ -8,7 +8,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import io.github.temporalrift.events.shared.Faction;
+import io.github.temporalrift.game.shared.Faction;
 import io.github.temporalrift.game.session.domain.saga.FactionAssignment;
 
 class StartGameSagaStateJpaEntityTest {

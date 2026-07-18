@@ -2,9 +2,9 @@ package io.github.temporalrift.game.action.infrastructure.adapter.out.persistenc
 
 import java.util.UUID;
 
-import io.github.temporalrift.events.shared.CardType;
-import io.github.temporalrift.events.shared.Faction;
-import io.github.temporalrift.events.shared.SpecialAction;
+import io.github.temporalrift.game.shared.CardType;
+import io.github.temporalrift.game.shared.Faction;
+import io.github.temporalrift.game.shared.SpecialAction;
 import io.github.temporalrift.game.action.domain.actionround.SubmittedAction;
 
 record StoredSubmittedAction(

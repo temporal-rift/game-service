@@ -15,7 +15,7 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Import;
 import org.springframework.transaction.support.TransactionTemplate;
 
-import io.github.temporalrift.events.session.EraStarted;
+import io.github.temporalrift.game.session.domain.event.EraStarted;
 import io.github.temporalrift.game.TestcontainersConfiguration;
 import io.github.temporalrift.game.action.domain.actionround.ActionRound;
 import io.github.temporalrift.game.action.domain.actionround.RoundStatus;

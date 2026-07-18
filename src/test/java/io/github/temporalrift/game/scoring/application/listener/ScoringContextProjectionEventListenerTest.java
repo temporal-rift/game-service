@@ -13,9 +13,9 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import io.github.temporalrift.events.action.EventsDrawn;
-import io.github.temporalrift.events.session.FactionAssigned;
-import io.github.temporalrift.events.shared.Faction;
+import io.github.temporalrift.game.session.domain.event.EventsDrawn;
+import io.github.temporalrift.game.session.domain.event.FactionAssigned;
+import io.github.temporalrift.game.shared.Faction;
 import io.github.temporalrift.game.scoring.domain.port.out.EraScoringContextRepository;
 
 @ExtendWith(MockitoExtension.class)

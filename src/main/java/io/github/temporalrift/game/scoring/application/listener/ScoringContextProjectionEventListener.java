@@ -5,9 +5,9 @@ import org.slf4j.LoggerFactory;
 import org.springframework.modulith.events.ApplicationModuleListener;
 import org.springframework.stereotype.Component;
 
-import io.github.temporalrift.events.action.EventsDrawn;
-import io.github.temporalrift.events.session.FactionAssigned;
-import io.github.temporalrift.events.shared.Faction;
+import io.github.temporalrift.game.session.domain.event.EventsDrawn;
+import io.github.temporalrift.game.session.domain.event.FactionAssigned;
+import io.github.temporalrift.game.shared.Faction;
 import io.github.temporalrift.game.scoring.domain.port.out.EraScoringContextRepository;
 
 @Component
