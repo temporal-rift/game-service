@@ -98,7 +98,8 @@ class StartGameSagaCompensationIT {
 
     private Integer gameStartFailedOutboxRows() {
         return jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM event_publication WHERE serialized_event LIKE '%GameStartFailed%'",
+                "SELECT COUNT(*) FROM event_publication "
+                        + "WHERE serialized_event LIKE '%Sessionpublish-game-start-failed-out%'",
                 Integer.class);
     }
 }

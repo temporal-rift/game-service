@@ -39,6 +39,10 @@ class PlayerReconnectKafkaConsumer {
     @KafkaListener(topics = "game.commands")
     @Transactional(propagation = REQUIRES_NEW)
     public void handle(InboundEnvelope envelope) {
+        if (envelope.eventId() == null || envelope.payload() == null) {
+            log.warn("Malformed envelope on game.commands (missing eventId or payload) — discarding");
+            return;
+        }
         if (!EVENT_TYPE.equals(envelope.eventType())) {
             return;
         }

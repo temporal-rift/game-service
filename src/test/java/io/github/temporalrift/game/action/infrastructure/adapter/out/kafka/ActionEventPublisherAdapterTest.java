@@ -1,5 +1,6 @@
 package io.github.temporalrift.game.action.infrastructure.adapter.out.kafka;
 
+import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
@@ -55,20 +56,17 @@ class ActionEventPublisherAdapterTest {
     }
 
     @Test
-    @DisplayName("publish falls back to a legacy EventEnvelope for an unmigrated event type")
-    void publish_unmigratedEvent_fallsBackToLegacyEnvelope() {
+    @DisplayName("publish rejects an unrecognized event type instead of silently dropping it")
+    void publish_unrecognizedEvent_throws() {
         // given
         var adapter = new ActionEventPublisherAdapter(applicationEventPublisher, producer, mapper);
         var aggregateId = UUID.randomUUID();
         var gameId = UUID.randomUUID();
-        record UnmigratedEvent(UUID gameId) {}
-        var envelope = DomainEventEnvelope.create(aggregateId, "ActionRound", gameId, 1, new UnmigratedEvent(gameId));
+        record UnrecognizedEvent(UUID gameId) {}
+        var envelope = DomainEventEnvelope.create(aggregateId, "ActionRound", gameId, 1, new UnrecognizedEvent(gameId));
 
-        // when
-        adapter.publish(envelope);
-
-        // then
-        then(applicationEventPublisher).should().publishEvent(any(Object.class));
+        // when / then
+        assertThatIllegalArgumentException().isThrownBy(() -> adapter.publish(envelope));
     }
 
     @Test

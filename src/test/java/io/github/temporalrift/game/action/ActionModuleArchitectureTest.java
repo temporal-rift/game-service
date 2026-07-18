@@ -5,7 +5,6 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.methods;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noFields;
 
-import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.domain.JavaMethod;
 import com.tngtech.archunit.core.importer.ImportOption;
 import com.tngtech.archunit.junit.AnalyzeClasses;
@@ -18,8 +17,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.event.EventListener;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.modulith.events.ApplicationModuleListener;
-
-import io.github.temporalrift.events.envelope.EventEnvelope;
 
 @AnalyzeClasses(packages = "io.github.temporalrift.game.action", importOptions = ImportOption.DoNotIncludeTests.class)
 public class ActionModuleArchitectureTest {
@@ -84,16 +81,6 @@ public class ActionModuleArchitectureTest {
             .as("Action module must use @ApplicationModuleListener — never bare @EventListener");
 
     @ArchTest
-    static final ArchRule spring_event_listeners_must_not_receive_event_envelopes = methods()
-            .that()
-            .areDeclaredInClassesThat()
-            .resideInAPackage("io.github.temporalrift.game.action..")
-            .and()
-            .areAnnotatedWith(ApplicationModuleListener.class)
-            .should(notAcceptEventEnvelope())
-            .as("Action Spring event listeners must subscribe to typed payload events, never EventEnvelope");
-
-    @ArchTest
     static final ArchRule action_must_not_publish_directly_to_kafka = noClasses()
             .that()
             .resideInAPackage("io.github.temporalrift.game.action..")
@@ -129,22 +116,6 @@ public class ActionModuleArchitectureTest {
             .dependOnClassesThat()
             .resideInAnyPackage("org.springframework.boot.context.properties..")
             .as("Action domain/application code must access configuration through ports such as GameRulesPort");
-
-    private static ArchCondition<JavaMethod> notAcceptEventEnvelope() {
-        return new ArchCondition<>("not declare EventEnvelope as a listener parameter") {
-            @Override
-            public void check(JavaMethod method, ConditionEvents events) {
-                var hasEventEnvelopeParameter = method.getRawParameterTypes().stream()
-                        .map(JavaClass::reflect)
-                        .anyMatch(EventEnvelope.class::equals);
-
-                if (hasEventEnvelopeParameter) {
-                    events.add(SimpleConditionEvent.violated(
-                            method, method.getFullName() + " must not declare EventEnvelope as a listener parameter"));
-                }
-            }
-        };
-    }
 
     private static ArchCondition<JavaMethod> notUseBareEventListener() {
         return new ArchCondition<>("not use bare @EventListener") {

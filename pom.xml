@@ -52,23 +52,14 @@
         <sonar.coverage.jacoco.xmlReportPaths>${project.build.directory}/site/jacoco/jacoco.xml
         </sonar.coverage.jacoco.xmlReportPaths>
 
-        <domain-events.version>1.2.0</domain-events.version>
-        <session-event.version>1.0.1</session-event.version>
-        <action-event.version>1.0.1</action-event.version>
+        <session-event.version>1.0.2</session-event.version>
+        <action-event.version>1.0.2</action-event.version>
         <scoring-event.version>1.0.1</scoring-event.version>
         <spring-retry.version>2.0.13</spring-retry.version>
         <archunit-junit5.version>1.4.2</archunit-junit5.version>
     </properties>
 
     <dependencies>
-        <!-- TODO remove once EventEnvelope-based publishing is fully retired in favor of the generated
-             producers below - domain-events itself is no longer used for event/enum types. -->
-        <dependency>
-            <groupId>io.github.temporal-rift</groupId>
-            <artifactId>domain-events</artifactId>
-            <version>${domain-events.version}</version>
-        </dependency>
-
         <!-- Spec-only: bundles each bounded context's asyncapi.yml, no compiled code. Codegen for these is
              driven by the zenwave-sdk-maven-plugin executions below (plugin identity + shared defaults are
              managed in temporal-rift-bom). -->
@@ -377,12 +368,17 @@
                             <goal>generate</goal>
                         </goals>
                         <configuration>
-                            <inputSpec>${project.build.directory}/dependency-specs/session/asyncapi/asyncapi.yml</inputSpec>
+                            <inputSpec>${project.build.directory}/dependency-specs/session/asyncapi/asyncapi.yml
+                            </inputSpec>
                             <configOptions>
                                 <role>provider</role>
                                 <componentPrefix>Session</componentPrefix>
-                                <modelPackage>io.github.temporalrift.game.session.infrastructure.adapter.out.kafka.model</modelPackage>
-                                <producerApiPackage>io.github.temporalrift.game.session.infrastructure.adapter.out.kafka.producer</producerApiPackage>
+                                <modelPackage>
+                                    io.github.temporalrift.game.session.infrastructure.adapter.out.kafka.model
+                                </modelPackage>
+                                <producerApiPackage>
+                                    io.github.temporalrift.game.session.infrastructure.adapter.out.kafka.producer
+                                </producerApiPackage>
                             </configOptions>
                         </configuration>
                     </execution>
@@ -393,12 +389,17 @@
                             <goal>generate</goal>
                         </goals>
                         <configuration>
-                            <inputSpec>${project.build.directory}/dependency-specs/action/asyncapi/asyncapi.yml</inputSpec>
+                            <inputSpec>${project.build.directory}/dependency-specs/action/asyncapi/asyncapi.yml
+                            </inputSpec>
                             <configOptions>
                                 <role>provider</role>
                                 <componentPrefix>Action</componentPrefix>
-                                <modelPackage>io.github.temporalrift.game.action.infrastructure.adapter.out.kafka.model</modelPackage>
-                                <producerApiPackage>io.github.temporalrift.game.action.infrastructure.adapter.out.kafka.producer</producerApiPackage>
+                                <modelPackage>
+                                    io.github.temporalrift.game.action.infrastructure.adapter.out.kafka.model
+                                </modelPackage>
+                                <producerApiPackage>
+                                    io.github.temporalrift.game.action.infrastructure.adapter.out.kafka.producer
+                                </producerApiPackage>
                             </configOptions>
                         </configuration>
                     </execution>
@@ -409,12 +410,17 @@
                             <goal>generate</goal>
                         </goals>
                         <configuration>
-                            <inputSpec>${project.build.directory}/dependency-specs/scoring/asyncapi/asyncapi.yml</inputSpec>
+                            <inputSpec>${project.build.directory}/dependency-specs/scoring/asyncapi/asyncapi.yml
+                            </inputSpec>
                             <configOptions>
                                 <role>provider</role>
                                 <componentPrefix>Scoring</componentPrefix>
-                                <modelPackage>io.github.temporalrift.game.scoring.infrastructure.adapter.out.kafka.model</modelPackage>
-                                <producerApiPackage>io.github.temporalrift.game.scoring.infrastructure.adapter.out.kafka.producer</producerApiPackage>
+                                <modelPackage>
+                                    io.github.temporalrift.game.scoring.infrastructure.adapter.out.kafka.model
+                                </modelPackage>
+                                <producerApiPackage>
+                                    io.github.temporalrift.game.scoring.infrastructure.adapter.out.kafka.producer
+                                </producerApiPackage>
                             </configOptions>
                         </configuration>
                     </execution>
