@@ -300,6 +300,25 @@
                 </executions>
             </plugin>
             <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <version>3.8.1</version>
+                <executions>
+                    <execution>
+                        <id>unpack-session-event-spec</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>unpack-dependencies</goal>
+                        </goals>
+                        <configuration>
+                            <includeArtifactIds>session-event</includeArtifactIds>
+                            <includes>asyncapi/**</includes>
+                            <outputDirectory>${project.build.directory}/dependency-specs</outputDirectory>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
                 <groupId>io.zenwave360.sdk</groupId>
                 <artifactId>zenwave-sdk-maven-plugin</artifactId>
                 <executions>
@@ -310,7 +329,7 @@
                             <goal>generate</goal>
                         </goals>
                         <configuration>
-                            <inputSpec>classpath:asyncapi/asyncapi.yml</inputSpec>
+                            <inputSpec>${project.build.directory}/dependency-specs/asyncapi/asyncapi.yml</inputSpec>
                             <configOptions>
                                 <role>provider</role>
                                 <modelPackage>io.github.temporalrift.game.session.infrastructure.adapter.out.kafka.model</modelPackage>
