@@ -48,6 +48,10 @@ spring:
     events:
       externalization:
         enabled: true
+        # Externalize one event at a time so same-game events reach the broker in publish order.
+        # gameId partitioning alone only guarantees same-partition placement, not send order —
+        # concurrent externalizations could otherwise overtake each other within a partition.
+        serialize-externalization: true
       # Restart-bound republication is multi-instance-unsafe (replays in-flight work of live
       # instances); IncompleteEventPublicationResubmitter sweeps stale publications instead.
       republish-outstanding-events-on-restart: false
@@ -69,11 +73,6 @@ spring:
             # gameId is present as a header on every generated event's headers — partitioning by it
             # guarantees ordering of all events within a game, matching event-schema.md.
             messageKeyExpression: headers['gameId']
-      default:
-        producer:
-          # Every session/action/scoring event targets game.events; timeline-event's future producer
-          # will need an explicit per-binding override to timeline.events once it's wired up.
-          destination: game.events
 
 game:
   rate-limit:

@@ -7,18 +7,27 @@ import org.springframework.modulith.events.EventExternalizationConfiguration;
 import org.springframework.modulith.events.RoutingTarget;
 
 /**
- * Configures Spring Modulith to externalize the ZenWave-generated producers' {@link Message}
- * events to Spring Cloud Stream bindings, keyed by {@code gameId} to preserve per-game Kafka
- * partition ordering.
+ * Configures Spring Modulith to externalize the ZenWave-generated producers' {@link Message} events to
+ * Kafka, keyed by {@code gameId} to preserve per-game partition ordering.
  *
- * <p>Not {@code @EnableSpringCloudStreamEventExternalization}: that annotation's built-in
- * configuration routes without a partition key ({@code RoutingTarget.withoutKey()}), which would
- * silently drop the gameId-based ordering guarantee this design relies on.
+ * <p>Every generated producer stamps its own Spring Cloud Stream binding name into the {@code
+ * spring.cloud.stream.sendto.destination} header. That header is only used here to <em>select</em> our
+ * generated messages - it is deliberately not used as the routing destination: game-service publishes
+ * every session/action/scoring event to the single {@code game.events} topic (per event-schema.md), and
+ * Spring Cloud Stream's {@code destination} binding property cannot be defaulted globally (its default
+ * "cannot be overridden" - it always falls back to the binding name), so routing to the binding name
+ * would send each event to a topic literally named after the binding. Routing to the fixed {@code
+ * game.events} target here is the correct, single place that decision belongs.
+ *
+ * <p>Not {@code @EnableSpringCloudStreamEventExternalization}: that annotation's built-in configuration
+ * routes without a partition key, which would drop the gameId-based ordering guarantee this design
+ * relies on.
  */
 @Configuration
 class KafkaExternalizationConfig {
 
     private static final String SCS_DESTINATION_HEADER = "spring.cloud.stream.sendto.destination";
+    private static final String GAME_EVENTS_TOPIC = "game.events";
 
     @Bean
     EventExternalizationConfiguration eventExternalizationConfiguration() {
@@ -26,8 +35,7 @@ class KafkaExternalizationConfig {
                 .select(KafkaExternalizationConfig::isExternalizable)
                 .route(
                         Message.class,
-                        message ->
-                                RoutingTarget.forTarget(scsDestination(message)).andKey(gameId(message)))
+                        message -> RoutingTarget.forTarget(GAME_EVENTS_TOPIC).andKey(gameId(message)))
                 .build();
     }
 
