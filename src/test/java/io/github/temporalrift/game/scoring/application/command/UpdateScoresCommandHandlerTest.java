@@ -10,18 +10,18 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.ApplicationEventPublisher;
 
-import io.github.temporalrift.events.envelope.EventEnvelope;
+import io.github.temporalrift.game.scoring.ScoresUpdated;
 import io.github.temporalrift.game.scoring.domain.context.ActionScoringFact;
 import io.github.temporalrift.game.scoring.domain.context.ChainScoringFact;
 import io.github.temporalrift.game.scoring.domain.context.EraScoringContext;
 import io.github.temporalrift.game.scoring.domain.context.EventOutcomeFact;
 import io.github.temporalrift.game.scoring.domain.context.PlayerFaction;
-import io.github.temporalrift.game.scoring.domain.event.ScoresUpdated;
 import io.github.temporalrift.game.scoring.domain.playerscore.PlayerScore;
 import io.github.temporalrift.game.scoring.domain.playerscore.ScoreReason;
 import io.github.temporalrift.game.scoring.domain.port.out.EraScoringContextRepository;
 import io.github.temporalrift.game.scoring.domain.port.out.PlayerScoreRepository;
 import io.github.temporalrift.game.scoring.domain.port.out.ScoringEventPublisher;
+import io.github.temporalrift.game.shared.DomainEventEnvelope;
 import io.github.temporalrift.game.shared.Faction;
 
 @DisplayName("UpdateScoresCommandHandler")
@@ -30,7 +30,7 @@ class UpdateScoresCommandHandlerTest {
     static final UUID GAME_ID = UUID.randomUUID();
     static final int ERA = 1;
 
-    final List<EventEnvelope> publishedEnvelopes = new ArrayList<>();
+    final List<DomainEventEnvelope> publishedEnvelopes = new ArrayList<>();
     final List<Object> internalEvents = new ArrayList<>();
 
     ScoringEventPublisher scoringPublisher = publishedEnvelopes::add;

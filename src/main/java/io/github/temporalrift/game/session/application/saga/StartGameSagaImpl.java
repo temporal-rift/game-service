@@ -16,9 +16,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
-import io.github.temporalrift.events.envelope.EventEnvelope;
+import io.github.temporalrift.game.session.FactionAssigned;
 import io.github.temporalrift.game.session.domain.event.EraStarted;
-import io.github.temporalrift.game.session.domain.event.FactionAssigned;
 import io.github.temporalrift.game.session.domain.event.FactionsDrawn;
 import io.github.temporalrift.game.session.domain.event.GameStarted;
 import io.github.temporalrift.game.session.domain.game.Game;
@@ -34,6 +33,7 @@ import io.github.temporalrift.game.session.domain.port.out.GameRepository;
 import io.github.temporalrift.game.session.domain.port.out.LobbyRepository;
 import io.github.temporalrift.game.session.domain.port.out.SessionEventPublisher;
 import io.github.temporalrift.game.session.domain.saga.FactionAssignment;
+import io.github.temporalrift.game.shared.DomainEventEnvelope;
 import io.github.temporalrift.game.shared.Faction;
 
 @Service
@@ -130,14 +130,15 @@ class StartGameSagaImpl implements StartGameSaga {
         assignments.forEach(a -> {
             var factionAssigned =
                     new FactionAssigned(gameId, a.playerId(), a.faction().name());
-            eventPublisher.publish(EventEnvelope.create(lobby.id(), Lobby.AGGREGATE_TYPE, gameId, 1, factionAssigned));
+            eventPublisher.publish(
+                    DomainEventEnvelope.create(lobby.id(), Lobby.AGGREGATE_TYPE, gameId, 1, factionAssigned));
             applicationEventPublisher.publishEvent(factionAssigned);
         });
     }
 
     private void createAndSaveGame(UUID gameId, Lobby lobby, List<FactionAssignment> assignments) {
         var factionNames = assignments.stream().map(a -> a.faction().name()).toList();
-        eventPublisher.publish(EventEnvelope.create(
+        eventPublisher.publish(DomainEventEnvelope.create(
                 lobby.id(), Lobby.AGGREGATE_TYPE, gameId, 1, new FactionsDrawn(gameId, lobby.id(), factionNames)));
 
         lobby.start();
@@ -149,7 +150,7 @@ class StartGameSagaImpl implements StartGameSaga {
 
         var playerIds = assignments.stream().map(FactionAssignment::playerId).toList();
 
-        eventPublisher.publish(EventEnvelope.create(
+        eventPublisher.publish(DomainEventEnvelope.create(
                 lobby.id(),
                 Lobby.AGGREGATE_TYPE,
                 gameId,
@@ -157,7 +158,7 @@ class StartGameSagaImpl implements StartGameSaga {
                 new GameStarted(gameId, lobby.id(), playerIds, assignments.size(), gameDeck.size())));
 
         var eraStarted = new EraStarted(gameId, 1, List.of(), playerIds);
-        eventPublisher.publish(EventEnvelope.create(game.id(), Game.AGGREGATE_TYPE, gameId, 1, eraStarted));
+        eventPublisher.publish(DomainEventEnvelope.create(game.id(), Game.AGGREGATE_TYPE, gameId, 1, eraStarted));
         applicationEventPublisher.publishEvent(eraStarted);
     }
 

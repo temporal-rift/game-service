@@ -11,7 +11,6 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import io.github.temporalrift.events.envelope.EventEnvelope;
 import io.github.temporalrift.game.session.domain.event.GameEndedAbnormally;
 import io.github.temporalrift.game.session.domain.event.PlayerAbandoned;
 import io.github.temporalrift.game.session.domain.event.PlayerDisconnected;
@@ -24,6 +23,7 @@ import io.github.temporalrift.game.session.domain.port.out.GameRepository;
 import io.github.temporalrift.game.session.domain.port.out.LobbyRepository;
 import io.github.temporalrift.game.session.domain.port.out.SessionEventPublisher;
 import io.github.temporalrift.game.session.domain.port.out.SessionGameRulesPort;
+import io.github.temporalrift.game.shared.DomainEventEnvelope;
 
 @Service
 class PlayerReconnectSagaImpl implements PlayerReconnectSaga {
@@ -72,7 +72,7 @@ class PlayerReconnectSagaImpl implements PlayerReconnectSaga {
         lobby.markPlayerDisconnected(playerId);
         lobbyRepository.save(lobby);
 
-        eventPublisher.publish(EventEnvelope.create(
+        eventPublisher.publish(DomainEventEnvelope.create(
                 lobby.id(), Lobby.AGGREGATE_TYPE, gameId, 1, new PlayerDisconnected(gameId, playerId)));
 
         return new StartResult(sagaId, graceExpiresAt);
@@ -120,7 +120,7 @@ class PlayerReconnectSagaImpl implements PlayerReconnectSaga {
         }
         timerRegistry.remove(sagaId);
 
-        eventPublisher.publish(EventEnvelope.create(
+        eventPublisher.publish(DomainEventEnvelope.create(
                 saga.gameId(),
                 Game.AGGREGATE_TYPE,
                 saga.gameId(),
@@ -143,7 +143,8 @@ class PlayerReconnectSagaImpl implements PlayerReconnectSaga {
 
         if (connectedCount == 0 && gracePeriodCount == 0) {
             var payload = new GameEndedAbnormally(saga.gameId(), "all-players-abandoned");
-            eventPublisher.publish(EventEnvelope.create(saga.gameId(), Game.AGGREGATE_TYPE, saga.gameId(), 1, payload));
+            eventPublisher.publish(
+                    DomainEventEnvelope.create(saga.gameId(), Game.AGGREGATE_TYPE, saga.gameId(), 1, payload));
             applicationEventPublisher.publishEvent(payload);
         }
     }

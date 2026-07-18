@@ -15,7 +15,6 @@ import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.support.TransactionTemplate;
 
-import io.github.temporalrift.events.envelope.EventEnvelope;
 import io.github.temporalrift.game.TestcontainersConfiguration;
 import io.github.temporalrift.game.session.domain.event.LobbyCreated;
 import io.github.temporalrift.game.session.domain.lobby.Lobby;
@@ -23,6 +22,7 @@ import io.github.temporalrift.game.session.domain.lobby.LobbyConfig;
 import io.github.temporalrift.game.session.domain.lobby.LobbyStatus;
 import io.github.temporalrift.game.session.domain.port.out.LobbyRepository;
 import io.github.temporalrift.game.session.domain.port.out.SessionEventPublisher;
+import io.github.temporalrift.game.shared.DomainEventEnvelope;
 
 @SpringBootTest
 @Import(TestcontainersConfiguration.class)
@@ -60,7 +60,7 @@ class SessionEventPublisherAdapterIT {
                 new ArrayList<>(),
                 LobbyStatus.WAITING,
                 new LobbyConfig("OUTBOX1", 2, 5, clock));
-        final var envelope = EventEnvelope.create(
+        final var envelope = DomainEventEnvelope.create(
                 lobbyId, "Lobby", gameId, 1, new LobbyCreated(lobbyId, hostId, Instant.parse("2026-01-01T00:00:00Z")));
 
         transactionTemplate.executeWithoutResult(_ -> {
@@ -69,7 +69,7 @@ class SessionEventPublisherAdapterIT {
         });
 
         final var count = jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM event_publication WHERE event_type LIKE '%EventEnvelope%'", Integer.class);
+                "SELECT COUNT(*) FROM event_publication WHERE event_type LIKE '%GenericMessage%'", Integer.class);
         assertThat(count).isEqualTo(1);
     }
 
@@ -85,7 +85,7 @@ class SessionEventPublisherAdapterIT {
                 new ArrayList<>(),
                 LobbyStatus.WAITING,
                 new LobbyConfig("OUTBOX2", 2, 5, clock));
-        final var envelope = EventEnvelope.create(
+        final var envelope = DomainEventEnvelope.create(
                 lobbyId, "Lobby", gameId, 1, new LobbyCreated(lobbyId, hostId, Instant.parse("2026-01-01T00:00:00Z")));
 
         transactionTemplate.executeWithoutResult(status -> {
@@ -95,7 +95,7 @@ class SessionEventPublisherAdapterIT {
         });
 
         final var count = jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM event_publication WHERE event_type LIKE '%EventEnvelope%'", Integer.class);
+                "SELECT COUNT(*) FROM event_publication WHERE event_type LIKE '%GenericMessage%'", Integer.class);
         assertThat(count).isZero();
     }
 }

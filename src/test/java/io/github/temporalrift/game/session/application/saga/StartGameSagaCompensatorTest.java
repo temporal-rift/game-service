@@ -18,7 +18,6 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import io.github.temporalrift.events.envelope.EventEnvelope;
 import io.github.temporalrift.game.session.domain.event.GameStartCancelled;
 import io.github.temporalrift.game.session.domain.event.GameStartFailed;
 import io.github.temporalrift.game.session.domain.lobby.Lobby;
@@ -27,6 +26,7 @@ import io.github.temporalrift.game.session.domain.port.out.SessionEventPublisher
 import io.github.temporalrift.game.session.domain.port.out.StartGameSagaRepository;
 import io.github.temporalrift.game.session.domain.saga.StartGameSagaState;
 import io.github.temporalrift.game.session.domain.saga.StartGameSagaStatus;
+import io.github.temporalrift.game.shared.DomainEventEnvelope;
 
 @ExtendWith(MockitoExtension.class)
 class StartGameSagaCompensatorTest {
@@ -66,7 +66,7 @@ class StartGameSagaCompensatorTest {
         // then
         then(startGameSagaRepository).should().save(RUNNING_STATE.withStatus(StartGameSagaStatus.CANCELLED));
 
-        var captor = ArgumentCaptor.forClass(EventEnvelope.class);
+        var captor = ArgumentCaptor.forClass(DomainEventEnvelope.class);
         then(eventPublisher).should().publish(captor.capture());
         var envelope = captor.getValue();
         assertThat(envelope.payload()).isInstanceOf(GameStartCancelled.class);
@@ -126,7 +126,7 @@ class StartGameSagaCompensatorTest {
         then(lobby).should().resetFactionAssignments();
         then(lobbyRepository).should(ordered).save(lobby);
 
-        var captor = ArgumentCaptor.forClass(EventEnvelope.class);
+        var captor = ArgumentCaptor.forClass(DomainEventEnvelope.class);
         then(eventPublisher).should(ordered).publish(captor.capture());
         assertThat(captor.getValue().payload()).isInstanceOf(GameStartFailed.class);
         var payload = (GameStartFailed) captor.getValue().payload();

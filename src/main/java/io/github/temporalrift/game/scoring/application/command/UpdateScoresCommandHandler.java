@@ -12,12 +12,12 @@ import java.util.stream.Collectors;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 
-import io.github.temporalrift.events.envelope.EventEnvelope;
-import io.github.temporalrift.game.scoring.domain.event.ScoresUpdated;
+import io.github.temporalrift.game.scoring.ScoresUpdated;
 import io.github.temporalrift.game.scoring.domain.playerscore.PlayerScore;
 import io.github.temporalrift.game.scoring.domain.port.out.EraScoringContextRepository;
 import io.github.temporalrift.game.scoring.domain.port.out.PlayerScoreRepository;
 import io.github.temporalrift.game.scoring.domain.port.out.ScoringEventPublisher;
+import io.github.temporalrift.game.shared.DomainEventEnvelope;
 import io.github.temporalrift.game.shared.Faction;
 
 @Component
@@ -82,8 +82,8 @@ public class UpdateScoresCommandHandler {
 
         var scoresUpdated = new ScoresUpdated(command.gameId(), command.eraNumber(), updates);
 
-        scoringEventPublisher.publish(
-                EventEnvelope.create(command.gameId(), PlayerScore.AGGREGATE_TYPE, command.gameId(), 1, scoresUpdated));
+        scoringEventPublisher.publish(DomainEventEnvelope.create(
+                command.gameId(), PlayerScore.AGGREGATE_TYPE, command.gameId(), 1, scoresUpdated));
         applicationEventPublisher.publishEvent(scoresUpdated);
     }
 

@@ -26,10 +26,9 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 
-import io.github.temporalrift.events.envelope.EventEnvelope;
-import io.github.temporalrift.game.session.domain.event.EventsDrawn;
+import io.github.temporalrift.game.session.EventsDrawn;
+import io.github.temporalrift.game.session.HandDealt;
 import io.github.temporalrift.game.session.domain.event.GameEndedAbnormally;
-import io.github.temporalrift.game.session.domain.event.HandDealt;
 import io.github.temporalrift.game.session.domain.futureevent.FutureEventDefinition;
 import io.github.temporalrift.game.session.domain.game.Game;
 import io.github.temporalrift.game.session.domain.port.out.FutureEventCatalogPort;
@@ -37,6 +36,7 @@ import io.github.temporalrift.game.session.domain.port.out.GameRepository;
 import io.github.temporalrift.game.session.domain.port.out.SessionEventPublisher;
 import io.github.temporalrift.game.session.domain.port.out.SessionGameRulesPort;
 import io.github.temporalrift.game.session.domain.saga.EraSagaStatus;
+import io.github.temporalrift.game.shared.DomainEventEnvelope;
 
 @ExtendWith(MockitoExtension.class)
 class EraSagaImplTest {
@@ -85,7 +85,7 @@ class EraSagaImplTest {
                         new FutureEventDefinition.OutcomeDefinition(UUID.randomUUID(), "Neutral", 20)));
     }
 
-    private static EventEnvelope envelopeWithPayload(Class<?> payloadType) {
+    private static DomainEventEnvelope envelopeWithPayload(Class<?> payloadType) {
         return argThat(envelope -> payloadType.isInstance(envelope.payload()));
     }
 
@@ -127,7 +127,7 @@ class EraSagaImplTest {
                         .mapToObj(i -> buildEventDef())
                         .toList());
 
-        var captor = ArgumentCaptor.<EventEnvelope>captor();
+        var captor = ArgumentCaptor.<DomainEventEnvelope>captor();
 
         // when
         eraSaga.start(GAME_ID, ERA_NUMBER, PLAYER_IDS, List.of());
@@ -162,7 +162,7 @@ class EraSagaImplTest {
         given(futureEventCatalog.findByEventIds(argThat(ids -> ids != null && ids.contains(cascadedId))))
                 .willReturn(List.of(buildEventDef()));
 
-        var captor = ArgumentCaptor.<EventEnvelope>captor();
+        var captor = ArgumentCaptor.<DomainEventEnvelope>captor();
 
         // when
         eraSaga.start(GAME_ID, ERA_NUMBER, PLAYER_IDS, List.of(cascadedId));

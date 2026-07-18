@@ -20,9 +20,8 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import io.github.temporalrift.events.envelope.EventEnvelope;
+import io.github.temporalrift.game.session.GameEnded;
 import io.github.temporalrift.game.session.domain.event.FactionRevealed;
-import io.github.temporalrift.game.session.domain.event.GameEnded;
 import io.github.temporalrift.game.session.domain.game.Game;
 import io.github.temporalrift.game.session.domain.game.GameStatus;
 import io.github.temporalrift.game.session.domain.port.out.FinalScoreQueryPort;
@@ -33,6 +32,7 @@ import io.github.temporalrift.game.session.domain.saga.EndGameTrigger;
 import io.github.temporalrift.game.session.domain.saga.FactionAssignment;
 import io.github.temporalrift.game.session.domain.saga.StartGameSagaState;
 import io.github.temporalrift.game.session.domain.saga.StartGameSagaStatus;
+import io.github.temporalrift.game.shared.DomainEventEnvelope;
 import io.github.temporalrift.game.shared.Faction;
 
 @ExtendWith(MockitoExtension.class)
@@ -93,7 +93,7 @@ class EndGameSagaImplTest {
         given(gameRepository.findById(GAME_ID)).willReturn(Optional.of(game));
         given(startGameSagaRepository.findByGameId(GAME_ID)).willReturn(Optional.of(startGameSagaState()));
         given(finalScoreQueryPort.getScores(GAME_ID)).willReturn(List.of());
-        var captor = ArgumentCaptor.<EventEnvelope>captor();
+        var captor = ArgumentCaptor.<DomainEventEnvelope>captor();
 
         // when
         saga.start(GAME_ID, EndGameTrigger.WIN_CONDITION_MET, PLAYER_1);
@@ -118,7 +118,7 @@ class EndGameSagaImplTest {
         given(gameRepository.findById(GAME_ID)).willReturn(Optional.of(game));
         given(startGameSagaRepository.findByGameId(GAME_ID)).willReturn(Optional.of(startGameSagaState()));
         given(finalScoreQueryPort.getScores(GAME_ID)).willReturn(List.of());
-        var captor = ArgumentCaptor.<EventEnvelope>captor();
+        var captor = ArgumentCaptor.<DomainEventEnvelope>captor();
 
         // when
         saga.start(GAME_ID, EndGameTrigger.TIMELINE_COLLAPSED, PLAYER_1, PLAYER_2);
@@ -143,7 +143,7 @@ class EndGameSagaImplTest {
         given(gameRepository.findById(GAME_ID)).willReturn(Optional.of(game));
         given(startGameSagaRepository.findByGameId(GAME_ID)).willReturn(Optional.of(startGameSagaState()));
         given(finalScoreQueryPort.getScores(GAME_ID)).willReturn(List.of());
-        var captor = ArgumentCaptor.<EventEnvelope>captor();
+        var captor = ArgumentCaptor.<DomainEventEnvelope>captor();
 
         // when
         saga.start(GAME_ID, EndGameTrigger.TIMELINE_STABILIZED, PLAYER_1, PLAYER_2);
@@ -168,7 +168,7 @@ class EndGameSagaImplTest {
         given(gameRepository.findById(GAME_ID)).willReturn(Optional.of(game));
         given(startGameSagaRepository.findByGameId(GAME_ID)).willReturn(Optional.of(startGameSagaState()));
         given(finalScoreQueryPort.getScores(GAME_ID)).willReturn(List.of());
-        var captor = ArgumentCaptor.<EventEnvelope>captor();
+        var captor = ArgumentCaptor.<DomainEventEnvelope>captor();
 
         // when
         saga.start(GAME_ID, EndGameTrigger.WIN_CONDITION_MET, PLAYER_1);

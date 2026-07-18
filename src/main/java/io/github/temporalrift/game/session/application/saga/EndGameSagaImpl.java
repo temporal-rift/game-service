@@ -14,9 +14,8 @@ import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import io.github.temporalrift.events.envelope.EventEnvelope;
+import io.github.temporalrift.game.session.GameEnded;
 import io.github.temporalrift.game.session.domain.event.FactionRevealed;
-import io.github.temporalrift.game.session.domain.event.GameEnded;
 import io.github.temporalrift.game.session.domain.game.Game;
 import io.github.temporalrift.game.session.domain.game.GameAlreadyOverException;
 import io.github.temporalrift.game.session.domain.game.GameNotFoundException;
@@ -25,6 +24,7 @@ import io.github.temporalrift.game.session.domain.port.out.GameRepository;
 import io.github.temporalrift.game.session.domain.port.out.SessionEventPublisher;
 import io.github.temporalrift.game.session.domain.port.out.StartGameSagaRepository;
 import io.github.temporalrift.game.session.domain.saga.EndGameTrigger;
+import io.github.temporalrift.game.shared.DomainEventEnvelope;
 
 @Service
 class EndGameSagaImpl implements EndGameSaga {
@@ -92,6 +92,6 @@ class EndGameSagaImpl implements EndGameSaga {
     }
 
     private void publishEvent(UUID gameId, Object payload) {
-        eventPublisher.publish(EventEnvelope.create(gameId, Game.AGGREGATE_TYPE, gameId, 1, payload));
+        eventPublisher.publish(DomainEventEnvelope.create(gameId, Game.AGGREGATE_TYPE, gameId, 1, payload));
     }
 }

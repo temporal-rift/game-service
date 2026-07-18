@@ -3,8 +3,8 @@ package io.github.temporalrift.game.session.application.saga;
 import org.springframework.modulith.events.ApplicationModuleListener;
 import org.springframework.stereotype.Component;
 
-import io.github.temporalrift.game.action.domain.event.ActionRoundClosed;
-import io.github.temporalrift.game.scoring.domain.event.ScoresUpdated;
+import io.github.temporalrift.game.action.ActionRoundClosed;
+import io.github.temporalrift.game.scoring.ScoresUpdated;
 import io.github.temporalrift.game.session.domain.event.EraStarted;
 
 @Component

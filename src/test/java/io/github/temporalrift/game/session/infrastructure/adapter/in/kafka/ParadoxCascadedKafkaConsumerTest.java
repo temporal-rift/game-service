@@ -8,6 +8,7 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.never;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -22,7 +23,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 import tools.jackson.databind.ObjectMapper;
 
-import io.github.temporalrift.events.envelope.EventEnvelope;
 import io.github.temporalrift.game.session.domain.event.ParadoxCascaded;
 import io.github.temporalrift.game.session.domain.event.TimelineCollapsed;
 import io.github.temporalrift.game.session.domain.game.Game;
@@ -36,6 +36,7 @@ import io.github.temporalrift.game.session.domain.port.out.LobbyRepository;
 import io.github.temporalrift.game.session.domain.port.out.SessionEventPublisher;
 import io.github.temporalrift.game.session.domain.port.out.SessionGameRulesPort;
 import io.github.temporalrift.game.shared.Faction;
+import io.github.temporalrift.game.shared.InboundEnvelope;
 import io.github.temporalrift.game.shared.ProcessedEventRepository;
 
 @ExtendWith(MockitoExtension.class)
@@ -162,7 +163,8 @@ class ParadoxCascadedKafkaConsumerTest {
     @DisplayName("unrelated event type — ignored, nothing happens")
     void handle_wrongEventType_ignored() {
         // given
-        var envelope = EventEnvelope.create(GAME_ID, "Game", GAME_ID, 1, "unrelated");
+        var envelope = new InboundEnvelope(
+                UUID.randomUUID(), "unrelated.Event", GAME_ID, "Game", GAME_ID, Instant.now(), 1, "unrelated");
 
         // when
         consumer.handle(envelope);
@@ -177,7 +179,15 @@ class ParadoxCascadedKafkaConsumerTest {
     @DisplayName("unsupported envelope version — skipped without claiming the eventId")
     void handle_unsupportedVersion_skippedWithoutClaim() {
         // given
-        var envelope = EventEnvelope.create(GAME_ID, "Game", GAME_ID, 2, paradoxCascaded(1));
+        var envelope = new InboundEnvelope(
+                UUID.randomUUID(),
+                "timeline.ParadoxCascaded",
+                GAME_ID,
+                "Game",
+                GAME_ID,
+                Instant.now(),
+                2,
+                paradoxCascaded(1));
 
         // when
         consumer.handle(envelope);
@@ -214,8 +224,9 @@ class ParadoxCascadedKafkaConsumerTest {
         return new ParadoxCascaded(GAME_ID, eraNumber, UUID.randomUUID(), UUID.randomUUID(), List.of());
     }
 
-    private static EventEnvelope envelopeFor(ParadoxCascaded paradox) {
-        return EventEnvelope.create(GAME_ID, "Game", GAME_ID, 1, paradox);
+    private static InboundEnvelope envelopeFor(ParadoxCascaded paradox) {
+        return new InboundEnvelope(
+                UUID.randomUUID(), "timeline.ParadoxCascaded", GAME_ID, "Game", GAME_ID, Instant.now(), 1, paradox);
     }
 
     private static Lobby startedLobby(List<LobbyPlayer> players) {
