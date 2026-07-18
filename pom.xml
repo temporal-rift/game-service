@@ -6,7 +6,7 @@
     <parent>
         <groupId>io.github.temporal-rift</groupId>
         <artifactId>temporal-rift-bom</artifactId>
-        <version>1.2.1</version>
+        <version>1.4.0</version>
         <relativePath/>
     </parent>
 
@@ -53,6 +53,7 @@
         </sonar.coverage.jacoco.xmlReportPaths>
 
         <domain-events.version>1.2.0</domain-events.version>
+        <session-event.version>1.0.0</session-event.version>
         <spring-retry.version>2.0.13</spring-retry.version>
         <archunit-junit5.version>1.4.2</archunit-junit5.version>
     </properties>
@@ -62,6 +63,15 @@
             <groupId>io.github.temporal-rift</groupId>
             <artifactId>domain-events</artifactId>
             <version>${domain-events.version}</version>
+        </dependency>
+
+        <!-- Spec-only: bundles session bounded-context asyncapi.yml, no compiled code. Codegen for it is
+             driven by the zenwave-sdk-maven-plugin execution below (plugin identity + shared defaults are
+             managed in temporal-rift-bom). -->
+        <dependency>
+            <groupId>io.github.temporal-rift</groupId>
+            <artifactId>session-event</artifactId>
+            <version>${session-event.version}</version>
         </dependency>
 
         <dependency>
@@ -285,6 +295,27 @@
                             <apiPackage>io.github.temporalrift.game.scoring.infrastructure.adapter.in.rest</apiPackage>
                             <modelPackage>io.github.temporalrift.game.scoring.infrastructure.adapter.in.rest.model
                             </modelPackage>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>io.zenwave360.sdk</groupId>
+                <artifactId>zenwave-sdk-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>generate-session-events</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>generate</goal>
+                        </goals>
+                        <configuration>
+                            <inputSpec>classpath:asyncapi/asyncapi.yml</inputSpec>
+                            <configOptions>
+                                <role>provider</role>
+                                <modelPackage>io.github.temporalrift.game.session.infrastructure.adapter.out.kafka.model</modelPackage>
+                                <producerApiPackage>io.github.temporalrift.game.session.infrastructure.adapter.out.kafka.producer</producerApiPackage>
+                            </configOptions>
                         </configuration>
                     </execution>
                 </executions>
