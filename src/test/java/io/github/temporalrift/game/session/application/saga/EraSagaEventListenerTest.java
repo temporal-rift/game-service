@@ -12,10 +12,10 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import io.github.temporalrift.game.action.ActionRoundClosed;
-import io.github.temporalrift.game.scoring.ScoresUpdated;
 import io.github.temporalrift.game.session.domain.event.EraStarted;
+import io.github.temporalrift.game.shared.ActionRoundClosed;
 import io.github.temporalrift.game.shared.Faction;
+import io.github.temporalrift.game.shared.ScoresUpdated;
 
 @ExtendWith(MockitoExtension.class)
 class EraSagaEventListenerTest {

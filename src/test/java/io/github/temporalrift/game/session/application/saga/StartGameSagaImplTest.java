@@ -30,7 +30,6 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
-import io.github.temporalrift.game.session.FactionAssigned;
 import io.github.temporalrift.game.session.domain.event.EraStarted;
 import io.github.temporalrift.game.session.domain.event.FactionsDrawn;
 import io.github.temporalrift.game.session.domain.event.GameStarted;
@@ -46,6 +45,7 @@ import io.github.temporalrift.game.session.domain.port.out.GameRepository;
 import io.github.temporalrift.game.session.domain.port.out.LobbyRepository;
 import io.github.temporalrift.game.session.domain.port.out.SessionEventPublisher;
 import io.github.temporalrift.game.shared.DomainEventEnvelope;
+import io.github.temporalrift.game.shared.FactionAssigned;
 
 @ExtendWith(MockitoExtension.class)
 class StartGameSagaImplTest {

@@ -11,7 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 import io.github.temporalrift.game.scoring.PlayerScoreQuery;
 import io.github.temporalrift.game.scoring.domain.playerscore.PlayerScore;
 import io.github.temporalrift.game.scoring.domain.port.out.PlayerScoreRepository;
-import io.github.temporalrift.game.session.GameEnded;
+import io.github.temporalrift.game.shared.GameEnded;
 
 @Service
 @Transactional(readOnly = true)

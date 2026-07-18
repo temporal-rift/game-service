@@ -2,7 +2,6 @@ package io.github.temporalrift.game.action.infrastructure.adapter.out.kafka;
 
 import org.mapstruct.Mapper;
 
-import io.github.temporalrift.game.action.ActionRoundClosed;
 import io.github.temporalrift.game.action.domain.event.ActionRoundStarted;
 import io.github.temporalrift.game.action.domain.event.ActionRoundTimerExpired;
 import io.github.temporalrift.game.action.domain.event.BandedProbabilityPublished;
@@ -21,6 +20,7 @@ import io.github.temporalrift.game.action.infrastructure.adapter.out.kafka.model
 import io.github.temporalrift.game.action.infrastructure.adapter.out.kafka.model.PlayerSkippedPayload;
 import io.github.temporalrift.game.action.infrastructure.adapter.out.kafka.model.RoundSummaryPublishedPayload;
 import io.github.temporalrift.game.action.infrastructure.adapter.out.kafka.model.SpecialActionPlayedPayload;
+import io.github.temporalrift.game.shared.ActionRoundClosed;
 
 @Mapper(componentModel = "spring")
 interface ActionEventWireMapper {

@@ -3,7 +3,7 @@ package io.github.temporalrift.game.session.domain.port.out;
 import java.util.List;
 import java.util.UUID;
 
-import io.github.temporalrift.game.session.GameEnded;
+import io.github.temporalrift.game.shared.GameEnded;
 
 public interface FinalScoreQueryPort {
 

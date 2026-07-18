@@ -10,7 +10,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.ApplicationEventPublisher;
 
-import io.github.temporalrift.game.scoring.ScoresUpdated;
 import io.github.temporalrift.game.scoring.domain.context.ActionScoringFact;
 import io.github.temporalrift.game.scoring.domain.context.ChainScoringFact;
 import io.github.temporalrift.game.scoring.domain.context.EraScoringContext;
@@ -23,6 +22,7 @@ import io.github.temporalrift.game.scoring.domain.port.out.PlayerScoreRepository
 import io.github.temporalrift.game.scoring.domain.port.out.ScoringEventPublisher;
 import io.github.temporalrift.game.shared.DomainEventEnvelope;
 import io.github.temporalrift.game.shared.Faction;
+import io.github.temporalrift.game.shared.ScoresUpdated;
 
 @DisplayName("UpdateScoresCommandHandler")
 class UpdateScoresCommandHandlerTest {

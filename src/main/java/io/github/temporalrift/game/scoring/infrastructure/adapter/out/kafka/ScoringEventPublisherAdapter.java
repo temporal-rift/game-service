@@ -4,10 +4,10 @@ import java.util.HashMap;
 
 import org.springframework.stereotype.Component;
 
-import io.github.temporalrift.game.scoring.ScoresUpdated;
 import io.github.temporalrift.game.scoring.domain.port.out.ScoringEventPublisher;
 import io.github.temporalrift.game.scoring.infrastructure.adapter.out.kafka.producer.DefaultServiceEventsProducer;
 import io.github.temporalrift.game.shared.DomainEventEnvelope;
+import io.github.temporalrift.game.shared.ScoresUpdated;
 
 @Component
 class ScoringEventPublisherAdapter implements ScoringEventPublisher {
