@@ -2,6 +2,7 @@ package io.github.temporalrift.game.scoring.infrastructure.adapter.in.kafka;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
@@ -11,13 +12,13 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
 
-import io.github.temporalrift.events.envelope.EventEnvelope;
 import io.github.temporalrift.game.TestcontainersConfiguration;
 import io.github.temporalrift.game.scoring.domain.event.OutcomeApplied;
 import io.github.temporalrift.game.scoring.domain.playerscore.ScoreReason;
 import io.github.temporalrift.game.scoring.domain.port.out.EraScoringContextRepository;
 import io.github.temporalrift.game.scoring.domain.port.out.PlayerScoreRepository;
 import io.github.temporalrift.game.shared.Faction;
+import io.github.temporalrift.game.shared.InboundEnvelope;
 
 @SpringBootTest
 @Import(TestcontainersConfiguration.class)
@@ -47,7 +48,8 @@ class TimelineScoringKafkaConsumerIT {
         contextRepository.recordChainFact(gameId, playerId, chainId, ScoreReason.CHAIN_LINK_ADDED, eraNumber);
 
         var outcome = new OutcomeApplied(gameId, eraNumber, UUID.randomUUID(), UUID.randomUUID(), List.of());
-        var envelope = EventEnvelope.create(gameId, "FutureEvent", gameId, 1, outcome);
+        var envelope = new InboundEnvelope(
+                UUID.randomUUID(), "timeline.OutcomeApplied", gameId, "FutureEvent", gameId, Instant.now(), 1, outcome);
 
         consumer.handle(envelope);
 
@@ -66,6 +68,6 @@ class TimelineScoringKafkaConsumerIT {
 
     private Integer scoresUpdatedOutboxRows() {
         return jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM event_publication WHERE serialized_event LIKE '%ScoresUpdated%'", Integer.class);
+                "SELECT COUNT(*) FROM event_publication WHERE event_type LIKE '%GenericMessage%'", Integer.class);
     }
 }

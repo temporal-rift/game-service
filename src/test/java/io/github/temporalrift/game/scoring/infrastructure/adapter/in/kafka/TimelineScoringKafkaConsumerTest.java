@@ -8,6 +8,7 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.never;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
@@ -20,7 +21,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import tools.jackson.databind.ObjectMapper;
 
-import io.github.temporalrift.events.envelope.EventEnvelope;
 import io.github.temporalrift.game.scoring.application.command.UpdateEraScoresCommand;
 import io.github.temporalrift.game.scoring.application.command.UpdateScoresCommandHandler;
 import io.github.temporalrift.game.scoring.domain.event.ChainBroken;
@@ -30,6 +30,7 @@ import io.github.temporalrift.game.scoring.domain.playerscore.ScoreReason;
 import io.github.temporalrift.game.scoring.domain.port.out.EraScoringContextRepository;
 import io.github.temporalrift.game.scoring.domain.port.out.ScoringEraCompletionRepository;
 import io.github.temporalrift.game.scoring.domain.port.out.TimelineOutcomeInboxRepository;
+import io.github.temporalrift.game.shared.InboundEnvelope;
 import io.github.temporalrift.game.shared.ProcessedEventRepository;
 
 @ExtendWith(MockitoExtension.class)
@@ -62,7 +63,15 @@ class TimelineScoringKafkaConsumerTest {
     @Test
     @DisplayName("unrelated event type — ignored without claiming")
     void handle_wrongEventType_ignored() {
-        var envelope = EventEnvelope.create(GAME_ID, "FutureEvent", GAME_ID, 1, "unrelated");
+        var envelope = new InboundEnvelope(
+                UUID.randomUUID(),
+                "timeline.Unrelated",
+                GAME_ID,
+                "FutureEvent",
+                GAME_ID,
+                Instant.now(),
+                1,
+                "unrelated");
 
         consumer.handle(envelope);
 
@@ -88,11 +97,16 @@ class TimelineScoringKafkaConsumerTest {
     @Test
     @DisplayName("unsupported envelope version — skipped without claiming so it can be reprocessed later")
     void handle_unsupportedVersion_skippedWithoutClaiming() {
-        // eventType is derived from the payload class (OutcomeApplied -> a supported type), not from
-        // the "FutureEvent" aggregateType argument below — this must reach the version check, not the
-        // unsupported-event-type check.
         var outcome = outcomeApplied();
-        var envelope = EventEnvelope.create(GAME_ID, "FutureEvent", GAME_ID, 2, outcome);
+        var envelope = new InboundEnvelope(
+                UUID.randomUUID(),
+                "timeline.OutcomeApplied",
+                GAME_ID,
+                "FutureEvent",
+                GAME_ID,
+                Instant.now(),
+                2,
+                outcome);
 
         consumer.handle(envelope);
 
@@ -158,7 +172,15 @@ class TimelineScoringKafkaConsumerTest {
         var playerId = UUID.randomUUID();
         var chainId = UUID.randomUUID();
         var chainCompleted = new ChainCompleted(GAME_ID, 2, chainId, playerId, List.of());
-        var envelope = EventEnvelope.create(GAME_ID, "WeaverChain", GAME_ID, 1, chainCompleted);
+        var envelope = new InboundEnvelope(
+                UUID.randomUUID(),
+                "timeline.ChainCompleted",
+                GAME_ID,
+                "WeaverChain",
+                GAME_ID,
+                Instant.now(),
+                1,
+                chainCompleted);
         given(processedEventRepository.tryMarkProcessed(envelope.eventId(), "scoring.timeline-events"))
                 .willReturn(true);
         given(objectMapper.convertValue(envelope.payload(), ChainCompleted.class))
@@ -177,7 +199,15 @@ class TimelineScoringKafkaConsumerTest {
         var targetPlayerId = UUID.randomUUID();
         var chainId = UUID.randomUUID();
         var chainBroken = new ChainBroken(GAME_ID, 3, chainId, brokenByPlayerId, targetPlayerId, 2);
-        var envelope = EventEnvelope.create(GAME_ID, "WeaverChain", GAME_ID, 1, chainBroken);
+        var envelope = new InboundEnvelope(
+                UUID.randomUUID(),
+                "timeline.ChainBroken",
+                GAME_ID,
+                "WeaverChain",
+                GAME_ID,
+                Instant.now(),
+                1,
+                chainBroken);
         given(processedEventRepository.tryMarkProcessed(envelope.eventId(), "scoring.timeline-events"))
                 .willReturn(true);
         given(objectMapper.convertValue(envelope.payload(), ChainBroken.class)).willReturn(chainBroken);
@@ -193,7 +223,7 @@ class TimelineScoringKafkaConsumerTest {
         assertThat(command.outcomes()).hasSize(1);
     }
 
-    private EventEnvelope claimedEnvelope(OutcomeApplied outcome) {
+    private InboundEnvelope claimedEnvelope(OutcomeApplied outcome) {
         var envelope = envelopeFor(outcome);
         given(processedEventRepository.tryMarkProcessed(envelope.eventId(), "scoring.timeline-events"))
                 .willReturn(true);
@@ -206,7 +236,15 @@ class TimelineScoringKafkaConsumerTest {
         return new OutcomeApplied(GAME_ID, ERA_NUMBER, UUID.randomUUID(), UUID.randomUUID(), List.of());
     }
 
-    private static EventEnvelope envelopeFor(OutcomeApplied outcome) {
-        return EventEnvelope.create(GAME_ID, "FutureEvent", GAME_ID, 1, outcome);
+    private static InboundEnvelope envelopeFor(OutcomeApplied outcome) {
+        return new InboundEnvelope(
+                UUID.randomUUID(),
+                "timeline.OutcomeApplied",
+                GAME_ID,
+                "FutureEvent",
+                GAME_ID,
+                Instant.now(),
+                1,
+                outcome);
     }
 }

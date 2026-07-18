@@ -1,8 +1,8 @@
 package io.github.temporalrift.game.scoring.domain.port.out;
 
-import io.github.temporalrift.events.envelope.EventEnvelope;
+import io.github.temporalrift.game.shared.DomainEventEnvelope;
 
 public interface ScoringEventPublisher {
 
-    void publish(EventEnvelope envelope);
+    void publish(DomainEventEnvelope envelope);
 }

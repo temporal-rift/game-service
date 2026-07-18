@@ -15,7 +15,6 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.ObjectMapper;
 
-import io.github.temporalrift.events.envelope.EventEnvelope;
 import io.github.temporalrift.game.session.domain.event.ParadoxCascaded;
 import io.github.temporalrift.game.session.domain.event.TimelineCollapsed;
 import io.github.temporalrift.game.session.domain.game.Game;
@@ -28,7 +27,9 @@ import io.github.temporalrift.game.session.domain.port.out.GameRepository;
 import io.github.temporalrift.game.session.domain.port.out.LobbyRepository;
 import io.github.temporalrift.game.session.domain.port.out.SessionEventPublisher;
 import io.github.temporalrift.game.session.domain.port.out.SessionGameRulesPort;
+import io.github.temporalrift.game.shared.DomainEventEnvelope;
 import io.github.temporalrift.game.shared.Faction;
+import io.github.temporalrift.game.shared.InboundEnvelope;
 import io.github.temporalrift.game.shared.ProcessedEventRepository;
 
 @Component
@@ -66,7 +67,7 @@ class ParadoxCascadedKafkaConsumer {
 
     @KafkaListener(topics = "timeline.events", groupId = "game-service.session.paradox-cascaded")
     @Transactional(propagation = REQUIRES_NEW)
-    public void handle(EventEnvelope envelope) {
+    public void handle(InboundEnvelope envelope) {
         if (!EVENT_TYPE.equals(envelope.eventType())) {
             return;
         }
@@ -106,7 +107,7 @@ class ParadoxCascadedKafkaConsumer {
                     .currentPlayers();
 
             var collapsed = buildTimelineCollapsed(gameId, paradox.eraNumber(), players);
-            eventPublisher.publish(EventEnvelope.create(gameId, Game.AGGREGATE_TYPE, gameId, 1, collapsed));
+            eventPublisher.publish(DomainEventEnvelope.create(gameId, Game.AGGREGATE_TYPE, gameId, 1, collapsed));
             applicationEventPublisher.publishEvent(collapsed);
         }
     }

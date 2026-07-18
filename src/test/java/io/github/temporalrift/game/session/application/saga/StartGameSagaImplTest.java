@@ -30,9 +30,8 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
-import io.github.temporalrift.events.envelope.EventEnvelope;
+import io.github.temporalrift.game.session.FactionAssigned;
 import io.github.temporalrift.game.session.domain.event.EraStarted;
-import io.github.temporalrift.game.session.domain.event.FactionAssigned;
 import io.github.temporalrift.game.session.domain.event.FactionsDrawn;
 import io.github.temporalrift.game.session.domain.event.GameStarted;
 import io.github.temporalrift.game.session.domain.lobby.DisconnectedPlayersException;
@@ -46,6 +45,7 @@ import io.github.temporalrift.game.session.domain.port.out.FutureEventCatalogPor
 import io.github.temporalrift.game.session.domain.port.out.GameRepository;
 import io.github.temporalrift.game.session.domain.port.out.LobbyRepository;
 import io.github.temporalrift.game.session.domain.port.out.SessionEventPublisher;
+import io.github.temporalrift.game.shared.DomainEventEnvelope;
 
 @ExtendWith(MockitoExtension.class)
 class StartGameSagaImplTest {
@@ -87,7 +87,7 @@ class StartGameSagaImplTest {
     @InjectMocks
     StartGameSagaImpl saga;
 
-    private static EventEnvelope envelopeWithPayload(Class<?> payloadType) {
+    private static DomainEventEnvelope envelopeWithPayload(Class<?> payloadType) {
         return argThat(envelope -> payloadType.isInstance(envelope.payload()));
     }
 

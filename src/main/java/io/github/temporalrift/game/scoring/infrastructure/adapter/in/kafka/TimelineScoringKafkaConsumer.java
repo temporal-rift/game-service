@@ -10,7 +10,6 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.ObjectMapper;
 
-import io.github.temporalrift.events.envelope.EventEnvelope;
 import io.github.temporalrift.game.scoring.application.command.UpdateEraScoresCommand;
 import io.github.temporalrift.game.scoring.application.command.UpdateScoresCommandHandler;
 import io.github.temporalrift.game.scoring.domain.event.ChainBroken;
@@ -20,6 +19,7 @@ import io.github.temporalrift.game.scoring.domain.playerscore.ScoreReason;
 import io.github.temporalrift.game.scoring.domain.port.out.EraScoringContextRepository;
 import io.github.temporalrift.game.scoring.domain.port.out.ScoringEraCompletionRepository;
 import io.github.temporalrift.game.scoring.domain.port.out.TimelineOutcomeInboxRepository;
+import io.github.temporalrift.game.shared.InboundEnvelope;
 import io.github.temporalrift.game.shared.ProcessedEventRepository;
 
 @Component
@@ -57,7 +57,7 @@ class TimelineScoringKafkaConsumer {
 
     @KafkaListener(topics = "timeline.events", groupId = "game-service.scoring.timeline-events")
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void handle(EventEnvelope envelope) {
+    public void handle(InboundEnvelope envelope) {
         if (!SUPPORTED_EVENT_TYPES.contains(envelope.eventType())) {
             return;
         }
@@ -84,7 +84,7 @@ class TimelineScoringKafkaConsumer {
         }
     }
 
-    private void handleOutcomeApplied(EventEnvelope envelope) {
+    private void handleOutcomeApplied(InboundEnvelope envelope) {
         var outcome = objectMapper.convertValue(envelope.payload(), OutcomeApplied.class);
         outcomeInboxRepository.save(outcome);
 
@@ -100,13 +100,13 @@ class TimelineScoringKafkaConsumer {
         updateScoresCommandHandler.handle(new UpdateEraScoresCommand(outcome.gameId(), outcome.eraNumber(), outcomes));
     }
 
-    private void handleChainCompleted(EventEnvelope envelope) {
+    private void handleChainCompleted(InboundEnvelope envelope) {
         var event = objectMapper.convertValue(envelope.payload(), ChainCompleted.class);
         contextRepository.recordChainFact(
                 event.gameId(), event.playerId(), event.chainId(), ScoreReason.CHAIN_COMPLETED, event.eraNumber());
     }
 
-    private void handleChainBroken(EventEnvelope envelope) {
+    private void handleChainBroken(InboundEnvelope envelope) {
         var event = objectMapper.convertValue(envelope.payload(), ChainBroken.class);
         contextRepository.recordChainFact(
                 event.gameId(), event.targetPlayerId(), event.chainId(), ScoreReason.CHAIN_BROKEN, event.eraNumber());

@@ -13,7 +13,6 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import io.github.temporalrift.events.envelope.EventEnvelope;
 import io.github.temporalrift.game.action.domain.actionround.ActionRound;
 import io.github.temporalrift.game.action.domain.actionround.CloseOutcome;
 import io.github.temporalrift.game.action.domain.actionround.SubmittedAction;
@@ -26,6 +25,7 @@ import io.github.temporalrift.game.action.domain.port.out.ActionRoundRepository;
 import io.github.temporalrift.game.action.domain.port.out.FutureEventDefinitionPort;
 import io.github.temporalrift.game.action.domain.port.out.PlayerStateRepository;
 import io.github.temporalrift.game.action.domain.saga.ActionRoundSagaStatus;
+import io.github.temporalrift.game.shared.DomainEventEnvelope;
 import io.github.temporalrift.game.shared.GameRulesPort;
 
 @Service
@@ -124,7 +124,7 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
             }
             case CloseOutcome.Closed(var skippedPlayerIds) -> {
                 if (closeReason.equals("TIMER_EXPIRED")) {
-                    actionEventPublisher.publish(EventEnvelope.create(
+                    actionEventPublisher.publish(DomainEventEnvelope.create(
                             round.id(),
                             ActionRound.AGGREGATE_TYPE,
                             gameId,
@@ -156,7 +156,7 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
         // application code would duplicate logic and eventually drift from aggregate behavior.
         for (var payload : round.pullEvents()) {
             actionEventPublisher.publish(
-                    EventEnvelope.create(round.id(), ActionRound.AGGREGATE_TYPE, round.gameId(), 1, payload));
+                    DomainEventEnvelope.create(round.id(), ActionRound.AGGREGATE_TYPE, round.gameId(), 1, payload));
             actionEventPublisher.publishInternally(payload);
         }
     }
@@ -178,7 +178,7 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
         for (var skippedId : skippedPlayerIds) {
             summaries.add(new ActionSummary(skippedId, null, null, true));
         }
-        actionEventPublisher.publish(EventEnvelope.create(
+        actionEventPublisher.publish(DomainEventEnvelope.create(
                 round.id(),
                 ActionRound.AGGREGATE_TYPE,
                 gameId,
@@ -194,7 +194,7 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
         var initialDefinitions = futureEventDefinitionPort.findByGameIdAndEraNumber(gameId, eraNumber);
         var bandStates =
                 bandCalculator.computeBands(round1.submittedActions(), round2.submittedActions(), initialDefinitions);
-        actionEventPublisher.publish(EventEnvelope.create(
+        actionEventPublisher.publish(DomainEventEnvelope.create(
                 round2.id(),
                 ActionRound.AGGREGATE_TYPE,
                 gameId,

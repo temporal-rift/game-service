@@ -12,10 +12,9 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
-import io.github.temporalrift.events.envelope.EventEnvelope;
+import io.github.temporalrift.game.action.ActionRoundClosed;
 import io.github.temporalrift.game.action.StartActionRoundRequested;
-import io.github.temporalrift.game.action.domain.event.ActionRoundClosed;
-import io.github.temporalrift.game.scoring.domain.event.ScoresUpdated;
+import io.github.temporalrift.game.scoring.ScoresUpdated;
 import io.github.temporalrift.game.session.domain.event.EraEnded;
 import io.github.temporalrift.game.session.domain.event.EraFailed;
 import io.github.temporalrift.game.session.domain.event.EraStarted;
@@ -32,6 +31,7 @@ import io.github.temporalrift.game.session.domain.port.out.SessionEventPublisher
 import io.github.temporalrift.game.session.domain.port.out.SessionGameRulesPort;
 import io.github.temporalrift.game.session.domain.saga.EraSagaState;
 import io.github.temporalrift.game.session.domain.saga.EraSagaStatus;
+import io.github.temporalrift.game.shared.DomainEventEnvelope;
 
 @Component
 class EraSagaAdvancer {
@@ -161,7 +161,7 @@ class EraSagaAdvancer {
     }
 
     private void publishEvent(UUID gameId, Object payload) {
-        eventPublisher.publish(EventEnvelope.create(gameId, Game.AGGREGATE_TYPE, gameId, 1, payload));
+        eventPublisher.publish(DomainEventEnvelope.create(gameId, Game.AGGREGATE_TYPE, gameId, 1, payload));
     }
 
     private TimelineStabilized buildTimelineStabilized(UUID gameId, ScoresUpdated su) {

@@ -27,10 +27,9 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import io.github.temporalrift.events.envelope.EventEnvelope;
+import io.github.temporalrift.game.action.ActionRoundClosed;
 import io.github.temporalrift.game.action.domain.actionround.ActionRound;
 import io.github.temporalrift.game.action.domain.actionround.RoundStatus;
-import io.github.temporalrift.game.action.domain.event.ActionRoundClosed;
 import io.github.temporalrift.game.action.domain.event.ActionRoundStarted;
 import io.github.temporalrift.game.action.domain.event.ActionRoundTimerExpired;
 import io.github.temporalrift.game.action.domain.event.BandedProbabilityPublished;
@@ -42,6 +41,7 @@ import io.github.temporalrift.game.action.domain.port.out.FutureEventDefinitionP
 import io.github.temporalrift.game.action.domain.saga.ActionRoundSagaState;
 import io.github.temporalrift.game.action.domain.saga.ActionRoundSagaStatus;
 import io.github.temporalrift.game.shared.CardType;
+import io.github.temporalrift.game.shared.DomainEventEnvelope;
 import io.github.temporalrift.game.shared.Faction;
 import io.github.temporalrift.game.shared.GameRulesPort;
 import io.github.temporalrift.game.shared.SpecialAction;
@@ -97,7 +97,7 @@ class ActionRoundSagaImplTest {
                 CLOCK);
     }
 
-    private static EventEnvelope envelopeWithPayload(Class<?> payloadType) {
+    private static DomainEventEnvelope envelopeWithPayload(Class<?> payloadType) {
         return argThat(envelope -> payloadType.isInstance(envelope.payload()));
     }
 
@@ -511,7 +511,7 @@ class ActionRoundSagaImplTest {
             saga.handlePlayerSubmitted(GAME_ID, ERA_NUMBER, ROUND_NUMBER, PLAYER_1);
 
             // then
-            var captor = ArgumentCaptor.<EventEnvelope>captor();
+            var captor = ArgumentCaptor.<DomainEventEnvelope>captor();
             then(actionEventPublisher).should(atLeastOnce()).publish(captor.capture());
             var summaryEnvelope = captor.getAllValues().stream()
                     .filter(e -> e.payload() instanceof RoundSummaryPublished)
@@ -564,7 +564,7 @@ class ActionRoundSagaImplTest {
             saga.handlePlayerSubmitted(GAME_ID, ERA_NUMBER, ROUND_NUMBER, PLAYER_1);
 
             // then
-            var captor = ArgumentCaptor.<EventEnvelope>captor();
+            var captor = ArgumentCaptor.<DomainEventEnvelope>captor();
             then(actionEventPublisher).should(atLeastOnce()).publish(captor.capture());
             var summaryEnvelope = captor.getAllValues().stream()
                     .filter(e -> e.payload() instanceof RoundSummaryPublished)
@@ -611,7 +611,7 @@ class ActionRoundSagaImplTest {
             saga.handleTimerExpiry(sagaId);
 
             // then
-            var captor = ArgumentCaptor.<EventEnvelope>captor();
+            var captor = ArgumentCaptor.<DomainEventEnvelope>captor();
             then(actionEventPublisher).should(atLeastOnce()).publish(captor.capture());
             var summaryEnvelope = captor.getAllValues().stream()
                     .filter(e -> e.payload() instanceof RoundSummaryPublished)

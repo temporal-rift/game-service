@@ -12,8 +12,8 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.ObjectMapper;
 
-import io.github.temporalrift.events.envelope.EventEnvelope;
 import io.github.temporalrift.game.session.application.saga.PlayerReconnectedApplicationEvent;
+import io.github.temporalrift.game.shared.InboundEnvelope;
 import io.github.temporalrift.game.shared.ProcessedEventRepository;
 
 @Component
@@ -38,7 +38,7 @@ class PlayerReconnectKafkaConsumer {
 
     @KafkaListener(topics = "game.commands")
     @Transactional(propagation = REQUIRES_NEW)
-    public void handle(EventEnvelope envelope) {
+    public void handle(InboundEnvelope envelope) {
         if (!EVENT_TYPE.equals(envelope.eventType())) {
             return;
         }

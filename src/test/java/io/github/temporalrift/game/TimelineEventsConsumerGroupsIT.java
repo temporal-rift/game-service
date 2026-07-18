@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
@@ -15,11 +16,11 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.transaction.support.TransactionTemplate;
 
-import io.github.temporalrift.events.envelope.EventEnvelope;
 import io.github.temporalrift.game.scoring.domain.event.ChainCompleted;
 import io.github.temporalrift.game.session.domain.event.ParadoxCascaded;
 import io.github.temporalrift.game.session.domain.game.Game;
 import io.github.temporalrift.game.session.domain.port.out.GameRepository;
+import io.github.temporalrift.game.shared.InboundEnvelope;
 
 /**
  * Regression coverage for the consumer-group collision (issue #70): both {@code timeline.events}
@@ -51,16 +52,22 @@ class TimelineEventsConsumerGroupsIT {
         transactionTemplate.executeWithoutResult(
                 _ -> gameRepository.save(new Game(gameId, UUID.randomUUID(), List.of())));
 
-        var paradoxEnvelope = EventEnvelope.create(
+        var paradoxEnvelope = new InboundEnvelope(
+                UUID.randomUUID(),
+                "timeline.ParadoxCascaded",
                 gameId,
                 "FutureEvent",
                 gameId,
+                Instant.now(),
                 1,
                 new ParadoxCascaded(gameId, 1, UUID.randomUUID(), UUID.randomUUID(), List.of()));
-        var chainEnvelope = EventEnvelope.create(
+        var chainEnvelope = new InboundEnvelope(
+                UUID.randomUUID(),
+                "timeline.ChainCompleted",
                 gameId,
                 "WeaverChain",
                 gameId,
+                Instant.now(),
                 1,
                 new ChainCompleted(gameId, 1, UUID.randomUUID(), UUID.randomUUID(), List.of()));
 

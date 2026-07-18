@@ -8,7 +8,6 @@ import java.util.UUID;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
-import io.github.temporalrift.events.envelope.EventEnvelope;
 import io.github.temporalrift.game.session.domain.event.GameStartCancelled;
 import io.github.temporalrift.game.session.domain.event.GameStartFailed;
 import io.github.temporalrift.game.session.domain.lobby.Lobby;
@@ -17,6 +16,7 @@ import io.github.temporalrift.game.session.domain.port.out.SessionEventPublisher
 import io.github.temporalrift.game.session.domain.port.out.StartGameSagaRepository;
 import io.github.temporalrift.game.session.domain.saga.StartGameSagaState;
 import io.github.temporalrift.game.session.domain.saga.StartGameSagaStatus;
+import io.github.temporalrift.game.shared.DomainEventEnvelope;
 
 @Component
 class StartGameSagaCompensator {
@@ -45,7 +45,7 @@ class StartGameSagaCompensator {
                 .filter(state -> state.status() == StartGameSagaStatus.RUNNING)
                 .ifPresent(state -> {
                     startGameSagaRepository.save(state.withStatus(StartGameSagaStatus.CANCELLED));
-                    eventPublisher.publish(EventEnvelope.create(
+                    eventPublisher.publish(DomainEventEnvelope.create(
                             state.lobbyId(),
                             Lobby.AGGREGATE_TYPE,
                             state.gameId(),
@@ -69,7 +69,7 @@ class StartGameSagaCompensator {
         lobby.resetFactionAssignments();
         lobbyRepository.save(lobby);
 
-        eventPublisher.publish(EventEnvelope.create(
+        eventPublisher.publish(DomainEventEnvelope.create(
                 lobby.id(), Lobby.AGGREGATE_TYPE, gameId, 1, new GameStartFailed(gameId, lobbyId, reason)));
     }
 }

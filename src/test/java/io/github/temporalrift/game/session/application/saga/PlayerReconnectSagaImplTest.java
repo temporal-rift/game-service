@@ -22,7 +22,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 
-import io.github.temporalrift.events.envelope.EventEnvelope;
 import io.github.temporalrift.game.session.domain.event.GameEndedAbnormally;
 import io.github.temporalrift.game.session.domain.event.PlayerAbandoned;
 import io.github.temporalrift.game.session.domain.event.PlayerDisconnected;
@@ -37,6 +36,7 @@ import io.github.temporalrift.game.session.domain.port.out.SessionEventPublisher
 import io.github.temporalrift.game.session.domain.port.out.SessionGameRulesPort;
 import io.github.temporalrift.game.session.domain.saga.PlayerReconnectSagaState;
 import io.github.temporalrift.game.session.domain.saga.PlayerReconnectSagaStatus;
+import io.github.temporalrift.game.shared.DomainEventEnvelope;
 
 @ExtendWith(MockitoExtension.class)
 class PlayerReconnectSagaImplTest {
@@ -85,7 +85,7 @@ class PlayerReconnectSagaImplTest {
                 TEST_CLOCK);
     }
 
-    private static EventEnvelope envelopeWithPayload(Class<?> payloadType) {
+    private static DomainEventEnvelope envelopeWithPayload(Class<?> payloadType) {
         return argThat(envelope -> payloadType.isInstance(envelope.payload()));
     }
 

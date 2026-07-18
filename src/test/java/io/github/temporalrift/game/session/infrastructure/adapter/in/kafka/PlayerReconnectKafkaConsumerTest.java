@@ -19,8 +19,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 import tools.jackson.databind.ObjectMapper;
 
-import io.github.temporalrift.events.envelope.EventEnvelope;
 import io.github.temporalrift.game.session.application.saga.PlayerReconnectedApplicationEvent;
+import io.github.temporalrift.game.shared.InboundEnvelope;
 import io.github.temporalrift.game.shared.ProcessedEventRepository;
 
 @ExtendWith(MockitoExtension.class)
@@ -96,7 +96,7 @@ class PlayerReconnectKafkaConsumerTest {
         then(applicationEventPublisher).should(never()).publishEvent(any());
     }
 
-    private static EventEnvelope envelopeFor(String eventType) {
-        return new EventEnvelope(UUID.randomUUID(), eventType, GAME_ID, "Game", GAME_ID, OCCURRED_AT, 1, "");
+    private static InboundEnvelope envelopeFor(String eventType) {
+        return new InboundEnvelope(UUID.randomUUID(), eventType, GAME_ID, "Game", GAME_ID, OCCURRED_AT, 1, "");
     }
 }
