@@ -51,6 +51,10 @@
         <sonar.host.url>https://sonarcloud.io</sonar.host.url>
         <sonar.coverage.jacoco.xmlReportPaths>${project.build.directory}/site/jacoco/jacoco.xml
         </sonar.coverage.jacoco.xmlReportPaths>
+        <!-- Generated code (OpenAPI REST, AsyncAPI/ZenWave producers + models, MapStruct impls) all
+             lands under target/generated-sources. It is not authored here and must not be analysed or
+             counted toward (new-code) coverage. -->
+        <sonar.exclusions>**/generated-sources/**/*</sonar.exclusions>
 
         <session-event.version>1.0.2</session-event.version>
         <action-event.version>1.0.2</action-event.version>
