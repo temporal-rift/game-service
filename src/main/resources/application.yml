@@ -26,16 +26,16 @@ spring:
       group-id: game-service
       auto-offset-reset: earliest
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
-      # Raw bytes in, then spring-modulith-events-kafka's ByteArrayJacksonJsonMessageConverter
-      # (auto-wired into the listener container factory) converts to the listener parameter type.
-      # A JSON value-deserializer here would double-convert and fail with
+      # Raw bytes in, then spring-kafka's ByteArrayJacksonJsonMessageConverter (auto-wired into the
+      # listener container factory) converts to the listener parameter type. A JSON
+      # value-deserializer here would double-convert and fail with
       # "Only String, Bytes, or byte[] supported".
       value-deserializer: org.apache.kafka.common.serialization.ByteArrayDeserializer
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       # JacksonJsonSerializer (Jackson 3) — the Jackson 2 based JsonSerializer cannot handle
-      # java.time.Instant (EventEnvelope.occurredAt) without extra modules. Type headers stay off
-      # so consumers convert by listener parameter type, keeping the wire format header-free JSON.
+      # java.time.Instant without extra modules. Type headers stay off so consumers convert by
+      # listener parameter type, keeping the wire format header-free JSON.
       value-serializer: org.springframework.kafka.support.serializer.JacksonJsonSerializer
       properties:
         spring.json.add.type.headers: false
@@ -53,6 +53,27 @@ spring:
       republish-outstanding-events-on-restart: false
     runtime:
       verification-enabled: true
+  cloud:
+    stream:
+      # Binder-level connection settings mirror spring.kafka.* above — the Spring Cloud Stream
+      # Kafka binder has its own separate configuration namespace, it does not inherit spring.kafka.*.
+      kafka:
+        binder:
+          brokers: ${KAFKA_BOOTSTRAP_SERVERS}
+          configuration:
+            security.protocol: ${KAFKA_SECURITY_PROTOCOL:PLAINTEXT}
+            sasl.mechanism: ${KAFKA_SASL_MECHANISM:}
+            sasl.jaas.config: ${KAFKA_SASL_JAAS_CONFIG:}
+        default:
+          producer:
+            # gameId is present as a header on every generated event's headers — partitioning by it
+            # guarantees ordering of all events within a game, matching event-schema.md.
+            messageKeyExpression: headers['gameId']
+      default:
+        producer:
+          # Every session/action/scoring event targets game.events; timeline-event's future producer
+          # will need an explicit per-binding override to timeline.events once it's wired up.
+          destination: game.events
 
 game:
   rate-limit:

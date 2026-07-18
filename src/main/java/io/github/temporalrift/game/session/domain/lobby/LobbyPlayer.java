@@ -6,7 +6,7 @@ import java.util.UUID;
 
 import org.apache.commons.lang3.StringUtils;
 
-import io.github.temporalrift.events.shared.Faction;
+import io.github.temporalrift.game.shared.Faction;
 
 public record LobbyPlayer(UUID playerId, String playerName, Faction faction, Instant joinedAt, boolean connected) {
 
