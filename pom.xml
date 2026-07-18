@@ -176,6 +176,13 @@
             <groupId>io.zenwave360.sdk</groupId>
             <artifactId>spring-modulith-events-scs</artifactId>
         </dependency>
+        <!-- spring-modulith-events-scs serializes Message events to the outbox with a Jackson 2
+             (com.fasterxml) ObjectMapper; this app otherwise runs on Jackson 3 (tools.jackson), so the
+             Jackson 2 time module must be present for the Instant/OffsetDateTime fields. -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.datatype</groupId>
+            <artifactId>jackson-datatype-jsr310</artifactId>
+        </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-actuator-test</artifactId>
