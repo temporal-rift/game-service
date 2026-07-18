@@ -10,7 +10,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.modulith.events.EventExternalizationConfiguration;
 
 import io.github.temporalrift.events.envelope.EventEnvelope;
-import io.github.temporalrift.events.session.LobbyCreated;
+import io.github.temporalrift.game.session.domain.event.LobbyCreated;
 
 class KafkaExternalizationConfigTest {
 

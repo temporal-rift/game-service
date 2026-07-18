@@ -6,7 +6,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 
-import io.github.temporalrift.events.shared.Faction;
+import io.github.temporalrift.game.shared.Faction;
 
 public class PlayerScore {
 

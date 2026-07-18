@@ -16,9 +16,9 @@ import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.ObjectMapper;
 
 import io.github.temporalrift.events.envelope.EventEnvelope;
-import io.github.temporalrift.events.session.TimelineCollapsed;
-import io.github.temporalrift.events.shared.Faction;
-import io.github.temporalrift.events.timeline.ParadoxCascaded;
+import io.github.temporalrift.game.session.domain.event.ParadoxCascaded;
+import io.github.temporalrift.game.session.domain.event.TimelineCollapsed;
+import io.github.temporalrift.game.shared.Faction;
 import io.github.temporalrift.game.session.domain.game.Game;
 import io.github.temporalrift.game.session.domain.game.GameAlreadyOverException;
 import io.github.temporalrift.game.session.domain.game.GameNotFoundException;

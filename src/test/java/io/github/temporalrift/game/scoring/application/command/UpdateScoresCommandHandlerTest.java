@@ -11,8 +11,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.context.ApplicationEventPublisher;
 
 import io.github.temporalrift.events.envelope.EventEnvelope;
-import io.github.temporalrift.events.scoring.ScoresUpdated;
-import io.github.temporalrift.events.shared.Faction;
+import io.github.temporalrift.game.scoring.domain.event.ScoresUpdated;
+import io.github.temporalrift.game.shared.Faction;
 import io.github.temporalrift.game.scoring.domain.context.ActionScoringFact;
 import io.github.temporalrift.game.scoring.domain.context.ChainScoringFact;
 import io.github.temporalrift.game.scoring.domain.context.EraScoringContext;

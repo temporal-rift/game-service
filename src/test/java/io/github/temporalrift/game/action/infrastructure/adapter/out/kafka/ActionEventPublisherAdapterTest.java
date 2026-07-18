@@ -12,7 +12,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 
-import io.github.temporalrift.events.action.ActionRoundClosed;
+import io.github.temporalrift.game.action.domain.event.ActionRoundClosed;
 import io.github.temporalrift.events.envelope.EventEnvelope;
 
 @ExtendWith(MockitoExtension.class)

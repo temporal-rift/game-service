@@ -21,9 +21,9 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import io.github.temporalrift.events.envelope.EventEnvelope;
-import io.github.temporalrift.events.session.FactionRevealed;
-import io.github.temporalrift.events.session.GameEnded;
-import io.github.temporalrift.events.shared.Faction;
+import io.github.temporalrift.game.session.domain.event.FactionRevealed;
+import io.github.temporalrift.game.session.domain.event.GameEnded;
+import io.github.temporalrift.game.shared.Faction;
 import io.github.temporalrift.game.session.domain.game.Game;
 import io.github.temporalrift.game.session.domain.game.GameStatus;
 import io.github.temporalrift.game.session.domain.port.out.FinalScoreQueryPort;

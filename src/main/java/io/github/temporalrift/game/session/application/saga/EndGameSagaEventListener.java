@@ -6,9 +6,9 @@ import java.util.stream.Stream;
 import org.springframework.modulith.events.ApplicationModuleListener;
 import org.springframework.stereotype.Component;
 
-import io.github.temporalrift.events.session.TimelineCollapsed;
-import io.github.temporalrift.events.session.TimelineStabilized;
-import io.github.temporalrift.events.session.WinConditionMet;
+import io.github.temporalrift.game.session.domain.event.TimelineCollapsed;
+import io.github.temporalrift.game.session.domain.event.TimelineStabilized;
+import io.github.temporalrift.game.session.domain.event.WinConditionMet;
 import io.github.temporalrift.game.session.domain.saga.EndGameTrigger;
 
 @Component

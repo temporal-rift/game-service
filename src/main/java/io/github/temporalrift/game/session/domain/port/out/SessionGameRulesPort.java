@@ -2,7 +2,7 @@ package io.github.temporalrift.game.session.domain.port.out;
 
 import java.util.Set;
 
-import io.github.temporalrift.events.shared.Faction;
+import io.github.temporalrift.game.shared.Faction;
 import io.github.temporalrift.game.shared.GameRulesPort;
 
 public interface SessionGameRulesPort extends GameRulesPort {

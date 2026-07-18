@@ -1,6 +1,6 @@
 package io.github.temporalrift.game.action.domain.port.out;
 
-import io.github.temporalrift.events.shared.CardType;
+import io.github.temporalrift.game.shared.CardType;
 
 public interface BandRulesPort {
 

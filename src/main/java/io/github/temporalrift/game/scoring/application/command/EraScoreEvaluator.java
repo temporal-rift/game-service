@@ -8,7 +8,7 @@ import java.util.UUID;
 
 import org.springframework.stereotype.Component;
 
-import io.github.temporalrift.events.timeline.OutcomeApplied;
+import io.github.temporalrift.game.scoring.domain.event.OutcomeApplied;
 import io.github.temporalrift.game.scoring.domain.context.EraScoringContext;
 import io.github.temporalrift.game.scoring.domain.context.EventOutcomeFact;
 import io.github.temporalrift.game.scoring.domain.playerscore.ScoreReason;

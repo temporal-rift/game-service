@@ -6,7 +6,7 @@ import java.util.UUID;
 import org.springframework.stereotype.Component;
 import tools.jackson.databind.ObjectMapper;
 
-import io.github.temporalrift.events.timeline.OutcomeApplied;
+import io.github.temporalrift.game.scoring.domain.event.OutcomeApplied;
 import io.github.temporalrift.game.scoring.domain.port.out.TimelineOutcomeInboxRepository;
 
 @Component

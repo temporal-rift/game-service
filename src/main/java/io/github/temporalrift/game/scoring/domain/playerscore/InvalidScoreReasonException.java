@@ -1,6 +1,6 @@
 package io.github.temporalrift.game.scoring.domain.playerscore;
 
-import io.github.temporalrift.events.shared.Faction;
+import io.github.temporalrift.game.shared.Faction;
 
 public class InvalidScoreReasonException extends RuntimeException {
 

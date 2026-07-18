@@ -14,12 +14,12 @@ import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import io.github.temporalrift.events.session.HostTransferred;
-import io.github.temporalrift.events.session.LobbyClosed;
-import io.github.temporalrift.events.session.LobbyCreated;
-import io.github.temporalrift.events.session.PlayerJoinedLobby;
-import io.github.temporalrift.events.session.PlayerLeftLobby;
-import io.github.temporalrift.events.shared.Faction;
+import io.github.temporalrift.game.session.domain.event.HostTransferred;
+import io.github.temporalrift.game.session.domain.event.LobbyClosed;
+import io.github.temporalrift.game.session.domain.event.LobbyCreated;
+import io.github.temporalrift.game.session.domain.event.PlayerJoinedLobby;
+import io.github.temporalrift.game.session.domain.event.PlayerLeftLobby;
+import io.github.temporalrift.game.shared.Faction;
 
 class LobbyTest {
 

@@ -8,7 +8,7 @@ import jakarta.persistence.Table;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
-import io.github.temporalrift.events.timeline.OutcomeApplied;
+import io.github.temporalrift.game.scoring.domain.event.OutcomeApplied;
 
 @Entity
 @Table(name = "scoring_timeline_outcome_inbox")

@@ -16,8 +16,8 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import io.github.temporalrift.events.envelope.EventEnvelope;
-import io.github.temporalrift.events.timeline.ChainCompleted;
-import io.github.temporalrift.events.timeline.ParadoxCascaded;
+import io.github.temporalrift.game.scoring.domain.event.ChainCompleted;
+import io.github.temporalrift.game.session.domain.event.ParadoxCascaded;
 import io.github.temporalrift.game.session.domain.game.Game;
 import io.github.temporalrift.game.session.domain.port.out.GameRepository;
 

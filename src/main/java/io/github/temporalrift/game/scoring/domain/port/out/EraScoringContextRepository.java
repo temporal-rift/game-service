@@ -2,7 +2,7 @@ package io.github.temporalrift.game.scoring.domain.port.out;
 
 import java.util.UUID;
 
-import io.github.temporalrift.events.shared.Faction;
+import io.github.temporalrift.game.shared.Faction;
 import io.github.temporalrift.game.scoring.domain.context.EraScoringContext;
 import io.github.temporalrift.game.scoring.domain.playerscore.ScoreReason;
 

@@ -14,11 +14,11 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import io.github.temporalrift.events.action.EventsDrawn;
-import io.github.temporalrift.events.action.HandDealt;
 import io.github.temporalrift.events.envelope.EventEnvelope;
-import io.github.temporalrift.events.session.GameEndedAbnormally;
-import io.github.temporalrift.events.shared.CardType;
+import io.github.temporalrift.game.session.domain.event.EventsDrawn;
+import io.github.temporalrift.game.session.domain.event.GameEndedAbnormally;
+import io.github.temporalrift.game.session.domain.event.HandDealt;
+import io.github.temporalrift.game.shared.CardType;
 import io.github.temporalrift.game.action.StartActionRoundRequested;
 import io.github.temporalrift.game.session.domain.game.Game;
 import io.github.temporalrift.game.session.domain.game.GameNotFoundException;

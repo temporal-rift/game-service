@@ -2,9 +2,9 @@ package io.github.temporalrift.game.action.domain.actionround;
 
 import java.util.UUID;
 
-import io.github.temporalrift.events.shared.CardType;
-import io.github.temporalrift.events.shared.Faction;
-import io.github.temporalrift.events.shared.SpecialAction;
+import io.github.temporalrift.game.shared.CardType;
+import io.github.temporalrift.game.shared.Faction;
+import io.github.temporalrift.game.shared.SpecialAction;
 
 public sealed interface SubmittedAction permits SubmittedAction.CardAction, SubmittedAction.SpecialActionSubmission {
 

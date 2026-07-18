@@ -26,10 +26,10 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 
-import io.github.temporalrift.events.action.EventsDrawn;
-import io.github.temporalrift.events.action.HandDealt;
+import io.github.temporalrift.game.session.domain.event.EventsDrawn;
+import io.github.temporalrift.game.session.domain.event.HandDealt;
 import io.github.temporalrift.events.envelope.EventEnvelope;
-import io.github.temporalrift.events.session.GameEndedAbnormally;
+import io.github.temporalrift.game.session.domain.event.GameEndedAbnormally;
 import io.github.temporalrift.game.session.domain.futureevent.FutureEventDefinition;
 import io.github.temporalrift.game.session.domain.game.Game;
 import io.github.temporalrift.game.session.domain.port.out.FutureEventCatalogPort;
