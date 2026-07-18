@@ -15,9 +15,9 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 
-import io.github.temporalrift.game.action.ActionRoundClosed;
 import io.github.temporalrift.game.action.infrastructure.adapter.out.kafka.model.ActionRoundClosedPayload;
 import io.github.temporalrift.game.action.infrastructure.adapter.out.kafka.producer.DefaultServiceEventsProducer;
+import io.github.temporalrift.game.shared.ActionRoundClosed;
 import io.github.temporalrift.game.shared.DomainEventEnvelope;
 
 @ExtendWith(MockitoExtension.class)

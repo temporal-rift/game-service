@@ -14,9 +14,9 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import io.github.temporalrift.game.scoring.domain.port.out.EraScoringContextRepository;
-import io.github.temporalrift.game.session.EventsDrawn;
-import io.github.temporalrift.game.session.FactionAssigned;
+import io.github.temporalrift.game.shared.EventsDrawn;
 import io.github.temporalrift.game.shared.Faction;
+import io.github.temporalrift.game.shared.FactionAssigned;
 
 @ExtendWith(MockitoExtension.class)
 class ScoringContextProjectionEventListenerTest {

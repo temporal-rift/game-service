@@ -19,9 +19,9 @@ import io.github.temporalrift.game.TestcontainersConfiguration;
 import io.github.temporalrift.game.action.domain.playerstate.PlayerState;
 import io.github.temporalrift.game.action.domain.port.out.FutureEventDefinitionPort;
 import io.github.temporalrift.game.action.domain.port.out.PlayerStateRepository;
-import io.github.temporalrift.game.session.EventsDrawn;
-import io.github.temporalrift.game.session.FactionAssigned;
+import io.github.temporalrift.game.shared.EventsDrawn;
 import io.github.temporalrift.game.shared.Faction;
+import io.github.temporalrift.game.shared.FactionAssigned;
 
 /**
  * Proves {@link ActionStateProjectionEventListener} actually fires from the typed in-process events

@@ -9,12 +9,12 @@ import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import io.github.temporalrift.game.action.ActionRoundClosed;
 import io.github.temporalrift.game.action.domain.CardNotInHandException;
 import io.github.temporalrift.game.action.domain.event.ActionRoundStarted;
 import io.github.temporalrift.game.action.domain.event.CardPlayed;
 import io.github.temporalrift.game.action.domain.event.PlayerSkipped;
 import io.github.temporalrift.game.action.domain.event.SpecialActionPlayed;
+import io.github.temporalrift.game.shared.ActionRoundClosed;
 import io.github.temporalrift.game.shared.CardType;
 import io.github.temporalrift.game.shared.Faction;
 import io.github.temporalrift.game.shared.SpecialAction;

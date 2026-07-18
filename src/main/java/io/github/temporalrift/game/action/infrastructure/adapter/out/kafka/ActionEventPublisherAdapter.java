@@ -5,7 +5,6 @@ import java.util.HashMap;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 
-import io.github.temporalrift.game.action.ActionRoundClosed;
 import io.github.temporalrift.game.action.domain.event.ActionRoundStarted;
 import io.github.temporalrift.game.action.domain.event.ActionRoundTimerExpired;
 import io.github.temporalrift.game.action.domain.event.BandedProbabilityPublished;
@@ -15,6 +14,7 @@ import io.github.temporalrift.game.action.domain.event.RoundSummaryPublished;
 import io.github.temporalrift.game.action.domain.event.SpecialActionPlayed;
 import io.github.temporalrift.game.action.domain.port.out.ActionEventPublisher;
 import io.github.temporalrift.game.action.infrastructure.adapter.out.kafka.producer.DefaultServiceEventsProducer;
+import io.github.temporalrift.game.shared.ActionRoundClosed;
 import io.github.temporalrift.game.shared.DomainEventEnvelope;
 
 /**

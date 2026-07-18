@@ -8,10 +8,6 @@ import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.Named;
 
-import io.github.temporalrift.game.session.EventsDrawn;
-import io.github.temporalrift.game.session.FactionAssigned;
-import io.github.temporalrift.game.session.GameEnded;
-import io.github.temporalrift.game.session.HandDealt;
 import io.github.temporalrift.game.session.domain.event.EraEnded;
 import io.github.temporalrift.game.session.domain.event.EraFailed;
 import io.github.temporalrift.game.session.domain.event.EraStarted;
@@ -61,6 +57,10 @@ import io.github.temporalrift.game.session.infrastructure.adapter.out.kafka.mode
 import io.github.temporalrift.game.session.infrastructure.adapter.out.kafka.model.TimelineStabilizedPayload;
 import io.github.temporalrift.game.session.infrastructure.adapter.out.kafka.model.TimelineStabilizedPlayerFactionResult;
 import io.github.temporalrift.game.session.infrastructure.adapter.out.kafka.model.WinConditionMetPayload;
+import io.github.temporalrift.game.shared.EventsDrawn;
+import io.github.temporalrift.game.shared.FactionAssigned;
+import io.github.temporalrift.game.shared.GameEnded;
+import io.github.temporalrift.game.shared.HandDealt;
 
 @Mapper(componentModel = "spring")
 interface SessionEventWireMapper {

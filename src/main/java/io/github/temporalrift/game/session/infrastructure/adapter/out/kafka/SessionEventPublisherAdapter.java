@@ -8,10 +8,6 @@ import org.springframework.messaging.MessageHeaders;
 import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.stereotype.Component;
 
-import io.github.temporalrift.game.session.EventsDrawn;
-import io.github.temporalrift.game.session.FactionAssigned;
-import io.github.temporalrift.game.session.GameEnded;
-import io.github.temporalrift.game.session.HandDealt;
 import io.github.temporalrift.game.session.domain.event.EraEnded;
 import io.github.temporalrift.game.session.domain.event.EraFailed;
 import io.github.temporalrift.game.session.domain.event.EraStarted;
@@ -35,6 +31,10 @@ import io.github.temporalrift.game.session.domain.event.WinConditionMet;
 import io.github.temporalrift.game.session.domain.port.out.SessionEventPublisher;
 import io.github.temporalrift.game.session.infrastructure.adapter.out.kafka.producer.DefaultServiceEventsProducer;
 import io.github.temporalrift.game.shared.DomainEventEnvelope;
+import io.github.temporalrift.game.shared.EventsDrawn;
+import io.github.temporalrift.game.shared.FactionAssigned;
+import io.github.temporalrift.game.shared.GameEnded;
+import io.github.temporalrift.game.shared.HandDealt;
 
 /**
  * Driven adapter that fulfils the {@link SessionEventPublisher} port.

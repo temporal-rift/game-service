@@ -19,9 +19,9 @@ import io.github.temporalrift.game.TestcontainersConfiguration;
 import io.github.temporalrift.game.scoring.domain.context.EraScoringContextNotFoundException;
 import io.github.temporalrift.game.scoring.domain.context.PlayerFaction;
 import io.github.temporalrift.game.scoring.domain.port.out.EraScoringContextRepository;
-import io.github.temporalrift.game.session.EventsDrawn;
-import io.github.temporalrift.game.session.FactionAssigned;
+import io.github.temporalrift.game.shared.EventsDrawn;
 import io.github.temporalrift.game.shared.Faction;
+import io.github.temporalrift.game.shared.FactionAssigned;
 
 @SpringBootTest
 @Import(TestcontainersConfiguration.class)

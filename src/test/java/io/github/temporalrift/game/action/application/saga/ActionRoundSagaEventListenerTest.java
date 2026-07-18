@@ -13,12 +13,12 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import io.github.temporalrift.game.action.StartActionRoundRequested;
 import io.github.temporalrift.game.action.domain.event.CardPlayed;
 import io.github.temporalrift.game.action.domain.event.SpecialActionPlayed;
 import io.github.temporalrift.game.shared.CardType;
 import io.github.temporalrift.game.shared.Faction;
 import io.github.temporalrift.game.shared.SpecialAction;
+import io.github.temporalrift.game.shared.StartActionRoundRequested;
 
 @ExtendWith(MockitoExtension.class)
 class ActionRoundSagaEventListenerTest {
