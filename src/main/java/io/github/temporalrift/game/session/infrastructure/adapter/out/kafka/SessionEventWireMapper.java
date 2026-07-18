@@ -8,8 +8,10 @@ import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.Named;
 
+import io.github.temporalrift.game.session.EventsDrawn;
 import io.github.temporalrift.game.session.FactionAssigned;
 import io.github.temporalrift.game.session.GameEnded;
+import io.github.temporalrift.game.session.HandDealt;
 import io.github.temporalrift.game.session.domain.event.EraEnded;
 import io.github.temporalrift.game.session.domain.event.EraFailed;
 import io.github.temporalrift.game.session.domain.event.EraStarted;
@@ -32,6 +34,9 @@ import io.github.temporalrift.game.session.domain.event.WinConditionMet;
 import io.github.temporalrift.game.session.infrastructure.adapter.out.kafka.model.EraEndedPayload;
 import io.github.temporalrift.game.session.infrastructure.adapter.out.kafka.model.EraFailedPayload;
 import io.github.temporalrift.game.session.infrastructure.adapter.out.kafka.model.EraStartedPayload;
+import io.github.temporalrift.game.session.infrastructure.adapter.out.kafka.model.EventsDrawnFutureEvent;
+import io.github.temporalrift.game.session.infrastructure.adapter.out.kafka.model.EventsDrawnOutcome;
+import io.github.temporalrift.game.session.infrastructure.adapter.out.kafka.model.EventsDrawnPayload;
 import io.github.temporalrift.game.session.infrastructure.adapter.out.kafka.model.FactionAssignedPayload;
 import io.github.temporalrift.game.session.infrastructure.adapter.out.kafka.model.FactionRevealedPayload;
 import io.github.temporalrift.game.session.infrastructure.adapter.out.kafka.model.FactionRevealedPlayerFactionResult;
@@ -42,6 +47,8 @@ import io.github.temporalrift.game.session.infrastructure.adapter.out.kafka.mode
 import io.github.temporalrift.game.session.infrastructure.adapter.out.kafka.model.GameStartCancelledPayload;
 import io.github.temporalrift.game.session.infrastructure.adapter.out.kafka.model.GameStartFailedPayload;
 import io.github.temporalrift.game.session.infrastructure.adapter.out.kafka.model.GameStartedPayload;
+import io.github.temporalrift.game.session.infrastructure.adapter.out.kafka.model.HandDealtCardInstance;
+import io.github.temporalrift.game.session.infrastructure.adapter.out.kafka.model.HandDealtPayload;
 import io.github.temporalrift.game.session.infrastructure.adapter.out.kafka.model.HostTransferredPayload;
 import io.github.temporalrift.game.session.infrastructure.adapter.out.kafka.model.LobbyClosedPayload;
 import io.github.temporalrift.game.session.infrastructure.adapter.out.kafka.model.LobbyCreatedPayload;
@@ -109,8 +116,15 @@ interface SessionEventWireMapper {
 
     FactionRevealedPlayerFactionResult toWire(FactionRevealed.PlayerFactionResult result);
 
-    // EventsDrawn/HandDealt aren't wired here yet - their apis spec entry (moved to session-event in
-    // apis PR #4) hasn't been published to Maven Central. Still on the EventEnvelope path until then.
+    EventsDrawnPayload toWire(EventsDrawn event);
+
+    EventsDrawnFutureEvent toWire(EventsDrawn.FutureEvent event);
+
+    EventsDrawnOutcome toWire(EventsDrawn.Outcome outcome);
+
+    HandDealtPayload toWire(HandDealt event);
+
+    HandDealtCardInstance toWire(HandDealt.CardInstance cardInstance);
 
     @Named("toOffsetDateTime")
     default OffsetDateTime toOffsetDateTime(Instant instant) {

@@ -68,6 +68,10 @@ class ParadoxCascadedKafkaConsumer {
     @KafkaListener(topics = "timeline.events", groupId = "game-service.session.paradox-cascaded")
     @Transactional(propagation = REQUIRES_NEW)
     public void handle(InboundEnvelope envelope) {
+        if (envelope.eventId() == null || envelope.payload() == null) {
+            log.warn("Malformed envelope on timeline.events (missing eventId or payload) — discarding");
+            return;
+        }
         if (!EVENT_TYPE.equals(envelope.eventType())) {
             return;
         }

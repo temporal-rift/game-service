@@ -58,7 +58,11 @@ class TimelineScoringKafkaConsumer {
     @KafkaListener(topics = "timeline.events", groupId = "game-service.scoring.timeline-events")
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void handle(InboundEnvelope envelope) {
-        if (!SUPPORTED_EVENT_TYPES.contains(envelope.eventType())) {
+        if (envelope.eventId() == null || envelope.payload() == null) {
+            log.warn("Malformed envelope on timeline.events (missing eventId or payload) — discarding");
+            return;
+        }
+        if (envelope.eventType() == null || !SUPPORTED_EVENT_TYPES.contains(envelope.eventType())) {
             return;
         }
         // Check version before claiming: claiming an unsupported version would permanently mark the
