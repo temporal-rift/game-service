@@ -29,6 +29,7 @@ import io.github.temporalrift.game.action.domain.actionround.DuplicateSubmission
 import io.github.temporalrift.game.action.domain.actionround.FactionRequiredException;
 import io.github.temporalrift.game.action.domain.actionround.JammedPlayerException;
 import io.github.temporalrift.game.action.domain.actionround.RoundNotFoundException;
+import io.github.temporalrift.game.action.domain.event.SpecialActionPlayed;
 import io.github.temporalrift.game.action.domain.playerstate.PlayerState;
 import io.github.temporalrift.game.action.domain.playerstate.PlayerStateNotFoundException;
 import io.github.temporalrift.game.action.domain.port.out.ActionEventPublisher;
@@ -80,7 +81,7 @@ class PlaySpecialActionCommandHandlerTest {
                 .willReturn(false);
         given(round.id()).willReturn(UUID.randomUUID());
         given(round.gameId()).willReturn(GAME_ID);
-        given(round.pullEvents()).willReturn(List.of(new Object()));
+        given(round.pullEvents()).willReturn(List.of(specialActionPlayedEvent()));
 
         // when
         var result = handler.handle(command);
@@ -112,7 +113,7 @@ class PlaySpecialActionCommandHandlerTest {
                 .willReturn(true);
         given(round.id()).willReturn(UUID.randomUUID());
         given(round.gameId()).willReturn(GAME_ID);
-        given(round.pullEvents()).willReturn(List.of(new Object()));
+        given(round.pullEvents()).willReturn(List.of(specialActionPlayedEvent()));
 
         // when
         var result = handler.handle(command);
@@ -239,7 +240,7 @@ class PlaySpecialActionCommandHandlerTest {
                 .willReturn(false);
         given(round.id()).willReturn(UUID.randomUUID());
         given(round.gameId()).willReturn(GAME_ID);
-        given(round.pullEvents()).willReturn(List.of(new Object()));
+        given(round.pullEvents()).willReturn(List.of(specialActionPlayedEvent()));
 
         // when
         handler.handle(command);
@@ -255,5 +256,18 @@ class PlaySpecialActionCommandHandlerTest {
                         isNull(),
                         any(),
                         eq(false));
+    }
+
+    private static SpecialActionPlayed specialActionPlayedEvent() {
+        return new SpecialActionPlayed(
+                GAME_ID,
+                ERA,
+                ROUND,
+                PLAYER_ID,
+                Faction.ERASERS,
+                SpecialAction.ANNIHILATE,
+                UUID.randomUUID(),
+                null,
+                null);
     }
 }
