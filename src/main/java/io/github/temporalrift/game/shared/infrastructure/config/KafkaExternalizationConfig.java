@@ -29,7 +29,9 @@ import org.springframework.modulith.events.RoutingTarget;
  * binding property cannot be defaulted globally, so the topic is pinned here rather than configured per
  * generated binding. The gameId partition key is applied by the binder via
  * {@code spring.cloud.stream.kafka.default.producer.messageKeyExpression=headers['gameId']}, so the
- * routing target needs no key.
+ * routing target needs no key. Serialized externalization preserves publication order only within a
+ * single service instance; ordering across replicas requires a separate single-writer or ownership
+ * guarantee.
  */
 @Configuration
 @EnableSpringCloudStreamEventExternalization
@@ -51,6 +53,7 @@ class KafkaExternalizationConfig {
                 .route(
                         Message.class,
                         message -> RoutingTarget.forTarget(GAME_EVENTS_TOPIC).withoutKey())
+                .serializeExternalization(true)
                 .build();
     }
 
