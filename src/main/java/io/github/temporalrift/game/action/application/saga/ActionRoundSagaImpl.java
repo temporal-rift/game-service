@@ -13,10 +13,10 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import io.github.temporalrift.game.action.application.ActionRoundEventPublication;
 import io.github.temporalrift.game.action.domain.actionround.ActionRound;
 import io.github.temporalrift.game.action.domain.actionround.CloseOutcome;
 import io.github.temporalrift.game.action.domain.actionround.SubmittedAction;
-import io.github.temporalrift.game.action.domain.event.ActionEventPayload;
 import io.github.temporalrift.game.action.domain.event.ActionRoundTimerExpired;
 import io.github.temporalrift.game.action.domain.event.BandedProbabilityPublished;
 import io.github.temporalrift.game.action.domain.event.RoundSummaryPublished;
@@ -26,7 +26,6 @@ import io.github.temporalrift.game.action.domain.port.out.ActionRoundRepository;
 import io.github.temporalrift.game.action.domain.port.out.FutureEventDefinitionPort;
 import io.github.temporalrift.game.action.domain.port.out.PlayerStateRepository;
 import io.github.temporalrift.game.action.domain.saga.ActionRoundSagaStatus;
-import io.github.temporalrift.game.shared.ActionRoundClosed;
 import io.github.temporalrift.game.shared.DomainEventEnvelope;
 import io.github.temporalrift.game.shared.GameRulesPort;
 
@@ -74,7 +73,7 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
         stateManager.initWaiting(sagaId, gameId, eraNumber, roundNumber, playerIds, timerExpiresAt);
         var round = new ActionRound(UUID.randomUUID(), gameId, eraNumber, roundNumber, playerIds, timerSeconds);
         actionRoundRepository.save(round);
-        publishRoundDomainEvents(round);
+        ActionRoundEventPublication.publish(round, actionEventPublisher);
         return new StartResult(sagaId, timerExpiresAt);
     }
 
@@ -135,7 +134,7 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
                 }
 
                 actionRoundRepository.save(round);
-                publishRoundDomainEvents(round);
+                ActionRoundEventPublication.publish(round, actionEventPublisher);
 
                 publishRoundSummary(round, gameId, eraNumber, roundNumber, skippedPlayerIds);
 
@@ -149,28 +148,6 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
                 // database sweep still closes the round at expiry.
                 timerRegistry.cancel(sagaId);
             }
-        }
-    }
-
-    private void publishRoundDomainEvents(ActionRound round) {
-        // The aggregate is the single source of truth for CardPlayed, SpecialActionPlayed,
-        // ActionRoundStarted, PlayerSkipped, and ActionRoundClosed. Re-publishing those payloads from
-        // application code would duplicate logic and eventually drift from aggregate behavior.
-        for (var payload : round.pullEvents()) {
-            publishEvent(round, payload);
-            actionEventPublisher.publishInternally(payload);
-        }
-    }
-
-    private void publishEvent(ActionRound round, Object payload) {
-        switch (payload) {
-            case ActionEventPayload actionEvent ->
-                actionEventPublisher.publish(DomainEventEnvelope.create(
-                        round.id(), ActionRound.AGGREGATE_TYPE, round.gameId(), 1, actionEvent));
-            case ActionRoundClosed roundClosed ->
-                actionEventPublisher.publishRoundClosed(DomainEventEnvelope.create(
-                        round.id(), ActionRound.AGGREGATE_TYPE, round.gameId(), 1, roundClosed));
-            default -> throw new IllegalStateException("Unsupported action aggregate event: " + payload.getClass());
         }
     }
 
