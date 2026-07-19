@@ -16,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 import io.github.temporalrift.game.action.domain.actionround.ActionRound;
 import io.github.temporalrift.game.action.domain.actionround.CloseOutcome;
 import io.github.temporalrift.game.action.domain.actionround.SubmittedAction;
+import io.github.temporalrift.game.action.domain.event.ActionEventPayload;
 import io.github.temporalrift.game.action.domain.event.ActionRoundTimerExpired;
 import io.github.temporalrift.game.action.domain.event.BandedProbabilityPublished;
 import io.github.temporalrift.game.action.domain.event.RoundSummaryPublished;
@@ -25,6 +26,7 @@ import io.github.temporalrift.game.action.domain.port.out.ActionRoundRepository;
 import io.github.temporalrift.game.action.domain.port.out.FutureEventDefinitionPort;
 import io.github.temporalrift.game.action.domain.port.out.PlayerStateRepository;
 import io.github.temporalrift.game.action.domain.saga.ActionRoundSagaStatus;
+import io.github.temporalrift.game.shared.ActionRoundClosed;
 import io.github.temporalrift.game.shared.DomainEventEnvelope;
 import io.github.temporalrift.game.shared.GameRulesPort;
 
@@ -155,9 +157,20 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
         // ActionRoundStarted, PlayerSkipped, and ActionRoundClosed. Re-publishing those payloads from
         // application code would duplicate logic and eventually drift from aggregate behavior.
         for (var payload : round.pullEvents()) {
-            actionEventPublisher.publish(
-                    DomainEventEnvelope.create(round.id(), ActionRound.AGGREGATE_TYPE, round.gameId(), 1, payload));
+            publishEvent(round, payload);
             actionEventPublisher.publishInternally(payload);
+        }
+    }
+
+    private void publishEvent(ActionRound round, Object payload) {
+        switch (payload) {
+            case ActionEventPayload actionEvent ->
+                actionEventPublisher.publish(DomainEventEnvelope.create(
+                        round.id(), ActionRound.AGGREGATE_TYPE, round.gameId(), 1, actionEvent));
+            case ActionRoundClosed roundClosed ->
+                actionEventPublisher.publishRoundClosed(DomainEventEnvelope.create(
+                        round.id(), ActionRound.AGGREGATE_TYPE, round.gameId(), 1, roundClosed));
+            default -> throw new IllegalStateException("Unsupported action aggregate event: " + payload.getClass());
         }
     }
 

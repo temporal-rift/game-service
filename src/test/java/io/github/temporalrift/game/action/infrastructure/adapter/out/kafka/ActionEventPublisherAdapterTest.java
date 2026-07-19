@@ -1,6 +1,5 @@
 package io.github.temporalrift.game.action.infrastructure.adapter.out.kafka;
 
-import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
@@ -16,6 +15,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 
+import io.github.temporalrift.game.action.domain.event.ActionEventPayload;
 import io.github.temporalrift.game.action.domain.event.ActionRoundStarted;
 import io.github.temporalrift.game.action.domain.event.ActionRoundTimerExpired;
 import io.github.temporalrift.game.action.domain.event.BandedProbabilityPublished;
@@ -57,7 +57,7 @@ class ActionEventPublisherAdapterTest {
         given(mapper.toWire(payload)).willReturn(wirePayload);
 
         // when
-        adapter.publish(envelope);
+        adapter.publishRoundClosed(envelope);
 
         // then
         then(producer)
@@ -130,20 +130,6 @@ class ActionEventPublisherAdapterTest {
     }
 
     @Test
-    @DisplayName("publish rejects an unrecognized event type instead of silently dropping it")
-    void publish_unrecognizedEvent_throws() {
-        // given
-        var adapter = new ActionEventPublisherAdapter(applicationEventPublisher, producer, mapper);
-        var aggregateId = UUID.randomUUID();
-        var gameId = UUID.randomUUID();
-        record UnrecognizedEvent(UUID gameId) {}
-        var envelope = DomainEventEnvelope.create(aggregateId, "ActionRound", gameId, 1, new UnrecognizedEvent(gameId));
-
-        // when / then
-        assertThatIllegalArgumentException().isThrownBy(() -> adapter.publish(envelope));
-    }
-
-    @Test
     @DisplayName("publishInternally delegates the payload to Spring application events")
     void publishInternally_delegatesPayload() {
         // given
@@ -157,7 +143,7 @@ class ActionEventPublisherAdapterTest {
         then(applicationEventPublisher).should().publishEvent(payload);
     }
 
-    private static DomainEventEnvelope envelope(UUID gameId, Object payload) {
+    private static DomainEventEnvelope<ActionEventPayload> envelope(UUID gameId, ActionEventPayload payload) {
         return DomainEventEnvelope.create(UUID.randomUUID(), "ActionRound", gameId, 1, payload);
     }
 }

@@ -14,4 +14,5 @@ public record SpecialActionPlayed(
         SpecialAction specialAction,
         UUID targetEventId,
         UUID targetOutcomeId,
-        UUID targetPlayerId) {}
+        UUID targetPlayerId)
+        implements ActionEventPayload {}

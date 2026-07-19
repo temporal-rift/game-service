@@ -5,6 +5,7 @@ import java.util.HashMap;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 
+import io.github.temporalrift.game.action.domain.event.ActionEventPayload;
 import io.github.temporalrift.game.action.domain.event.ActionRoundStarted;
 import io.github.temporalrift.game.action.domain.event.ActionRoundTimerExpired;
 import io.github.temporalrift.game.action.domain.event.BandedProbabilityPublished;
@@ -45,7 +46,7 @@ class ActionEventPublisherAdapter implements ActionEventPublisher {
     }
 
     @Override
-    public void publish(DomainEventEnvelope event) {
+    public void publish(DomainEventEnvelope<ActionEventPayload> event) {
         switch (event.payload()) {
             case ActionRoundStarted e ->
                 producer.publishActionRoundStarted(
@@ -66,10 +67,6 @@ class ActionEventPublisherAdapter implements ActionEventPublisher {
                 producer.publishPlayerSkipped(
                         mapper.toWire(e),
                         headers(new DefaultServiceEventsProducer.PlayerSkippedPayloadHeaders(), event));
-            case ActionRoundClosed e ->
-                producer.publishActionRoundClosed(
-                        mapper.toWire(e),
-                        headers(new DefaultServiceEventsProducer.ActionRoundClosedPayloadHeaders(), event));
             case RoundSummaryPublished e ->
                 producer.publishRoundSummaryPublished(
                         mapper.toWire(e),
@@ -78,13 +75,17 @@ class ActionEventPublisherAdapter implements ActionEventPublisher {
                 producer.publishBandedProbabilityPublished(
                         mapper.toWire(e),
                         headers(new DefaultServiceEventsProducer.BandedProbabilityPublishedPayloadHeaders(), event));
-            default ->
-                throw new IllegalArgumentException(
-                        "Unsupported action event payload: " + event.payload().getClass());
         }
     }
 
-    private static <H extends HashMap<String, Object>> H headers(H headers, DomainEventEnvelope event) {
+    @Override
+    public void publishRoundClosed(DomainEventEnvelope<ActionRoundClosed> event) {
+        producer.publishActionRoundClosed(
+                mapper.toWire(event.payload()),
+                headers(new DefaultServiceEventsProducer.ActionRoundClosedPayloadHeaders(), event));
+    }
+
+    private static <H extends HashMap<String, Object>> H headers(H headers, DomainEventEnvelope<?> event) {
         headers.put("eventId", event.eventId().toString());
         headers.put("aggregateId", event.aggregateId().toString());
         headers.put("aggregateType", event.aggregateType());

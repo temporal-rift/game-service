@@ -1,5 +1,7 @@
 package io.github.temporalrift.game.action.domain.port.out;
 
+import io.github.temporalrift.game.action.domain.event.ActionEventPayload;
+import io.github.temporalrift.game.shared.ActionRoundClosed;
 import io.github.temporalrift.game.shared.DomainEventEnvelope;
 
 /**
@@ -13,7 +15,12 @@ public interface ActionEventPublisher {
     /**
      * Publishes the Kafka/outbox representation of an action event.
      */
-    void publish(DomainEventEnvelope envelope);
+    void publish(DomainEventEnvelope<ActionEventPayload> envelope);
+
+    /**
+     * Publishes the shared action-round completion event used by the session module.
+     */
+    void publishRoundClosed(DomainEventEnvelope<ActionRoundClosed> envelope);
 
     /**
      * Publishes the typed payload for in-process listeners inside the Modulith.

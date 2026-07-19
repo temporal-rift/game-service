@@ -8,10 +8,12 @@ import io.github.temporalrift.game.action.application.port.in.PlaySpecialActionU
 import io.github.temporalrift.game.action.domain.actionround.ActionRound;
 import io.github.temporalrift.game.action.domain.actionround.FactionRequiredException;
 import io.github.temporalrift.game.action.domain.actionround.RoundNotFoundException;
+import io.github.temporalrift.game.action.domain.event.ActionEventPayload;
 import io.github.temporalrift.game.action.domain.playerstate.PlayerStateNotFoundException;
 import io.github.temporalrift.game.action.domain.port.out.ActionEventPublisher;
 import io.github.temporalrift.game.action.domain.port.out.ActionRoundRepository;
 import io.github.temporalrift.game.action.domain.port.out.PlayerStateRepository;
+import io.github.temporalrift.game.shared.ActionRoundClosed;
 import io.github.temporalrift.game.shared.DomainEventEnvelope;
 
 @Service
@@ -67,9 +69,20 @@ class PlaySpecialActionCommandHandler implements PlaySpecialActionUseCase {
         // Special submissions follow the same dual-publish rule as card submissions so the saga can
         // react internally without bypassing the external event contract.
         for (var payload : round.pullEvents()) {
-            actionEventPublisher.publish(
-                    DomainEventEnvelope.create(round.id(), ActionRound.AGGREGATE_TYPE, round.gameId(), 1, payload));
+            publishEvent(round, payload);
             actionEventPublisher.publishInternally(payload);
+        }
+    }
+
+    private void publishEvent(ActionRound round, Object payload) {
+        switch (payload) {
+            case ActionEventPayload actionEvent ->
+                actionEventPublisher.publish(DomainEventEnvelope.create(
+                        round.id(), ActionRound.AGGREGATE_TYPE, round.gameId(), 1, actionEvent));
+            case ActionRoundClosed roundClosed ->
+                actionEventPublisher.publishRoundClosed(DomainEventEnvelope.create(
+                        round.id(), ActionRound.AGGREGATE_TYPE, round.gameId(), 1, roundClosed));
+            default -> throw new IllegalStateException("Unsupported action aggregate event: " + payload.getClass());
         }
     }
 }

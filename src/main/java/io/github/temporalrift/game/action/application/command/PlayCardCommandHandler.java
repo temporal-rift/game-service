@@ -8,11 +8,13 @@ import io.github.temporalrift.game.action.application.port.in.PlayCardUseCase;
 import io.github.temporalrift.game.action.domain.CardNotInHandException;
 import io.github.temporalrift.game.action.domain.actionround.ActionRound;
 import io.github.temporalrift.game.action.domain.actionround.RoundNotFoundException;
+import io.github.temporalrift.game.action.domain.event.ActionEventPayload;
 import io.github.temporalrift.game.action.domain.playerstate.PlayerState;
 import io.github.temporalrift.game.action.domain.playerstate.PlayerStateNotFoundException;
 import io.github.temporalrift.game.action.domain.port.out.ActionEventPublisher;
 import io.github.temporalrift.game.action.domain.port.out.ActionRoundRepository;
 import io.github.temporalrift.game.action.domain.port.out.PlayerStateRepository;
+import io.github.temporalrift.game.shared.ActionRoundClosed;
 import io.github.temporalrift.game.shared.DomainEventEnvelope;
 
 @Service
@@ -73,9 +75,20 @@ class PlayCardCommandHandler implements PlayCardUseCase {
         // Card submissions need both publication paths: the outbox envelope for cross-service delivery
         // and the typed payload for the in-process action-round saga listener.
         for (var payload : round.pullEvents()) {
-            actionEventPublisher.publish(
-                    DomainEventEnvelope.create(round.id(), ActionRound.AGGREGATE_TYPE, round.gameId(), 1, payload));
+            publishEvent(round, payload);
             actionEventPublisher.publishInternally(payload);
+        }
+    }
+
+    private void publishEvent(ActionRound round, Object payload) {
+        switch (payload) {
+            case ActionEventPayload actionEvent ->
+                actionEventPublisher.publish(DomainEventEnvelope.create(
+                        round.id(), ActionRound.AGGREGATE_TYPE, round.gameId(), 1, actionEvent));
+            case ActionRoundClosed roundClosed ->
+                actionEventPublisher.publishRoundClosed(DomainEventEnvelope.create(
+                        round.id(), ActionRound.AGGREGATE_TYPE, round.gameId(), 1, roundClosed));
+            default -> throw new IllegalStateException("Unsupported action aggregate event: " + payload.getClass());
         }
     }
 }

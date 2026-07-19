@@ -13,4 +13,5 @@ public record CardPlayed(
         CardType cardType,
         UUID targetEventId,
         UUID sourceOutcomeId,
-        UUID targetOutcomeId) {}
+        UUID targetOutcomeId)
+        implements ActionEventPayload {}

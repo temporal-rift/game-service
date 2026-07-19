@@ -5,7 +5,8 @@ import java.util.UUID;
 
 import io.github.temporalrift.game.shared.ProbabilityBand;
 
-public record BandedProbabilityPublished(UUID gameId, int eraNumber, List<EventBandState> eventStates) {
+public record BandedProbabilityPublished(UUID gameId, int eraNumber, List<EventBandState> eventStates)
+        implements ActionEventPayload {
 
     public record EventBandState(UUID eventId, List<OutcomeBandState> outcomes) {}
 
