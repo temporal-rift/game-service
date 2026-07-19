@@ -29,6 +29,7 @@ import io.github.temporalrift.game.action.domain.actionround.ActionRound;
 import io.github.temporalrift.game.action.domain.actionround.ActionRoundClosedException;
 import io.github.temporalrift.game.action.domain.actionround.DuplicateSubmissionException;
 import io.github.temporalrift.game.action.domain.actionround.RoundNotFoundException;
+import io.github.temporalrift.game.action.domain.event.CardPlayed;
 import io.github.temporalrift.game.action.domain.playerstate.PlayerState;
 import io.github.temporalrift.game.action.domain.playerstate.PlayerStateNotFoundException;
 import io.github.temporalrift.game.action.domain.port.out.ActionEventPublisher;
@@ -79,7 +80,7 @@ class PlayCardCommandHandlerTest {
                 .willReturn(false);
         given(round.id()).willReturn(UUID.randomUUID());
         given(round.gameId()).willReturn(GAME_ID);
-        given(round.pullEvents()).willReturn(List.of(new Object()));
+        given(round.pullEvents()).willReturn(List.of(cardPlayedEvent()));
 
         // when
         var result = handler.handle(command);
@@ -110,7 +111,7 @@ class PlayCardCommandHandlerTest {
                 .willReturn(true);
         given(round.id()).willReturn(UUID.randomUUID());
         given(round.gameId()).willReturn(GAME_ID);
-        given(round.pullEvents()).willReturn(List.of(new Object()));
+        given(round.pullEvents()).willReturn(List.of(cardPlayedEvent()));
 
         // when
         var result = handler.handle(command);
@@ -208,7 +209,7 @@ class PlayCardCommandHandlerTest {
                 .willReturn(false);
         given(round.id()).willReturn(UUID.randomUUID());
         given(round.gameId()).willReturn(GAME_ID);
-        given(round.pullEvents()).willReturn(List.of(new Object()));
+        given(round.pullEvents()).willReturn(List.of(cardPlayedEvent()));
         var command =
                 new PlayCardUseCase.Command(GAME_ID, ERA, ROUND, PLAYER_ID, c1.cardInstanceId(), null, null, null);
 
@@ -247,7 +248,7 @@ class PlayCardCommandHandlerTest {
                 .willReturn(false);
         given(round.id()).willReturn(UUID.randomUUID());
         given(round.gameId()).willReturn(GAME_ID);
-        given(round.pullEvents()).willReturn(List.of(new Object()));
+        given(round.pullEvents()).willReturn(List.of(cardPlayedEvent()));
 
         handler.handle(command);
 
@@ -261,5 +262,10 @@ class PlayCardCommandHandlerTest {
                         eq(sourceOutcomeId),
                         eq(targetOutcomeId),
                         anyList());
+    }
+
+    private static CardPlayed cardPlayedEvent() {
+        return new CardPlayed(
+                GAME_ID, ERA, ROUND, PLAYER_ID, UUID.randomUUID(), CardType.PUSH, UUID.randomUUID(), null, null);
     }
 }
