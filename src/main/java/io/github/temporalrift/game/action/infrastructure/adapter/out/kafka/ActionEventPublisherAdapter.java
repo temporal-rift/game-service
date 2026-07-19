@@ -1,7 +1,5 @@
 package io.github.temporalrift.game.action.infrastructure.adapter.out.kafka;
 
-import java.util.HashMap;
-
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 
@@ -17,6 +15,7 @@ import io.github.temporalrift.game.action.domain.port.out.ActionEventPublisher;
 import io.github.temporalrift.game.action.infrastructure.adapter.out.kafka.producer.DefaultServiceEventsProducer;
 import io.github.temporalrift.game.shared.ActionRoundClosed;
 import io.github.temporalrift.game.shared.DomainEventEnvelope;
+import io.github.temporalrift.game.shared.DomainEventHeaders;
 
 /**
  * Driven adapter that fulfils the {@link ActionEventPublisher} port.
@@ -51,30 +50,38 @@ class ActionEventPublisherAdapter implements ActionEventPublisher {
             case ActionRoundStarted e ->
                 producer.publishActionRoundStarted(
                         mapper.toWire(e),
-                        headers(new DefaultServiceEventsProducer.ActionRoundStartedPayloadHeaders(), event));
+                        DomainEventHeaders.populate(
+                                new DefaultServiceEventsProducer.ActionRoundStartedPayloadHeaders(), event));
             case CardPlayed e ->
                 producer.publishCardPlayed(
-                        mapper.toWire(e), headers(new DefaultServiceEventsProducer.CardPlayedPayloadHeaders(), event));
+                        mapper.toWire(e),
+                        DomainEventHeaders.populate(
+                                new DefaultServiceEventsProducer.CardPlayedPayloadHeaders(), event));
             case SpecialActionPlayed e ->
                 producer.publishSpecialActionPlayed(
                         mapper.toWire(e),
-                        headers(new DefaultServiceEventsProducer.SpecialActionPlayedPayloadHeaders(), event));
+                        DomainEventHeaders.populate(
+                                new DefaultServiceEventsProducer.SpecialActionPlayedPayloadHeaders(), event));
             case ActionRoundTimerExpired e ->
                 producer.publishActionRoundTimerExpired(
                         mapper.toWire(e),
-                        headers(new DefaultServiceEventsProducer.ActionRoundTimerExpiredPayloadHeaders(), event));
+                        DomainEventHeaders.populate(
+                                new DefaultServiceEventsProducer.ActionRoundTimerExpiredPayloadHeaders(), event));
             case PlayerSkipped e ->
                 producer.publishPlayerSkipped(
                         mapper.toWire(e),
-                        headers(new DefaultServiceEventsProducer.PlayerSkippedPayloadHeaders(), event));
+                        DomainEventHeaders.populate(
+                                new DefaultServiceEventsProducer.PlayerSkippedPayloadHeaders(), event));
             case RoundSummaryPublished e ->
                 producer.publishRoundSummaryPublished(
                         mapper.toWire(e),
-                        headers(new DefaultServiceEventsProducer.RoundSummaryPublishedPayloadHeaders(), event));
+                        DomainEventHeaders.populate(
+                                new DefaultServiceEventsProducer.RoundSummaryPublishedPayloadHeaders(), event));
             case BandedProbabilityPublished e ->
                 producer.publishBandedProbabilityPublished(
                         mapper.toWire(e),
-                        headers(new DefaultServiceEventsProducer.BandedProbabilityPublishedPayloadHeaders(), event));
+                        DomainEventHeaders.populate(
+                                new DefaultServiceEventsProducer.BandedProbabilityPublishedPayloadHeaders(), event));
         }
     }
 
@@ -82,17 +89,7 @@ class ActionEventPublisherAdapter implements ActionEventPublisher {
     public void publishRoundClosed(DomainEventEnvelope<ActionRoundClosed> event) {
         producer.publishActionRoundClosed(
                 mapper.toWire(event.payload()),
-                headers(new DefaultServiceEventsProducer.ActionRoundClosedPayloadHeaders(), event));
-    }
-
-    private static <H extends HashMap<String, Object>> H headers(H headers, DomainEventEnvelope<?> event) {
-        headers.put("eventId", event.eventId().toString());
-        headers.put("aggregateId", event.aggregateId().toString());
-        headers.put("aggregateType", event.aggregateType());
-        headers.put("gameId", event.gameId().toString());
-        headers.put("occurredAt", event.occurredAt());
-        headers.put("version", event.version());
-        return headers;
+                DomainEventHeaders.populate(new DefaultServiceEventsProducer.ActionRoundClosedPayloadHeaders(), event));
     }
 
     @Override
