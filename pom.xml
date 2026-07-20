@@ -323,7 +323,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-dependency-plugin</artifactId>
-                <version>3.8.1</version>
+                <version>3.11.0</version>
                 <executions>
                     <!-- Separate output dirs per module - session-event, action-event and scoring-event all
                          package their spec at the same internal path (asyncapi/asyncapi.yml), so a shared
