@@ -18,6 +18,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.listener.DeadLetterPublishingRecoverer;
+import org.springframework.test.context.ActiveProfiles;
 
 import io.github.temporalrift.game.TestcontainersConfiguration;
 
@@ -28,6 +29,7 @@ import io.github.temporalrift.game.TestcontainersConfiguration;
  * {@code TimelineEventsConsumerGroupsIT}.
  */
 @SpringBootTest
+@ActiveProfiles("test")
 @Import(TestcontainersConfiguration.class)
 class TimelineScoringDeadLetterIT {
 
