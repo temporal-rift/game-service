@@ -41,7 +41,7 @@ public class PlayerRateLimiter {
         return window.count().incrementAndGet() <= requestsPerMinute;
     }
 
-    @Scheduled(fixedDelayString = "#{@rateLimitProperties.cleanupInterval.toMillis()}")
+    @Scheduled(fixedDelayString = "${game.rate-limit.cleanup-interval}")
     void evictStaleWindows() {
         var cutoff = clock.millis() - WINDOW_MILLIS;
         windows.entrySet().removeIf(entry -> entry.getValue().windowStart() < cutoff);

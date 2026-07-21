@@ -8,10 +8,10 @@ import org.springframework.context.annotation.Import;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtException;
 
-import io.github.temporalrift.game.shared.infrastructure.config.PlayerRateLimiter;
+import io.github.temporalrift.game.shared.infrastructure.config.RateLimiterTestConfiguration;
 
 @TestConfiguration
-@Import(PlayerRateLimiter.class)
+@Import(RateLimiterTestConfiguration.class)
 public class TestSecurityConfig {
 
     @Bean

@@ -3,7 +3,6 @@ package io.github.temporalrift.game.session.infrastructure.adapter.in.rest;
 import java.util.UUID;
 
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.RestController;
 
 import io.github.temporalrift.game.session.application.port.in.CreateLobbyUseCase;
@@ -19,7 +18,7 @@ import io.github.temporalrift.game.session.infrastructure.adapter.in.rest.model.
 import io.github.temporalrift.game.session.infrastructure.adapter.in.rest.model.JoinLobbyResponse;
 import io.github.temporalrift.game.session.infrastructure.adapter.in.rest.model.PlayerInLobby;
 import io.github.temporalrift.game.session.infrastructure.adapter.in.rest.model.StartGameResponse;
-import io.github.temporalrift.game.shared.PlayerPrincipal;
+import io.github.temporalrift.game.shared.CurrentPlayer;
 
 @RestController
 class SessionController implements SessionApi {
@@ -46,7 +45,7 @@ class SessionController implements SessionApi {
     @Override
     public ResponseEntity<CreateLobbyResponse> createLobby(CreateLobbyRequest createLobbyRequest) {
         var result = createLobbyUseCase.handle(
-                new CreateLobbyUseCase.Command(callerPlayerId(), createLobbyRequest.getPlayerName()));
+                new CreateLobbyUseCase.Command(CurrentPlayer.id(), createLobbyRequest.getPlayerName()));
         return ResponseEntity.status(201)
                 .body(new CreateLobbyResponse(result.lobbyId(), result.hostPlayerId(), result.joinCode()));
     }
@@ -54,7 +53,7 @@ class SessionController implements SessionApi {
     @Override
     public ResponseEntity<JoinLobbyResponse> joinLobby(UUID lobbyId, JoinLobbyRequest joinLobbyRequest) {
         var result = joinLobbyUseCase.handle(
-                new JoinLobbyUseCase.Command(lobbyId, callerPlayerId(), joinLobbyRequest.getPlayerName()));
+                new JoinLobbyUseCase.Command(lobbyId, CurrentPlayer.id(), joinLobbyRequest.getPlayerName()));
         var players = result.currentPlayers().stream()
                 .map(p -> new PlayerInLobby(p.playerId(), p.playerName(), p.isHost()))
                 .toList();
@@ -63,19 +62,19 @@ class SessionController implements SessionApi {
 
     @Override
     public ResponseEntity<Void> leaveLobby(UUID lobbyId) {
-        leaveLobbyUseCase.handle(new LeaveLobbyUseCase.Command(lobbyId, callerPlayerId()));
+        leaveLobbyUseCase.handle(new LeaveLobbyUseCase.Command(lobbyId, CurrentPlayer.id()));
         return ResponseEntity.noContent().build();
     }
 
     @Override
     public ResponseEntity<StartGameResponse> startGame(UUID lobbyId) {
-        var result = startGameUseCase.handle(new StartGameUseCase.Command(lobbyId, callerPlayerId()));
+        var result = startGameUseCase.handle(new StartGameUseCase.Command(lobbyId, CurrentPlayer.id()));
         return ResponseEntity.status(202).body(new StartGameResponse(result.gameId()));
     }
 
     @Override
     public ResponseEntity<GameSummaryResponse> getGame(UUID gameId) {
-        var result = getGameStateUseCase.handle(new GetGameStateUseCase.Query(gameId, callerPlayerId()));
+        var result = getGameStateUseCase.handle(new GetGameStateUseCase.Query(gameId, CurrentPlayer.id()));
         var apiStatus =
                 switch (result.status()) {
                     case IN_PROGRESS -> GameStatus.IN_PROGRESS;
@@ -83,11 +82,5 @@ class SessionController implements SessionApi {
                 };
         return ResponseEntity.ok(new GameSummaryResponse(
                 result.gameId(), apiStatus, result.eraNumber(), result.playerCount(), result.cascadedParadoxCount()));
-    }
-
-    private UUID callerPlayerId() {
-        return ((PlayerPrincipal)
-                        SecurityContextHolder.getContext().getAuthentication().getPrincipal())
-                .playerId();
     }
 }

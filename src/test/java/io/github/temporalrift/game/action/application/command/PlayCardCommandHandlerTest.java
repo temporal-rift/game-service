@@ -11,6 +11,7 @@ import static org.mockito.BDDMockito.then;
 import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.never;
 
+import java.time.Clock;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -21,6 +22,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import io.github.temporalrift.game.action.application.ActionTargetValidator;
@@ -66,6 +68,9 @@ class PlayCardCommandHandlerTest {
 
     @Mock
     ActionTargetValidator actionTargetValidator;
+
+    @Spy
+    Clock clock = Clock.systemUTC();
 
     @InjectMocks
     PlayCardCommandHandler handler;

@@ -3,6 +3,7 @@ package io.github.temporalrift.game.session.application.saga;
 import static org.springframework.transaction.annotation.Propagation.REQUIRES_NEW;
 
 import java.security.SecureRandom;
+import java.time.Clock;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -47,6 +48,7 @@ class StartGameSagaImpl implements StartGameSaga {
     private final StartGameSagaCompensator compensator;
     private final FutureEventCatalogPort futureEventCatalog;
     private final SecureRandom random;
+    private final Clock clock;
 
     StartGameSagaImpl(
             LobbyRepository lobbyRepository,
@@ -55,7 +57,8 @@ class StartGameSagaImpl implements StartGameSaga {
             ApplicationEventPublisher applicationEventPublisher,
             StartGameSagaStateManager stateManager,
             StartGameSagaCompensator compensator,
-            FutureEventCatalogPort futureEventCatalog) {
+            FutureEventCatalogPort futureEventCatalog,
+            Clock clock) {
         this.lobbyRepository = lobbyRepository;
         this.gameRepository = gameRepository;
         this.eventPublisher = eventPublisher;
@@ -64,6 +67,7 @@ class StartGameSagaImpl implements StartGameSaga {
         this.compensator = compensator;
         this.futureEventCatalog = futureEventCatalog;
         this.random = new SecureRandom();
+        this.clock = clock;
     }
 
     @Override
@@ -130,8 +134,13 @@ class StartGameSagaImpl implements StartGameSaga {
         assignments.forEach(a -> {
             var factionAssigned =
                     new FactionAssigned(gameId, a.playerId(), a.faction().name());
-            eventPublisher.publish(
-                    DomainEventEnvelope.create(lobby.id(), Lobby.AGGREGATE_TYPE, gameId, 1, factionAssigned));
+            eventPublisher.publish(DomainEventEnvelope.create(
+                    lobby.id(),
+                    Lobby.AGGREGATE_TYPE,
+                    gameId,
+                    DomainEventEnvelope.SCHEMA_VERSION_V1,
+                    factionAssigned,
+                    clock));
             applicationEventPublisher.publishEvent(factionAssigned);
         });
     }
@@ -139,7 +148,12 @@ class StartGameSagaImpl implements StartGameSaga {
     private void createAndSaveGame(UUID gameId, Lobby lobby, List<FactionAssignment> assignments) {
         var factionNames = assignments.stream().map(a -> a.faction().name()).toList();
         eventPublisher.publish(DomainEventEnvelope.create(
-                lobby.id(), Lobby.AGGREGATE_TYPE, gameId, 1, new FactionsDrawn(gameId, lobby.id(), factionNames)));
+                lobby.id(),
+                Lobby.AGGREGATE_TYPE,
+                gameId,
+                DomainEventEnvelope.SCHEMA_VERSION_V1,
+                new FactionsDrawn(gameId, lobby.id(), factionNames),
+                clock));
 
         lobby.start();
         lobbyRepository.save(lobby);
@@ -154,11 +168,13 @@ class StartGameSagaImpl implements StartGameSaga {
                 lobby.id(),
                 Lobby.AGGREGATE_TYPE,
                 gameId,
-                1,
-                new GameStarted(gameId, lobby.id(), playerIds, assignments.size(), gameDeck.size())));
+                DomainEventEnvelope.SCHEMA_VERSION_V1,
+                new GameStarted(gameId, lobby.id(), playerIds, assignments.size(), gameDeck.size()),
+                clock));
 
         var eraStarted = new EraStarted(gameId, 1, List.of(), playerIds);
-        eventPublisher.publish(DomainEventEnvelope.create(game.id(), Game.AGGREGATE_TYPE, gameId, 1, eraStarted));
+        eventPublisher.publish(DomainEventEnvelope.create(
+                game.id(), Game.AGGREGATE_TYPE, gameId, DomainEventEnvelope.SCHEMA_VERSION_V1, eraStarted, clock));
         applicationEventPublisher.publishEvent(eraStarted);
     }
 

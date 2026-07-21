@@ -1,5 +1,6 @@
 package io.github.temporalrift.game.scoring.application.command;
 
+import java.time.Clock;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -28,18 +29,21 @@ public class UpdateScoresCommandHandler {
     private final EraScoreEvaluator eraScoreEvaluator;
     private final ScoringEventPublisher scoringEventPublisher;
     private final ApplicationEventPublisher applicationEventPublisher;
+    private final Clock clock;
 
     public UpdateScoresCommandHandler(
             PlayerScoreRepository playerScoreRepository,
             EraScoringContextRepository contextRepository,
             EraScoreEvaluator eraScoreEvaluator,
             ScoringEventPublisher scoringEventPublisher,
-            ApplicationEventPublisher applicationEventPublisher) {
+            ApplicationEventPublisher applicationEventPublisher,
+            Clock clock) {
         this.playerScoreRepository = Objects.requireNonNull(playerScoreRepository);
         this.contextRepository = Objects.requireNonNull(contextRepository);
         this.eraScoreEvaluator = Objects.requireNonNull(eraScoreEvaluator);
         this.scoringEventPublisher = Objects.requireNonNull(scoringEventPublisher);
         this.applicationEventPublisher = Objects.requireNonNull(applicationEventPublisher);
+        this.clock = Objects.requireNonNull(clock);
     }
 
     public void handle(UpdateEraScoresCommand command) {
@@ -83,7 +87,12 @@ public class UpdateScoresCommandHandler {
         var scoresUpdated = new ScoresUpdated(command.gameId(), command.eraNumber(), updates);
 
         scoringEventPublisher.publish(DomainEventEnvelope.create(
-                command.gameId(), PlayerScore.AGGREGATE_TYPE, command.gameId(), 1, scoresUpdated));
+                command.gameId(),
+                PlayerScore.AGGREGATE_TYPE,
+                command.gameId(),
+                DomainEventEnvelope.SCHEMA_VERSION_V1,
+                scoresUpdated,
+                clock));
         applicationEventPublisher.publishEvent(scoresUpdated);
     }
 

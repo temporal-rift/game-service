@@ -61,8 +61,8 @@ class ScoringEventPublisherAdapterTest {
         var adapter = new ScoringEventPublisherAdapter(producer, mapper);
 
         assertThatIllegalArgumentException()
-                .isThrownBy(() -> adapter.publish(
-                        DomainEventEnvelope.create(UUID.randomUUID(), "Scoring", UUID.randomUUID(), 1, new Object())))
+                .isThrownBy(() -> adapter.publish(DomainEventEnvelope.create(
+                        UUID.randomUUID(), "Scoring", UUID.randomUUID(), 1, new Object(), java.time.Clock.systemUTC())))
                 .withMessageContaining("Unsupported scoring event payload");
         then(producer).shouldHaveNoInteractions();
         then(mapper).shouldHaveNoInteractions();

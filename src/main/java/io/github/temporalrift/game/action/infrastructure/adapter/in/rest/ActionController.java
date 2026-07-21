@@ -3,7 +3,6 @@ package io.github.temporalrift.game.action.infrastructure.adapter.in.rest;
 import java.util.UUID;
 
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.RestController;
 
 import io.github.temporalrift.game.action.application.port.in.GetRoundStatusUseCase;
@@ -16,7 +15,7 @@ import io.github.temporalrift.game.action.infrastructure.adapter.in.rest.model.R
 import io.github.temporalrift.game.action.infrastructure.adapter.in.rest.model.SpecialActionRequest;
 import io.github.temporalrift.game.action.infrastructure.adapter.in.rest.model.SubmitActionRequest;
 import io.github.temporalrift.game.action.infrastructure.adapter.in.rest.model.SubmitActionResponse;
-import io.github.temporalrift.game.shared.PlayerPrincipal;
+import io.github.temporalrift.game.shared.CurrentPlayer;
 
 @RestController
 class ActionController implements ActionApi {
@@ -39,7 +38,7 @@ class ActionController implements ActionApi {
     @Override
     public ResponseEntity<SubmitActionResponse> submitAction(
             UUID gameId, Integer eraNumber, Integer roundNumber, SubmitActionRequest submitActionRequest) {
-        var playerId = callerPlayerId();
+        var playerId = CurrentPlayer.id();
         var result =
                 switch (submitActionRequest.getActionType()) {
                     case CARD ->
@@ -62,7 +61,7 @@ class ActionController implements ActionApi {
     @Override
     public ResponseEntity<RoundStatusResponse> getRoundStatus(UUID gameId, Integer eraNumber, Integer roundNumber) {
         var result = getRoundStatusUseCase.handle(
-                new GetRoundStatusUseCase.Query(gameId, eraNumber, roundNumber, callerPlayerId()));
+                new GetRoundStatusUseCase.Query(gameId, eraNumber, roundNumber, CurrentPlayer.id()));
         return ResponseEntity.ok(new RoundStatusResponse(
                 result.eraNumber(),
                 result.roundNumber(),
@@ -95,19 +94,12 @@ class ActionController implements ActionApi {
                 eraNumber,
                 roundNumber,
                 playerId,
-                io.github.temporalrift.game.shared.SpecialAction.valueOf(
-                        request.getSpecialAction().name()),
+                ActionRestMapper.toDomain(request.getSpecialAction()),
                 request.getTargetEventId(),
                 request.getTargetOutcomeId(),
                 request.getTargetPlayerId()));
         return new SubmissionResult(
                 result.gameId(), result.eraNumber(), result.roundNumber(), result.playerId(), result.roundClosed());
-    }
-
-    private UUID callerPlayerId() {
-        return ((PlayerPrincipal)
-                        SecurityContextHolder.getContext().getAuthentication().getPrincipal())
-                .playerId();
     }
 
     private record SubmissionResult(UUID gameId, int eraNumber, int roundNumber, UUID playerId, boolean roundClosed) {}

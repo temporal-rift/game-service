@@ -36,8 +36,13 @@ class LobbyRepositoryAdapter implements LobbyRepository {
     public Lobby save(Lobby lobby) {
         jpaRepository.save(toEntity(lobby));
         lobby.pullEvents()
-                .forEach(event -> eventPublisher.publish(
-                        DomainEventEnvelope.create(lobby.id(), Lobby.AGGREGATE_TYPE, lobby.gameId(), 1, event)));
+                .forEach(event -> eventPublisher.publish(DomainEventEnvelope.create(
+                        lobby.id(),
+                        Lobby.AGGREGATE_TYPE,
+                        lobby.gameId(),
+                        DomainEventEnvelope.SCHEMA_VERSION_V1,
+                        event,
+                        clock)));
         return lobby;
     }
 

@@ -73,7 +73,7 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
         stateManager.initWaiting(sagaId, gameId, eraNumber, roundNumber, playerIds, timerExpiresAt);
         var round = new ActionRound(UUID.randomUUID(), gameId, eraNumber, roundNumber, playerIds, timerSeconds);
         actionRoundRepository.save(round);
-        ActionRoundEventPublication.publish(round, actionEventPublisher);
+        ActionRoundEventPublication.publish(round, actionEventPublisher, clock);
         return new StartResult(sagaId, timerExpiresAt);
     }
 
@@ -129,12 +129,13 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
                             round.id(),
                             ActionRound.AGGREGATE_TYPE,
                             gameId,
-                            1,
-                            new ActionRoundTimerExpired(gameId, eraNumber, roundNumber, skippedPlayerIds)));
+                            DomainEventEnvelope.SCHEMA_VERSION_V1,
+                            new ActionRoundTimerExpired(gameId, eraNumber, roundNumber, skippedPlayerIds),
+                            clock));
                 }
 
                 actionRoundRepository.save(round);
-                ActionRoundEventPublication.publish(round, actionEventPublisher);
+                ActionRoundEventPublication.publish(round, actionEventPublisher, clock);
 
                 publishRoundSummary(round, gameId, eraNumber, roundNumber, skippedPlayerIds);
 
@@ -172,8 +173,9 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
                 round.id(),
                 ActionRound.AGGREGATE_TYPE,
                 gameId,
-                1,
-                new RoundSummaryPublished(gameId, eraNumber, roundNumber, summaries)));
+                DomainEventEnvelope.SCHEMA_VERSION_V1,
+                new RoundSummaryPublished(gameId, eraNumber, roundNumber, summaries),
+                clock));
     }
 
     private void publishBandedProbabilities(UUID gameId, int eraNumber, ActionRound round2) {
@@ -188,7 +190,8 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
                 round2.id(),
                 ActionRound.AGGREGATE_TYPE,
                 gameId,
-                1,
-                new BandedProbabilityPublished(gameId, eraNumber, bandStates)));
+                DomainEventEnvelope.SCHEMA_VERSION_V1,
+                new BandedProbabilityPublished(gameId, eraNumber, bandStates),
+                clock));
     }
 }

@@ -16,6 +16,7 @@ import io.github.temporalrift.game.action.domain.actionround.JammedPlayerExcepti
 import io.github.temporalrift.game.action.domain.actionround.RoundNotFoundException;
 import io.github.temporalrift.game.action.domain.actionround.UnknownActionTargetException;
 import io.github.temporalrift.game.action.domain.playerstate.PlayerStateNotFoundException;
+import io.github.temporalrift.game.shared.ProblemDetails;
 import io.github.temporalrift.game.shared.RestAdviceOrder;
 
 @Order(RestAdviceOrder.MODULE)
@@ -24,52 +25,46 @@ class ActionExceptionHandler {
 
     @ExceptionHandler({RoundNotFoundException.class, PlayerStateNotFoundException.class})
     ProblemDetail handleNotFound(RuntimeException ex) {
-        return problem(HttpStatus.NOT_FOUND, ex.getMessage(), "404-01");
+        return ProblemDetails.of(HttpStatus.NOT_FOUND, ex.getMessage(), "404-01");
     }
 
     @ExceptionHandler(ActionRoundClosedException.class)
     ProblemDetail handleRoundClosed(ActionRoundClosedException ex) {
-        return problem(HttpStatus.CONFLICT, ex.getMessage(), "409-01");
+        return ProblemDetails.of(HttpStatus.CONFLICT, ex.getMessage(), "409-01");
     }
 
     @ExceptionHandler(DuplicateSubmissionException.class)
     ProblemDetail handleDuplicateSubmission(DuplicateSubmissionException ex) {
-        return problem(HttpStatus.CONFLICT, ex.getMessage(), "409-02");
+        return ProblemDetails.of(HttpStatus.CONFLICT, ex.getMessage(), "409-02");
     }
 
     @ExceptionHandler(CardNotInHandException.class)
     ProblemDetail handleCardNotInHand(CardNotInHandException ex) {
-        return problem(HttpStatus.UNPROCESSABLE_CONTENT, ex.getMessage(), "422-01");
+        return ProblemDetails.of(HttpStatus.UNPROCESSABLE_CONTENT, ex.getMessage(), "422-01");
     }
 
     @ExceptionHandler(JammedPlayerException.class)
     ProblemDetail handleJammedPlayer(JammedPlayerException ex) {
-        return problem(HttpStatus.UNPROCESSABLE_CONTENT, ex.getMessage(), "422-02");
+        return ProblemDetails.of(HttpStatus.UNPROCESSABLE_CONTENT, ex.getMessage(), "422-02");
     }
 
     @ExceptionHandler(InvalidActionTargetException.class)
     ProblemDetail handleInvalidTarget(InvalidActionTargetException ex) {
-        return problem(HttpStatus.UNPROCESSABLE_CONTENT, ex.getMessage(), "422-03");
+        return ProblemDetails.of(HttpStatus.UNPROCESSABLE_CONTENT, ex.getMessage(), "422-03");
     }
 
     @ExceptionHandler(FactionRequiredException.class)
     ProblemDetail handleFactionRequired(FactionRequiredException ex) {
-        return problem(HttpStatus.UNPROCESSABLE_CONTENT, ex.getMessage(), "422-04");
+        return ProblemDetails.of(HttpStatus.UNPROCESSABLE_CONTENT, ex.getMessage(), "422-04");
     }
 
     @ExceptionHandler(InvalidSpecialActionException.class)
     ProblemDetail handleInvalidSpecialAction(InvalidSpecialActionException ex) {
-        return problem(HttpStatus.UNPROCESSABLE_CONTENT, ex.getMessage(), "422-05");
+        return ProblemDetails.of(HttpStatus.UNPROCESSABLE_CONTENT, ex.getMessage(), "422-05");
     }
 
     @ExceptionHandler(UnknownActionTargetException.class)
     ProblemDetail handleUnknownActionTarget(UnknownActionTargetException ex) {
-        return problem(HttpStatus.UNPROCESSABLE_CONTENT, ex.getMessage(), "422-06");
-    }
-
-    private static ProblemDetail problem(HttpStatus status, String detail, String code) {
-        var problemDetail = ProblemDetail.forStatusAndDetail(status, detail);
-        problemDetail.setProperty("code", code);
-        return problemDetail;
+        return ProblemDetails.of(HttpStatus.UNPROCESSABLE_CONTENT, ex.getMessage(), "422-06");
     }
 }

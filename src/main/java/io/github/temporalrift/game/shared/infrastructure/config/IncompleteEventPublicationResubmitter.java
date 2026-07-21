@@ -30,7 +30,7 @@ class IncompleteEventPublicationResubmitter {
         this.timerProperties = timerProperties;
     }
 
-    @Scheduled(fixedDelayString = "#{@timerProperties.eventResubmitInterval.toMillis()}")
+    @Scheduled(fixedDelayString = "${game.timers.event-resubmit-interval}")
     void resubmitStale() {
         incompletePublications.resubmitIncompletePublicationsOlderThan(timerProperties.eventResubmitMinAge());
     }

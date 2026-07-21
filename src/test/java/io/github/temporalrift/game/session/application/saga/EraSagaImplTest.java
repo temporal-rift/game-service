@@ -11,6 +11,7 @@ import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 
+import java.time.Clock;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -23,6 +24,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 
@@ -66,6 +68,9 @@ class EraSagaImplTest {
 
     @Mock
     ApplicationEventPublisher applicationEventPublisher;
+
+    @Spy
+    Clock clock = Clock.systemUTC();
 
     @InjectMocks
     EraSagaImpl eraSaga;

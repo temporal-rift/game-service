@@ -1,5 +1,7 @@
 package io.github.temporalrift.game.action.application.command;
 
+import java.time.Clock;
+
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,15 +29,19 @@ class PlayCardCommandHandler implements PlayCardUseCase {
 
     private final ActionTargetValidator actionTargetValidator;
 
+    private final Clock clock;
+
     PlayCardCommandHandler(
             ActionRoundRepository actionRoundRepository,
             PlayerStateRepository playerStateRepository,
             ActionEventPublisher actionEventPublisher,
-            ActionTargetValidator actionTargetValidator) {
+            ActionTargetValidator actionTargetValidator,
+            Clock clock) {
         this.actionRoundRepository = actionRoundRepository;
         this.playerStateRepository = playerStateRepository;
         this.actionEventPublisher = actionEventPublisher;
         this.actionTargetValidator = actionTargetValidator;
+        this.clock = clock;
     }
 
     @Override
@@ -73,7 +79,7 @@ class PlayCardCommandHandler implements PlayCardUseCase {
         playerState.removeCard(command.cardInstanceId());
         actionRoundRepository.save(round);
         playerStateRepository.save(playerState);
-        ActionRoundEventPublication.publish(round, actionEventPublisher);
+        ActionRoundEventPublication.publish(round, actionEventPublisher, clock);
 
         return new Result(
                 command.gameId(), command.eraNumber(), command.roundNumber(), command.playerId(), allSubmitted);

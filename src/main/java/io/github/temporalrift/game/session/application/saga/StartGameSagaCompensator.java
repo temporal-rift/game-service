@@ -2,6 +2,7 @@ package io.github.temporalrift.game.session.application.saga;
 
 import static org.springframework.transaction.annotation.Propagation.REQUIRES_NEW;
 
+import java.time.Clock;
 import java.util.List;
 import java.util.UUID;
 
@@ -28,14 +29,17 @@ class StartGameSagaCompensator {
     private final LobbyRepository lobbyRepository;
 
     private final SessionEventPublisher eventPublisher;
+    private final Clock clock;
 
     StartGameSagaCompensator(
             StartGameSagaRepository startGameSagaRepository,
             LobbyRepository lobbyRepository,
-            SessionEventPublisher eventPublisher) {
+            SessionEventPublisher eventPublisher,
+            Clock clock) {
         this.startGameSagaRepository = startGameSagaRepository;
         this.lobbyRepository = lobbyRepository;
         this.eventPublisher = eventPublisher;
+        this.clock = clock;
     }
 
     @Transactional(propagation = REQUIRES_NEW)
@@ -49,8 +53,9 @@ class StartGameSagaCompensator {
                             state.lobbyId(),
                             Lobby.AGGREGATE_TYPE,
                             state.gameId(),
-                            1,
-                            new GameStartCancelled(state.gameId(), state.lobbyId())));
+                            DomainEventEnvelope.SCHEMA_VERSION_V1,
+                            new GameStartCancelled(state.gameId(), state.lobbyId()),
+                            clock));
                 });
     }
 
@@ -70,6 +75,11 @@ class StartGameSagaCompensator {
         lobbyRepository.save(lobby);
 
         eventPublisher.publish(DomainEventEnvelope.create(
-                lobby.id(), Lobby.AGGREGATE_TYPE, gameId, 1, new GameStartFailed(gameId, lobbyId, reason)));
+                lobby.id(),
+                Lobby.AGGREGATE_TYPE,
+                gameId,
+                DomainEventEnvelope.SCHEMA_VERSION_V1,
+                new GameStartFailed(gameId, lobbyId, reason),
+                clock));
     }
 }

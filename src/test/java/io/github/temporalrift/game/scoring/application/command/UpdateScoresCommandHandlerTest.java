@@ -46,8 +46,8 @@ class UpdateScoresCommandHandlerTest {
         PlayerScoreRepository repo = new FakePlayerScoreRepository(List.of(), savedScores);
         EraScoringContextRepository ctxRepo = new FakeEraScoringContextRepository(context);
 
-        var handler =
-                new UpdateScoresCommandHandler(repo, ctxRepo, new EraScoreEvaluator(), scoringPublisher, appPublisher);
+        var handler = new UpdateScoresCommandHandler(
+                repo, ctxRepo, new EraScoreEvaluator(), scoringPublisher, appPublisher, java.time.Clock.systemUTC());
         handler.handle(new UpdateEraScoresCommand(GAME_ID, ERA, List.of()));
 
         assertThat(savedScores).hasSize(1);
@@ -148,8 +148,8 @@ class UpdateScoresCommandHandlerTest {
         PlayerScoreRepository repo = new FakePlayerScoreRepository(List.of(existingScore), savedScores);
         EraScoringContextRepository ctxRepo = new FakeEraScoringContextRepository(context);
 
-        var handler =
-                new UpdateScoresCommandHandler(repo, ctxRepo, new EraScoreEvaluator(), scoringPublisher, appPublisher);
+        var handler = new UpdateScoresCommandHandler(
+                repo, ctxRepo, new EraScoreEvaluator(), scoringPublisher, appPublisher, java.time.Clock.systemUTC());
         handler.handle(new UpdateEraScoresCommand(GAME_ID, ERA, List.of()));
 
         var event = (ScoresUpdated) internalEvents.get(0);
@@ -178,8 +178,8 @@ class UpdateScoresCommandHandlerTest {
         PlayerScoreRepository repo = new FakePlayerScoreRepository(List.of(), savedScores);
         EraScoringContextRepository ctxRepo = new FakeEraScoringContextRepository(context);
 
-        var handler =
-                new UpdateScoresCommandHandler(repo, ctxRepo, new EraScoreEvaluator(), scoringPublisher, appPublisher);
+        var handler = new UpdateScoresCommandHandler(
+                repo, ctxRepo, new EraScoreEvaluator(), scoringPublisher, appPublisher, java.time.Clock.systemUTC());
         handler.handle(new UpdateEraScoresCommand(GAME_ID, scoringPassEra, List.of()));
 
         assertThat(savedScores).hasSize(1);
@@ -200,7 +200,8 @@ class UpdateScoresCommandHandlerTest {
     private UpdateScoresCommandHandler handler(EraScoringContext context, List<PlayerScore> existingScores) {
         PlayerScoreRepository repo = new FakePlayerScoreRepository(existingScores, new ArrayList<>());
         EraScoringContextRepository ctxRepo = new FakeEraScoringContextRepository(context);
-        return new UpdateScoresCommandHandler(repo, ctxRepo, new EraScoreEvaluator(), scoringPublisher, appPublisher);
+        return new UpdateScoresCommandHandler(
+                repo, ctxRepo, new EraScoreEvaluator(), scoringPublisher, appPublisher, java.time.Clock.systemUTC());
     }
 
     static class FakePlayerScoreRepository implements PlayerScoreRepository {

@@ -3,6 +3,7 @@ package io.github.temporalrift.game.session.application.saga;
 import static org.springframework.transaction.annotation.Propagation.REQUIRES_NEW;
 
 import java.security.SecureRandom;
+import java.time.Clock;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.IntStream;
@@ -42,6 +43,7 @@ class EraSagaImpl implements EraSaga {
     private final EraSagaStateManager stateManager;
     private final SessionGameRulesPort gameRules;
     private final SecureRandom random;
+    private final Clock clock;
 
     EraSagaImpl(
             GameRepository gameRepository,
@@ -49,7 +51,8 @@ class EraSagaImpl implements EraSaga {
             SessionEventPublisher eventPublisher,
             ApplicationEventPublisher applicationEventPublisher,
             EraSagaStateManager stateManager,
-            SessionGameRulesPort gameRules) {
+            SessionGameRulesPort gameRules,
+            Clock clock) {
         this.gameRepository = gameRepository;
         this.futureEventCatalog = futureEventCatalog;
         this.eventPublisher = eventPublisher;
@@ -57,6 +60,7 @@ class EraSagaImpl implements EraSaga {
         this.stateManager = stateManager;
         this.gameRules = gameRules;
         this.random = new SecureRandom();
+        this.clock = clock;
     }
 
     @Override
@@ -79,7 +83,12 @@ class EraSagaImpl implements EraSaga {
             log.warn("Deck exhausted for game {} era {} — ending game abnormally", gameId, eraNumber, e);
             stateManager.fail(gameId);
             eventPublisher.publish(DomainEventEnvelope.create(
-                    game.id(), Game.AGGREGATE_TYPE, gameId, 1, new GameEndedAbnormally(gameId, "deck-exhausted")));
+                    game.id(),
+                    Game.AGGREGATE_TYPE,
+                    gameId,
+                    DomainEventEnvelope.SCHEMA_VERSION_V1,
+                    new GameEndedAbnormally(gameId, "deck-exhausted"),
+                    clock));
         }
     }
 
@@ -88,7 +97,8 @@ class EraSagaImpl implements EraSaga {
         var events = Stream.concat(toFutureEvents(drawnIds, false).stream(), toFutureEvents(cascadedIds, true).stream())
                 .toList();
         var eventsDrawn = new EventsDrawn(gameId, eraNumber, events);
-        eventPublisher.publish(DomainEventEnvelope.create(game.id(), Game.AGGREGATE_TYPE, gameId, 1, eventsDrawn));
+        eventPublisher.publish(DomainEventEnvelope.create(
+                game.id(), Game.AGGREGATE_TYPE, gameId, DomainEventEnvelope.SCHEMA_VERSION_V1, eventsDrawn, clock));
         applicationEventPublisher.publishEvent(eventsDrawn);
     }
 
@@ -110,7 +120,8 @@ class EraSagaImpl implements EraSaga {
                         i -> new HandDealt.CardInstance(UUID.randomUUID(), CARD_POOL[random.nextInt(CARD_POOL.length)]))
                 .toList();
         var handDealt = new HandDealt(gameId, eraNumber, playerId, cards);
-        eventPublisher.publish(DomainEventEnvelope.create(game.id(), Game.AGGREGATE_TYPE, gameId, 1, handDealt));
+        eventPublisher.publish(DomainEventEnvelope.create(
+                game.id(), Game.AGGREGATE_TYPE, gameId, DomainEventEnvelope.SCHEMA_VERSION_V1, handDealt, clock));
         applicationEventPublisher.publishEvent(handDealt);
     }
 }
