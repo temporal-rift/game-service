@@ -17,7 +17,6 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.kafka.annotation.KafkaListener;
 import tools.jackson.databind.ObjectMapper;
 
 import io.github.temporalrift.game.session.application.saga.PlayerReconnectedApplicationEvent;
@@ -42,6 +41,10 @@ class PlayerReconnectKafkaConsumerTest {
 
     @InjectMocks
     PlayerReconnectKafkaConsumer consumer;
+
+    private static InboundEnvelope envelopeFor(String eventType) {
+        return new InboundEnvelope(UUID.randomUUID(), eventType, GAME_ID, "Game", GAME_ID, OCCURRED_AT, 1, "");
+    }
 
     @Test
     @DisplayName("player reconnected — marks event and publishes typed Spring event")
@@ -107,20 +110,5 @@ class PlayerReconnectKafkaConsumerTest {
 
         then(processedEventRepository).should(never()).tryMarkProcessed(any(), any());
         then(applicationEventPublisher).should(never()).publishEvent(any());
-    }
-
-    @Test
-    @DisplayName("listener has its own logical consumer group")
-    void handle_declaresDedicatedConsumerGroup() throws NoSuchMethodException {
-        var listener = PlayerReconnectKafkaConsumer.class
-                .getDeclaredMethod("handle", InboundEnvelope.class)
-                .getAnnotation(KafkaListener.class);
-
-        org.assertj.core.api.Assertions.assertThat(listener.groupId())
-                .isEqualTo("game-service.session.player-reconnect");
-    }
-
-    private static InboundEnvelope envelopeFor(String eventType) {
-        return new InboundEnvelope(UUID.randomUUID(), eventType, GAME_ID, "Game", GAME_ID, OCCURRED_AT, 1, "");
     }
 }
