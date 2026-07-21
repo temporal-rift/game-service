@@ -23,12 +23,14 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import io.github.temporalrift.game.action.application.ActionTargetValidator;
 import io.github.temporalrift.game.action.application.port.in.PlayCardUseCase;
 import io.github.temporalrift.game.action.domain.CardNotInHandException;
 import io.github.temporalrift.game.action.domain.actionround.ActionRound;
 import io.github.temporalrift.game.action.domain.actionround.ActionRoundClosedException;
 import io.github.temporalrift.game.action.domain.actionround.DuplicateSubmissionException;
 import io.github.temporalrift.game.action.domain.actionround.RoundNotFoundException;
+import io.github.temporalrift.game.action.domain.actionround.UnknownActionTargetException;
 import io.github.temporalrift.game.action.domain.event.CardPlayed;
 import io.github.temporalrift.game.action.domain.playerstate.PlayerState;
 import io.github.temporalrift.game.action.domain.playerstate.PlayerStateNotFoundException;
@@ -61,6 +63,9 @@ class PlayCardCommandHandlerTest {
 
     @Mock
     PlayerState playerState;
+
+    @Mock
+    ActionTargetValidator actionTargetValidator;
 
     @InjectMocks
     PlayCardCommandHandler handler;
@@ -262,6 +267,21 @@ class PlayCardCommandHandlerTest {
                         eq(sourceOutcomeId),
                         eq(targetOutcomeId),
                         anyList());
+    }
+
+    @Test
+    @DisplayName("handle — target does not belong to current game/era — propagates UnknownActionTargetException")
+    void handleUnknownActionTargetPropagates() {
+        // given
+        var command = new PlayCardUseCase.Command(
+                GAME_ID, ERA, ROUND, PLAYER_ID, CARD_INSTANCE_ID, UUID.randomUUID(), null, UUID.randomUUID());
+        willThrow(new UnknownActionTargetException(command.targetEventId()))
+                .given(actionTargetValidator)
+                .validate(any(), eq(ERA), any(), any(), any());
+
+        // when / then
+        assertThatExceptionOfType(UnknownActionTargetException.class).isThrownBy(() -> handler.handle(command));
+        then(actionRoundRepository).shouldHaveNoInteractions();
     }
 
     private static CardPlayed cardPlayedEvent() {

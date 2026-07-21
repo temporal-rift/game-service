@@ -5,6 +5,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import io.github.temporalrift.game.action.application.ActionRoundEventPublication;
+import io.github.temporalrift.game.action.application.ActionTargetValidator;
 import io.github.temporalrift.game.action.application.port.in.PlayCardUseCase;
 import io.github.temporalrift.game.action.domain.CardNotInHandException;
 import io.github.temporalrift.game.action.domain.actionround.RoundNotFoundException;
@@ -24,18 +25,28 @@ class PlayCardCommandHandler implements PlayCardUseCase {
 
     private final ActionEventPublisher actionEventPublisher;
 
+    private final ActionTargetValidator actionTargetValidator;
+
     PlayCardCommandHandler(
             ActionRoundRepository actionRoundRepository,
             PlayerStateRepository playerStateRepository,
-            ActionEventPublisher actionEventPublisher) {
+            ActionEventPublisher actionEventPublisher,
+            ActionTargetValidator actionTargetValidator) {
         this.actionRoundRepository = actionRoundRepository;
         this.playerStateRepository = playerStateRepository;
         this.actionEventPublisher = actionEventPublisher;
+        this.actionTargetValidator = actionTargetValidator;
     }
 
     @Override
     @Transactional
     public Result handle(Command command) {
+        actionTargetValidator.validate(
+                command.gameId(),
+                command.eraNumber(),
+                command.targetEventId(),
+                command.sourceOutcomeId(),
+                command.targetOutcomeId());
         var round = actionRoundRepository
                 .findByGameIdAndEraNumberAndRoundNumberWithLock(
                         command.gameId(), command.eraNumber(), command.roundNumber())

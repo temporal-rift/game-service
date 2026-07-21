@@ -22,6 +22,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import io.github.temporalrift.game.action.application.ActionTargetValidator;
 import io.github.temporalrift.game.action.application.port.in.PlaySpecialActionUseCase;
 import io.github.temporalrift.game.action.domain.actionround.ActionRound;
 import io.github.temporalrift.game.action.domain.actionround.ActionRoundClosedException;
@@ -29,6 +30,7 @@ import io.github.temporalrift.game.action.domain.actionround.DuplicateSubmission
 import io.github.temporalrift.game.action.domain.actionround.FactionRequiredException;
 import io.github.temporalrift.game.action.domain.actionround.JammedPlayerException;
 import io.github.temporalrift.game.action.domain.actionround.RoundNotFoundException;
+import io.github.temporalrift.game.action.domain.actionround.UnknownActionTargetException;
 import io.github.temporalrift.game.action.domain.event.SpecialActionPlayed;
 import io.github.temporalrift.game.action.domain.playerstate.PlayerState;
 import io.github.temporalrift.game.action.domain.playerstate.PlayerStateNotFoundException;
@@ -61,6 +63,9 @@ class PlaySpecialActionCommandHandlerTest {
 
     @Mock
     PlayerState playerState;
+
+    @Mock
+    ActionTargetValidator actionTargetValidator;
 
     @InjectMocks
     PlaySpecialActionCommandHandler handler;
@@ -256,6 +261,21 @@ class PlaySpecialActionCommandHandlerTest {
                         isNull(),
                         any(),
                         eq(false));
+    }
+
+    @Test
+    @DisplayName("handle — target does not belong to current game/era — propagates UnknownActionTargetException")
+    void handleUnknownActionTargetPropagates() {
+        // given
+        var command = new PlaySpecialActionUseCase.Command(
+                GAME_ID, ERA, ROUND, PLAYER_ID, SpecialAction.SEAL, UUID.randomUUID(), UUID.randomUUID(), null);
+        willThrow(new UnknownActionTargetException(command.targetEventId()))
+                .given(actionTargetValidator)
+                .validate(any(), eq(ERA), any(), any());
+
+        // when / then
+        assertThatExceptionOfType(UnknownActionTargetException.class).isThrownBy(() -> handler.handle(command));
+        then(actionRoundRepository).shouldHaveNoInteractions();
     }
 
     private static SpecialActionPlayed specialActionPlayedEvent() {

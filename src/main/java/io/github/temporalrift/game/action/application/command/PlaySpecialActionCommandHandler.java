@@ -5,6 +5,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import io.github.temporalrift.game.action.application.ActionRoundEventPublication;
+import io.github.temporalrift.game.action.application.ActionTargetValidator;
 import io.github.temporalrift.game.action.application.port.in.PlaySpecialActionUseCase;
 import io.github.temporalrift.game.action.domain.actionround.FactionRequiredException;
 import io.github.temporalrift.game.action.domain.actionround.RoundNotFoundException;
@@ -23,18 +24,24 @@ class PlaySpecialActionCommandHandler implements PlaySpecialActionUseCase {
 
     private final ActionEventPublisher actionEventPublisher;
 
+    private final ActionTargetValidator actionTargetValidator;
+
     PlaySpecialActionCommandHandler(
             ActionRoundRepository actionRoundRepository,
             PlayerStateRepository playerStateRepository,
-            ActionEventPublisher actionEventPublisher) {
+            ActionEventPublisher actionEventPublisher,
+            ActionTargetValidator actionTargetValidator) {
         this.actionRoundRepository = actionRoundRepository;
         this.playerStateRepository = playerStateRepository;
         this.actionEventPublisher = actionEventPublisher;
+        this.actionTargetValidator = actionTargetValidator;
     }
 
     @Override
     @Transactional
     public Result handle(Command command) {
+        actionTargetValidator.validate(
+                command.gameId(), command.eraNumber(), command.targetEventId(), command.targetOutcomeId());
         var round = actionRoundRepository
                 .findByGameIdAndEraNumberAndRoundNumberWithLock(
                         command.gameId(), command.eraNumber(), command.roundNumber())
