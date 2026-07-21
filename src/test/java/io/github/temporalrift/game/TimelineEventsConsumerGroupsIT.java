@@ -14,6 +14,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import io.github.temporalrift.game.scoring.domain.event.ChainCompleted;
@@ -29,6 +30,7 @@ import io.github.temporalrift.game.shared.InboundEnvelope;
  * With distinct groups, one record published once must be processed by both consumers.
  */
 @SpringBootTest
+@ActiveProfiles("test")
 @Import(TestcontainersConfiguration.class)
 class TimelineEventsConsumerGroupsIT {
 

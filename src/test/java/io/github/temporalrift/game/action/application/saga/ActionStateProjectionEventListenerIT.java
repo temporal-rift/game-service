@@ -13,6 +13,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Import;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import io.github.temporalrift.game.TestcontainersConfiguration;
@@ -30,6 +31,7 @@ import io.github.temporalrift.game.shared.FactionAssigned;
  * published Kafka envelopes, never the typed Spring events {@code @ApplicationModuleListener} needs.
  */
 @SpringBootTest
+@ActiveProfiles("test")
 @Import(TestcontainersConfiguration.class)
 class ActionStateProjectionEventListenerIT {
 

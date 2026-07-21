@@ -17,6 +17,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import io.github.temporalrift.game.TestcontainersConfiguration;
@@ -37,6 +38,7 @@ import io.github.temporalrift.game.shared.CardType;
  * verified with mocks.
  */
 @SpringBootTest
+@ActiveProfiles("test")
 @Import(TestcontainersConfiguration.class)
 class PlayCardConcurrencyIT {
 
