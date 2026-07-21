@@ -1,8 +1,5 @@
 package io.github.temporalrift.game.shared.infrastructure.config;
 
-import java.time.Duration;
-
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.modulith.events.IncompleteEventPublications;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -25,17 +22,16 @@ import org.springframework.stereotype.Component;
 class IncompleteEventPublicationResubmitter {
 
     private final IncompleteEventPublications incompletePublications;
-    private final Duration minAge;
+    private final TimerProperties timerProperties;
 
     IncompleteEventPublicationResubmitter(
-            IncompleteEventPublications incompletePublications,
-            @Value("${game.timers.event-resubmit-min-age:PT2M}") Duration minAge) {
+            IncompleteEventPublications incompletePublications, TimerProperties timerProperties) {
         this.incompletePublications = incompletePublications;
-        this.minAge = minAge;
+        this.timerProperties = timerProperties;
     }
 
-    @Scheduled(fixedDelayString = "${game.timers.event-resubmit-ms:30000}")
+    @Scheduled(fixedDelayString = "#{@timerProperties.eventResubmitInterval.toMillis()}")
     void resubmitStale() {
-        incompletePublications.resubmitIncompletePublicationsOlderThan(minAge);
+        incompletePublications.resubmitIncompletePublicationsOlderThan(timerProperties.eventResubmitMinAge());
     }
 }
