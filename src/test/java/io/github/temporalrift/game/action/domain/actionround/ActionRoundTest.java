@@ -280,6 +280,22 @@ class ActionRoundTest {
     }
 
     @Test
+    @DisplayName("submitSpecial — faction does not own the special action — throws InvalidSpecialActionException")
+    void submitSpecialFactionDoesNotOwnActionThrows() {
+        // given
+        var round = openRound(List.of(PLAYER_A));
+        round.pullEvents();
+
+        // when / then
+        assertThatExceptionOfType(InvalidSpecialActionException.class)
+                .isThrownBy(() ->
+                        round.submitSpecial(PLAYER_A, Faction.ERASERS, SpecialAction.SEAL, null, null, null, false));
+        assertThat(round.pendingPlayerIds()).containsExactly(PLAYER_A);
+        assertThat(round.submittedActions()).isEmpty();
+        assertThat(round.pullEvents()).isEmpty();
+    }
+
+    @Test
     @DisplayName("submitSpecial — round is CLOSED — throws ActionRoundClosedException")
     void submitSpecialOnClosedRoundThrows() {
         // given

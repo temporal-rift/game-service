@@ -64,6 +64,8 @@ paths:
             - Player jammed (`code: 422-02`)
             - Invalid target (`code: 422-03`)
             - Faction required for special action (`code: 422-04`)
+            - Faction does not own the submitted special action (`code: 422-05`)
+            - Target event or outcome does not belong to the current game/era (`code: 422-06`)
           content:
             application/problem+json:
               schema:

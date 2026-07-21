@@ -11,8 +11,10 @@ import io.github.temporalrift.game.action.domain.actionround.ActionRoundClosedEx
 import io.github.temporalrift.game.action.domain.actionround.DuplicateSubmissionException;
 import io.github.temporalrift.game.action.domain.actionround.FactionRequiredException;
 import io.github.temporalrift.game.action.domain.actionround.InvalidActionTargetException;
+import io.github.temporalrift.game.action.domain.actionround.InvalidSpecialActionException;
 import io.github.temporalrift.game.action.domain.actionround.JammedPlayerException;
 import io.github.temporalrift.game.action.domain.actionround.RoundNotFoundException;
+import io.github.temporalrift.game.action.domain.actionround.UnknownActionTargetException;
 import io.github.temporalrift.game.action.domain.playerstate.PlayerStateNotFoundException;
 import io.github.temporalrift.game.shared.RestAdviceOrder;
 
@@ -53,6 +55,16 @@ class ActionExceptionHandler {
     @ExceptionHandler(FactionRequiredException.class)
     ProblemDetail handleFactionRequired(FactionRequiredException ex) {
         return problem(HttpStatus.UNPROCESSABLE_CONTENT, ex.getMessage(), "422-04");
+    }
+
+    @ExceptionHandler(InvalidSpecialActionException.class)
+    ProblemDetail handleInvalidSpecialAction(InvalidSpecialActionException ex) {
+        return problem(HttpStatus.UNPROCESSABLE_CONTENT, ex.getMessage(), "422-05");
+    }
+
+    @ExceptionHandler(UnknownActionTargetException.class)
+    ProblemDetail handleUnknownActionTarget(UnknownActionTargetException ex) {
+        return problem(HttpStatus.UNPROCESSABLE_CONTENT, ex.getMessage(), "422-06");
     }
 
     private static ProblemDetail problem(HttpStatus status, String detail, String code) {
