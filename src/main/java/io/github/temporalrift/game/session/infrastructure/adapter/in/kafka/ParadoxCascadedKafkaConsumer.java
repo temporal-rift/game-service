@@ -2,6 +2,7 @@ package io.github.temporalrift.game.session.infrastructure.adapter.in.kafka;
 
 import static org.springframework.transaction.annotation.Propagation.REQUIRES_NEW;
 
+import java.time.Clock;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -47,6 +48,7 @@ class ParadoxCascadedKafkaConsumer {
     private final ApplicationEventPublisher applicationEventPublisher;
     private final SessionGameRulesPort gameRules;
     private final ObjectMapper objectMapper;
+    private final Clock clock;
 
     ParadoxCascadedKafkaConsumer(
             ProcessedEventRepository processedEventRepository,
@@ -55,7 +57,8 @@ class ParadoxCascadedKafkaConsumer {
             SessionEventPublisher eventPublisher,
             ApplicationEventPublisher applicationEventPublisher,
             SessionGameRulesPort gameRules,
-            ObjectMapper objectMapper) {
+            ObjectMapper objectMapper,
+            Clock clock) {
         this.processedEventRepository = processedEventRepository;
         this.gameRepository = gameRepository;
         this.lobbyRepository = lobbyRepository;
@@ -63,6 +66,7 @@ class ParadoxCascadedKafkaConsumer {
         this.applicationEventPublisher = applicationEventPublisher;
         this.gameRules = gameRules;
         this.objectMapper = objectMapper;
+        this.clock = clock;
     }
 
     @KafkaListener(topics = "timeline.events", groupId = "game-service.session.paradox-cascaded")
@@ -77,7 +81,7 @@ class ParadoxCascadedKafkaConsumer {
         }
         // Check version before claiming: claiming an unsupported version would permanently mark the
         // event processed, so it could never be reprocessed once this consumer learns to handle it.
-        if (envelope.version() != 1) {
+        if (envelope.version() != DomainEventEnvelope.SCHEMA_VERSION_V1) {
             log.warn(
                     "Unsupported {} envelope version {} for event {} — skipping",
                     EVENT_TYPE,
@@ -111,7 +115,8 @@ class ParadoxCascadedKafkaConsumer {
                     .currentPlayers();
 
             var collapsed = buildTimelineCollapsed(gameId, paradox.eraNumber(), players);
-            eventPublisher.publish(DomainEventEnvelope.create(gameId, Game.AGGREGATE_TYPE, gameId, 1, collapsed));
+            eventPublisher.publish(DomainEventEnvelope.create(
+                    gameId, Game.AGGREGATE_TYPE, gameId, DomainEventEnvelope.SCHEMA_VERSION_V1, collapsed, clock));
             applicationEventPublisher.publishEvent(collapsed);
         }
     }

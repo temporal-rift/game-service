@@ -63,7 +63,12 @@ class SessionEventPublisherAdapterIT {
                 LobbyStatus.WAITING,
                 new LobbyConfig("OUTBOX1", 2, 5, clock));
         final var envelope = DomainEventEnvelope.create(
-                lobbyId, "Lobby", gameId, 1, new LobbyCreated(lobbyId, hostId, Instant.parse("2026-01-01T00:00:00Z")));
+                lobbyId,
+                "Lobby",
+                gameId,
+                1,
+                new LobbyCreated(lobbyId, hostId, Instant.parse("2026-01-01T00:00:00Z")),
+                clock);
 
         transactionTemplate.executeWithoutResult(_ -> {
             lobbyRepository.save(lobby);
@@ -88,7 +93,12 @@ class SessionEventPublisherAdapterIT {
                 LobbyStatus.WAITING,
                 new LobbyConfig("OUTBOX2", 2, 5, clock));
         final var envelope = DomainEventEnvelope.create(
-                lobbyId, "Lobby", gameId, 1, new LobbyCreated(lobbyId, hostId, Instant.parse("2026-01-01T00:00:00Z")));
+                lobbyId,
+                "Lobby",
+                gameId,
+                1,
+                new LobbyCreated(lobbyId, hostId, Instant.parse("2026-01-01T00:00:00Z")),
+                clock);
 
         transactionTemplate.executeWithoutResult(status -> {
             lobbyRepository.save(lobby);

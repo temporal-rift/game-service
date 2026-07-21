@@ -2,6 +2,7 @@ package io.github.temporalrift.game.session.application.saga;
 
 import static org.springframework.transaction.annotation.Propagation.REQUIRES_NEW;
 
+import java.time.Clock;
 import java.util.List;
 import java.util.UUID;
 
@@ -36,18 +37,21 @@ class EndGameSagaImpl implements EndGameSaga {
     private final SessionEventPublisher eventPublisher;
     private final EndGameSagaStateManager stateManager;
     private final FinalScoreQueryPort finalScoreQueryPort;
+    private final Clock clock;
 
     EndGameSagaImpl(
             GameRepository gameRepository,
             StartGameSagaRepository startGameSagaRepository,
             SessionEventPublisher eventPublisher,
             EndGameSagaStateManager stateManager,
-            FinalScoreQueryPort finalScoreQueryPort) {
+            FinalScoreQueryPort finalScoreQueryPort,
+            Clock clock) {
         this.gameRepository = gameRepository;
         this.startGameSagaRepository = startGameSagaRepository;
         this.eventPublisher = eventPublisher;
         this.stateManager = stateManager;
         this.finalScoreQueryPort = finalScoreQueryPort;
+        this.clock = clock;
     }
 
     @Override
@@ -92,6 +96,7 @@ class EndGameSagaImpl implements EndGameSaga {
     }
 
     private void publishEvent(UUID gameId, Object payload) {
-        eventPublisher.publish(DomainEventEnvelope.create(gameId, Game.AGGREGATE_TYPE, gameId, 1, payload));
+        eventPublisher.publish(DomainEventEnvelope.create(
+                gameId, Game.AGGREGATE_TYPE, gameId, DomainEventEnvelope.SCHEMA_VERSION_V1, payload, clock));
     }
 }

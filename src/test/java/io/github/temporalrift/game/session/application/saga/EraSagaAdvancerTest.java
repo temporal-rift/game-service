@@ -8,6 +8,7 @@ import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
+import java.time.Clock;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -19,6 +20,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 
@@ -68,6 +70,9 @@ class EraSagaAdvancerTest {
 
     @Mock
     SessionGameRulesPort gameRules;
+
+    @Spy
+    Clock clock = Clock.systemUTC();
 
     @InjectMocks
     EraSagaAdvancer advancer;

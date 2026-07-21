@@ -73,7 +73,12 @@ class PlayerReconnectSagaImpl implements PlayerReconnectSaga {
         lobbyRepository.save(lobby);
 
         eventPublisher.publish(DomainEventEnvelope.create(
-                lobby.id(), Lobby.AGGREGATE_TYPE, gameId, 1, new PlayerDisconnected(gameId, playerId)));
+                lobby.id(),
+                Lobby.AGGREGATE_TYPE,
+                gameId,
+                DomainEventEnvelope.SCHEMA_VERSION_V1,
+                new PlayerDisconnected(gameId, playerId),
+                clock));
 
         return new StartResult(sagaId, graceExpiresAt);
     }
@@ -124,8 +129,9 @@ class PlayerReconnectSagaImpl implements PlayerReconnectSaga {
                 saga.gameId(),
                 Game.AGGREGATE_TYPE,
                 saga.gameId(),
-                1,
-                new PlayerAbandoned(saga.gameId(), saga.playerId())));
+                DomainEventEnvelope.SCHEMA_VERSION_V1,
+                new PlayerAbandoned(saga.gameId(), saga.playerId()),
+                clock));
 
         // Locked game read: the last-player check below is a cross-saga decision. Without
         // serialization, two final grace periods expiring concurrently each see the other's
@@ -143,8 +149,13 @@ class PlayerReconnectSagaImpl implements PlayerReconnectSaga {
 
         if (connectedCount == 0 && gracePeriodCount == 0) {
             var payload = new GameEndedAbnormally(saga.gameId(), "all-players-abandoned");
-            eventPublisher.publish(
-                    DomainEventEnvelope.create(saga.gameId(), Game.AGGREGATE_TYPE, saga.gameId(), 1, payload));
+            eventPublisher.publish(DomainEventEnvelope.create(
+                    saga.gameId(),
+                    Game.AGGREGATE_TYPE,
+                    saga.gameId(),
+                    DomainEventEnvelope.SCHEMA_VERSION_V1,
+                    payload,
+                    clock));
             applicationEventPublisher.publishEvent(payload);
         }
     }

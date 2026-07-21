@@ -6,7 +6,7 @@
     <parent>
         <groupId>io.github.temporal-rift</groupId>
         <artifactId>temporal-rift-bom</artifactId>
-        <version>1.5.0</version>
+        <version>1.5.1</version>
         <relativePath/>
     </parent>
 
@@ -431,6 +431,38 @@
                                     io.github.temporalrift.game.scoring.infrastructure.adapter.out.kafka.producer
                                 </producerApiPackage>
                             </configOptions>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <!-- BOM 1.5.1 configures the compiler output directory globally. Keep test compilation
+                 separate so its incremental cleanup cannot remove generated main classes. -->
+            <plugin>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>default-testCompile</id>
+                        <configuration>
+                            <outputDirectory>${project.build.testOutputDirectory}</outputDirectory>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>build-helper-maven-plugin</artifactId>
+                <version>3.6.1</version>
+                <executions>
+                    <execution>
+                        <id>add-zenwave-generated-test-sources</id>
+                        <phase>generate-test-sources</phase>
+                        <goals>
+                            <goal>add-test-source</goal>
+                        </goals>
+                        <configuration>
+                            <sources>
+                                <source>${project.build.directory}/generated-sources/zenwave/src/main/java</source>
+                            </sources>
                         </configuration>
                     </execution>
                 </executions>

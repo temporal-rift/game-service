@@ -52,7 +52,8 @@ class ActionEventPublisherAdapterTest {
         var aggregateId = UUID.randomUUID();
         var gameId = UUID.randomUUID();
         var payload = new ActionRoundClosed(gameId, 1, 2, "ALL_SUBMITTED", 3);
-        var envelope = DomainEventEnvelope.create(aggregateId, "ActionRound", gameId, 1, payload);
+        var envelope =
+                DomainEventEnvelope.create(aggregateId, "ActionRound", gameId, 1, payload, java.time.Clock.systemUTC());
         var wirePayload = new ActionRoundClosedPayload();
         given(mapper.toWire(payload)).willReturn(wirePayload);
 
@@ -144,6 +145,7 @@ class ActionEventPublisherAdapterTest {
     }
 
     private static DomainEventEnvelope<ActionEventPayload> envelope(UUID gameId, ActionEventPayload payload) {
-        return DomainEventEnvelope.create(UUID.randomUUID(), "ActionRound", gameId, 1, payload);
+        return DomainEventEnvelope.create(
+                UUID.randomUUID(), "ActionRound", gameId, 1, payload, java.time.Clock.systemUTC());
     }
 }

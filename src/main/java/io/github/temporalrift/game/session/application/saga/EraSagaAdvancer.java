@@ -2,6 +2,7 @@ package io.github.temporalrift.game.session.application.saga;
 
 import static org.springframework.transaction.annotation.Propagation.REQUIRES_NEW;
 
+import java.time.Clock;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -43,18 +44,21 @@ class EraSagaAdvancer {
     private final SessionEventPublisher eventPublisher;
     private final ApplicationEventPublisher applicationEventPublisher;
     private final SessionGameRulesPort gameRules;
+    private final Clock clock;
 
     EraSagaAdvancer(
             EraSagaRepository eraSagaRepository,
             GameRepository gameRepository,
             SessionEventPublisher eventPublisher,
             ApplicationEventPublisher applicationEventPublisher,
-            SessionGameRulesPort gameRules) {
+            SessionGameRulesPort gameRules,
+            Clock clock) {
         this.eraSagaRepository = eraSagaRepository;
         this.gameRepository = gameRepository;
         this.eventPublisher = eventPublisher;
         this.applicationEventPublisher = applicationEventPublisher;
         this.gameRules = gameRules;
+        this.clock = clock;
     }
 
     private static Optional<EraSagaStatus> findExpectedStatus(int roundNumber) {
@@ -161,7 +165,8 @@ class EraSagaAdvancer {
     }
 
     private void publishEvent(UUID gameId, Object payload) {
-        eventPublisher.publish(DomainEventEnvelope.create(gameId, Game.AGGREGATE_TYPE, gameId, 1, payload));
+        eventPublisher.publish(DomainEventEnvelope.create(
+                gameId, Game.AGGREGATE_TYPE, gameId, DomainEventEnvelope.SCHEMA_VERSION_V1, payload, clock));
     }
 
     private TimelineStabilized buildTimelineStabilized(UUID gameId, ScoresUpdated su) {

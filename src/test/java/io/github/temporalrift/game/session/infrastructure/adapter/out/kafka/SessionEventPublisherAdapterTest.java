@@ -174,6 +174,7 @@ class SessionEventPublisherAdapterTest {
     }
 
     private static DomainEventEnvelope envelope(UUID gameId, Object payload) {
-        return DomainEventEnvelope.create(UUID.randomUUID(), "Session", gameId, 1, payload);
+        return DomainEventEnvelope.create(
+                UUID.randomUUID(), "Session", gameId, 1, payload, java.time.Clock.systemUTC());
     }
 }

@@ -26,6 +26,7 @@ import io.github.temporalrift.game.action.domain.actionround.ActionRound;
 import io.github.temporalrift.game.action.domain.actionround.SubmittedAction;
 import io.github.temporalrift.game.action.domain.playerstate.PlayerState;
 import io.github.temporalrift.game.action.domain.port.out.ActionRoundRepository;
+import io.github.temporalrift.game.action.domain.port.out.FutureEventDefinitionPort;
 import io.github.temporalrift.game.action.domain.port.out.PlayerStateRepository;
 import io.github.temporalrift.game.shared.CardType;
 
@@ -56,6 +57,9 @@ class PlayCardConcurrencyIT {
     PlayerStateRepository playerStateRepository;
 
     @Autowired
+    FutureEventDefinitionPort futureEventDefinitionPort;
+
+    @Autowired
     TransactionTemplate transactionTemplate;
 
     @Test
@@ -66,6 +70,7 @@ class PlayCardConcurrencyIT {
         var playerB = UUID.randomUUID();
         var cardA = UUID.randomUUID();
         var cardB = UUID.randomUUID();
+        var targetEventId = UUID.randomUUID();
 
         var roundId = UUID.randomUUID();
         transactionTemplate.executeWithoutResult(_ -> {
@@ -73,6 +78,8 @@ class PlayCardConcurrencyIT {
                     new ActionRound(roundId, gameId, ERA, ROUND, List.of(playerA, playerB), TIMER_SECONDS));
             playerStateRepository.save(playerStateWithCard(gameId, playerA, cardA));
             playerStateRepository.save(playerStateWithCard(gameId, playerB, cardB));
+            futureEventDefinitionPort.replaceForGameEra(
+                    gameId, ERA, List.of(new FutureEventDefinitionPort.EventDefinition(targetEventId, List.of())));
         });
 
         // Line both submissions up on a barrier so they hit the round in the same instant.
@@ -81,11 +88,11 @@ class PlayCardConcurrencyIT {
         try {
             Future<PlayCardUseCase.Result> submitA = executor.submit(() -> {
                 barrier.await();
-                return playCardUseCase.handle(command(gameId, playerA, cardA));
+                return playCardUseCase.handle(command(gameId, playerA, cardA, targetEventId));
             });
             Future<PlayCardUseCase.Result> submitB = executor.submit(() -> {
                 barrier.await();
-                return playCardUseCase.handle(command(gameId, playerB, cardB));
+                return playCardUseCase.handle(command(gameId, playerB, cardB, targetEventId));
             });
 
             var resultA = submitA.get(30, TimeUnit.SECONDS);
@@ -158,8 +165,8 @@ class PlayCardConcurrencyIT {
         }
     }
 
-    private PlayCardUseCase.Command command(UUID gameId, UUID playerId, UUID cardInstanceId) {
-        return new PlayCardUseCase.Command(gameId, ERA, ROUND, playerId, cardInstanceId, UUID.randomUUID(), null, null);
+    private PlayCardUseCase.Command command(UUID gameId, UUID playerId, UUID cardInstanceId, UUID targetEventId) {
+        return new PlayCardUseCase.Command(gameId, ERA, ROUND, playerId, cardInstanceId, targetEventId, null, null);
     }
 
     private PlayerState playerStateWithCard(UUID gameId, UUID playerId, UUID cardInstanceId) {
