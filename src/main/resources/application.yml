@@ -73,10 +73,12 @@ spring:
 game:
   rate-limit:
     requests-per-minute: 120
-    cleanup-interval: 60s
+    # Preserve the former cleanup-ms setting while external callers migrate to cleanup-interval.
+    cleanup-interval: ${game.rate-limit.cleanup-ms:60s}
   timers:
     event-resubmit-min-age: 2m
-    event-resubmit-interval: 30s
+    # Preserve the former event-resubmit-ms setting while external callers migrate to event-resubmit-interval.
+    event-resubmit-interval: ${game.timers.event-resubmit-ms:30s}
   rules:
     min-players: 3
     max-players: 5
