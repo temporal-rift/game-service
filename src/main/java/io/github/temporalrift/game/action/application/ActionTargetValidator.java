@@ -24,13 +24,18 @@ public class ActionTargetValidator {
     }
 
     public void validate(UUID gameId, int eraNumber, UUID targetEventId, UUID... outcomeIds) {
+        var suppliedOutcomeIds = outcomeIds == null ? new UUID[0] : outcomeIds;
+        if (targetEventId == null && Arrays.stream(suppliedOutcomeIds).allMatch(Objects::isNull)) {
+            return;
+        }
+
         var definitions = futureEventDefinitionPort.findByGameIdAndEraNumber(gameId, eraNumber);
         var event = definitions.stream()
                 .filter(definition -> definition.eventId().equals(targetEventId))
                 .findFirst()
                 .orElseThrow(() -> new UnknownActionTargetException(targetEventId));
 
-        Arrays.stream(outcomeIds).filter(Objects::nonNull).forEach(outcomeId -> {
+        Arrays.stream(suppliedOutcomeIds).filter(Objects::nonNull).forEach(outcomeId -> {
             var known = event.outcomes().stream()
                     .anyMatch(outcome -> outcome.outcomeId().equals(outcomeId));
             if (!known) {

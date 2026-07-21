@@ -3,6 +3,7 @@ package io.github.temporalrift.game.action.application;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.then;
 
 import java.util.List;
 import java.util.UUID;
@@ -56,6 +57,16 @@ class ActionTargetValidatorTest {
         // when / then
         assertThatCode(() -> validator.validate(GAME_ID, ERA, eventId, (UUID) null))
                 .doesNotThrowAnyException();
+    }
+
+    @Test
+    @DisplayName("validate — targetless action — skips event lookup")
+    void validateTargetlessActionSkipsEventLookup() {
+        // when / then
+        assertThatCode(() -> validator.validate(GAME_ID, ERA, null, (UUID) null))
+                .doesNotThrowAnyException();
+
+        then(futureEventDefinitionPort).shouldHaveNoInteractions();
     }
 
     @Test
