@@ -19,7 +19,7 @@ spring:
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}
     properties:
-      security.protocol: ${KAFKA_SECURITY_PROTOCOL:PLAINTEXT}
+      security.protocol: ${KAFKA_SECURITY_PROTOCOL}
       sasl.mechanism: ${KAFKA_SASL_MECHANISM:}
       sasl.jaas.config: ${KAFKA_SASL_JAAS_CONFIG:}
     consumer:
@@ -43,7 +43,7 @@ spring:
     oauth2:
       resourceserver:
         jwt:
-          issuer-uri: ${JWT_ISSUER_URI:http://localhost:9000}
+          issuer-uri: ${JWT_ISSUER_URI}
   modulith:
     events:
       externalization:
@@ -61,7 +61,7 @@ spring:
         binder:
           brokers: ${KAFKA_BOOTSTRAP_SERVERS}
           configuration:
-            security.protocol: ${KAFKA_SECURITY_PROTOCOL:PLAINTEXT}
+            security.protocol: ${KAFKA_SECURITY_PROTOCOL}
             sasl.mechanism: ${KAFKA_SASL_MECHANISM:}
             sasl.jaas.config: ${KAFKA_SASL_JAAS_CONFIG:}
         default:
