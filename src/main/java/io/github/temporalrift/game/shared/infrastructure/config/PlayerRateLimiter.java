@@ -6,7 +6,6 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -27,8 +26,8 @@ public class PlayerRateLimiter {
     private final int requestsPerMinute;
     private final Clock clock;
 
-    PlayerRateLimiter(@Value("${game.rate-limit.requests-per-minute:120}") int requestsPerMinute, Clock clock) {
-        this.requestsPerMinute = requestsPerMinute;
+    PlayerRateLimiter(RateLimitProperties rateLimitProperties, Clock clock) {
+        this.requestsPerMinute = rateLimitProperties.requestsPerMinute();
         this.clock = clock;
     }
 
@@ -42,7 +41,7 @@ public class PlayerRateLimiter {
         return window.count().incrementAndGet() <= requestsPerMinute;
     }
 
-    @Scheduled(fixedDelayString = "${game.rate-limit.cleanup-ms:60000}")
+    @Scheduled(fixedDelayString = "#{@rateLimitProperties.cleanupInterval.toMillis()}")
     void evictStaleWindows() {
         var cutoff = clock.millis() - WINDOW_MILLIS;
         windows.entrySet().removeIf(entry -> entry.getValue().windowStart() < cutoff);

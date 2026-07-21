@@ -17,7 +17,8 @@ class PlayerRateLimiterTest {
     static final int LIMIT = 3;
 
     private final MutableClock clock = new MutableClock(NOW);
-    private final PlayerRateLimiter limiter = new PlayerRateLimiter(LIMIT, clock);
+    private final PlayerRateLimiter limiter =
+            new PlayerRateLimiter(new RateLimitProperties(LIMIT, Duration.ofMinutes(1)), clock);
 
     @Test
     @DisplayName("requests within the limit are allowed, the one over it is rejected")

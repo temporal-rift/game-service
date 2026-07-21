@@ -20,7 +20,8 @@ class IncompleteEventPublicationResubmitterTest {
     @Test
     @DisplayName("resubmits only publications older than the configured age threshold")
     void resubmitStale_usesAgeThreshold() {
-        var resubmitter = new IncompleteEventPublicationResubmitter(incompletePublications, Duration.ofMinutes(2));
+        var resubmitter = new IncompleteEventPublicationResubmitter(
+                incompletePublications, new TimerProperties(Duration.ofMinutes(2), Duration.ofSeconds(30)));
 
         resubmitter.resubmitStale();
 
