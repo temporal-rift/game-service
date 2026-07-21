@@ -4,17 +4,31 @@ Spring Modulith service that owns the full game lifecycle: lobby management, gam
 
 ## Requirements
 
-- Java 25+
+- Java 26+
 - Maven 3.9.13+
 - Docker (for Testcontainers and local infrastructure)
 
 ## Local infrastructure
 
 ```bash
-docker-compose -f infrastructure/docker-compose.yml up -d
+docker compose up -d
 ```
 
 Starts PostgreSQL and Kafka. Kafka UI available at `http://localhost:8080`.
+
+## Deployment configuration
+
+The default runtime profile intentionally has no insecure fallbacks for external services. Set these environment variables in every non-Docker deployment (for example, Kubernetes or Cloud Foundry):
+
+| Variable | Purpose |
+| --- | --- |
+| `SPRING_DATASOURCE_USERNAME` | PostgreSQL login user |
+| `SPRING_DATASOURCE_PASSWORD` | PostgreSQL login password |
+| `KAFKA_BOOTSTRAP_SERVERS` | Kafka broker addresses |
+| `KAFKA_SECURITY_PROTOCOL` | Kafka transport protocol, such as `SASL_SSL` |
+| `JWT_ISSUER_URI` | Trusted OAuth2/OpenID Connect issuer URI |
+
+`docker-compose.yml` supplies local Docker values. Store credentials in the deployment platform's secret store rather than in application configuration. If a required variable is missing, startup fails with a diagnostic that identifies the variable and the required configuration contract.
 
 ## Build and test
 
