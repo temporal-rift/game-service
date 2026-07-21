@@ -36,7 +36,7 @@ class PlayerReconnectKafkaConsumer {
         this.objectMapper = objectMapper;
     }
 
-    @KafkaListener(topics = "game.commands")
+    @KafkaListener(topics = "game.commands", groupId = "game-service.session.player-reconnect")
     @Transactional(propagation = REQUIRES_NEW)
     public void handle(InboundEnvelope envelope) {
         if (envelope.eventId() == null || envelope.payload() == null) {
@@ -44,6 +44,14 @@ class PlayerReconnectKafkaConsumer {
             return;
         }
         if (!EVENT_TYPE.equals(envelope.eventType())) {
+            return;
+        }
+        if (envelope.version() != 1) {
+            log.warn(
+                    "Unsupported {} envelope version {} for event {} — skipping",
+                    EVENT_TYPE,
+                    envelope.version(),
+                    envelope.eventId());
             return;
         }
         if (!processedEventRepository.tryMarkProcessed(envelope.eventId(), CONSUMER)) {

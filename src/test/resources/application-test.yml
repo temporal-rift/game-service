@@ -11,6 +11,8 @@ spring:
     show-sql: false
   kafka:
     bootstrap-servers: localhost:9092
+    properties:
+      security.protocol: PLAINTEXT
     consumer:
       group-id: game-service
       auto-offset-reset: earliest
@@ -18,6 +20,17 @@ spring:
     events:
       externalization:
         enabled: true
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:9000
+  cloud:
+    stream:
+      kafka:
+        binder:
+          configuration:
+            security.protocol: PLAINTEXT
 
 logging:
   level:
