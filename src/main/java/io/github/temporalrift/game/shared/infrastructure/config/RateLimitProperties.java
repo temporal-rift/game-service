@@ -14,5 +14,5 @@ import org.springframework.validation.annotation.Validated;
 record RateLimitProperties(
         @Min(1) int requestsPerMinute,
 
-        @NotNull @DurationMin(nanos = 1) @DefaultValue("60s")
+        @NotNull @DurationMin(seconds = 1) @DefaultValue("60s")
         Duration cleanupInterval) {}
