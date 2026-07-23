@@ -14,4 +14,8 @@ record TimerProperties(
         @NotNull @DurationMin(nanos = 1) @DefaultValue("2m") Duration eventResubmitMinAge,
 
         @NotNull @DurationMin(nanos = 1) @DefaultValue("30s")
-        Duration eventResubmitInterval) {}
+        Duration eventResubmitInterval,
+
+        @NotNull @DurationMin(nanos = 1) @DefaultValue("1s") Duration actionRoundSweepInterval,
+
+        @NotNull @DurationMin(nanos = 1) @DefaultValue("1s") Duration reconnectSweepInterval) {}

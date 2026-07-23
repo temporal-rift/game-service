@@ -36,7 +36,7 @@ class PlayerReconnectTimerSweep {
         this.clock = clock;
     }
 
-    @Scheduled(fixedDelayString = "${game.timers.reconnect-sweep-ms:1000}")
+    @Scheduled(fixedDelayString = "${game.timers.reconnect-sweep-interval}")
     void sweep() {
         stateManager.findGracePeriodDueBy(clock.instant()).forEach(this::process);
     }
