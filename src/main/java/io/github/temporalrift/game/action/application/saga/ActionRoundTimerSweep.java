@@ -37,7 +37,7 @@ class ActionRoundTimerSweep {
         this.clock = clock;
     }
 
-    @Scheduled(fixedDelayString = "${game.timers.action-round-sweep-ms:1000}")
+    @Scheduled(fixedDelayString = "${game.timers.action-round-sweep-interval}")
     void sweep() {
         stateManager.findWaitingDueBy(clock.instant()).forEach(this::process);
     }
