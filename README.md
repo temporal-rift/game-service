@@ -68,4 +68,5 @@ Modules communicate only via Spring `ApplicationEvent` — never by direct cross
 ## Dependencies
 
 - Parent BOM: `temporal-rift-bom:1.0.14` (Spotless, Checkstyle, OpenAPI generator)
-- Shared events: `domain-events:1.0.7`
+- Event contracts (spec-only AsyncAPI modules from `apis`, code-generated at build time):
+  `session-event`, `action-event`, `scoring-event` — versions pinned as `<*-event.version>` properties in `pom.xml`
