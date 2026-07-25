@@ -37,6 +37,8 @@
     <include file="db/changelog/scoring/004-create-player-score.xml"/>
     <include file="db/changelog/scoring/005-create-scoring-era-completion.xml"/>
     <include file="db/changelog/scoring/006-create-scoring-timeline-outcome-inbox.xml"/>
+    <include file="db/changelog/scoring/007-create-scoring-game-visibility.xml"/>
+    <include file="db/changelog/scoring/008-create-scoring-player.xml"/>
 
 </databaseChangeLog>
 

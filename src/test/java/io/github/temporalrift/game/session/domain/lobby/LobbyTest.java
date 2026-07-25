@@ -17,9 +17,9 @@ import org.junit.jupiter.api.Test;
 import io.github.temporalrift.game.session.domain.event.HostTransferred;
 import io.github.temporalrift.game.session.domain.event.LobbyClosed;
 import io.github.temporalrift.game.session.domain.event.LobbyCreated;
-import io.github.temporalrift.game.session.domain.event.PlayerJoinedLobby;
 import io.github.temporalrift.game.session.domain.event.PlayerLeftLobby;
 import io.github.temporalrift.game.shared.Faction;
+import io.github.temporalrift.game.shared.PlayerJoinedLobby;
 
 class LobbyTest {
 
@@ -213,6 +213,8 @@ class LobbyTest {
         var events = lobby.pullEvents();
         assertThat(events).singleElement().isInstanceOf(PlayerJoinedLobby.class);
         var event = (PlayerJoinedLobby) events.getFirst();
+        assertThat(event.gameId()).isEqualTo(lobby.gameId());
+        assertThat(event.lobbyId()).isEqualTo(lobby.id());
         assertThat(event.playerId()).isEqualTo(p.playerId());
         assertThat(event.playerName()).isEqualTo(p.playerName());
     }

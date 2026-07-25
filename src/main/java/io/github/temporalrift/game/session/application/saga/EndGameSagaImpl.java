@@ -8,6 +8,7 @@ import java.util.UUID;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataAccessException;
 import org.springframework.retry.annotation.Backoff;
 import org.springframework.retry.annotation.Recover;
@@ -15,7 +16,6 @@ import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import io.github.temporalrift.game.session.domain.event.FactionRevealed;
 import io.github.temporalrift.game.session.domain.game.Game;
 import io.github.temporalrift.game.session.domain.game.GameAlreadyOverException;
 import io.github.temporalrift.game.session.domain.game.GameNotFoundException;
@@ -25,6 +25,7 @@ import io.github.temporalrift.game.session.domain.port.out.SessionEventPublisher
 import io.github.temporalrift.game.session.domain.port.out.StartGameSagaRepository;
 import io.github.temporalrift.game.session.domain.saga.EndGameTrigger;
 import io.github.temporalrift.game.shared.DomainEventEnvelope;
+import io.github.temporalrift.game.shared.FactionRevealed;
 import io.github.temporalrift.game.shared.GameEnded;
 
 @Service
@@ -35,6 +36,7 @@ class EndGameSagaImpl implements EndGameSaga {
     private final GameRepository gameRepository;
     private final StartGameSagaRepository startGameSagaRepository;
     private final SessionEventPublisher eventPublisher;
+    private final ApplicationEventPublisher applicationEventPublisher;
     private final EndGameSagaStateManager stateManager;
     private final FinalScoreQueryPort finalScoreQueryPort;
     private final Clock clock;
@@ -43,12 +45,14 @@ class EndGameSagaImpl implements EndGameSaga {
             GameRepository gameRepository,
             StartGameSagaRepository startGameSagaRepository,
             SessionEventPublisher eventPublisher,
+            ApplicationEventPublisher applicationEventPublisher,
             EndGameSagaStateManager stateManager,
             FinalScoreQueryPort finalScoreQueryPort,
             Clock clock) {
         this.gameRepository = gameRepository;
         this.startGameSagaRepository = startGameSagaRepository;
         this.eventPublisher = eventPublisher;
+        this.applicationEventPublisher = applicationEventPublisher;
         this.stateManager = stateManager;
         this.finalScoreQueryPort = finalScoreQueryPort;
         this.clock = clock;
@@ -76,15 +80,17 @@ class EndGameSagaImpl implements EndGameSaga {
 
         var finalScores = finalScoreQueryPort.getScores(gameId);
         publishEvent(gameId, new GameEnded(gameId, triggerType.name(), finalScores));
-        publishEvent(
+
+        var factionRevealed = new FactionRevealed(
                 gameId,
-                new FactionRevealed(
-                        gameId,
-                        assignments.stream()
-                                .map(assignment -> new FactionRevealed.PlayerFactionResult(
-                                        assignment.playerId(),
-                                        assignment.faction().name()))
-                                .toList()));
+                assignments.stream()
+                        .map(assignment -> new FactionRevealed.PlayerFactionResult(
+                                assignment.playerId(), assignment.faction().name()))
+                        .toList());
+        // Kafka path for external services, plus the in-process path the scoring module's
+        // faction-visibility projection listens to (dual-publish pattern, see developer-notes.md).
+        publishEvent(gameId, factionRevealed);
+        applicationEventPublisher.publishEvent(factionRevealed);
 
         stateManager.complete(gameId);
     }
