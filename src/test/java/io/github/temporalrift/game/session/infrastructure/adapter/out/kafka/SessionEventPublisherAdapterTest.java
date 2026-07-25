@@ -20,7 +20,6 @@ import org.springframework.messaging.Message;
 import io.github.temporalrift.game.session.domain.event.EraEnded;
 import io.github.temporalrift.game.session.domain.event.EraFailed;
 import io.github.temporalrift.game.session.domain.event.EraStarted;
-import io.github.temporalrift.game.session.domain.event.FactionRevealed;
 import io.github.temporalrift.game.session.domain.event.FactionsDrawn;
 import io.github.temporalrift.game.session.domain.event.GameEndedAbnormally;
 import io.github.temporalrift.game.session.domain.event.GameStartCancelled;
@@ -31,7 +30,6 @@ import io.github.temporalrift.game.session.domain.event.LobbyClosed;
 import io.github.temporalrift.game.session.domain.event.LobbyCreated;
 import io.github.temporalrift.game.session.domain.event.PlayerAbandoned;
 import io.github.temporalrift.game.session.domain.event.PlayerDisconnected;
-import io.github.temporalrift.game.session.domain.event.PlayerJoinedLobby;
 import io.github.temporalrift.game.session.domain.event.PlayerLeftLobby;
 import io.github.temporalrift.game.session.domain.event.ResolutionStarted;
 import io.github.temporalrift.game.session.domain.event.TimelineCollapsed;
@@ -42,8 +40,10 @@ import io.github.temporalrift.game.shared.CardType;
 import io.github.temporalrift.game.shared.DomainEventEnvelope;
 import io.github.temporalrift.game.shared.EventsDrawn;
 import io.github.temporalrift.game.shared.FactionAssigned;
+import io.github.temporalrift.game.shared.FactionRevealed;
 import io.github.temporalrift.game.shared.GameEnded;
 import io.github.temporalrift.game.shared.HandDealt;
+import io.github.temporalrift.game.shared.PlayerJoinedLobby;
 
 @ExtendWith(MockitoExtension.class)
 class SessionEventPublisherAdapterTest {
@@ -65,7 +65,7 @@ class SessionEventPublisherAdapterTest {
         var playerId = UUID.randomUUID();
 
         adapter.publish(envelope(gameId, new LobbyCreated(lobbyId, playerId, Instant.now())));
-        adapter.publish(envelope(gameId, new PlayerJoinedLobby(lobbyId, playerId, "Ada")));
+        adapter.publish(envelope(gameId, new PlayerJoinedLobby(gameId, lobbyId, playerId, "Ada")));
         adapter.publish(envelope(gameId, new PlayerLeftLobby(lobbyId, playerId)));
         adapter.publish(envelope(gameId, new LobbyClosed(lobbyId, gameId)));
         adapter.publish(envelope(gameId, new HostTransferred(lobbyId, playerId, UUID.randomUUID())));

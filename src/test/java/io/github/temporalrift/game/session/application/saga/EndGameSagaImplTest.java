@@ -21,8 +21,8 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 
-import io.github.temporalrift.game.session.domain.event.FactionRevealed;
 import io.github.temporalrift.game.session.domain.game.Game;
 import io.github.temporalrift.game.session.domain.game.GameStatus;
 import io.github.temporalrift.game.session.domain.port.out.FinalScoreQueryPort;
@@ -35,6 +35,7 @@ import io.github.temporalrift.game.session.domain.saga.StartGameSagaState;
 import io.github.temporalrift.game.session.domain.saga.StartGameSagaStatus;
 import io.github.temporalrift.game.shared.DomainEventEnvelope;
 import io.github.temporalrift.game.shared.Faction;
+import io.github.temporalrift.game.shared.FactionRevealed;
 import io.github.temporalrift.game.shared.GameEnded;
 
 @ExtendWith(MockitoExtension.class)
@@ -56,6 +57,9 @@ class EndGameSagaImplTest {
 
     @Mock
     SessionEventPublisher eventPublisher;
+
+    @Mock
+    ApplicationEventPublisher applicationEventPublisher;
 
     @Mock
     EndGameSagaStateManager stateManager;

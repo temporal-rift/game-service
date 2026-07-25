@@ -11,7 +11,6 @@ import org.mapstruct.Named;
 import io.github.temporalrift.game.session.domain.event.EraEnded;
 import io.github.temporalrift.game.session.domain.event.EraFailed;
 import io.github.temporalrift.game.session.domain.event.EraStarted;
-import io.github.temporalrift.game.session.domain.event.FactionRevealed;
 import io.github.temporalrift.game.session.domain.event.FactionsDrawn;
 import io.github.temporalrift.game.session.domain.event.GameEndedAbnormally;
 import io.github.temporalrift.game.session.domain.event.GameStartCancelled;
@@ -22,7 +21,6 @@ import io.github.temporalrift.game.session.domain.event.LobbyClosed;
 import io.github.temporalrift.game.session.domain.event.LobbyCreated;
 import io.github.temporalrift.game.session.domain.event.PlayerAbandoned;
 import io.github.temporalrift.game.session.domain.event.PlayerDisconnected;
-import io.github.temporalrift.game.session.domain.event.PlayerJoinedLobby;
 import io.github.temporalrift.game.session.domain.event.PlayerLeftLobby;
 import io.github.temporalrift.game.session.domain.event.TimelineCollapsed;
 import io.github.temporalrift.game.session.domain.event.TimelineStabilized;
@@ -59,8 +57,10 @@ import io.github.temporalrift.game.session.infrastructure.adapter.out.kafka.mode
 import io.github.temporalrift.game.session.infrastructure.adapter.out.kafka.model.WinConditionMetPayload;
 import io.github.temporalrift.game.shared.EventsDrawn;
 import io.github.temporalrift.game.shared.FactionAssigned;
+import io.github.temporalrift.game.shared.FactionRevealed;
 import io.github.temporalrift.game.shared.GameEnded;
 import io.github.temporalrift.game.shared.HandDealt;
+import io.github.temporalrift.game.shared.PlayerJoinedLobby;
 
 @Mapper(componentModel = "spring")
 interface SessionEventWireMapper {

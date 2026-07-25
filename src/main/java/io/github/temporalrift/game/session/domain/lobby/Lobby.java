@@ -12,10 +12,10 @@ import java.util.stream.IntStream;
 import io.github.temporalrift.game.session.domain.event.HostTransferred;
 import io.github.temporalrift.game.session.domain.event.LobbyClosed;
 import io.github.temporalrift.game.session.domain.event.LobbyCreated;
-import io.github.temporalrift.game.session.domain.event.PlayerJoinedLobby;
 import io.github.temporalrift.game.session.domain.event.PlayerLeftLobby;
 import io.github.temporalrift.game.shared.AggregateRoot;
 import io.github.temporalrift.game.shared.Faction;
+import io.github.temporalrift.game.shared.PlayerJoinedLobby;
 
 public class Lobby extends AggregateRoot {
 
@@ -83,7 +83,7 @@ public class Lobby extends AggregateRoot {
         }
         currentPlayers.add(
                 new LobbyPlayer(playerId, playerName, faction, config.clock().instant(), true));
-        registerEvent(new PlayerJoinedLobby(id, playerId, playerName));
+        registerEvent(new PlayerJoinedLobby(gameId, id, playerId, playerName));
     }
 
     public void assignFaction(UUID playerId, Faction faction) {

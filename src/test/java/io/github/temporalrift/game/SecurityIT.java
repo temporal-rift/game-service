@@ -15,6 +15,8 @@ import org.springframework.test.web.servlet.MockMvc;
 import io.github.temporalrift.game.action.application.port.in.GetRoundStatusUseCase;
 import io.github.temporalrift.game.action.application.port.in.PlayCardUseCase;
 import io.github.temporalrift.game.action.application.port.in.PlaySpecialActionUseCase;
+import io.github.temporalrift.game.scoring.application.port.in.GetScoresUseCase;
+import io.github.temporalrift.game.scoring.application.port.in.GetScoringHistoryUseCase;
 import io.github.temporalrift.game.session.application.port.in.CreateLobbyUseCase;
 import io.github.temporalrift.game.session.application.port.in.GetGameStateUseCase;
 import io.github.temporalrift.game.session.application.port.in.JoinLobbyUseCase;
@@ -52,6 +54,12 @@ class SecurityIT {
 
     @MockitoBean
     private GetGameStateUseCase getGameStateUseCase;
+
+    @MockitoBean
+    private GetScoresUseCase getScoresUseCase;
+
+    @MockitoBean
+    private GetScoringHistoryUseCase getScoringHistoryUseCase;
 
     @Test
     @DisplayName("Given no Authorization header, when /api/v1 called, then returns 401 with problem details")
