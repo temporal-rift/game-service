@@ -74,9 +74,9 @@ class GetScoresQueryHandlerTest {
     @DisplayName("no scores persisted — throws ScoringGameNotFoundException")
     void handle_noScores_throws() {
         given(scoringReadRepository.findCurrentScores(GAME_ID)).willReturn(List.of());
+        var query = new GetScoresUseCase.Query(GAME_ID);
 
-        assertThatExceptionOfType(ScoringGameNotFoundException.class)
-                .isThrownBy(() -> handler.handle(new GetScoresUseCase.Query(GAME_ID)));
+        assertThatExceptionOfType(ScoringGameNotFoundException.class).isThrownBy(() -> handler.handle(query));
     }
 
     private static List<CurrentScoreRow> rows() {

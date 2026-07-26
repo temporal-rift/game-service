@@ -68,8 +68,8 @@ class GetScoringHistoryQueryHandlerTest {
     @DisplayName("no history persisted — throws ScoringGameNotFoundException")
     void handle_noHistory_throws() {
         given(scoringReadRepository.findScoreHistory(GAME_ID)).willReturn(List.of());
+        var query = new GetScoringHistoryUseCase.Query(GAME_ID);
 
-        assertThatExceptionOfType(ScoringGameNotFoundException.class)
-                .isThrownBy(() -> handler.handle(new GetScoringHistoryUseCase.Query(GAME_ID)));
+        assertThatExceptionOfType(ScoringGameNotFoundException.class).isThrownBy(() -> handler.handle(query));
     }
 }
