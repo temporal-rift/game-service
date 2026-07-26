@@ -26,4 +26,25 @@
                 constraintName="uq_scoring_context_player_game_player"/>
     </changeSet>
 
+    <changeSet id="scoring-001-create-scoring-player" author="game-service">
+        <createTable tableName="scoring_player">
+            <column name="id" type="UUID">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="game_id" type="UUID">
+                <constraints nullable="false"/>
+            </column>
+            <column name="player_id" type="UUID">
+                <constraints nullable="false"/>
+            </column>
+            <column name="player_name" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addUniqueConstraint
+                tableName="scoring_player"
+                columnNames="game_id,player_id"
+                constraintName="uq_scoring_player_game_player"/>
+    </changeSet>
+
 </databaseChangeLog>
