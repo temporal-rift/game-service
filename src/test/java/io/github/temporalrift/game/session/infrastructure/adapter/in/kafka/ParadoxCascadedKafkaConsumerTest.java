@@ -12,6 +12,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 import org.junit.jupiter.api.DisplayName;
@@ -111,6 +112,7 @@ class ParadoxCascadedKafkaConsumerTest {
         var game = Game.reconstitute(GAME_ID, LOBBY_ID, List.of(), 1, 2, GameStatus.IN_PROGRESS);
         given(gameRepository.findById(GAME_ID)).willReturn(Optional.of(game));
         given(gameRules.maxCascadedParadoxes()).willReturn(MAX_CASCADED);
+        given(gameRules.collapseWinnerFactions()).willReturn(Set.of(Faction.ERASERS, Faction.REVISIONISTS));
         given(lobbyRepository.findById(LOBBY_ID))
                 .willReturn(Optional.of(startedLobby(List.of(
                         new LobbyPlayer(PLAYER_1, "P1", Faction.PROPHETS, java.time.Instant.EPOCH, true),
@@ -136,6 +138,7 @@ class ParadoxCascadedKafkaConsumerTest {
         var game = Game.reconstitute(GAME_ID, LOBBY_ID, List.of(), 1, 2, GameStatus.IN_PROGRESS);
         given(gameRepository.findById(GAME_ID)).willReturn(Optional.of(game));
         given(gameRules.maxCascadedParadoxes()).willReturn(MAX_CASCADED);
+        given(gameRules.collapseWinnerFactions()).willReturn(Set.of(Faction.ERASERS, Faction.REVISIONISTS));
         given(lobbyRepository.findById(LOBBY_ID))
                 .willReturn(Optional.of(startedLobby(List.of(
                         new LobbyPlayer(PLAYER_1, "P1", Faction.ERASERS, java.time.Instant.EPOCH, true),

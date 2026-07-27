@@ -24,4 +24,6 @@ public interface SessionGameRulesPort extends GameRulesPort {
     int reconnectGracePeriodSeconds();
 
     Set<Faction> stabilizationWinnerFactions();
+
+    Set<Faction> collapseWinnerFactions();
 }

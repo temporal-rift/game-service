@@ -5,7 +5,6 @@ import static org.springframework.transaction.annotation.Propagation.REQUIRES_NE
 import java.time.Clock;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
 import java.util.UUID;
 
 import org.slf4j.Logger;
@@ -29,7 +28,6 @@ import io.github.temporalrift.game.session.domain.port.out.LobbyRepository;
 import io.github.temporalrift.game.session.domain.port.out.SessionEventPublisher;
 import io.github.temporalrift.game.session.domain.port.out.SessionGameRulesPort;
 import io.github.temporalrift.game.shared.DomainEventEnvelope;
-import io.github.temporalrift.game.shared.Faction;
 import io.github.temporalrift.game.shared.InboundEnvelope;
 import io.github.temporalrift.game.shared.ProcessedEventRepository;
 
@@ -39,7 +37,6 @@ class ParadoxCascadedKafkaConsumer {
     private static final Logger log = LoggerFactory.getLogger(ParadoxCascadedKafkaConsumer.class);
     private static final String EVENT_TYPE = "timeline.ParadoxCascaded";
     private static final String CONSUMER = "session.paradox-cascaded";
-    private static final Set<Faction> COLLAPSE_WINNERS = Set.of(Faction.ERASERS, Faction.REVISIONISTS);
 
     private final ProcessedEventRepository processedEventRepository;
     private final GameRepository gameRepository;
@@ -128,7 +125,7 @@ class ParadoxCascadedKafkaConsumer {
             var faction = player.faction();
             var result = new TimelineCollapsed.PlayerFactionResult(
                     player.playerId(), faction == null ? null : faction.name());
-            if (faction != null && COLLAPSE_WINNERS.contains(faction)) {
+            if (faction != null && gameRules.collapseWinnerFactions().contains(faction)) {
                 winners.add(result);
             } else {
                 losers.add(result);
