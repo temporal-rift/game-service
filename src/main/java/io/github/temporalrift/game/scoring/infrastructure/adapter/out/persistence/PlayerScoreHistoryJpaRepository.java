@@ -9,11 +9,11 @@ import org.springframework.data.repository.query.Param;
 
 interface PlayerScoreHistoryJpaRepository extends JpaRepository<PlayerScoreHistoryJpaEntity, UUID> {
 
-    List<PlayerScoreHistoryJpaEntity> findAllByPlayerScoreIdOrderByEraNumberAsc(UUID playerScoreId);
-
     long countByPlayerScoreId(UUID playerScoreId);
 
     List<PlayerScoreHistoryJpaEntity> findAllByGameId(UUID gameId);
+
+    List<PlayerScoreHistoryJpaEntity> findAllByGameIdOrderByEraNumberAsc(UUID gameId);
 
     @Query("select max(h.eraNumber) from PlayerScoreHistoryJpaEntity h where h.gameId = :gameId")
     Integer findMaxEraNumberByGameId(@Param("gameId") UUID gameId);

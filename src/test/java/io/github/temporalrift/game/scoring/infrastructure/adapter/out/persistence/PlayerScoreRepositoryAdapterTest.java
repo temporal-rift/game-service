@@ -51,7 +51,7 @@ class PlayerScoreRepositoryAdapterTest {
                 scoreId, gameId, playerId, new ScoreEntry(1, ScoreReason.CHAIN_LINK_ADDED, 2, 2));
         var historyRow2 = PlayerScoreHistoryJpaEntity.fromDomain(
                 scoreId, gameId, playerId, new ScoreEntry(2, ScoreReason.CHAIN_COMPLETED, 10, 12));
-        given(historyJpaRepository.findAllByPlayerScoreIdOrderByEraNumberAsc(scoreId))
+        given(historyJpaRepository.findAllByGameIdOrderByEraNumberAsc(gameId))
                 .willReturn(List.of(historyRow1, historyRow2));
 
         var scores = adapter.findAllByGameIdWithLock(gameId);
