@@ -33,6 +33,9 @@ class PlayerScoreRepositoryAdapter implements PlayerScoreRepository {
     }
 
     private List<PlayerScore> toDomain(UUID gameId, List<PlayerScoreJpaEntity> entities) {
+        if (entities.isEmpty()) {
+            return List.of();
+        }
         // One history query for the whole game instead of one per score row.
         var historyByScoreId = historyJpaRepository.findAllByGameIdOrderByEraNumberAsc(gameId).stream()
                 .collect(Collectors.groupingBy(PlayerScoreHistoryJpaEntity::getPlayerScoreId));

@@ -2,7 +2,6 @@ package io.github.temporalrift.game.action.infrastructure.adapter.out.persistenc
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.BDDMockito.given;
-import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.inOrder;
 
 import java.util.List;
@@ -42,7 +41,7 @@ class CurrentEraFutureEventAdapterTest {
         @SuppressWarnings("unchecked")
         var captor = (ArgumentCaptor<List<FutureEventDefinitionJpaEntity>>)
                 (ArgumentCaptor<?>) ArgumentCaptor.forClass(List.class);
-        then(jpaRepository).should().saveAll(captor.capture());
+        inOrder.verify(jpaRepository).saveAll(captor.capture());
         assertThat(captor.getValue())
                 .extracting(FutureEventDefinitionJpaEntity::getDisplayOrder)
                 .containsExactly(0, 1);

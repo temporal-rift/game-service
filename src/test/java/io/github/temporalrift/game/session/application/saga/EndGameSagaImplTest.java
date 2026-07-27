@@ -1,6 +1,7 @@
 package io.github.temporalrift.game.session.application.saga;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.tuple;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.BDDMockito.given;
@@ -190,8 +191,9 @@ class EndGameSagaImplTest {
                 .findFirst()
                 .orElseThrow();
         assertThat(factionRevealed.reveals())
-                .extracting(FactionRevealed.PlayerFactionResult::playerId)
-                .containsExactlyInAnyOrder(PLAYER_1, PLAYER_2);
+                .extracting(FactionRevealed.PlayerFactionResult::playerId, FactionRevealed.PlayerFactionResult::faction)
+                .containsExactlyInAnyOrder(
+                        tuple(PLAYER_1, Faction.PROPHETS.name()), tuple(PLAYER_2, Faction.ERASERS.name()));
     }
 
     // ─── idempotency ─────────────────────────────────────────────────────────
