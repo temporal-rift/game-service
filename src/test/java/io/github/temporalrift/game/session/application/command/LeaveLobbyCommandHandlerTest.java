@@ -39,7 +39,7 @@ class LeaveLobbyCommandHandlerTest {
     @DisplayName("calls leave on the lobby aggregate with the player id from the command")
     void handle_callsLeaveOnLobby() {
         // given
-        given(lobbyRepository.findById(LOBBY_ID)).willReturn(Optional.of(lobby));
+        given(lobbyRepository.findByIdWithLock(LOBBY_ID)).willReturn(Optional.of(lobby));
         var command = new LeaveLobbyUseCase.Command(LOBBY_ID, PLAYER_ID);
 
         // when
@@ -53,7 +53,7 @@ class LeaveLobbyCommandHandlerTest {
     @DisplayName("saves lobby after leave")
     void handle_savesLobbyAfterLeave() {
         // given
-        given(lobbyRepository.findById(LOBBY_ID)).willReturn(Optional.of(lobby));
+        given(lobbyRepository.findByIdWithLock(LOBBY_ID)).willReturn(Optional.of(lobby));
         var command = new LeaveLobbyUseCase.Command(LOBBY_ID, PLAYER_ID);
 
         // when
@@ -67,7 +67,7 @@ class LeaveLobbyCommandHandlerTest {
     @DisplayName("lobby not found — throws LobbyNotFoundException without touching the lobby")
     void handle_lobbyNotFound_throwsLobbyNotFoundException() {
         // given
-        given(lobbyRepository.findById(any())).willReturn(Optional.empty());
+        given(lobbyRepository.findByIdWithLock(any())).willReturn(Optional.empty());
         var command = new LeaveLobbyUseCase.Command(UUID.randomUUID(), PLAYER_ID);
 
         // when / then

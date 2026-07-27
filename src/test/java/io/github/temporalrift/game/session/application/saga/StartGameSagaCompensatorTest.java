@@ -117,7 +117,7 @@ class StartGameSagaCompensatorTest {
     void compensate_writesFailedRecordAndPublishesEvent() {
         // given — no stub for findByGameIdWithLock: compensate must not depend on reading state written
         // by the (rolled-back) transaction it is compensating for
-        given(lobbyRepository.findById(LOBBY_ID)).willReturn(Optional.of(lobby));
+        given(lobbyRepository.findByIdWithLock(LOBBY_ID)).willReturn(Optional.of(lobby));
         given(lobby.id()).willReturn(LOBBY_ID);
 
         // when
@@ -144,7 +144,7 @@ class StartGameSagaCompensatorTest {
     @DisplayName("compensate — lobby not found — throws IllegalStateException")
     void compensate_lobbyNotFound_throwsIllegalStateException() {
         // given
-        given(lobbyRepository.findById(LOBBY_ID)).willReturn(Optional.empty());
+        given(lobbyRepository.findByIdWithLock(LOBBY_ID)).willReturn(Optional.empty());
 
         // when / then
         assertThatExceptionOfType(IllegalStateException.class)

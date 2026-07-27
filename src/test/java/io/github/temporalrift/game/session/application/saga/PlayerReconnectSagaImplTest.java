@@ -102,11 +102,21 @@ class PlayerReconnectSagaImplTest {
     }
 
     private Lobby stubStartedLobby(boolean playerConnected) {
-        var player = new LobbyPlayer(PLAYER_ID, "Alice", null, BASE_INSTANT, playerConnected);
-        var config = new LobbyConfig("ABCD", 3, 5, TEST_CLOCK);
-        var lobby = Lobby.reconstitute(LOBBY_ID, GAME_ID, PLAYER_ID, List.of(player), LobbyStatus.STARTED, config);
+        var lobby = startedLobby(playerConnected);
+        given(lobbyRepository.findByIdWithLock(LOBBY_ID)).willReturn(Optional.of(lobby));
+        return lobby;
+    }
+
+    private Lobby stubStartedLobbyForRead(boolean playerConnected) {
+        var lobby = startedLobby(playerConnected);
         given(lobbyRepository.findById(LOBBY_ID)).willReturn(Optional.of(lobby));
         return lobby;
+    }
+
+    private Lobby startedLobby(boolean playerConnected) {
+        var player = new LobbyPlayer(PLAYER_ID, "Alice", null, BASE_INSTANT, playerConnected);
+        var config = new LobbyConfig("ABCD", 3, 5, TEST_CLOCK);
+        return Lobby.reconstitute(LOBBY_ID, GAME_ID, PLAYER_ID, List.of(player), LobbyStatus.STARTED, config);
     }
 
     @Test
@@ -190,7 +200,7 @@ class PlayerReconnectSagaImplTest {
         given(stateManager.findBySagaId(SAGA_ID)).willReturn(Optional.of(gracePeriodState));
         given(stateManager.tryAbandon(SAGA_ID)).willReturn(true);
         stubGameWithLock();
-        stubStartedLobby(false);
+        stubStartedLobbyForRead(false);
         given(stateManager.countActiveGracePeriodForGame(GAME_ID)).willReturn(0L);
 
         // when
@@ -210,7 +220,7 @@ class PlayerReconnectSagaImplTest {
         given(stateManager.findBySagaId(SAGA_ID)).willReturn(Optional.of(gracePeriodState));
         given(stateManager.tryAbandon(SAGA_ID)).willReturn(true);
         stubGameWithLock();
-        stubStartedLobby(false);
+        stubStartedLobbyForRead(false);
         given(stateManager.countActiveGracePeriodForGame(GAME_ID)).willReturn(0L);
 
         // when

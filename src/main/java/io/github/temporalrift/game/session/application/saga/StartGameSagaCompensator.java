@@ -69,7 +69,7 @@ class StartGameSagaCompensator {
                 new StartGameSagaState(sagaId, gameId, lobbyId, StartGameSagaStatus.FAILED, List.of()));
 
         var lobby = lobbyRepository
-                .findById(lobbyId)
+                .findByIdWithLock(lobbyId)
                 .orElseThrow(() -> new IllegalStateException(LOBBY_NOT_FOUND.formatted(lobbyId, sagaId)));
         lobby.resetFactionAssignments();
         lobbyRepository.save(lobby);

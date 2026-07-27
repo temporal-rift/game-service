@@ -23,6 +23,7 @@ import io.github.temporalrift.game.session.domain.port.out.GameRepository;
 import io.github.temporalrift.game.session.domain.port.out.LobbyRepository;
 import io.github.temporalrift.game.session.domain.port.out.SessionEventPublisher;
 import io.github.temporalrift.game.session.domain.port.out.SessionGameRulesPort;
+import io.github.temporalrift.game.session.domain.saga.PlayerReconnectSagaState;
 import io.github.temporalrift.game.shared.DomainEventEnvelope;
 
 @Service
@@ -62,8 +63,11 @@ class PlayerReconnectSagaImpl implements PlayerReconnectSaga {
     @Transactional(propagation = REQUIRES_NEW)
     public StartResult start(UUID gameId, UUID playerId) {
         var game = gameRepository.findById(gameId).orElseThrow(() -> new GameNotFoundException(gameId));
-        var lobby =
-                lobbyRepository.findById(game.lobbyId()).orElseThrow(() -> new LobbyNotFoundException(game.lobbyId()));
+        // Locked: save() rewrites the whole player collection, so concurrent connected-flag writes
+        // for different players must serialize or the last writer erases the other's flag.
+        var lobby = lobbyRepository
+                .findByIdWithLock(game.lobbyId())
+                .orElseThrow(() -> new LobbyNotFoundException(game.lobbyId()));
 
         var sagaId = UUID.randomUUID();
         var graceExpiresAt = clock.instant().plusSeconds(gameRules.reconnectGracePeriodSeconds());
@@ -86,14 +90,16 @@ class PlayerReconnectSagaImpl implements PlayerReconnectSaga {
     @Override
     @Transactional(propagation = REQUIRES_NEW)
     public void handleReconnect(UUID gameId, UUID playerId) {
-        var sagaOpt = stateManager.findByGameIdAndPlayerId(gameId, playerId);
-        if (sagaOpt.isEmpty()) {
-            log.info("Reconnect rejected for player {} in game {} — no reconnect saga", playerId, gameId);
-            return;
-        }
+        stateManager
+                .findByGameIdAndPlayerId(gameId, playerId)
+                .ifPresentOrElse(
+                        saga -> reconnect(gameId, playerId, saga),
+                        () -> log.info(
+                                "Reconnect rejected for player {} in game {} — no reconnect saga", playerId, gameId));
+    }
 
-        var saga = sagaOpt.get();
-        // The atomic claim, not the read above, decides who acts: reconnect races timer expiry
+    private void reconnect(UUID gameId, UUID playerId, PlayerReconnectSagaState saga) {
+        // The atomic claim, not the lookup, decides who acts: reconnect races timer expiry
         // (in-memory timer, sweep, other instances) and only one transition may win.
         if (!stateManager.tryReconnect(saga.sagaId())) {
             log.info("Reconnect rejected for player {} in game {} — saga not in GRACE_PERIOD", playerId, gameId);
@@ -102,21 +108,24 @@ class PlayerReconnectSagaImpl implements PlayerReconnectSaga {
         timerRegistry.cancel(saga.sagaId());
 
         var game = gameRepository.findById(gameId).orElseThrow(() -> new GameNotFoundException(gameId));
-        var lobby =
-                lobbyRepository.findById(game.lobbyId()).orElseThrow(() -> new LobbyNotFoundException(game.lobbyId()));
+        var lobby = lobbyRepository
+                .findByIdWithLock(game.lobbyId())
+                .orElseThrow(() -> new LobbyNotFoundException(game.lobbyId()));
         lobby.markPlayerReconnected(playerId);
         lobbyRepository.save(lobby);
     }
 
     void handleTimerExpiry(UUID sagaId) {
-        var sagaOpt = stateManager.findBySagaId(sagaId);
-        if (sagaOpt.isEmpty()) {
-            log.debug("Timer expiry ignored for saga {} — unknown saga", sagaId);
-            return;
-        }
+        stateManager
+                .findBySagaId(sagaId)
+                .ifPresentOrElse(
+                        this::abandonExpiredSaga,
+                        () -> log.debug("Timer expiry ignored for saga {} — unknown saga", sagaId));
+    }
 
-        var saga = sagaOpt.get();
-        // The atomic claim, not the read above, decides who acts: the in-memory timer, the sweep on
+    private void abandonExpiredSaga(PlayerReconnectSagaState saga) {
+        var sagaId = saga.sagaId();
+        // The atomic claim, not the lookup, decides who acts: the in-memory timer, the sweep on
         // this and every other instance, and a concurrent reconnect all race for this transition,
         // and PlayerAbandoned must be published exactly once.
         if (!stateManager.tryAbandon(sagaId)) {
