@@ -63,31 +63,17 @@ class EraScoringContextRepositoryAdapter implements EraScoringContextRepository 
     }
 
     @Override
+    @Transactional
     public void upsertPlayerFaction(UUID gameId, UUID playerId, Faction faction) {
-        var entity = playerJpaRepository
-                .findByGameIdAndPlayerId(gameId, playerId)
-                .orElseGet(ScoringContextPlayerJpaEntity::new);
-        if (entity.getId() == null) {
-            entity.setId(UUID.randomUUID());
-            entity.setGameId(gameId);
-            entity.setPlayerId(playerId);
-        }
-        entity.setFaction(faction.name());
-        playerJpaRepository.save(entity);
+        // Native ON CONFLICT, not check-then-insert: Modulith listeners are at-least-once and a
+        // concurrent redelivery must not create a duplicate (game_id, player_id) row.
+        playerJpaRepository.upsert(UUID.randomUUID(), gameId, playerId, faction.name());
     }
 
     @Override
+    @Transactional
     public void upsertExpectedOutcomeCount(UUID gameId, int eraNumber, int expectedOutcomeCount) {
-        var entity = eraOutcomeExpectationJpaRepository
-                .findByGameIdAndEraNumber(gameId, eraNumber)
-                .orElseGet(ScoringContextEraOutcomeExpectationJpaEntity::new);
-        if (entity.getId() == null) {
-            entity.setId(UUID.randomUUID());
-            entity.setGameId(gameId);
-            entity.setEraNumber(eraNumber);
-        }
-        entity.setExpectedOutcomeCount(expectedOutcomeCount);
-        eraOutcomeExpectationJpaRepository.save(entity);
+        eraOutcomeExpectationJpaRepository.upsert(UUID.randomUUID(), gameId, eraNumber, expectedOutcomeCount);
     }
 
     @Override

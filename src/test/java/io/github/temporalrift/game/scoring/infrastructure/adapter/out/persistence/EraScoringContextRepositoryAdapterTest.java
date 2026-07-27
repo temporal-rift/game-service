@@ -3,6 +3,7 @@ package io.github.temporalrift.game.scoring.infrastructure.adapter.out.persisten
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.never;
@@ -156,74 +157,23 @@ class EraScoringContextRepositoryAdapterTest {
     }
 
     @Test
-    void upsertPlayerFaction_createsNewRowWhenMissing() {
+    void upsertPlayerFaction_delegatesToAtomicUpsert() {
         var gameId = UUID.randomUUID();
         var playerId = UUID.randomUUID();
-        given(playerJpaRepository.findByGameIdAndPlayerId(gameId, playerId)).willReturn(Optional.empty());
 
         adapter.upsertPlayerFaction(gameId, playerId, Faction.ACTIVISTS);
 
-        var captor = ArgumentCaptor.forClass(ScoringContextPlayerJpaEntity.class);
-        then(playerJpaRepository).should().save(captor.capture());
-        assertThat(captor.getValue().getId()).isNotNull();
-        assertThat(captor.getValue().getGameId()).isEqualTo(gameId);
-        assertThat(captor.getValue().getPlayerId()).isEqualTo(playerId);
-        assertThat(captor.getValue().getFaction()).isEqualTo(Faction.ACTIVISTS.name());
+        then(playerJpaRepository)
+                .should()
+                .upsert(any(UUID.class), eq(gameId), eq(playerId), eq(Faction.ACTIVISTS.name()));
     }
 
     @Test
-    void upsertPlayerFaction_updatesExistingRow() {
+    void upsertExpectedOutcomeCount_delegatesToAtomicUpsert() {
         var gameId = UUID.randomUUID();
-        var playerId = UUID.randomUUID();
-        var existingId = UUID.randomUUID();
-        var existing = new ScoringContextPlayerJpaEntity();
-        existing.setId(existingId);
-        existing.setGameId(gameId);
-        existing.setPlayerId(playerId);
-        existing.setFaction(Faction.PROPHETS.name());
-        given(playerJpaRepository.findByGameIdAndPlayerId(gameId, playerId)).willReturn(Optional.of(existing));
-
-        adapter.upsertPlayerFaction(gameId, playerId, Faction.REVISIONISTS);
-
-        var captor = ArgumentCaptor.forClass(ScoringContextPlayerJpaEntity.class);
-        then(playerJpaRepository).should().save(captor.capture());
-        assertThat(captor.getValue().getId()).isEqualTo(existingId);
-        assertThat(captor.getValue().getFaction()).isEqualTo(Faction.REVISIONISTS.name());
-    }
-
-    @Test
-    void upsertExpectedOutcomeCount_createsNewRowWhenMissing() {
-        var gameId = UUID.randomUUID();
-        given(eraOutcomeExpectationJpaRepository.findByGameIdAndEraNumber(gameId, 2))
-                .willReturn(Optional.empty());
 
         adapter.upsertExpectedOutcomeCount(gameId, 2, 3);
 
-        var captor = ArgumentCaptor.forClass(ScoringContextEraOutcomeExpectationJpaEntity.class);
-        then(eraOutcomeExpectationJpaRepository).should().save(captor.capture());
-        assertThat(captor.getValue().getId()).isNotNull();
-        assertThat(captor.getValue().getGameId()).isEqualTo(gameId);
-        assertThat(captor.getValue().getEraNumber()).isEqualTo(2);
-        assertThat(captor.getValue().getExpectedOutcomeCount()).isEqualTo(3);
-    }
-
-    @Test
-    void upsertExpectedOutcomeCount_updatesExistingRow() {
-        var gameId = UUID.randomUUID();
-        var existingId = UUID.randomUUID();
-        var existing = new ScoringContextEraOutcomeExpectationJpaEntity();
-        existing.setId(existingId);
-        existing.setGameId(gameId);
-        existing.setEraNumber(1);
-        existing.setExpectedOutcomeCount(3);
-        given(eraOutcomeExpectationJpaRepository.findByGameIdAndEraNumber(gameId, 1))
-                .willReturn(Optional.of(existing));
-
-        adapter.upsertExpectedOutcomeCount(gameId, 1, 4);
-
-        var captor = ArgumentCaptor.forClass(ScoringContextEraOutcomeExpectationJpaEntity.class);
-        then(eraOutcomeExpectationJpaRepository).should().save(captor.capture());
-        assertThat(captor.getValue().getId()).isEqualTo(existingId);
-        assertThat(captor.getValue().getExpectedOutcomeCount()).isEqualTo(4);
+        then(eraOutcomeExpectationJpaRepository).should().upsert(any(UUID.class), eq(gameId), eq(2), eq(3));
     }
 }
