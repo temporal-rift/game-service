@@ -42,44 +42,43 @@ class ActionRoundSagaStateManager {
 
     @Transactional
     Optional<ActionRoundSagaState> markSubmitted(UUID gameId, int eraNumber, int roundNumber, UUID playerId) {
-        var stateOpt = repository.findByGameIdAndEraNumberAndRoundNumberWithLock(gameId, eraNumber, roundNumber);
-        if (stateOpt.isEmpty()) {
-            log.warn("markSubmitted: saga not found for game {} era {} round {}", gameId, eraNumber, roundNumber);
-            return Optional.empty();
-        }
-        var state = stateOpt.get();
+        return repository
+                .findByGameIdAndEraNumberAndRoundNumberWithLock(gameId, eraNumber, roundNumber)
+                .map(state -> removeFromPending(state, playerId))
+                .or(() -> {
+                    log.warn(
+                            "markSubmitted: saga not found for game {} era {} round {}",
+                            gameId,
+                            eraNumber,
+                            roundNumber);
+                    return Optional.empty();
+                });
+    }
+
+    private ActionRoundSagaState removeFromPending(ActionRoundSagaState state, UUID playerId) {
         if (state.status() != ActionRoundSagaStatus.WAITING) {
-            return Optional.of(state);
+            return state;
         }
         var updated = new ArrayList<>(state.pendingPlayerIds());
         updated.remove(playerId);
-        return Optional.of(repository.save(state.withPendingPlayerIds(updated)));
+        return repository.save(state.withPendingPlayerIds(updated));
     }
 
     @Transactional
     void markClosing(UUID gameId, int eraNumber, int roundNumber) {
-        var stateOpt = repository.findByGameIdAndEraNumberAndRoundNumberWithLock(gameId, eraNumber, roundNumber);
-        if (stateOpt.isEmpty()) {
-            return;
-        }
-        var state = stateOpt.get();
-        if (state.status() == ActionRoundSagaStatus.COMPLETED || state.status() == ActionRoundSagaStatus.CLOSING) {
-            return;
-        }
-        repository.save(state.withStatus(ActionRoundSagaStatus.CLOSING));
+        repository
+                .findByGameIdAndEraNumberAndRoundNumberWithLock(gameId, eraNumber, roundNumber)
+                .filter(state -> state.status() != ActionRoundSagaStatus.COMPLETED
+                        && state.status() != ActionRoundSagaStatus.CLOSING)
+                .ifPresent(state -> repository.save(state.withStatus(ActionRoundSagaStatus.CLOSING)));
     }
 
     @Transactional
     void complete(UUID gameId, int eraNumber, int roundNumber) {
-        var stateOpt = repository.findByGameIdAndEraNumberAndRoundNumber(gameId, eraNumber, roundNumber);
-        if (stateOpt.isEmpty()) {
-            return;
-        }
-        var state = stateOpt.get();
-        if (state.status() == ActionRoundSagaStatus.COMPLETED) {
-            return;
-        }
-        repository.save(state.withStatus(ActionRoundSagaStatus.COMPLETED));
+        repository
+                .findByGameIdAndEraNumberAndRoundNumber(gameId, eraNumber, roundNumber)
+                .filter(state -> state.status() != ActionRoundSagaStatus.COMPLETED)
+                .ifPresent(state -> repository.save(state.withStatus(ActionRoundSagaStatus.COMPLETED)));
     }
 
     Optional<ActionRoundSagaState> findBySagaId(UUID sagaId) {
