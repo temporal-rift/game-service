@@ -72,7 +72,7 @@ class SessionEventPublisherAdapter implements SessionEventPublisher {
     }
 
     @Override
-    public void publish(DomainEventEnvelope event) {
+    public void publish(DomainEventEnvelope<?> event) {
         switch (event.payload()) {
             case LobbyCreated e ->
                 producer.publishLobbyCreated(
@@ -192,7 +192,7 @@ class SessionEventPublisherAdapter implements SessionEventPublisher {
         }
     }
 
-    private void publishResolutionStartedManually(DomainEventEnvelope event, ResolutionStarted payload) {
+    private void publishResolutionStartedManually(DomainEventEnvelope<?> event, ResolutionStarted payload) {
         var messageHeaders = DomainEventHeaders.populate(new HashMap<String, Object>(), event);
         messageHeaders.put("spring.cloud.stream.sendto.destination", "Sessionpublish-resolution-started-out");
         Message<ResolutionStarted> message = MessageBuilder.createMessage(payload, new MessageHeaders(messageHeaders));

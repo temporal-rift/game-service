@@ -72,14 +72,11 @@ class EraSagaAdvancer {
 
     @Transactional(propagation = REQUIRES_NEW)
     void handleRoundClosed(UUID gameId, ActionRoundClosed arc) {
-        var expectedStatus = findExpectedStatus(arc.roundNumber());
-        if (expectedStatus.isEmpty()) {
-            return;
-        }
-        eraSagaRepository
-                .findByGameIdWithLock(gameId)
-                .filter(s -> s.status() == expectedStatus.get())
-                .ifPresent(state -> advanceRound(state, arc));
+        findExpectedStatus(arc.roundNumber())
+                .ifPresent(expectedStatus -> eraSagaRepository
+                        .findByGameIdWithLock(gameId)
+                        .filter(s -> s.status() == expectedStatus)
+                        .ifPresent(state -> advanceRound(state, arc)));
     }
 
     @Transactional(propagation = REQUIRES_NEW)

@@ -4,5 +4,5 @@ import io.github.temporalrift.game.shared.DomainEventEnvelope;
 
 public interface SessionEventPublisher {
 
-    void publish(DomainEventEnvelope event);
+    void publish(DomainEventEnvelope<?> event);
 }

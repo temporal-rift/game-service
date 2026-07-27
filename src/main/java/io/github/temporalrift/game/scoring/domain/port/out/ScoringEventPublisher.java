@@ -4,5 +4,5 @@ import io.github.temporalrift.game.shared.DomainEventEnvelope;
 
 public interface ScoringEventPublisher {
 
-    void publish(DomainEventEnvelope envelope);
+    void publish(DomainEventEnvelope<?> envelope);
 }
