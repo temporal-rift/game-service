@@ -169,4 +169,27 @@ class ActionPersistenceIT {
 
         assertThat(loaded).containsExactly(new EventDefinition(eventId, List.of(new OutcomeDefinition(outcomeId, 70))));
     }
+
+    @Test
+    void futureEventDefinitionPort_replaceForGameEra_removesPriorOutcomesBeforeDefinitions() {
+        var gameId = UUID.randomUUID();
+        var oldEventId = UUID.randomUUID();
+        var oldOutcomeId = UUID.randomUUID();
+        var newEventId = UUID.randomUUID();
+        var newOutcomeId = UUID.randomUUID();
+        var adapter = (CurrentEraFutureEventAdapter) futureEventDefinitionPort;
+        adapter.replaceForGameEra(
+                gameId, 1, List.of(new EventDefinition(oldEventId, List.of(new OutcomeDefinition(oldOutcomeId, 40)))));
+
+        // A second replacement must not violate the outcome table's FK to its parent definition —
+        // proving old outcome rows are deleted before old definition rows, not just that the final
+        // state is correct.
+        adapter.replaceForGameEra(
+                gameId, 1, List.of(new EventDefinition(newEventId, List.of(new OutcomeDefinition(newOutcomeId, 85)))));
+
+        var loaded = futureEventDefinitionPort.findByGameIdAndEraNumber(gameId, 1);
+
+        assertThat(loaded)
+                .containsExactly(new EventDefinition(newEventId, List.of(new OutcomeDefinition(newOutcomeId, 85))));
+    }
 }
