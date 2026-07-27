@@ -2,6 +2,7 @@ package io.github.temporalrift.game.scoring.infrastructure.adapter.out.persisten
 
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Component;
 
@@ -23,15 +24,20 @@ class PlayerScoreRepositoryAdapter implements PlayerScoreRepository {
 
     @Override
     public List<PlayerScore> findAllByGameId(UUID gameId) {
-        return jpaRepository.findAllByGameId(gameId).stream()
-                .map(this::toDomain)
-                .toList();
+        return toDomain(gameId, jpaRepository.findAllByGameId(gameId));
     }
 
     @Override
     public List<PlayerScore> findAllByGameIdWithLock(UUID gameId) {
-        return jpaRepository.findAllByGameIdWithLock(gameId).stream()
-                .map(this::toDomain)
+        return toDomain(gameId, jpaRepository.findAllByGameIdWithLock(gameId));
+    }
+
+    private List<PlayerScore> toDomain(UUID gameId, List<PlayerScoreJpaEntity> entities) {
+        // One history query for the whole game instead of one per score row.
+        var historyByScoreId = historyJpaRepository.findAllByGameIdOrderByEraNumberAsc(gameId).stream()
+                .collect(Collectors.groupingBy(PlayerScoreHistoryJpaEntity::getPlayerScoreId));
+        return entities.stream()
+                .map(entity -> toDomain(entity, historyByScoreId.getOrDefault(entity.getId(), List.of())))
                 .toList();
     }
 
@@ -62,8 +68,8 @@ class PlayerScoreRepositoryAdapter implements PlayerScoreRepository {
         historyJpaRepository.saveAll(newHistoryRows);
     }
 
-    private PlayerScore toDomain(PlayerScoreJpaEntity entity) {
-        var history = historyJpaRepository.findAllByPlayerScoreIdOrderByEraNumberAsc(entity.getId()).stream()
+    private PlayerScore toDomain(PlayerScoreJpaEntity entity, List<PlayerScoreHistoryJpaEntity> historyEntities) {
+        var history = historyEntities.stream()
                 .map(PlayerScoreHistoryJpaEntity::toDomain)
                 .toList();
         return PlayerScore.reconstitute(

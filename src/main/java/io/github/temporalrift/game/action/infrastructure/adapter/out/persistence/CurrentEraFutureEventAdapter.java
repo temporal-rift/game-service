@@ -1,5 +1,6 @@
 package io.github.temporalrift.game.action.infrastructure.adapter.out.persistence;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -31,7 +32,11 @@ class CurrentEraFutureEventAdapter implements FutureEventDefinitionPort {
     @Override
     @Transactional
     public void replaceForGameEra(UUID gameId, int eraNumber, List<EventDefinition> definitions) {
-        jpaRepository.deleteAllByGameIdAndEraNumber(gameId, eraNumber);
+        // Child rows first: the outcome FK has no ON DELETE CASCADE (see the repository queries).
+        jpaRepository.deleteOutcomesByGameIdAndEraNumber(gameId, eraNumber);
+        jpaRepository.deleteDefinitionsByGameIdAndEraNumber(gameId, eraNumber);
+
+        var entities = new ArrayList<FutureEventDefinitionJpaEntity>(definitions.size());
         for (int i = 0; i < definitions.size(); i++) {
             var definition = definitions.get(i);
             var entity = new FutureEventDefinitionJpaEntity();
@@ -43,7 +48,8 @@ class CurrentEraFutureEventAdapter implements FutureEventDefinitionPort {
             entity.setOutcomes(definition.outcomes().stream()
                     .map(FutureEventOutcomeValue::fromDomain)
                     .toList());
-            jpaRepository.save(entity);
+            entities.add(entity);
         }
+        jpaRepository.saveAll(entities);
     }
 }
