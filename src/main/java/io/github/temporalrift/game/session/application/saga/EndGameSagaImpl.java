@@ -19,10 +19,11 @@ import org.springframework.transaction.annotation.Transactional;
 import io.github.temporalrift.game.session.domain.game.Game;
 import io.github.temporalrift.game.session.domain.game.GameAlreadyOverException;
 import io.github.temporalrift.game.session.domain.game.GameNotFoundException;
+import io.github.temporalrift.game.session.domain.lobby.LobbyNotFoundException;
 import io.github.temporalrift.game.session.domain.port.out.FinalScoreQueryPort;
 import io.github.temporalrift.game.session.domain.port.out.GameRepository;
+import io.github.temporalrift.game.session.domain.port.out.LobbyRepository;
 import io.github.temporalrift.game.session.domain.port.out.SessionEventPublisher;
-import io.github.temporalrift.game.session.domain.port.out.StartGameSagaRepository;
 import io.github.temporalrift.game.session.domain.saga.EndGameTrigger;
 import io.github.temporalrift.game.shared.DomainEventEnvelope;
 import io.github.temporalrift.game.shared.FactionRevealed;
@@ -34,7 +35,7 @@ class EndGameSagaImpl implements EndGameSaga {
     private static final Logger log = LoggerFactory.getLogger(EndGameSagaImpl.class);
 
     private final GameRepository gameRepository;
-    private final StartGameSagaRepository startGameSagaRepository;
+    private final LobbyRepository lobbyRepository;
     private final SessionEventPublisher eventPublisher;
     private final ApplicationEventPublisher applicationEventPublisher;
     private final EndGameSagaStateManager stateManager;
@@ -43,14 +44,14 @@ class EndGameSagaImpl implements EndGameSaga {
 
     EndGameSagaImpl(
             GameRepository gameRepository,
-            StartGameSagaRepository startGameSagaRepository,
+            LobbyRepository lobbyRepository,
             SessionEventPublisher eventPublisher,
             ApplicationEventPublisher applicationEventPublisher,
             EndGameSagaStateManager stateManager,
             FinalScoreQueryPort finalScoreQueryPort,
             Clock clock) {
         this.gameRepository = gameRepository;
-        this.startGameSagaRepository = startGameSagaRepository;
+        this.lobbyRepository = lobbyRepository;
         this.eventPublisher = eventPublisher;
         this.applicationEventPublisher = applicationEventPublisher;
         this.stateManager = stateManager;
@@ -73,19 +74,19 @@ class EndGameSagaImpl implements EndGameSaga {
         stateManager.initRunning(gameId, triggerType, List.of(playerIds));
         gameRepository.save(game);
 
-        var assignments = startGameSagaRepository
-                .findByGameId(gameId)
-                .orElseThrow(() -> new GameNotFoundException(gameId))
-                .factionAssignments();
+        // The lobby roster is the system of record for assigned factions; start-game saga state is
+        // workflow bookkeeping and never carries the assignments.
+        var lobby =
+                lobbyRepository.findById(game.lobbyId()).orElseThrow(() -> new LobbyNotFoundException(game.lobbyId()));
 
         var finalScores = finalScoreQueryPort.getScores(gameId);
         publishEvent(gameId, new GameEnded(gameId, triggerType.name(), finalScores));
 
         var factionRevealed = new FactionRevealed(
                 gameId,
-                assignments.stream()
-                        .map(assignment -> new FactionRevealed.PlayerFactionResult(
-                                assignment.playerId(), assignment.faction().name()))
+                lobby.currentPlayers().stream()
+                        .map(player -> new FactionRevealed.PlayerFactionResult(
+                                player.playerId(), player.faction().name()))
                         .toList());
         // Kafka path for external services, plus the in-process path the scoring module's
         // faction-visibility projection listens to (dual-publish pattern, see developer-notes.md).

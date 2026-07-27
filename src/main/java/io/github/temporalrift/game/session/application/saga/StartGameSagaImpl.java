@@ -89,7 +89,7 @@ class StartGameSagaImpl implements StartGameSaga {
             publishFactionEvents(gameId, lobby, assignments);
             createAndSaveGame(gameId, lobby, assignments);
 
-            stateManager.complete(gameId, lobby.id());
+            stateManager.complete(gameId);
             return gameId;
         } catch (Exception e) {
             compensateAfterRollback(sagaId, gameId, lobby.id(), e.getMessage());

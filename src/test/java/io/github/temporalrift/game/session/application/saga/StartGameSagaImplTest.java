@@ -123,7 +123,7 @@ class StartGameSagaImplTest {
         then(eventPublisher).should(ordered).publish(envelopeWithPayload(FactionsDrawn.class));
         then(eventPublisher).should(ordered).publish(envelopeWithPayload(GameStarted.class));
         then(eventPublisher).should(ordered).publish(envelopeWithPayload(EraStarted.class));
-        then(stateManager).should(ordered).complete(GAME_ID, LOBBY_ID);
+        then(stateManager).should(ordered).complete(GAME_ID);
         then(compensator).should(never()).compensate(any(), any(), any(), any());
     }
 
@@ -140,7 +140,7 @@ class StartGameSagaImplTest {
         // when / then
         assertThatExceptionOfType(RuntimeException.class).isThrownBy(() -> saga.start(LOBBY_ID, REQUESTING_PLAYER_ID));
         then(compensator).should().compensate(any(), eq(GAME_ID), eq(LOBBY_ID), any());
-        then(stateManager).should(never()).complete(any(), any());
+        then(stateManager).should(never()).complete(any());
     }
 
     @Test
@@ -198,12 +198,12 @@ class StartGameSagaImplTest {
         given(lobby.id()).willReturn(LOBBY_ID);
         given(lobby.currentPlayers()).willReturn(TWO_PLAYERS);
         given(futureEventCatalog.allEventIds()).willReturn(CATALOG_IDS);
-        willThrow(new RuntimeException("cancelled")).given(stateManager).complete(any(), any());
+        willThrow(new RuntimeException("cancelled")).given(stateManager).complete(any());
 
         // when / then
         assertThatExceptionOfType(RuntimeException.class).isThrownBy(() -> saga.start(LOBBY_ID, REQUESTING_PLAYER_ID));
         then(stateManager).should().initRunning(any(), eq(GAME_ID), eq(LOBBY_ID));
-        then(stateManager).should().complete(GAME_ID, LOBBY_ID);
+        then(stateManager).should().complete(GAME_ID);
         then(compensator).should().compensate(any(), eq(GAME_ID), eq(LOBBY_ID), any());
     }
 
