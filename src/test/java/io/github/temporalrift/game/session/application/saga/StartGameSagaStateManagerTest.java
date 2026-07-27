@@ -59,7 +59,7 @@ class StartGameSagaStateManagerTest {
         given(startGameSagaRepository.findByGameIdWithLock(GAME_ID)).willReturn(Optional.of(RUNNING_STATE));
 
         // when
-        stateManager.complete(GAME_ID, LOBBY_ID);
+        stateManager.complete(GAME_ID);
 
         // then
         then(startGameSagaRepository)
@@ -74,7 +74,7 @@ class StartGameSagaStateManagerTest {
         given(startGameSagaRepository.findByGameIdWithLock(GAME_ID)).willReturn(Optional.empty());
 
         // when
-        stateManager.complete(GAME_ID, LOBBY_ID);
+        stateManager.complete(GAME_ID);
 
         // then
         then(startGameSagaRepository).should().findByGameIdWithLock(GAME_ID);

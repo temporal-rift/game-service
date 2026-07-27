@@ -9,6 +9,7 @@ import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.never;
 
 import java.time.Clock;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -25,14 +26,15 @@ import org.springframework.context.ApplicationEventPublisher;
 
 import io.github.temporalrift.game.session.domain.game.Game;
 import io.github.temporalrift.game.session.domain.game.GameStatus;
+import io.github.temporalrift.game.session.domain.lobby.Lobby;
+import io.github.temporalrift.game.session.domain.lobby.LobbyConfig;
+import io.github.temporalrift.game.session.domain.lobby.LobbyPlayer;
+import io.github.temporalrift.game.session.domain.lobby.LobbyStatus;
 import io.github.temporalrift.game.session.domain.port.out.FinalScoreQueryPort;
 import io.github.temporalrift.game.session.domain.port.out.GameRepository;
+import io.github.temporalrift.game.session.domain.port.out.LobbyRepository;
 import io.github.temporalrift.game.session.domain.port.out.SessionEventPublisher;
-import io.github.temporalrift.game.session.domain.port.out.StartGameSagaRepository;
 import io.github.temporalrift.game.session.domain.saga.EndGameTrigger;
-import io.github.temporalrift.game.session.domain.saga.FactionAssignment;
-import io.github.temporalrift.game.session.domain.saga.StartGameSagaState;
-import io.github.temporalrift.game.session.domain.saga.StartGameSagaStatus;
 import io.github.temporalrift.game.shared.DomainEventEnvelope;
 import io.github.temporalrift.game.shared.Faction;
 import io.github.temporalrift.game.shared.FactionRevealed;
@@ -46,14 +48,12 @@ class EndGameSagaImplTest {
     static final UUID PLAYER_1 = UUID.randomUUID();
     static final UUID PLAYER_2 = UUID.randomUUID();
     static final List<UUID> PLAYER_IDS = List.of(PLAYER_1, PLAYER_2);
-    static final List<FactionAssignment> ASSIGNMENTS = List.of(
-            new FactionAssignment(PLAYER_1, Faction.PROPHETS), new FactionAssignment(PLAYER_2, Faction.ERASERS));
 
     @Mock
     GameRepository gameRepository;
 
     @Mock
-    StartGameSagaRepository startGameSagaRepository;
+    LobbyRepository lobbyRepository;
 
     @Mock
     SessionEventPublisher eventPublisher;
@@ -81,7 +81,7 @@ class EndGameSagaImplTest {
         // given
         var game = Game.reconstitute(GAME_ID, LOBBY_ID, List.of(), 1, 0, GameStatus.IN_PROGRESS);
         given(gameRepository.findById(GAME_ID)).willReturn(Optional.of(game));
-        given(startGameSagaRepository.findByGameId(GAME_ID)).willReturn(Optional.of(startGameSagaState()));
+        given(lobbyRepository.findById(LOBBY_ID)).willReturn(Optional.of(lobby()));
         given(finalScoreQueryPort.getScores(GAME_ID)).willReturn(List.of());
 
         // when
@@ -100,7 +100,7 @@ class EndGameSagaImplTest {
         // given
         var game = Game.reconstitute(GAME_ID, LOBBY_ID, List.of(), 1, 0, GameStatus.IN_PROGRESS);
         given(gameRepository.findById(GAME_ID)).willReturn(Optional.of(game));
-        given(startGameSagaRepository.findByGameId(GAME_ID)).willReturn(Optional.of(startGameSagaState()));
+        given(lobbyRepository.findById(LOBBY_ID)).willReturn(Optional.of(lobby()));
         given(finalScoreQueryPort.getScores(GAME_ID)).willReturn(List.of());
         var captor = ArgumentCaptor.<DomainEventEnvelope>captor();
 
@@ -125,7 +125,7 @@ class EndGameSagaImplTest {
         // given
         var game = Game.reconstitute(GAME_ID, LOBBY_ID, List.of(), 1, 3, GameStatus.IN_PROGRESS);
         given(gameRepository.findById(GAME_ID)).willReturn(Optional.of(game));
-        given(startGameSagaRepository.findByGameId(GAME_ID)).willReturn(Optional.of(startGameSagaState()));
+        given(lobbyRepository.findById(LOBBY_ID)).willReturn(Optional.of(lobby()));
         given(finalScoreQueryPort.getScores(GAME_ID)).willReturn(List.of());
         var captor = ArgumentCaptor.<DomainEventEnvelope>captor();
 
@@ -150,7 +150,7 @@ class EndGameSagaImplTest {
         // given
         var game = Game.reconstitute(GAME_ID, LOBBY_ID, List.of(), 5, 0, GameStatus.IN_PROGRESS);
         given(gameRepository.findById(GAME_ID)).willReturn(Optional.of(game));
-        given(startGameSagaRepository.findByGameId(GAME_ID)).willReturn(Optional.of(startGameSagaState()));
+        given(lobbyRepository.findById(LOBBY_ID)).willReturn(Optional.of(lobby()));
         given(finalScoreQueryPort.getScores(GAME_ID)).willReturn(List.of());
         var captor = ArgumentCaptor.<DomainEventEnvelope>captor();
 
@@ -175,7 +175,7 @@ class EndGameSagaImplTest {
         // given
         var game = Game.reconstitute(GAME_ID, LOBBY_ID, List.of(), 1, 0, GameStatus.IN_PROGRESS);
         given(gameRepository.findById(GAME_ID)).willReturn(Optional.of(game));
-        given(startGameSagaRepository.findByGameId(GAME_ID)).willReturn(Optional.of(startGameSagaState()));
+        given(lobbyRepository.findById(LOBBY_ID)).willReturn(Optional.of(lobby()));
         given(finalScoreQueryPort.getScores(GAME_ID)).willReturn(List.of());
         var captor = ArgumentCaptor.<DomainEventEnvelope>captor();
 
@@ -214,7 +214,11 @@ class EndGameSagaImplTest {
 
     // ─── helpers ─────────────────────────────────────────────────────────────
 
-    private StartGameSagaState startGameSagaState() {
-        return new StartGameSagaState(UUID.randomUUID(), GAME_ID, LOBBY_ID, StartGameSagaStatus.COMPLETED, ASSIGNMENTS);
+    private Lobby lobby() {
+        var players = List.of(
+                new LobbyPlayer(PLAYER_1, "Alice", Faction.PROPHETS, Instant.EPOCH, true),
+                new LobbyPlayer(PLAYER_2, "Bob", Faction.ERASERS, Instant.EPOCH, true));
+        var config = new LobbyConfig("JOINCODE", 2, 5, Clock.systemUTC());
+        return Lobby.reconstitute(LOBBY_ID, GAME_ID, PLAYER_1, players, LobbyStatus.STARTED, config);
     }
 }

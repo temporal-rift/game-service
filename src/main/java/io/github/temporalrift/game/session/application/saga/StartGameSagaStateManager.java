@@ -26,7 +26,7 @@ class StartGameSagaStateManager {
     }
 
     @Transactional
-    public void complete(UUID gameId, UUID lobbyId) {
+    public void complete(UUID gameId) {
         startGameSagaRepository
                 .findByGameIdWithLock(gameId)
                 .ifPresent(state -> startGameSagaRepository.save(state.withStatus(StartGameSagaStatus.COMPLETED)));
