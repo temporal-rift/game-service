@@ -7,6 +7,8 @@ import io.github.temporalrift.game.action.domain.event.ActionEventPayload;
 import io.github.temporalrift.game.action.domain.port.out.ActionEventPublisher;
 import io.github.temporalrift.game.shared.ActionRoundClosed;
 import io.github.temporalrift.game.shared.DomainEventEnvelope;
+import io.github.temporalrift.game.shared.ForesightDeclared;
+import io.github.temporalrift.game.shared.OutcomeAnnihilated;
 
 /** Publishes all events pulled from an action round through both delivery paths. */
 public final class ActionRoundEventPublication {
@@ -45,6 +47,12 @@ public final class ActionRoundEventPublication {
                         DomainEventEnvelope.SCHEMA_VERSION_V1,
                         roundClosed,
                         clock));
+            case ForesightDeclared ignored -> {
+                // Scoring-internal projection fact only — publishInternally() below is the only path.
+            }
+            case OutcomeAnnihilated ignored -> {
+                // Scoring-internal projection fact only — publishInternally() below is the only path.
+            }
             default -> throw new IllegalStateException("Unsupported action aggregate event: " + payload.getClass());
         }
     }

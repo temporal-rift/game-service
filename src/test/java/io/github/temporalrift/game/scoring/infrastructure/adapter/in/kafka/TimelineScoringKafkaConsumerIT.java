@@ -1,7 +1,9 @@
 package io.github.temporalrift.game.scoring.infrastructure.adapter.in.kafka;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.awaitility.Awaitility.await;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -9,15 +11,18 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import io.github.temporalrift.game.TestcontainersConfiguration;
 import io.github.temporalrift.game.scoring.domain.event.OutcomeApplied;
 import io.github.temporalrift.game.scoring.domain.playerscore.ScoreReason;
 import io.github.temporalrift.game.scoring.domain.port.out.EraScoringContextRepository;
 import io.github.temporalrift.game.scoring.domain.port.out.PlayerScoreRepository;
+import io.github.temporalrift.game.shared.ActionRoundClosed;
 import io.github.temporalrift.game.shared.Faction;
 import io.github.temporalrift.game.shared.InboundEnvelope;
 
@@ -38,6 +43,12 @@ class TimelineScoringKafkaConsumerIT {
     @Autowired
     JdbcTemplate jdbcTemplate;
 
+    @Autowired
+    ApplicationEventPublisher applicationEventPublisher;
+
+    @Autowired
+    TransactionTemplate transactionTemplate;
+
     @Test
     void handle_lastOutcomeAppliedForEra_updatesPlayerScoreAndPublishesScoresUpdated() {
         var gameId = UUID.randomUUID();
@@ -48,6 +59,7 @@ class TimelineScoringKafkaConsumerIT {
         contextRepository.upsertPlayerFaction(gameId, playerId, Faction.WEAVERS);
         contextRepository.upsertExpectedOutcomeCount(gameId, eraNumber, 1);
         contextRepository.recordChainFact(gameId, playerId, chainId, ScoreReason.CHAIN_LINK_ADDED, eraNumber);
+        contextRepository.markActionFactsReady(gameId, eraNumber);
 
         var outcome = new OutcomeApplied(gameId, eraNumber, UUID.randomUUID(), UUID.randomUUID(), List.of());
         var envelope = new InboundEnvelope(
@@ -66,6 +78,36 @@ class TimelineScoringKafkaConsumerIT {
         });
 
         assertThat(scoresUpdatedOutboxRows()).isPositive();
+    }
+
+    @Test
+    void handle_outcomeAppliedBeforeFinalRoundClosed_deferisScoringUntilActionFactsReady() {
+        var gameId = UUID.randomUUID();
+        var playerId = UUID.randomUUID();
+        var chainId = UUID.randomUUID();
+        var eraNumber = 1;
+
+        contextRepository.upsertPlayerFaction(gameId, playerId, Faction.WEAVERS);
+        contextRepository.upsertExpectedOutcomeCount(gameId, eraNumber, 1);
+        contextRepository.recordChainFact(gameId, playerId, chainId, ScoreReason.CHAIN_LINK_ADDED, eraNumber);
+
+        // The last OutcomeApplied for the era arrives before round 3 has closed — this simulates
+        // timeline-service resolving faster than the action module's async in-process projection of
+        // round-3 special-action facts (ForesightDeclared/OutcomeAnnihilated) can be recorded.
+        var outcome = new OutcomeApplied(gameId, eraNumber, UUID.randomUUID(), UUID.randomUUID(), List.of());
+        var envelope = new InboundEnvelope(
+                UUID.randomUUID(), "timeline.OutcomeApplied", gameId, "FutureEvent", gameId, Instant.now(), 1, outcome);
+        consumer.handle(envelope);
+
+        assertThat(playerScoreRepository.findAllByGameId(gameId)).isEmpty();
+
+        transactionTemplate.executeWithoutResult(_ -> applicationEventPublisher.publishEvent(
+                new ActionRoundClosed(gameId, eraNumber, 3, "ALL_SUBMITTED", 3)));
+
+        await().atMost(Duration.ofSeconds(10))
+                .untilAsserted(() -> assertThat(playerScoreRepository.findAllByGameId(gameId))
+                        .singleElement()
+                        .satisfies(score -> assertThat(score.playerId()).isEqualTo(playerId)));
     }
 
     private Integer scoresUpdatedOutboxRows() {

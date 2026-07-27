@@ -16,6 +16,8 @@ import io.github.temporalrift.game.action.domain.event.SpecialActionPlayed;
 import io.github.temporalrift.game.shared.ActionRoundClosed;
 import io.github.temporalrift.game.shared.CardType;
 import io.github.temporalrift.game.shared.Faction;
+import io.github.temporalrift.game.shared.ForesightDeclared;
+import io.github.temporalrift.game.shared.OutcomeAnnihilated;
 import io.github.temporalrift.game.shared.SpecialAction;
 
 @DisplayName("ActionRound")
@@ -315,6 +317,88 @@ class ActionRoundTest {
         var events = round.pullEvents();
         assertThat(events).singleElement().isInstanceOf(SpecialActionPlayed.class);
         assertThat(((SpecialActionPlayed) events.getFirst()).playerId()).isEqualTo(PLAYER_A);
+    }
+
+    @Test
+    @DisplayName("submitSpecial — FORESIGHT without a target — throws InvalidActionTargetException")
+    void submitSpecialForesightWithoutTargetThrows() {
+        // given
+        var round = openRound(List.of(PLAYER_A));
+        round.pullEvents();
+
+        // when / then
+        assertThatExceptionOfType(InvalidActionTargetException.class)
+                .isThrownBy(() -> round.submitSpecial(
+                        PLAYER_A, Faction.PROPHETS, SpecialAction.FORESIGHT, null, null, null, false));
+        assertThat(round.pendingPlayerIds()).containsExactly(PLAYER_A);
+        assertThat(round.submittedActions()).isEmpty();
+        assertThat(round.pullEvents()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("submitSpecial — ANNIHILATE without a targetOutcomeId — throws InvalidActionTargetException")
+    void submitSpecialAnnihilateWithoutTargetOutcomeThrows() {
+        // given
+        var round = openRound(List.of(PLAYER_A));
+        round.pullEvents();
+
+        // when / then
+        assertThatExceptionOfType(InvalidActionTargetException.class)
+                .isThrownBy(() -> round.submitSpecial(
+                        PLAYER_A, Faction.ERASERS, SpecialAction.ANNIHILATE, UUID.randomUUID(), null, null, false));
+        assertThat(round.pendingPlayerIds()).containsExactly(PLAYER_A);
+        assertThat(round.submittedActions()).isEmpty();
+        assertThat(round.pullEvents()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("submitSpecial — FORESIGHT with a target — registers SpecialActionPlayed and ForesightDeclared")
+    void submitSpecialForesightWithTargetRegistersForesightDeclared() {
+        // given
+        var round = openRound(List.of(PLAYER_A));
+        round.pullEvents();
+        var eventId = UUID.randomUUID();
+        var outcomeId = UUID.randomUUID();
+
+        // when
+        round.submitSpecial(PLAYER_A, Faction.PROPHETS, SpecialAction.FORESIGHT, eventId, outcomeId, null, false);
+
+        // then
+        var events = round.pullEvents();
+        assertThat(events).hasSize(2);
+        assertThat(events.get(0)).isInstanceOf(SpecialActionPlayed.class);
+        assertThat(events.get(1)).isInstanceOfSatisfying(ForesightDeclared.class, declared -> {
+            assertThat(declared.gameId()).isEqualTo(GAME_ID);
+            assertThat(declared.eraNumber()).isEqualTo(ERA);
+            assertThat(declared.eventId()).isEqualTo(eventId);
+            assertThat(declared.outcomeId()).isEqualTo(outcomeId);
+            assertThat(declared.playerId()).isEqualTo(PLAYER_A);
+        });
+    }
+
+    @Test
+    @DisplayName("submitSpecial — ANNIHILATE with a target — registers SpecialActionPlayed and OutcomeAnnihilated")
+    void submitSpecialAnnihilateWithTargetRegistersOutcomeAnnihilated() {
+        // given
+        var round = openRound(List.of(PLAYER_A));
+        round.pullEvents();
+        var eventId = UUID.randomUUID();
+        var outcomeId = UUID.randomUUID();
+
+        // when
+        round.submitSpecial(PLAYER_A, Faction.ERASERS, SpecialAction.ANNIHILATE, eventId, outcomeId, null, false);
+
+        // then
+        var events = round.pullEvents();
+        assertThat(events).hasSize(2);
+        assertThat(events.get(0)).isInstanceOf(SpecialActionPlayed.class);
+        assertThat(events.get(1)).isInstanceOfSatisfying(OutcomeAnnihilated.class, annihilated -> {
+            assertThat(annihilated.gameId()).isEqualTo(GAME_ID);
+            assertThat(annihilated.eraNumber()).isEqualTo(ERA);
+            assertThat(annihilated.eventId()).isEqualTo(eventId);
+            assertThat(annihilated.outcomeId()).isEqualTo(outcomeId);
+            assertThat(annihilated.playerId()).isEqualTo(PLAYER_A);
+        });
     }
 
     @Test

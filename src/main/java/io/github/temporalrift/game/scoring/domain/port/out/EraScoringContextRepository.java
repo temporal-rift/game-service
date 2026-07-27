@@ -17,4 +17,14 @@ public interface EraScoringContextRepository {
     void upsertExpectedOutcomeCount(UUID gameId, int eraNumber, int expectedOutcomeCount);
 
     void recordChainFact(UUID gameId, UUID playerId, UUID chainId, ScoreReason reason, int eraNumber);
+
+    void upsertEventOutcomeBaseline(UUID gameId, int eraNumber, UUID eventId, int startingOutcomeCount);
+
+    void upsertWrittenOutcome(UUID gameId, int eraNumber, UUID eventId, UUID outcomeId, UUID playerId);
+
+    void recordAnnihilatedOutcome(UUID gameId, int eraNumber, UUID eventId, UUID outcomeId, UUID playerId);
+
+    boolean actionFactsReady(UUID gameId, int eraNumber);
+
+    void markActionFactsReady(UUID gameId, int eraNumber);
 }

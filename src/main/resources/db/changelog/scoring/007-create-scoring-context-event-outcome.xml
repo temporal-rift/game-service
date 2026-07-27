@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+            https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.29.xsd">
+
+    <changeSet id="scoring-007-create-scoring-context-event-outcome" author="game-service">
+        <createTable tableName="scoring_context_event_outcome">
+            <column name="id" type="UUID">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="game_id" type="UUID">
+                <constraints nullable="false"/>
+            </column>
+            <column name="era_number" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="event_id" type="UUID">
+                <constraints nullable="false"/>
+            </column>
+            <column name="starting_outcome_count" type="INT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+            <column name="written_outcome_id" type="UUID"/>
+            <column name="written_by_player_id" type="UUID"/>
+        </createTable>
+        <addUniqueConstraint
+                tableName="scoring_context_event_outcome"
+                columnNames="game_id,era_number,event_id"
+                constraintName="uq_scoring_context_event_outcome_game_era_event"/>
+    </changeSet>
+
+</databaseChangeLog>

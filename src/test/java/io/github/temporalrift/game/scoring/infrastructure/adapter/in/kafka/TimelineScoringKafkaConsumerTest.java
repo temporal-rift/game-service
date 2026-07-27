@@ -1,6 +1,5 @@
 package io.github.temporalrift.game.scoring.infrastructure.adapter.in.kafka;
 
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
@@ -15,20 +14,17 @@ import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import tools.jackson.databind.ObjectMapper;
 
-import io.github.temporalrift.game.scoring.application.command.UpdateEraScoresCommand;
-import io.github.temporalrift.game.scoring.application.command.UpdateScoresCommandHandler;
+import io.github.temporalrift.game.scoring.application.command.EraScoringCompletionChecker;
 import io.github.temporalrift.game.scoring.domain.event.ChainBroken;
 import io.github.temporalrift.game.scoring.domain.event.ChainCompleted;
 import io.github.temporalrift.game.scoring.domain.event.OutcomeApplied;
 import io.github.temporalrift.game.scoring.domain.playerscore.ScoreReason;
 import io.github.temporalrift.game.scoring.domain.port.out.EraScoringContextRepository;
-import io.github.temporalrift.game.scoring.domain.port.out.ScoringEraCompletionRepository;
 import io.github.temporalrift.game.scoring.domain.port.out.TimelineOutcomeInboxRepository;
 import io.github.temporalrift.game.shared.InboundEnvelope;
 import io.github.temporalrift.game.shared.ProcessedEventRepository;
@@ -46,13 +42,10 @@ class TimelineScoringKafkaConsumerTest {
     TimelineOutcomeInboxRepository outcomeInboxRepository;
 
     @Mock
-    ScoringEraCompletionRepository scoringEraCompletionRepository;
-
-    @Mock
     EraScoringContextRepository contextRepository;
 
     @Mock
-    UpdateScoresCommandHandler updateScoresCommandHandler;
+    EraScoringCompletionChecker completionChecker;
 
     @Mock
     ObjectMapper objectMapper;
@@ -91,7 +84,7 @@ class TimelineScoringKafkaConsumerTest {
 
         then(objectMapper).should(never()).convertValue(any(), eq(OutcomeApplied.class));
         then(outcomeInboxRepository).should(never()).save(any());
-        then(updateScoresCommandHandler).should(never()).handle(any());
+        then(completionChecker).should(never()).tryComplete(any(), anyInt());
     }
 
     @Test
@@ -112,58 +105,19 @@ class TimelineScoringKafkaConsumerTest {
 
         then(processedEventRepository).should(never()).tryMarkProcessed(any(), any());
         then(outcomeInboxRepository).should(never()).save(any());
-        then(updateScoresCommandHandler).should(never()).handle(any());
+        then(completionChecker).should(never()).tryComplete(any(), anyInt());
     }
 
     @Test
-    @DisplayName("OutcomeApplied below expected count — stored but scoring not triggered")
-    void handle_outcomeApplied_belowExpectedCount_noScoring() {
+    @DisplayName("OutcomeApplied — stored, then delegates the completion decision to the checker")
+    void handle_outcomeApplied_savesAndDelegatesToCompletionChecker() {
         var outcome = outcomeApplied();
         var envelope = claimedEnvelope(outcome);
-        given(contextRepository.expectedOutcomeCount(GAME_ID, ERA_NUMBER)).willReturn(3);
-        given(outcomeInboxRepository.findByGameIdAndEraNumber(GAME_ID, ERA_NUMBER))
-                .willReturn(List.of(outcome));
 
         consumer.handle(envelope);
 
         then(outcomeInboxRepository).should().save(outcome);
-        then(scoringEraCompletionRepository).should(never()).tryMarkScoringComplete(any(), anyInt());
-        then(updateScoresCommandHandler).should(never()).handle(any());
-    }
-
-    @Test
-    @DisplayName("OutcomeApplied reaches expected count — claims era and triggers scoring")
-    void handle_outcomeApplied_atExpectedCount_triggersScoring() {
-        var outcome = outcomeApplied();
-        var envelope = claimedEnvelope(outcome);
-        given(contextRepository.expectedOutcomeCount(GAME_ID, ERA_NUMBER)).willReturn(1);
-        given(outcomeInboxRepository.findByGameIdAndEraNumber(GAME_ID, ERA_NUMBER))
-                .willReturn(List.of(outcome));
-        given(scoringEraCompletionRepository.tryMarkScoringComplete(GAME_ID, ERA_NUMBER))
-                .willReturn(true);
-
-        consumer.handle(envelope);
-
-        var captor = ArgumentCaptor.forClass(UpdateEraScoresCommand.class);
-        then(updateScoresCommandHandler).should().handle(captor.capture());
-        var command = captor.getValue();
-        assertThatCommand(command);
-    }
-
-    @Test
-    @DisplayName("era already scored by another claimant — handler not called")
-    void handle_outcomeApplied_alreadyScored_handlerNotCalled() {
-        var outcome = outcomeApplied();
-        var envelope = claimedEnvelope(outcome);
-        given(contextRepository.expectedOutcomeCount(GAME_ID, ERA_NUMBER)).willReturn(1);
-        given(outcomeInboxRepository.findByGameIdAndEraNumber(GAME_ID, ERA_NUMBER))
-                .willReturn(List.of(outcome));
-        given(scoringEraCompletionRepository.tryMarkScoringComplete(GAME_ID, ERA_NUMBER))
-                .willReturn(false);
-
-        consumer.handle(envelope);
-
-        then(updateScoresCommandHandler).should(never()).handle(any());
+        then(completionChecker).should().tryComplete(GAME_ID, ERA_NUMBER);
     }
 
     @Test
@@ -215,12 +169,6 @@ class TimelineScoringKafkaConsumerTest {
         consumer.handle(envelope);
 
         then(contextRepository).should().recordChainFact(GAME_ID, targetPlayerId, chainId, ScoreReason.CHAIN_BROKEN, 3);
-    }
-
-    private void assertThatCommand(UpdateEraScoresCommand command) {
-        assertThat(command.gameId()).isEqualTo(GAME_ID);
-        assertThat(command.eraNumber()).isEqualTo(ERA_NUMBER);
-        assertThat(command.outcomes()).hasSize(1);
     }
 
     private InboundEnvelope claimedEnvelope(OutcomeApplied outcome) {
