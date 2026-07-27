@@ -13,7 +13,18 @@ import io.github.temporalrift.game.shared.Faction;
 class SessionRulesPropertiesTest {
 
     static SessionRulesProperties properties(Map<Integer, Integer> timers) {
-        return new SessionRulesProperties(2, 8, 4, 3, 5, 7, 100, 30, timers, Set.of(Faction.PROPHETS, Faction.WEAVERS));
+        return new SessionRulesProperties(
+                2,
+                8,
+                4,
+                3,
+                5,
+                7,
+                100,
+                30,
+                timers,
+                Set.of(Faction.PROPHETS, Faction.WEAVERS),
+                Set.of(Faction.ERASERS, Faction.REVISIONISTS));
     }
 
     @Test

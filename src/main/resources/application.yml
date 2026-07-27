@@ -95,6 +95,9 @@ game:
     stabilization-winner-factions:
       - PROPHETS
       - WEAVERS
+    collapse-winner-factions:
+      - ERASERS
+      - REVISIONISTS
     scoring:
       card-shifts:
         PUSH: 20
