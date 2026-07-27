@@ -19,8 +19,10 @@ class LeaveLobbyCommandHandler implements LeaveLobbyUseCase {
     @Override
     @Transactional
     public Result handle(Command command) {
+        // Pessimistic lock: save() rewrites the whole player collection, so concurrent leaves (or a
+        // leave racing a join) must serialize or the last writer resurrects the other's removal.
         var lobby = lobbyRepository
-                .findById(command.lobbyId())
+                .findByIdWithLock(command.lobbyId())
                 .orElseThrow(() -> new LobbyNotFoundException(command.lobbyId()));
 
         lobby.leave(command.playerId());
