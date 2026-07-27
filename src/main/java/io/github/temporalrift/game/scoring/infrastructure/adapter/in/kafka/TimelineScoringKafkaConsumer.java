@@ -10,14 +10,12 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.ObjectMapper;
 
-import io.github.temporalrift.game.scoring.application.command.UpdateEraScoresCommand;
-import io.github.temporalrift.game.scoring.application.command.UpdateScoresCommandHandler;
+import io.github.temporalrift.game.scoring.application.command.EraScoringCompletionChecker;
 import io.github.temporalrift.game.scoring.domain.event.ChainBroken;
 import io.github.temporalrift.game.scoring.domain.event.ChainCompleted;
 import io.github.temporalrift.game.scoring.domain.event.OutcomeApplied;
 import io.github.temporalrift.game.scoring.domain.playerscore.ScoreReason;
 import io.github.temporalrift.game.scoring.domain.port.out.EraScoringContextRepository;
-import io.github.temporalrift.game.scoring.domain.port.out.ScoringEraCompletionRepository;
 import io.github.temporalrift.game.scoring.domain.port.out.TimelineOutcomeInboxRepository;
 import io.github.temporalrift.game.shared.InboundEnvelope;
 import io.github.temporalrift.game.shared.ProcessedEventRepository;
@@ -35,23 +33,20 @@ class TimelineScoringKafkaConsumer {
 
     private final ProcessedEventRepository processedEventRepository;
     private final TimelineOutcomeInboxRepository outcomeInboxRepository;
-    private final ScoringEraCompletionRepository scoringEraCompletionRepository;
     private final EraScoringContextRepository contextRepository;
-    private final UpdateScoresCommandHandler updateScoresCommandHandler;
+    private final EraScoringCompletionChecker completionChecker;
     private final ObjectMapper objectMapper;
 
     TimelineScoringKafkaConsumer(
             ProcessedEventRepository processedEventRepository,
             TimelineOutcomeInboxRepository outcomeInboxRepository,
-            ScoringEraCompletionRepository scoringEraCompletionRepository,
             EraScoringContextRepository contextRepository,
-            UpdateScoresCommandHandler updateScoresCommandHandler,
+            EraScoringCompletionChecker completionChecker,
             ObjectMapper objectMapper) {
         this.processedEventRepository = processedEventRepository;
         this.outcomeInboxRepository = outcomeInboxRepository;
-        this.scoringEraCompletionRepository = scoringEraCompletionRepository;
         this.contextRepository = contextRepository;
-        this.updateScoresCommandHandler = updateScoresCommandHandler;
+        this.completionChecker = completionChecker;
         this.objectMapper = objectMapper;
     }
 
@@ -91,17 +86,7 @@ class TimelineScoringKafkaConsumer {
     private void handleOutcomeApplied(InboundEnvelope envelope) {
         var outcome = objectMapper.convertValue(envelope.payload(), OutcomeApplied.class);
         outcomeInboxRepository.save(outcome);
-
-        var expectedCount = contextRepository.expectedOutcomeCount(outcome.gameId(), outcome.eraNumber());
-        var outcomes = outcomeInboxRepository.findByGameIdAndEraNumber(outcome.gameId(), outcome.eraNumber());
-        if (outcomes.size() < expectedCount) {
-            return;
-        }
-        if (!scoringEraCompletionRepository.tryMarkScoringComplete(outcome.gameId(), outcome.eraNumber())) {
-            log.debug("Era {} for game {} already scored — skipping", outcome.eraNumber(), outcome.gameId());
-            return;
-        }
-        updateScoresCommandHandler.handle(new UpdateEraScoresCommand(outcome.gameId(), outcome.eraNumber(), outcomes));
+        completionChecker.tryComplete(outcome.gameId(), outcome.eraNumber());
     }
 
     private void handleChainCompleted(InboundEnvelope envelope) {

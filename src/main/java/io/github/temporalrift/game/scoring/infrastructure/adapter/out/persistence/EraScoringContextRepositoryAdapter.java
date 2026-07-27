@@ -1,14 +1,18 @@
 package io.github.temporalrift.game.scoring.infrastructure.adapter.out.persistence;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import io.github.temporalrift.game.scoring.domain.context.ChainScoringFact;
 import io.github.temporalrift.game.scoring.domain.context.EraScoringContext;
 import io.github.temporalrift.game.scoring.domain.context.EraScoringContextNotFoundException;
+import io.github.temporalrift.game.scoring.domain.context.EventOutcomeFact;
 import io.github.temporalrift.game.scoring.domain.context.PlayerFaction;
 import io.github.temporalrift.game.scoring.domain.playerscore.ScoreReason;
 import io.github.temporalrift.game.scoring.domain.port.out.EraScoringContextRepository;
@@ -20,14 +24,26 @@ class EraScoringContextRepositoryAdapter implements EraScoringContextRepository 
     private final ScoringContextPlayerJpaRepository playerJpaRepository;
     private final ScoringContextEraOutcomeExpectationJpaRepository eraOutcomeExpectationJpaRepository;
     private final ScoringContextChainFactJpaRepository chainFactJpaRepository;
+    private final ScoringContextEventOutcomeJpaRepository eventOutcomeJpaRepository;
+    private final ScoringContextAnnihilatedOutcomeJpaRepository annihilatedOutcomeJpaRepository;
+    private final ScoringTimelineOutcomeInboxJpaRepository outcomeInboxJpaRepository;
+    private final ScoringContextActionFactsReadyJpaRepository actionFactsReadyJpaRepository;
 
     EraScoringContextRepositoryAdapter(
             ScoringContextPlayerJpaRepository playerJpaRepository,
             ScoringContextEraOutcomeExpectationJpaRepository eraOutcomeExpectationJpaRepository,
-            ScoringContextChainFactJpaRepository chainFactJpaRepository) {
+            ScoringContextChainFactJpaRepository chainFactJpaRepository,
+            ScoringContextEventOutcomeJpaRepository eventOutcomeJpaRepository,
+            ScoringContextAnnihilatedOutcomeJpaRepository annihilatedOutcomeJpaRepository,
+            ScoringTimelineOutcomeInboxJpaRepository outcomeInboxJpaRepository,
+            ScoringContextActionFactsReadyJpaRepository actionFactsReadyJpaRepository) {
         this.playerJpaRepository = playerJpaRepository;
         this.eraOutcomeExpectationJpaRepository = eraOutcomeExpectationJpaRepository;
         this.chainFactJpaRepository = chainFactJpaRepository;
+        this.eventOutcomeJpaRepository = eventOutcomeJpaRepository;
+        this.annihilatedOutcomeJpaRepository = annihilatedOutcomeJpaRepository;
+        this.outcomeInboxJpaRepository = outcomeInboxJpaRepository;
+        this.actionFactsReadyJpaRepository = actionFactsReadyJpaRepository;
     }
 
     @Override
@@ -40,6 +56,8 @@ class EraScoringContextRepositoryAdapter implements EraScoringContextRepository 
             throw new EraScoringContextNotFoundException(gameId, eraNumber);
         }
 
+        var eventOutcomes = buildEventOutcomeFacts(gameId, eraNumber);
+
         var unconsumedChainFacts = chainFactJpaRepository.findAllByGameIdAndConsumedFalseWithLock(gameId);
         var chainFacts = unconsumedChainFacts.stream()
                 .map(entity -> new ChainScoringFact(
@@ -51,7 +69,41 @@ class EraScoringContextRepositoryAdapter implements EraScoringContextRepository 
         unconsumedChainFacts.forEach(entity -> entity.setConsumed(true));
         chainFactJpaRepository.saveAll(unconsumedChainFacts);
 
-        return new EraScoringContext(gameId, eraNumber, players, List.of(), List.of(), chainFacts);
+        return new EraScoringContext(gameId, eraNumber, players, eventOutcomes, List.of(), chainFacts);
+    }
+
+    private List<EventOutcomeFact> buildEventOutcomeFacts(UUID gameId, int eraNumber) {
+        var baselines = eventOutcomeJpaRepository.findAllByGameIdAndEraNumber(gameId, eraNumber);
+        if (baselines.isEmpty()) {
+            return List.of();
+        }
+
+        Map<UUID, Long> annihilatedCountsByEvent =
+                annihilatedOutcomeJpaRepository.findAllByGameIdAndEraNumber(gameId, eraNumber).stream()
+                        .collect(Collectors.groupingBy(
+                                ScoringContextAnnihilatedOutcomeJpaEntity::getEventId, Collectors.counting()));
+
+        // endingOutcomeCount is derived from this distinct-annihilation ledger, not from any
+        // OutcomeApplied.finalProbabilities payload — that list can still include annihilated outcomes.
+        Map<UUID, UUID> winningOutcomesByEvent =
+                outcomeInboxJpaRepository.findAllByGameIdAndEraNumberOrderByEventIdAsc(gameId, eraNumber).stream()
+                        .collect(Collectors.toMap(
+                                ScoringTimelineOutcomeInboxJpaEntity::getEventId,
+                                ScoringTimelineOutcomeInboxJpaEntity::getWinningOutcomeId));
+
+        return baselines.stream()
+                .map(baseline -> {
+                    var annihilatedCount = annihilatedCountsByEvent
+                            .getOrDefault(baseline.getEventId(), 0L)
+                            .intValue();
+                    return new EventOutcomeFact(
+                            baseline.getEventId(),
+                            winningOutcomesByEvent.get(baseline.getEventId()),
+                            baseline.getWrittenOutcomeId(),
+                            baseline.getStartingOutcomeCount(),
+                            baseline.getStartingOutcomeCount() - annihilatedCount);
+                })
+                .toList();
     }
 
     @Override
@@ -87,5 +139,42 @@ class EraScoringContextRepositoryAdapter implements EraScoringContextRepository 
         entity.setEraNumber(eraNumber);
         entity.setConsumed(false);
         chainFactJpaRepository.save(entity);
+    }
+
+    @Override
+    @Transactional
+    public void upsertEventOutcomeBaseline(UUID gameId, int eraNumber, UUID eventId, int startingOutcomeCount) {
+        eventOutcomeJpaRepository.upsertBaseline(UUID.randomUUID(), gameId, eraNumber, eventId, startingOutcomeCount);
+    }
+
+    @Override
+    @Transactional
+    public void upsertWrittenOutcome(UUID gameId, int eraNumber, UUID eventId, UUID outcomeId, UUID playerId) {
+        eventOutcomeJpaRepository.insertWrittenOutcomeIfFirst(
+                UUID.randomUUID(), gameId, eraNumber, eventId, outcomeId, playerId);
+    }
+
+    @Override
+    @Transactional
+    public void recordAnnihilatedOutcome(UUID gameId, int eraNumber, UUID eventId, UUID outcomeId, UUID playerId) {
+        annihilatedOutcomeJpaRepository.insertIfAbsent(
+                UUID.randomUUID(), gameId, eraNumber, eventId, outcomeId, playerId);
+    }
+
+    @Override
+    public boolean actionFactsReady(UUID gameId, int eraNumber) {
+        return actionFactsReadyJpaRepository.existsById(
+                new ScoringContextActionFactsReadyJpaEntity.ScoringContextActionFactsReadyKey(gameId, eraNumber));
+    }
+
+    @Override
+    // REQUIRES_NEW, not the default REQUIRED: this must commit and become durable independently of
+    // whatever the caller does afterward (e.g. ScoringContextProjectionEventListener.onActionRoundClosed
+    // also calls EraScoringCompletionChecker.tryComplete() in the same @ApplicationModuleListener
+    // transaction). If tryComplete() throws — e.g. the era's context genuinely is not ready yet — that
+    // must not roll back the readiness marker this method just wrote.
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void markActionFactsReady(UUID gameId, int eraNumber) {
+        actionFactsReadyJpaRepository.insertIfAbsent(gameId, eraNumber);
     }
 }

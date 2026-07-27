@@ -263,5 +263,30 @@ class UpdateScoresCommandHandlerTest {
         public void recordChainFact(UUID gameId, UUID playerId, UUID chainId, ScoreReason reason, int eraNumber) {
             throw new UnsupportedOperationException("not used by UpdateScoresCommandHandler");
         }
+
+        @Override
+        public void upsertEventOutcomeBaseline(UUID gameId, int eraNumber, UUID eventId, int startingOutcomeCount) {
+            throw new UnsupportedOperationException("not used by UpdateScoresCommandHandler");
+        }
+
+        @Override
+        public void upsertWrittenOutcome(UUID gameId, int eraNumber, UUID eventId, UUID outcomeId, UUID playerId) {
+            throw new UnsupportedOperationException("not used by UpdateScoresCommandHandler");
+        }
+
+        @Override
+        public void recordAnnihilatedOutcome(UUID gameId, int eraNumber, UUID eventId, UUID outcomeId, UUID playerId) {
+            throw new UnsupportedOperationException("not used by UpdateScoresCommandHandler");
+        }
+
+        @Override
+        public boolean actionFactsReady(UUID gameId, int eraNumber) {
+            throw new UnsupportedOperationException("not used by UpdateScoresCommandHandler");
+        }
+
+        @Override
+        public void markActionFactsReady(UUID gameId, int eraNumber) {
+            throw new UnsupportedOperationException("not used by UpdateScoresCommandHandler");
+        }
     }
 }

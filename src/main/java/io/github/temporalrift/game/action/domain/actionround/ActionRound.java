@@ -14,6 +14,8 @@ import io.github.temporalrift.game.shared.ActionRoundClosed;
 import io.github.temporalrift.game.shared.AggregateRoot;
 import io.github.temporalrift.game.shared.CardType;
 import io.github.temporalrift.game.shared.Faction;
+import io.github.temporalrift.game.shared.ForesightDeclared;
+import io.github.temporalrift.game.shared.OutcomeAnnihilated;
 import io.github.temporalrift.game.shared.SpecialAction;
 
 public class ActionRound extends AggregateRoot {
@@ -159,6 +161,10 @@ public class ActionRound extends AggregateRoot {
         if (!faction.hasSpecialAction(specialAction)) {
             throw new InvalidSpecialActionException(faction, specialAction);
         }
+        if ((specialAction == SpecialAction.FORESIGHT || specialAction == SpecialAction.ANNIHILATE)
+                && (targetEventId == null || targetOutcomeId == null)) {
+            throw InvalidActionTargetException.specialActionRequiresTarget(specialAction);
+        }
 
         pendingPlayerIds.remove(playerId);
         submittedActions.add(new SubmittedAction.SpecialActionSubmission(
@@ -173,6 +179,14 @@ public class ActionRound extends AggregateRoot {
                 targetEventId,
                 targetOutcomeId,
                 targetPlayerId));
+        // Scoring-internal facts only (never published to Kafka) — see ActionRoundEventPublication.
+        switch (specialAction) {
+            case FORESIGHT ->
+                registerEvent(new ForesightDeclared(gameId, eraNumber, targetEventId, targetOutcomeId, playerId));
+            case ANNIHILATE ->
+                registerEvent(new OutcomeAnnihilated(gameId, eraNumber, targetEventId, targetOutcomeId, playerId));
+            default -> {}
+        }
 
         return allSubmitted();
     }

@@ -21,7 +21,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import io.github.temporalrift.game.scoring.domain.context.ChainScoringFact;
 import io.github.temporalrift.game.scoring.domain.context.EraScoringContextNotFoundException;
+import io.github.temporalrift.game.scoring.domain.context.EventOutcomeFact;
 import io.github.temporalrift.game.scoring.domain.context.PlayerFaction;
+import io.github.temporalrift.game.scoring.domain.event.OutcomeApplied;
 import io.github.temporalrift.game.scoring.domain.playerscore.ScoreReason;
 import io.github.temporalrift.game.shared.Faction;
 
@@ -36,6 +38,18 @@ class EraScoringContextRepositoryAdapterTest {
 
     @Mock
     ScoringContextChainFactJpaRepository chainFactJpaRepository;
+
+    @Mock
+    ScoringContextEventOutcomeJpaRepository eventOutcomeJpaRepository;
+
+    @Mock
+    ScoringContextAnnihilatedOutcomeJpaRepository annihilatedOutcomeJpaRepository;
+
+    @Mock
+    ScoringTimelineOutcomeInboxJpaRepository outcomeInboxJpaRepository;
+
+    @Mock
+    ScoringContextActionFactsReadyJpaRepository actionFactsReadyJpaRepository;
 
     @InjectMocks
     EraScoringContextRepositoryAdapter adapter;
@@ -175,5 +189,117 @@ class EraScoringContextRepositoryAdapterTest {
         adapter.upsertExpectedOutcomeCount(gameId, 2, 3);
 
         then(eraOutcomeExpectationJpaRepository).should().upsert(any(UUID.class), eq(gameId), eq(2), eq(3));
+    }
+
+    @Test
+    void getRequired_assemblesEventOutcomeFactsFromBaselineAnnihilationsAndInbox() {
+        var gameId = UUID.randomUUID();
+        var eventIdWithFact = UUID.randomUUID();
+        var eventIdWithoutFacts = UUID.randomUUID();
+        var writtenOutcomeId = UUID.randomUUID();
+        var winningOutcomeId = UUID.randomUUID();
+
+        var playerEntity = new ScoringContextPlayerJpaEntity();
+        playerEntity.setId(UUID.randomUUID());
+        playerEntity.setGameId(gameId);
+        playerEntity.setPlayerId(UUID.randomUUID());
+        playerEntity.setFaction(Faction.PROPHETS.name());
+        given(playerJpaRepository.findAllByGameId(gameId)).willReturn(List.of(playerEntity));
+
+        var baselineWithFact = new ScoringContextEventOutcomeJpaEntity();
+        baselineWithFact.setId(UUID.randomUUID());
+        baselineWithFact.setGameId(gameId);
+        baselineWithFact.setEraNumber(2);
+        baselineWithFact.setEventId(eventIdWithFact);
+        baselineWithFact.setStartingOutcomeCount(3);
+        baselineWithFact.setWrittenOutcomeId(writtenOutcomeId);
+        var baselineWithoutFacts = new ScoringContextEventOutcomeJpaEntity();
+        baselineWithoutFacts.setId(UUID.randomUUID());
+        baselineWithoutFacts.setGameId(gameId);
+        baselineWithoutFacts.setEraNumber(2);
+        baselineWithoutFacts.setEventId(eventIdWithoutFacts);
+        baselineWithoutFacts.setStartingOutcomeCount(3);
+        given(eventOutcomeJpaRepository.findAllByGameIdAndEraNumber(gameId, 2))
+                .willReturn(List.of(baselineWithFact, baselineWithoutFacts));
+
+        var annihilated1 = new ScoringContextAnnihilatedOutcomeJpaEntity();
+        annihilated1.setId(UUID.randomUUID());
+        annihilated1.setGameId(gameId);
+        annihilated1.setEraNumber(2);
+        annihilated1.setEventId(eventIdWithFact);
+        annihilated1.setOutcomeId(UUID.randomUUID());
+        annihilated1.setPlayerId(UUID.randomUUID());
+        given(annihilatedOutcomeJpaRepository.findAllByGameIdAndEraNumber(gameId, 2))
+                .willReturn(List.of(annihilated1));
+
+        var inboxEntity = ScoringTimelineOutcomeInboxJpaEntity.fromDomain(
+                new OutcomeApplied(gameId, 2, eventIdWithFact, winningOutcomeId, List.of()));
+        given(outcomeInboxJpaRepository.findAllByGameIdAndEraNumberOrderByEventIdAsc(gameId, 2))
+                .willReturn(List.of(inboxEntity));
+
+        var context = adapter.getRequired(gameId, 2);
+
+        assertThat(context.eventOutcomes())
+                .containsExactlyInAnyOrder(
+                        new EventOutcomeFact(eventIdWithFact, winningOutcomeId, writtenOutcomeId, 3, 2),
+                        new EventOutcomeFact(eventIdWithoutFacts, null, null, 3, 3));
+    }
+
+    @Test
+    void upsertEventOutcomeBaseline_delegatesToAtomicUpsert() {
+        var gameId = UUID.randomUUID();
+        var eventId = UUID.randomUUID();
+
+        adapter.upsertEventOutcomeBaseline(gameId, 2, eventId, 3);
+
+        then(eventOutcomeJpaRepository).should().upsertBaseline(any(UUID.class), eq(gameId), eq(2), eq(eventId), eq(3));
+    }
+
+    @Test
+    void upsertWrittenOutcome_delegatesToFirstWinsUpsert() {
+        var gameId = UUID.randomUUID();
+        var eventId = UUID.randomUUID();
+        var outcomeId = UUID.randomUUID();
+        var playerId = UUID.randomUUID();
+
+        adapter.upsertWrittenOutcome(gameId, 2, eventId, outcomeId, playerId);
+
+        then(eventOutcomeJpaRepository)
+                .should()
+                .insertWrittenOutcomeIfFirst(
+                        any(UUID.class), eq(gameId), eq(2), eq(eventId), eq(outcomeId), eq(playerId));
+    }
+
+    @Test
+    void recordAnnihilatedOutcome_delegatesToIdempotentInsert() {
+        var gameId = UUID.randomUUID();
+        var eventId = UUID.randomUUID();
+        var outcomeId = UUID.randomUUID();
+        var playerId = UUID.randomUUID();
+
+        adapter.recordAnnihilatedOutcome(gameId, 2, eventId, outcomeId, playerId);
+
+        then(annihilatedOutcomeJpaRepository)
+                .should()
+                .insertIfAbsent(any(UUID.class), eq(gameId), eq(2), eq(eventId), eq(outcomeId), eq(playerId));
+    }
+
+    @Test
+    void actionFactsReady_delegatesToExistsById() {
+        var gameId = UUID.randomUUID();
+        given(actionFactsReadyJpaRepository.existsById(
+                        new ScoringContextActionFactsReadyJpaEntity.ScoringContextActionFactsReadyKey(gameId, 2)))
+                .willReturn(true);
+
+        assertThat(adapter.actionFactsReady(gameId, 2)).isTrue();
+    }
+
+    @Test
+    void markActionFactsReady_delegatesToAtomicInsertIfAbsent() {
+        var gameId = UUID.randomUUID();
+
+        adapter.markActionFactsReady(gameId, 2);
+
+        then(actionFactsReadyJpaRepository).should().insertIfAbsent(gameId, 2);
     }
 }
