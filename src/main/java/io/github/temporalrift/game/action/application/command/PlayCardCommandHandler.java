@@ -11,7 +11,6 @@ import io.github.temporalrift.game.action.application.ActionTargetValidator;
 import io.github.temporalrift.game.action.application.port.in.PlayCardUseCase;
 import io.github.temporalrift.game.action.domain.CardNotInHandException;
 import io.github.temporalrift.game.action.domain.actionround.RoundNotFoundException;
-import io.github.temporalrift.game.action.domain.playerstate.PlayerState;
 import io.github.temporalrift.game.action.domain.playerstate.PlayerStateNotFoundException;
 import io.github.temporalrift.game.action.domain.port.out.ActionEventPublisher;
 import io.github.temporalrift.game.action.domain.port.out.ActionRoundRepository;
@@ -61,9 +60,6 @@ class PlayCardCommandHandler implements PlayCardUseCase {
         var playerState = playerStateRepository
                 .findByGameIdAndPlayerId(command.gameId(), command.playerId())
                 .orElseThrow(() -> new PlayerStateNotFoundException(command.gameId(), command.playerId()));
-        var playerHand = playerState.hand().stream()
-                .map(PlayerState.CardInstance::cardInstanceId)
-                .toList();
         var submittedCard = playerState.hand().stream()
                 .filter(card -> card.cardInstanceId().equals(command.cardInstanceId()))
                 .findFirst()
@@ -74,8 +70,7 @@ class PlayCardCommandHandler implements PlayCardUseCase {
                 submittedCard.cardType(),
                 command.targetEventId(),
                 command.sourceOutcomeId(),
-                command.targetOutcomeId(),
-                playerHand);
+                command.targetOutcomeId());
         playerState.removeCard(command.cardInstanceId());
         actionRoundRepository.save(round);
         playerStateRepository.save(playerState);

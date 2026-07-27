@@ -25,6 +25,7 @@ import io.github.temporalrift.game.action.domain.port.out.ActionEventPublisher;
 import io.github.temporalrift.game.action.domain.port.out.ActionRoundRepository;
 import io.github.temporalrift.game.action.domain.port.out.FutureEventDefinitionPort;
 import io.github.temporalrift.game.action.domain.port.out.PlayerStateRepository;
+import io.github.temporalrift.game.action.domain.saga.ActionRoundSagaState;
 import io.github.temporalrift.game.action.domain.saga.ActionRoundSagaStatus;
 import io.github.temporalrift.game.shared.DomainEventEnvelope;
 import io.github.temporalrift.game.shared.GameRulesPort;
@@ -34,6 +35,9 @@ import io.github.temporalrift.game.shared.GameRulesPort;
 class ActionRoundSagaImpl implements ActionRoundSaga {
 
     private static final Logger log = LoggerFactory.getLogger(ActionRoundSagaImpl.class);
+
+    private static final String CLOSE_REASON_ALL_SUBMITTED = "ALL_SUBMITTED";
+    private static final String CLOSE_REASON_TIMER_EXPIRED = "TIMER_EXPIRED";
 
     private final ActionRoundRepository actionRoundRepository;
     private final ActionEventPublisher actionEventPublisher;
@@ -85,21 +89,24 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
         stateManager
                 .markSubmitted(gameId, eraNumber, roundNumber, playerId)
                 .filter(state -> state.pendingPlayerIds().isEmpty())
-                .ifPresent(state -> tryClose(state.sagaId(), gameId, eraNumber, roundNumber, "ALL_SUBMITTED"));
+                .ifPresent(
+                        state -> tryClose(state.sagaId(), gameId, eraNumber, roundNumber, CLOSE_REASON_ALL_SUBMITTED));
     }
 
     void handleTimerExpiry(UUID sagaId) {
-        var stateOpt = stateManager.findBySagaId(sagaId);
-        if (stateOpt.isEmpty()) {
-            log.debug("handleTimerExpiry: saga {} not found (stale or duplicate fire)", sagaId);
-            return;
-        }
-        var state = stateOpt.get();
+        stateManager
+                .findBySagaId(sagaId)
+                .ifPresentOrElse(
+                        this::closeExpiredRound,
+                        () -> log.debug("handleTimerExpiry: saga {} not found (stale or duplicate fire)", sagaId));
+    }
+
+    private void closeExpiredRound(ActionRoundSagaState state) {
         if (state.status() == ActionRoundSagaStatus.COMPLETED) {
-            log.debug("handleTimerExpiry: saga {} already COMPLETED", sagaId);
+            log.debug("handleTimerExpiry: saga {} already COMPLETED", state.sagaId());
             return;
         }
-        tryClose(sagaId, state.gameId(), state.eraNumber(), state.roundNumber(), "TIMER_EXPIRED");
+        tryClose(state.sagaId(), state.gameId(), state.eraNumber(), state.roundNumber(), CLOSE_REASON_TIMER_EXPIRED);
     }
 
     private void tryClose(UUID sagaId, UUID gameId, int eraNumber, int roundNumber, String closeReason) {
@@ -124,7 +131,7 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
                 stateManager.complete(gameId, eraNumber, roundNumber);
             }
             case CloseOutcome.Closed(var skippedPlayerIds) -> {
-                if (closeReason.equals("TIMER_EXPIRED")) {
+                if (closeReason.equals(CLOSE_REASON_TIMER_EXPIRED)) {
                     actionEventPublisher.publish(DomainEventEnvelope.create(
                             round.id(),
                             ActionRound.AGGREGATE_TYPE,

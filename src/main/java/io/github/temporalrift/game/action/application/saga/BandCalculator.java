@@ -111,11 +111,14 @@ class BandCalculator {
     }
 
     private void applySwingShift(Map<UUID, Integer> outcomeMap, SubmittedAction.CardAction action) {
-        if (action.sourceOutcomeId() == null
-                || action.targetOutcomeId() == null
-                || action.sourceOutcomeId().equals(action.targetOutcomeId())) {
-            throw new InvalidActionTargetException(
-                    action.cardType(), action.sourceOutcomeId(), action.targetOutcomeId());
+        if (action.sourceOutcomeId() == null) {
+            throw InvalidActionTargetException.swingRequiresSourceOutcome();
+        }
+        if (action.targetOutcomeId() == null) {
+            throw InvalidActionTargetException.swingRequiresTargetOutcome();
+        }
+        if (action.sourceOutcomeId().equals(action.targetOutcomeId())) {
+            throw InvalidActionTargetException.swingRequiresDistinctOutcomes();
         }
         if (!outcomeMap.containsKey(action.sourceOutcomeId()) || !outcomeMap.containsKey(action.targetOutcomeId())) {
             return;
@@ -129,6 +132,4 @@ class BandCalculator {
             Map<UUID, Map<UUID, Integer>> state, SubmittedAction.SpecialActionSubmission action) {
         // All special actions are resolved at timeline resolution time and do not shift probability bands.
     }
-
-    record BandedOutcome(UUID eventId, UUID outcomeId, ProbabilityBand band) {}
 }

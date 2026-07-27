@@ -66,14 +66,7 @@ class ActionPersistenceIT {
 
         var round = new ActionRound(roundId, gameId, 2, 3, List.of(player1, player2), 45);
         round.pullEvents();
-        round.submitCard(
-                player1,
-                cardInstanceId,
-                CardType.SWING,
-                targetEventId,
-                sourceOutcomeId,
-                targetOutcomeId,
-                List.of(cardInstanceId));
+        round.submitCard(player1, cardInstanceId, CardType.SWING, targetEventId, sourceOutcomeId, targetOutcomeId);
         round.submitSpecial(
                 player2, Faction.PROPHETS, SpecialAction.SEAL, targetEventId, targetOutcomeId, targetPlayerId, false);
         round.close("ALL_SUBMITTED");

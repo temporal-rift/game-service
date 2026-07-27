@@ -40,8 +40,7 @@ class ActionRoundRepositoryAdapterTest {
         var targetEventId = UUID.randomUUID();
         var sourceOutcomeId = UUID.randomUUID();
         var targetOutcomeId = UUID.randomUUID();
-        round.submitCard(
-                playerId, cardId, CardType.SWING, targetEventId, sourceOutcomeId, targetOutcomeId, List.of(cardId));
+        round.submitCard(playerId, cardId, CardType.SWING, targetEventId, sourceOutcomeId, targetOutcomeId);
         round.close("TIMER_EXPIRED");
 
         adapter.save(round);

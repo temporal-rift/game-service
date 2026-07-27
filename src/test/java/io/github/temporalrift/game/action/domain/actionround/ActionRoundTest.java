@@ -9,7 +9,6 @@ import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import io.github.temporalrift.game.action.domain.CardNotInHandException;
 import io.github.temporalrift.game.action.domain.event.ActionRoundStarted;
 import io.github.temporalrift.game.action.domain.event.CardPlayed;
 import io.github.temporalrift.game.action.domain.event.PlayerSkipped;
@@ -81,8 +80,8 @@ class ActionRoundTest {
         var cardId = UUID.randomUUID();
 
         // when
-        var allSubmitted = round.submitCard(
-                PLAYER_A, cardId, CardType.PUSH, UUID.randomUUID(), null, UUID.randomUUID(), List.of(cardId));
+        var allSubmitted =
+                round.submitCard(PLAYER_A, cardId, CardType.PUSH, UUID.randomUUID(), null, UUID.randomUUID());
 
         // then
         assertThat(allSubmitted).isFalse();
@@ -106,7 +105,7 @@ class ActionRoundTest {
         var targetOutcomeId = UUID.randomUUID();
 
         // when
-        round.submitCard(PLAYER_A, cardId, CardType.SWING, eventId, sourceOutcomeId, targetOutcomeId, List.of(cardId));
+        round.submitCard(PLAYER_A, cardId, CardType.SWING, eventId, sourceOutcomeId, targetOutcomeId);
 
         // then
         assertThat(round.submittedActions())
@@ -130,11 +129,10 @@ class ActionRoundTest {
         var cardId = UUID.randomUUID();
         var targetEventId = UUID.randomUUID();
         var targetOutcomeId = UUID.randomUUID();
-        var playerHand = List.of(cardId);
 
         assertThatExceptionOfType(InvalidActionTargetException.class)
-                .isThrownBy(() -> round.submitCard(
-                        PLAYER_A, cardId, CardType.SWING, targetEventId, null, targetOutcomeId, playerHand));
+                .isThrownBy(
+                        () -> round.submitCard(PLAYER_A, cardId, CardType.SWING, targetEventId, null, targetOutcomeId));
     }
 
     @Test
@@ -145,11 +143,10 @@ class ActionRoundTest {
         var cardId = UUID.randomUUID();
         var targetEventId = UUID.randomUUID();
         var sourceOutcomeId = UUID.randomUUID();
-        var playerHand = List.of(cardId);
 
         assertThatExceptionOfType(InvalidActionTargetException.class)
-                .isThrownBy(() -> round.submitCard(
-                        PLAYER_A, cardId, CardType.SWING, targetEventId, sourceOutcomeId, null, playerHand));
+                .isThrownBy(
+                        () -> round.submitCard(PLAYER_A, cardId, CardType.SWING, targetEventId, sourceOutcomeId, null));
     }
 
     @Test
@@ -160,11 +157,10 @@ class ActionRoundTest {
         var cardId = UUID.randomUUID();
         var targetEventId = UUID.randomUUID();
         var outcomeId = UUID.randomUUID();
-        var playerHand = List.of(cardId);
 
         assertThatExceptionOfType(InvalidActionTargetException.class)
-                .isThrownBy(() -> round.submitCard(
-                        PLAYER_A, cardId, CardType.SWING, targetEventId, outcomeId, outcomeId, playerHand));
+                .isThrownBy(
+                        () -> round.submitCard(PLAYER_A, cardId, CardType.SWING, targetEventId, outcomeId, outcomeId));
     }
 
     @Test
@@ -176,7 +172,7 @@ class ActionRoundTest {
         var cardId = UUID.randomUUID();
 
         // when
-        var allSubmitted = round.submitCard(PLAYER_A, cardId, CardType.SUPPRESS, null, null, null, List.of(cardId));
+        var allSubmitted = round.submitCard(PLAYER_A, cardId, CardType.SUPPRESS, null, null, null);
 
         // then
         assertThat(allSubmitted).isTrue();
@@ -189,11 +185,10 @@ class ActionRoundTest {
         var round = openRound(List.of(PLAYER_A));
         round.close("ALL_SUBMITTED");
         var cardId = UUID.randomUUID();
-        var playerHand = List.of(cardId);
 
         // when / then
         assertThatExceptionOfType(ActionRoundClosedException.class)
-                .isThrownBy(() -> round.submitCard(PLAYER_A, cardId, CardType.PUSH, null, null, null, playerHand));
+                .isThrownBy(() -> round.submitCard(PLAYER_A, cardId, CardType.PUSH, null, null, null));
     }
 
     @Test
@@ -211,11 +206,10 @@ class ActionRoundTest {
                 List.of(PLAYER_A),
                 List.of());
         var cardId = UUID.randomUUID();
-        var playerHand = List.of(cardId);
 
         // when / then
         assertThatExceptionOfType(ActionRoundClosedException.class)
-                .isThrownBy(() -> round.submitCard(PLAYER_A, cardId, CardType.PUSH, null, null, null, playerHand));
+                .isThrownBy(() -> round.submitCard(PLAYER_A, cardId, CardType.PUSH, null, null, null));
     }
 
     @Test
@@ -226,28 +220,11 @@ class ActionRoundTest {
         round.pullEvents();
         var cardId = UUID.randomUUID();
         var cardId2 = UUID.randomUUID();
-        var initialHand = List.of(cardId, cardId2);
-        var remainingHand = List.of(cardId2);
-        round.submitCard(PLAYER_A, cardId, CardType.PUSH, null, null, null, initialHand);
+        round.submitCard(PLAYER_A, cardId, CardType.PUSH, null, null, null);
 
         // when / then
         assertThatExceptionOfType(DuplicateSubmissionException.class)
-                .isThrownBy(
-                        () -> round.submitCard(PLAYER_A, cardId2, CardType.SUPPRESS, null, null, null, remainingHand));
-    }
-
-    @Test
-    @DisplayName("submitCard — card not in hand — throws CardNotInHandException")
-    void submitCardNotInHandThrows() {
-        // given
-        var round = openRound(List.of(PLAYER_A));
-        round.pullEvents();
-        var notInHand = UUID.randomUUID();
-        var playerHand = List.of(UUID.randomUUID());
-
-        // when / then
-        assertThatExceptionOfType(CardNotInHandException.class)
-                .isThrownBy(() -> round.submitCard(PLAYER_A, notInHand, CardType.JAM, null, null, null, playerHand));
+                .isThrownBy(() -> round.submitCard(PLAYER_A, cardId2, CardType.SUPPRESS, null, null, null));
     }
 
     @Test
@@ -348,7 +325,7 @@ class ActionRoundTest {
         var round = openRound(List.of(PLAYER_A));
         round.pullEvents();
         var cardId = UUID.randomUUID();
-        round.submitCard(PLAYER_A, cardId, CardType.PUSH, null, null, null, List.of(cardId));
+        round.submitCard(PLAYER_A, cardId, CardType.PUSH, null, null, null);
         round.pullEvents();
 
         // when
@@ -372,7 +349,7 @@ class ActionRoundTest {
         var round = openRound(List.of(PLAYER_A, PLAYER_B));
         round.pullEvents();
         var cardId = UUID.randomUUID();
-        round.submitCard(PLAYER_A, cardId, CardType.PUSH, null, null, null, List.of(cardId));
+        round.submitCard(PLAYER_A, cardId, CardType.PUSH, null, null, null);
         round.pullEvents();
 
         // when

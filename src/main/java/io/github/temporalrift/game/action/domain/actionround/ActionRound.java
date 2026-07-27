@@ -6,7 +6,6 @@ import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 
-import io.github.temporalrift.game.action.domain.CardNotInHandException;
 import io.github.temporalrift.game.action.domain.event.ActionRoundStarted;
 import io.github.temporalrift.game.action.domain.event.CardPlayed;
 import io.github.temporalrift.game.action.domain.event.PlayerSkipped;
@@ -96,16 +95,12 @@ public class ActionRound extends AggregateRoot {
             CardType cardType,
             UUID targetEventId,
             UUID sourceOutcomeId,
-            UUID targetOutcomeId,
-            List<UUID> playerHand) {
+            UUID targetOutcomeId) {
         if (this.status != RoundStatus.OPEN) {
             throw new ActionRoundClosedException();
         }
         if (!this.pendingPlayerIds.contains(playerId)) {
             throw new DuplicateSubmissionException(playerId);
-        }
-        if (!playerHand.contains(cardInstanceId)) {
-            throw new CardNotInHandException(cardInstanceId);
         }
         validateCardTargets(cardType, sourceOutcomeId, targetOutcomeId);
 
@@ -131,13 +126,13 @@ public class ActionRound extends AggregateRoot {
             return;
         }
         if (sourceOutcomeId == null) {
-            throw new InvalidActionTargetException(cardType, null, targetOutcomeId);
+            throw InvalidActionTargetException.swingRequiresSourceOutcome();
         }
         if (targetOutcomeId == null) {
-            throw new InvalidActionTargetException(cardType, sourceOutcomeId, null);
+            throw InvalidActionTargetException.swingRequiresTargetOutcome();
         }
         if (sourceOutcomeId.equals(targetOutcomeId)) {
-            throw new InvalidActionTargetException(cardType, sourceOutcomeId, targetOutcomeId);
+            throw InvalidActionTargetException.swingRequiresDistinctOutcomes();
         }
     }
 

@@ -59,10 +59,10 @@ public class PlayerState extends AggregateRoot {
         hand.add(Objects.requireNonNull(card, "card must not be null"));
     }
 
-    public void removeCard(UUID cardInstanecId) {
-        var removed = hand.removeIf(card -> card.cardInstanceId().equals(cardInstanecId));
+    public void removeCard(UUID cardInstanceId) {
+        var removed = hand.removeIf(card -> card.cardInstanceId().equals(cardInstanceId));
         if (!removed) {
-            throw new CardNotInHandException(cardInstanecId);
+            throw new CardNotInHandException(cardInstanceId);
         }
     }
 

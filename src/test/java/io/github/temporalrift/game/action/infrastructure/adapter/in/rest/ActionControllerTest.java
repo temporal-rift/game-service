@@ -257,9 +257,7 @@ class ActionControllerTest {
     @DisplayName("Given InvalidActionTargetException, then returns 422")
     void invalidActionTarget() throws Exception {
         // given
-        given(playCardUseCase.handle(any()))
-                .willThrow(new InvalidActionTargetException(
-                        io.github.temporalrift.game.shared.CardType.SWING, SOURCE_OUTCOME_ID, SOURCE_OUTCOME_ID));
+        given(playCardUseCase.handle(any())).willThrow(InvalidActionTargetException.swingRequiresDistinctOutcomes());
 
         // when / then
         mockMvc.perform(post("/games/{gameId}/eras/{eraNumber}/rounds/{roundNumber}/actions", GAME_ID, ERA, ROUND)
