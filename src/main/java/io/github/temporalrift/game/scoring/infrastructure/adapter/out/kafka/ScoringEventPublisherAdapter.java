@@ -20,7 +20,7 @@ class ScoringEventPublisherAdapter implements ScoringEventPublisher {
     }
 
     @Override
-    public void publish(DomainEventEnvelope event) {
+    public void publish(DomainEventEnvelope<?> event) {
         switch (event.payload()) {
             case ScoresUpdated e ->
                 producer.publishScoresUpdated(

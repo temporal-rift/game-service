@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 
 import org.springframework.stereotype.Component;
@@ -77,7 +78,7 @@ class EraScoreEvaluator {
                 .toList();
     }
 
-    private java.util.Optional<EventOutcomeFact> findEventFact(EraScoringContext context, UUID eventId) {
+    private Optional<EventOutcomeFact> findEventFact(EraScoringContext context, UUID eventId) {
         return context.eventOutcomes().stream()
                 .filter(fact -> fact.eventId().equals(eventId))
                 .findFirst();
