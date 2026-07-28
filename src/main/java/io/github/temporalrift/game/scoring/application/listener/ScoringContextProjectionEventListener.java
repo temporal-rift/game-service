@@ -7,7 +7,7 @@ import org.springframework.stereotype.Component;
 
 import io.github.temporalrift.game.scoring.application.command.EraScoringCompletionChecker;
 import io.github.temporalrift.game.scoring.domain.port.out.EraScoringContextRepository;
-import io.github.temporalrift.game.shared.ActionRoundClosed;
+import io.github.temporalrift.game.shared.EraActionFactsFinalized;
 import io.github.temporalrift.game.shared.EventsDrawn;
 import io.github.temporalrift.game.shared.Faction;
 import io.github.temporalrift.game.shared.FactionAssigned;
@@ -18,10 +18,6 @@ import io.github.temporalrift.game.shared.OutcomeAnnihilated;
 class ScoringContextProjectionEventListener {
 
     private static final Logger log = LoggerFactory.getLogger(ScoringContextProjectionEventListener.class);
-
-    // The era saga hard-caps rounds at 3 (see EraSagaAdvancer.FINAL_ROUND) — this is the round whose
-    // ActionRoundClosed signals that no more action-module scoring facts can arrive for the era.
-    private static final int FINAL_ROUND_NUMBER = 3;
 
     private final EraScoringContextRepository contextRepository;
     private final EraScoringCompletionChecker completionChecker;
@@ -71,10 +67,17 @@ class ScoringContextProjectionEventListener {
     }
 
     @ApplicationModuleListener
-    void onActionRoundClosed(ActionRoundClosed event) {
-        if (event.roundNumber() != FINAL_ROUND_NUMBER) {
-            return;
-        }
+    void onEraActionFactsFinalized(EraActionFactsFinalized event) {
+        // Redundant with onForesightDeclared/onOutcomeAnnihilated for this same round, but harmless:
+        // both paths are idempotent upserts. This is the path that is *guaranteed* complete for the
+        // final round, since it is built from the round's own submittedActions at close() time rather
+        // than raced against independently-dispatched per-submission listeners.
+        event.foresightFacts()
+                .forEach(fact -> contextRepository.upsertWrittenOutcome(
+                        event.gameId(), event.eraNumber(), fact.eventId(), fact.outcomeId(), fact.playerId()));
+        event.annihilationFacts()
+                .forEach(fact -> contextRepository.recordAnnihilatedOutcome(
+                        event.gameId(), event.eraNumber(), fact.eventId(), fact.outcomeId(), fact.playerId()));
         contextRepository.markActionFactsReady(event.gameId(), event.eraNumber());
         completionChecker.tryComplete(event.gameId(), event.eraNumber());
     }

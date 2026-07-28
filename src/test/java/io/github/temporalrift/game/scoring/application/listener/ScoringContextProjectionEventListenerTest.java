@@ -16,7 +16,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import io.github.temporalrift.game.scoring.application.command.EraScoringCompletionChecker;
 import io.github.temporalrift.game.scoring.domain.port.out.EraScoringContextRepository;
-import io.github.temporalrift.game.shared.ActionRoundClosed;
+import io.github.temporalrift.game.shared.EraActionFactsFinalized;
 import io.github.temporalrift.game.shared.EventsDrawn;
 import io.github.temporalrift.game.shared.Faction;
 import io.github.temporalrift.game.shared.FactionAssigned;
@@ -137,22 +137,43 @@ class ScoringContextProjectionEventListenerTest {
     }
 
     @Test
-    void onActionRoundClosed_finalRound_marksActionFactsReadyAndTriesCompletion() {
+    void onEraActionFactsFinalized_appliesForesightAndAnnihilationFactsThenMarksReadyAndTriesCompletion() {
         var gameId = UUID.randomUUID();
+        var foresightEventId = UUID.randomUUID();
+        var foresightOutcomeId = UUID.randomUUID();
+        var foresightPlayerId = UUID.randomUUID();
+        var annihilatedEventId = UUID.randomUUID();
+        var annihilatedOutcomeId = UUID.randomUUID();
+        var annihilatingPlayerId = UUID.randomUUID();
+        var event = new EraActionFactsFinalized(
+                gameId,
+                2,
+                List.of(new EraActionFactsFinalized.ForesightFact(
+                        foresightEventId, foresightOutcomeId, foresightPlayerId)),
+                List.of(new EraActionFactsFinalized.AnnihilationFact(
+                        annihilatedEventId, annihilatedOutcomeId, annihilatingPlayerId)));
 
-        listener.onActionRoundClosed(new ActionRoundClosed(gameId, 2, 3, "ALL_SUBMITTED", 3));
+        listener.onEraActionFactsFinalized(event);
 
+        then(contextRepository)
+                .should()
+                .upsertWrittenOutcome(gameId, 2, foresightEventId, foresightOutcomeId, foresightPlayerId);
+        then(contextRepository)
+                .should()
+                .recordAnnihilatedOutcome(gameId, 2, annihilatedEventId, annihilatedOutcomeId, annihilatingPlayerId);
         then(contextRepository).should().markActionFactsReady(gameId, 2);
         then(completionChecker).should().tryComplete(gameId, 2);
     }
 
     @Test
-    void onActionRoundClosed_nonFinalRound_doesNothing() {
+    void onEraActionFactsFinalized_emptyFactLists_stillMarksReadyAndTriesCompletion() {
         var gameId = UUID.randomUUID();
 
-        listener.onActionRoundClosed(new ActionRoundClosed(gameId, 2, 1, "ALL_SUBMITTED", 3));
+        listener.onEraActionFactsFinalized(new EraActionFactsFinalized(gameId, 2, List.of(), List.of()));
 
-        then(contextRepository).should(never()).markActionFactsReady(any(), anyInt());
-        then(completionChecker).should(never()).tryComplete(any(), anyInt());
+        then(contextRepository).should(never()).upsertWrittenOutcome(any(), anyInt(), any(), any(), any());
+        then(contextRepository).should(never()).recordAnnihilatedOutcome(any(), anyInt(), any(), any(), any());
+        then(contextRepository).should().markActionFactsReady(gameId, 2);
+        then(completionChecker).should().tryComplete(gameId, 2);
     }
 }
