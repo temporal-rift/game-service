@@ -148,14 +148,19 @@ class EraScoringContextRepositoryAdapter implements EraScoringContextRepository 
     }
 
     @Override
-    @Transactional
+    // REQUIRES_NEW, not the default REQUIRED: onEraActionFactsFinalized calls this and then
+    // markActionFactsReady/tryComplete() in the same @ApplicationModuleListener transaction. If
+    // tryComplete() throws — e.g. a transient EraScoringContextNotFoundException while EventsDrawn's
+    // own listener is still landing — that must not roll back a fact this method already wrote.
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void upsertWrittenOutcome(UUID gameId, int eraNumber, UUID eventId, UUID outcomeId, UUID playerId) {
         eventOutcomeJpaRepository.insertWrittenOutcomeIfFirst(
                 UUID.randomUUID(), gameId, eraNumber, eventId, outcomeId, playerId);
     }
 
     @Override
-    @Transactional
+    // REQUIRES_NEW for the same reason as upsertWrittenOutcome above.
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void recordAnnihilatedOutcome(UUID gameId, int eraNumber, UUID eventId, UUID outcomeId, UUID playerId) {
         annihilatedOutcomeJpaRepository.insertIfAbsent(
                 UUID.randomUUID(), gameId, eraNumber, eventId, outcomeId, playerId);
