@@ -28,6 +28,7 @@ import io.github.temporalrift.game.action.domain.port.out.PlayerStateRepository;
 import io.github.temporalrift.game.action.domain.saga.ActionRoundSagaState;
 import io.github.temporalrift.game.action.domain.saga.ActionRoundSagaStatus;
 import io.github.temporalrift.game.shared.DomainEventEnvelope;
+import io.github.temporalrift.game.shared.EraActionFactsFinalized;
 import io.github.temporalrift.game.shared.GameRulesPort;
 
 @Service
@@ -38,6 +39,11 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
 
     private static final String CLOSE_REASON_ALL_SUBMITTED = "ALL_SUBMITTED";
     private static final String CLOSE_REASON_TIMER_EXPIRED = "TIMER_EXPIRED";
+
+    // Era saga hard-caps rounds at 3 (see EraSagaAdvancer.FINAL_ROUND, session module) — this module
+    // needs its own copy because it is the one computing the round boundary; scoring no longer needs
+    // to know this value at all (see EraActionFactsFinalized).
+    private static final int FINAL_ROUND_NUMBER = 3;
 
     private final ActionRoundRepository actionRoundRepository;
     private final ActionEventPublisher actionEventPublisher;
@@ -149,6 +155,9 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
                 if (roundNumber == 2) {
                     publishBandedProbabilities(gameId, eraNumber, round);
                 }
+                if (roundNumber == FINAL_ROUND_NUMBER) {
+                    publishFinalRoundActionFacts(gameId, eraNumber, round);
+                }
 
                 stateManager.complete(gameId, eraNumber, roundNumber);
                 // Best-effort: an all-submitted close no longer leaves the in-memory timer to fire
@@ -200,5 +209,29 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
                 DomainEventEnvelope.SCHEMA_VERSION_V1,
                 new BandedProbabilityPublished(gameId, eraNumber, bandStates),
                 clock));
+    }
+
+    // In-process only, published directly (not through ActionRoundEventPublication): built from the
+    // final round's own submittedActions, which is complete and final by the time close() returns, so
+    // it cannot race the independently-dispatched per-submission ForesightDeclared/OutcomeAnnihilated
+    // listeners the way onActionRoundClosed alone would.
+    private void publishFinalRoundActionFacts(UUID gameId, int eraNumber, ActionRound round) {
+        var foresightFacts = new ArrayList<EraActionFactsFinalized.ForesightFact>();
+        var annihilationFacts = new ArrayList<EraActionFactsFinalized.AnnihilationFact>();
+        for (var action : round.submittedActions()) {
+            if (action instanceof SubmittedAction.SpecialActionSubmission special) {
+                switch (special.specialAction()) {
+                    case FORESIGHT ->
+                        foresightFacts.add(new EraActionFactsFinalized.ForesightFact(
+                                special.targetEventId(), special.targetOutcomeId(), special.playerId()));
+                    case ANNIHILATE ->
+                        annihilationFacts.add(new EraActionFactsFinalized.AnnihilationFact(
+                                special.targetEventId(), special.targetOutcomeId(), special.playerId()));
+                    default -> {}
+                }
+            }
+        }
+        actionEventPublisher.publishInternally(
+                new EraActionFactsFinalized(gameId, eraNumber, foresightFacts, annihilationFacts));
     }
 }

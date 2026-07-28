@@ -42,6 +42,7 @@ import io.github.temporalrift.game.action.domain.saga.ActionRoundSagaStatus;
 import io.github.temporalrift.game.shared.ActionRoundClosed;
 import io.github.temporalrift.game.shared.CardType;
 import io.github.temporalrift.game.shared.DomainEventEnvelope;
+import io.github.temporalrift.game.shared.EraActionFactsFinalized;
 import io.github.temporalrift.game.shared.Faction;
 import io.github.temporalrift.game.shared.GameRulesPort;
 import io.github.temporalrift.game.shared.SpecialAction;
@@ -465,6 +466,139 @@ class ActionRoundSagaImplTest {
 
             // then
             then(actionEventPublisher).should(never()).publish(envelopeWithPayload(BandedProbabilityPublished.class));
+        }
+    }
+
+    @Nested
+    @DisplayName("EraActionFactsFinalized — final round bundle")
+    class EraActionFactsFinalizedTests {
+
+        @Test
+        @DisplayName("Round 3 with a Foresight submission — bundles a ForesightFact")
+        void tryClose_round3WithForesight_bundlesForesightFact() {
+            // given
+            var roundId = UUID.randomUUID();
+            var targetEventId = UUID.randomUUID();
+            var targetOutcomeId = UUID.randomUUID();
+            var round = new ActionRound(roundId, GAME_ID, ERA_NUMBER, 3, List.of(PLAYER_1), TIMER_SECONDS);
+            round.submitSpecial(
+                    PLAYER_1, Faction.PROPHETS, SpecialAction.FORESIGHT, targetEventId, targetOutcomeId, null, false);
+            given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA_NUMBER, 3))
+                    .willReturn(Optional.of(round));
+
+            var updatedState = new ActionRoundSagaState(
+                    UUID.randomUUID(),
+                    GAME_ID,
+                    ERA_NUMBER,
+                    3,
+                    ActionRoundSagaStatus.WAITING,
+                    List.of(),
+                    TIMER_EXPIRES_AT);
+            given(stateManager.markSubmitted(GAME_ID, ERA_NUMBER, 3, PLAYER_1)).willReturn(Optional.of(updatedState));
+
+            // when
+            saga.handlePlayerSubmitted(GAME_ID, ERA_NUMBER, 3, PLAYER_1);
+
+            // then
+            var captor = ArgumentCaptor.<EraActionFactsFinalized>captor();
+            then(actionEventPublisher).should(times(1)).publishInternally(captor.capture());
+            var event = captor.getValue();
+            assertThat(event.gameId()).isEqualTo(GAME_ID);
+            assertThat(event.eraNumber()).isEqualTo(ERA_NUMBER);
+            assertThat(event.foresightFacts())
+                    .containsExactly(
+                            new EraActionFactsFinalized.ForesightFact(targetEventId, targetOutcomeId, PLAYER_1));
+            assertThat(event.annihilationFacts()).isEmpty();
+        }
+
+        @Test
+        @DisplayName("Round 3 with an Annihilate submission — bundles an AnnihilationFact")
+        void tryClose_round3WithAnnihilate_bundlesAnnihilationFact() {
+            // given
+            var roundId = UUID.randomUUID();
+            var targetEventId = UUID.randomUUID();
+            var targetOutcomeId = UUID.randomUUID();
+            var round = new ActionRound(roundId, GAME_ID, ERA_NUMBER, 3, List.of(PLAYER_1), TIMER_SECONDS);
+            round.submitSpecial(
+                    PLAYER_1, Faction.ERASERS, SpecialAction.ANNIHILATE, targetEventId, targetOutcomeId, null, false);
+            given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA_NUMBER, 3))
+                    .willReturn(Optional.of(round));
+
+            var updatedState = new ActionRoundSagaState(
+                    UUID.randomUUID(),
+                    GAME_ID,
+                    ERA_NUMBER,
+                    3,
+                    ActionRoundSagaStatus.WAITING,
+                    List.of(),
+                    TIMER_EXPIRES_AT);
+            given(stateManager.markSubmitted(GAME_ID, ERA_NUMBER, 3, PLAYER_1)).willReturn(Optional.of(updatedState));
+
+            // when
+            saga.handlePlayerSubmitted(GAME_ID, ERA_NUMBER, 3, PLAYER_1);
+
+            // then
+            var captor = ArgumentCaptor.<EraActionFactsFinalized>captor();
+            then(actionEventPublisher).should(times(1)).publishInternally(captor.capture());
+            var event = captor.getValue();
+            assertThat(event.annihilationFacts())
+                    .containsExactly(
+                            new EraActionFactsFinalized.AnnihilationFact(targetEventId, targetOutcomeId, PLAYER_1));
+            assertThat(event.foresightFacts()).isEmpty();
+        }
+
+        @Test
+        @DisplayName("Round 3 with no special actions — still publishes with empty fact lists")
+        void tryClose_round3WithNoSpecials_publishesEmptyBundle() {
+            // given
+            var roundId = UUID.randomUUID();
+            var round = new ActionRound(roundId, GAME_ID, ERA_NUMBER, 3, List.of(), TIMER_SECONDS);
+            given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA_NUMBER, 3))
+                    .willReturn(Optional.of(round));
+
+            var updatedState = new ActionRoundSagaState(
+                    UUID.randomUUID(),
+                    GAME_ID,
+                    ERA_NUMBER,
+                    3,
+                    ActionRoundSagaStatus.WAITING,
+                    List.of(),
+                    TIMER_EXPIRES_AT);
+            given(stateManager.markSubmitted(GAME_ID, ERA_NUMBER, 3, PLAYER_1)).willReturn(Optional.of(updatedState));
+
+            // when
+            saga.handlePlayerSubmitted(GAME_ID, ERA_NUMBER, 3, PLAYER_1);
+
+            // then
+            var captor = ArgumentCaptor.<EraActionFactsFinalized>captor();
+            then(actionEventPublisher).should(times(1)).publishInternally(captor.capture());
+            assertThat(captor.getValue().foresightFacts()).isEmpty();
+            assertThat(captor.getValue().annihilationFacts()).isEmpty();
+        }
+
+        @Test
+        @DisplayName("Round 1 and 2 — never publish EraActionFactsFinalized")
+        void tryClose_nonFinalRounds_neverPublishesBundle() {
+            // given — round 1
+            var round1Id = UUID.randomUUID();
+            var round1 = new ActionRound(round1Id, GAME_ID, ERA_NUMBER, 1, List.of(), TIMER_SECONDS);
+            given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA_NUMBER, 1))
+                    .willReturn(Optional.of(round1));
+            var updatedState1 = new ActionRoundSagaState(
+                    UUID.randomUUID(),
+                    GAME_ID,
+                    ERA_NUMBER,
+                    1,
+                    ActionRoundSagaStatus.WAITING,
+                    List.of(),
+                    TIMER_EXPIRES_AT);
+            given(stateManager.markSubmitted(GAME_ID, ERA_NUMBER, 1, PLAYER_1)).willReturn(Optional.of(updatedState1));
+
+            // when
+            saga.handlePlayerSubmitted(GAME_ID, ERA_NUMBER, 1, PLAYER_1);
+
+            // then
+            then(actionEventPublisher).should(never()).publishInternally(any(EraActionFactsFinalized.class));
         }
     }
 

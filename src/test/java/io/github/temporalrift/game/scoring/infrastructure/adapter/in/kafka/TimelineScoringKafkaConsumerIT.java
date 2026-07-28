@@ -22,7 +22,7 @@ import io.github.temporalrift.game.scoring.domain.event.OutcomeApplied;
 import io.github.temporalrift.game.scoring.domain.playerscore.ScoreReason;
 import io.github.temporalrift.game.scoring.domain.port.out.EraScoringContextRepository;
 import io.github.temporalrift.game.scoring.domain.port.out.PlayerScoreRepository;
-import io.github.temporalrift.game.shared.ActionRoundClosed;
+import io.github.temporalrift.game.shared.EraActionFactsFinalized;
 import io.github.temporalrift.game.shared.Faction;
 import io.github.temporalrift.game.shared.InboundEnvelope;
 
@@ -92,8 +92,8 @@ class TimelineScoringKafkaConsumerIT {
         contextRepository.recordChainFact(gameId, playerId, chainId, ScoreReason.CHAIN_LINK_ADDED, eraNumber);
 
         // The last OutcomeApplied for the era arrives before round 3 has closed — this simulates
-        // timeline-service resolving faster than the action module's async in-process projection of
-        // round-3 special-action facts (ForesightDeclared/OutcomeAnnihilated) can be recorded.
+        // timeline-service resolving faster than the action module's final-round bundle
+        // (EraActionFactsFinalized) can be raised.
         var outcome = new OutcomeApplied(gameId, eraNumber, UUID.randomUUID(), UUID.randomUUID(), List.of());
         var envelope = new InboundEnvelope(
                 UUID.randomUUID(), "timeline.OutcomeApplied", gameId, "FutureEvent", gameId, Instant.now(), 1, outcome);
@@ -102,7 +102,7 @@ class TimelineScoringKafkaConsumerIT {
         assertThat(playerScoreRepository.findAllByGameId(gameId)).isEmpty();
 
         transactionTemplate.executeWithoutResult(_ -> applicationEventPublisher.publishEvent(
-                new ActionRoundClosed(gameId, eraNumber, 3, "ALL_SUBMITTED", 3)));
+                new EraActionFactsFinalized(gameId, eraNumber, List.of(), List.of())));
 
         await().atMost(Duration.ofSeconds(10))
                 .untilAsserted(() -> assertThat(playerScoreRepository.findAllByGameId(gameId))
