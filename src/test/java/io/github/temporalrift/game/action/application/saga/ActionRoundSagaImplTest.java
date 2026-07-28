@@ -597,6 +597,29 @@ class ActionRoundSagaImplTest {
             // when
             saga.handlePlayerSubmitted(GAME_ID, ERA_NUMBER, 1, PLAYER_1);
 
+            // given — round 2 (also publishes BandedProbabilityPublished, needs its own stubs)
+            var round2Id = UUID.randomUUID();
+            var round2 = new ActionRound(round2Id, GAME_ID, ERA_NUMBER, 2, List.of(), TIMER_SECONDS);
+            given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA_NUMBER, 2))
+                    .willReturn(Optional.of(round2));
+            given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumber(GAME_ID, ERA_NUMBER, 1))
+                    .willReturn(Optional.of(round1));
+            given(futureEventDefinitionPort.findByGameIdAndEraNumber(GAME_ID, ERA_NUMBER))
+                    .willReturn(List.of());
+            given(bandCalculator.computeBands(any(), any(), any())).willReturn(List.of());
+            var updatedState2 = new ActionRoundSagaState(
+                    UUID.randomUUID(),
+                    GAME_ID,
+                    ERA_NUMBER,
+                    2,
+                    ActionRoundSagaStatus.WAITING,
+                    List.of(),
+                    TIMER_EXPIRES_AT);
+            given(stateManager.markSubmitted(GAME_ID, ERA_NUMBER, 2, PLAYER_1)).willReturn(Optional.of(updatedState2));
+
+            // when
+            saga.handlePlayerSubmitted(GAME_ID, ERA_NUMBER, 2, PLAYER_1);
+
             // then
             then(actionEventPublisher).should(never()).publishInternally(any(EraActionFactsFinalized.class));
         }
