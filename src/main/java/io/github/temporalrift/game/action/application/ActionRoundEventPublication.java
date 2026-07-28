@@ -47,10 +47,7 @@ public final class ActionRoundEventPublication {
                         DomainEventEnvelope.SCHEMA_VERSION_V1,
                         roundClosed,
                         clock));
-            case ForesightDeclared ignored -> {
-                // Scoring-internal projection fact only — publishInternally() below is the only path.
-            }
-            case OutcomeAnnihilated ignored -> {
+            case ForesightDeclared _, OutcomeAnnihilated _ -> {
                 // Scoring-internal projection fact only — publishInternally() below is the only path.
             }
             default -> throw new IllegalStateException("Unsupported action aggregate event: " + payload.getClass());

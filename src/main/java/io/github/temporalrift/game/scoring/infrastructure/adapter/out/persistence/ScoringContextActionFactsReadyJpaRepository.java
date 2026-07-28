@@ -8,9 +8,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 interface ScoringContextActionFactsReadyJpaRepository
-        extends JpaRepository<
-                ScoringContextActionFactsReadyJpaEntity,
-                ScoringContextActionFactsReadyJpaEntity.ScoringContextActionFactsReadyKey> {
+        extends JpaRepository<ScoringContextActionFactsReadyJpaEntity, GameEraKey> {
 
     @Modifying
     @Query(value = """

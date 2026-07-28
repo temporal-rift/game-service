@@ -341,11 +341,12 @@ class ActionRoundTest {
         // given
         var round = openRound(List.of(PLAYER_A));
         round.pullEvents();
+        var targetEventId = UUID.randomUUID();
 
         // when / then
         assertThatExceptionOfType(InvalidActionTargetException.class)
                 .isThrownBy(() -> round.submitSpecial(
-                        PLAYER_A, Faction.ERASERS, SpecialAction.ANNIHILATE, UUID.randomUUID(), null, null, false));
+                        PLAYER_A, Faction.ERASERS, SpecialAction.ANNIHILATE, targetEventId, null, null, false));
         assertThat(round.pendingPlayerIds()).containsExactly(PLAYER_A);
         assertThat(round.submittedActions()).isEmpty();
         assertThat(round.pullEvents()).isEmpty();

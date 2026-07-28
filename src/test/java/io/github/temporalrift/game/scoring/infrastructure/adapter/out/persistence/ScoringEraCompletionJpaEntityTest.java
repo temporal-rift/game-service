@@ -23,15 +23,15 @@ class ScoringEraCompletionJpaEntityTest {
     }
 
     @Test
-    void scoringEraCompletionKey_equalityIncludesGameIdAndEraNumber() {
+    void gameEraKey_equalityIncludesGameIdAndEraNumber() {
         var gameId = UUID.randomUUID();
-        var key = new ScoringEraCompletionJpaEntity.ScoringEraCompletionKey(gameId, 1);
+        var key = new GameEraKey(gameId, 1);
 
         assertThat(key)
-                .isEqualTo(new ScoringEraCompletionJpaEntity.ScoringEraCompletionKey(gameId, 1))
-                .hasSameHashCodeAs(new ScoringEraCompletionJpaEntity.ScoringEraCompletionKey(gameId, 1))
-                .isNotEqualTo(new ScoringEraCompletionJpaEntity.ScoringEraCompletionKey(gameId, 2))
-                .isNotEqualTo(new ScoringEraCompletionJpaEntity.ScoringEraCompletionKey(UUID.randomUUID(), 1))
+                .isEqualTo(new GameEraKey(gameId, 1))
+                .hasSameHashCodeAs(new GameEraKey(gameId, 1))
+                .isNotEqualTo(new GameEraKey(gameId, 2))
+                .isNotEqualTo(new GameEraKey(UUID.randomUUID(), 1))
                 .isNotEqualTo("not-a-key");
     }
 }

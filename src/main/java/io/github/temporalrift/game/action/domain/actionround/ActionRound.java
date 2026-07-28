@@ -185,7 +185,9 @@ public class ActionRound extends AggregateRoot {
                 registerEvent(new ForesightDeclared(gameId, eraNumber, targetEventId, targetOutcomeId, playerId));
             case ANNIHILATE ->
                 registerEvent(new OutcomeAnnihilated(gameId, eraNumber, targetEventId, targetOutcomeId, playerId));
-            default -> {}
+            default -> {
+                // Every other special action has no scoring-context fact to record.
+            }
         }
 
         return allSubmitted();
