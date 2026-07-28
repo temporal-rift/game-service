@@ -287,8 +287,7 @@ class EraScoringContextRepositoryAdapterTest {
     @Test
     void actionFactsReady_delegatesToExistsById() {
         var gameId = UUID.randomUUID();
-        given(actionFactsReadyJpaRepository.existsById(
-                        new ScoringContextActionFactsReadyJpaEntity.ScoringContextActionFactsReadyKey(gameId, 2)))
+        given(actionFactsReadyJpaRepository.existsById(new GameEraKey(gameId, 2)))
                 .willReturn(true);
 
         assertThat(adapter.actionFactsReady(gameId, 2)).isTrue();

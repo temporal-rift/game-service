@@ -227,7 +227,9 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
                     case ANNIHILATE ->
                         annihilationFacts.add(new EraActionFactsFinalized.AnnihilationFact(
                                 special.targetEventId(), special.targetOutcomeId(), special.playerId()));
-                    default -> {}
+                    default -> {
+                        // Every other special action has no scoring-context fact to bundle.
+                    }
                 }
             }
         }

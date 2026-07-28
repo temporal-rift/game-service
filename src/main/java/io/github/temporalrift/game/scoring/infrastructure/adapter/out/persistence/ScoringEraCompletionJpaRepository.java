@@ -7,8 +7,7 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-interface ScoringEraCompletionJpaRepository
-        extends JpaRepository<ScoringEraCompletionJpaEntity, ScoringEraCompletionJpaEntity.ScoringEraCompletionKey> {
+interface ScoringEraCompletionJpaRepository extends JpaRepository<ScoringEraCompletionJpaEntity, GameEraKey> {
 
     @Modifying
     @Query(value = """

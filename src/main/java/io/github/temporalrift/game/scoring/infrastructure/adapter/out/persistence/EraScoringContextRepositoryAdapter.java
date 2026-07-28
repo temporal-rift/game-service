@@ -168,8 +168,7 @@ class EraScoringContextRepositoryAdapter implements EraScoringContextRepository 
 
     @Override
     public boolean actionFactsReady(UUID gameId, int eraNumber) {
-        return actionFactsReadyJpaRepository.existsById(
-                new ScoringContextActionFactsReadyJpaEntity.ScoringContextActionFactsReadyKey(gameId, eraNumber));
+        return actionFactsReadyJpaRepository.existsById(new GameEraKey(gameId, eraNumber));
     }
 
     @Override
