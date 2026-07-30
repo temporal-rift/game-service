@@ -11,10 +11,17 @@ import io.github.temporalrift.game.action.application.ActionTargetValidator;
 import io.github.temporalrift.game.action.application.port.in.PlaySpecialActionUseCase;
 import io.github.temporalrift.game.action.domain.actionround.FactionRequiredException;
 import io.github.temporalrift.game.action.domain.actionround.RoundNotFoundException;
+import io.github.temporalrift.game.action.domain.activisterastate.ActivistEraState;
+import io.github.temporalrift.game.action.domain.activisterastate.ExposeTargetNotEligibleException;
+import io.github.temporalrift.game.action.domain.activisterastate.ExposeUnavailableException;
+import io.github.temporalrift.game.action.domain.activisterastate.ProbabilityInfluenceSignature;
 import io.github.temporalrift.game.action.domain.playerstate.PlayerStateNotFoundException;
 import io.github.temporalrift.game.action.domain.port.out.ActionEventPublisher;
 import io.github.temporalrift.game.action.domain.port.out.ActionRoundRepository;
+import io.github.temporalrift.game.action.domain.port.out.ActivistEraStateRepository;
 import io.github.temporalrift.game.action.domain.port.out.PlayerStateRepository;
+import io.github.temporalrift.game.shared.Faction;
+import io.github.temporalrift.game.shared.SpecialAction;
 
 @Service
 @ConditionalOnBean({ActionRoundRepository.class, PlayerStateRepository.class})
@@ -23,6 +30,8 @@ class PlaySpecialActionCommandHandler implements PlaySpecialActionUseCase {
     private final ActionRoundRepository actionRoundRepository;
 
     private final PlayerStateRepository playerStateRepository;
+
+    private final ActivistEraStateRepository activistEraStateRepository;
 
     private final ActionEventPublisher actionEventPublisher;
 
@@ -33,11 +42,13 @@ class PlaySpecialActionCommandHandler implements PlaySpecialActionUseCase {
     PlaySpecialActionCommandHandler(
             ActionRoundRepository actionRoundRepository,
             PlayerStateRepository playerStateRepository,
+            ActivistEraStateRepository activistEraStateRepository,
             ActionEventPublisher actionEventPublisher,
             ActionTargetValidator actionTargetValidator,
             Clock clock) {
         this.actionRoundRepository = actionRoundRepository;
         this.playerStateRepository = playerStateRepository;
+        this.activistEraStateRepository = activistEraStateRepository;
         this.actionEventPublisher = actionEventPublisher;
         this.actionTargetValidator = actionTargetValidator;
         this.clock = clock;
@@ -60,6 +71,9 @@ class PlaySpecialActionCommandHandler implements PlaySpecialActionUseCase {
         if (faction == null) {
             throw new FactionRequiredException(command.playerId());
         }
+        if (command.specialAction() == SpecialAction.EXPOSE && faction == Faction.ACTIVISTS) {
+            recordExpose(command);
+        }
         var allSubmitted = round.submitSpecial(
                 command.playerId(),
                 faction,
@@ -73,5 +87,40 @@ class PlaySpecialActionCommandHandler implements PlaySpecialActionUseCase {
 
         return new Result(
                 command.gameId(), command.eraNumber(), command.roundNumber(), command.playerId(), allSubmitted);
+    }
+
+    private void recordExpose(Command command) {
+        if (command.roundNumber() != 2) {
+            throw new ExposeUnavailableException();
+        }
+        var targetPlayerId = command.targetPlayerId();
+        var signature = actionRoundRepository
+                .findByGameIdAndEraNumberAndRoundNumber(command.gameId(), command.eraNumber(), 1)
+                .flatMap(round -> round.submittedActions().stream()
+                        .filter(action -> action.playerId().equals(targetPlayerId))
+                        .findFirst()
+                        .flatMap(ProbabilityInfluenceSignature::from))
+                .orElseThrow(() -> new ExposeTargetNotEligibleException(targetPlayerId));
+        var state = activistEraStateRepository
+                .findByGameIdAndEraNumberAndActivistPlayerId(command.gameId(), command.eraNumber(), command.playerId())
+                .orElseGet(() -> new ActivistEraState(
+                        java.util.UUID.randomUUID(),
+                        command.gameId(),
+                        command.eraNumber(),
+                        command.playerId(),
+                        previousDeclarationSucceeded(command)));
+        state.expose(targetPlayerId, signature);
+        activistEraStateRepository.save(state);
+    }
+
+    private boolean previousDeclarationSucceeded(Command command) {
+        if (command.eraNumber() == 1) {
+            return false;
+        }
+        return activistEraStateRepository
+                .findByGameIdAndEraNumberAndActivistPlayerId(
+                        command.gameId(), command.eraNumber() - 1, command.playerId())
+                .map(ActivistEraState::declarationSucceeded)
+                .orElse(false);
     }
 }

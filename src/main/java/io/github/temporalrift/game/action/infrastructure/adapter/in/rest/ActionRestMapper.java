@@ -26,4 +26,24 @@ final class ActionRestMapper {
             case MOMENTUM -> io.github.temporalrift.game.shared.SpecialAction.MOMENTUM;
         };
     }
+
+    static io.github.temporalrift.game.action.domain.activisterastate.ActivistDeclarationMode toDomain(
+            io.github.temporalrift.game.action.infrastructure.adapter.in.rest.model.ActivistDeclarationMode mode) {
+        return switch (mode) {
+            case RALLY -> io.github.temporalrift.game.action.domain.activisterastate.ActivistDeclarationMode.RALLY;
+            case MOMENTUM ->
+                io.github.temporalrift.game.action.domain.activisterastate.ActivistDeclarationMode.MOMENTUM;
+        };
+    }
+
+    static io.github.temporalrift.game.action.infrastructure.adapter.in.rest.model.ActivistDeclarationMode toRest(
+            io.github.temporalrift.game.action.domain.activisterastate.ActivistDeclarationMode mode) {
+        return switch (mode) {
+            case RALLY ->
+                io.github.temporalrift.game.action.infrastructure.adapter.in.rest.model.ActivistDeclarationMode.RALLY;
+            case MOMENTUM ->
+                io.github.temporalrift.game.action.infrastructure.adapter.in.rest.model.ActivistDeclarationMode
+                        .MOMENTUM;
+        };
+    }
 }

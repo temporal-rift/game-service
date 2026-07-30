@@ -7,10 +7,13 @@ package io.github.temporalrift.game.action.domain.event;
  * an un-routed action event cannot reach production unnoticed.
  */
 public sealed interface ActionEventPayload
-        permits ActionRoundStarted,
+        permits ActivistDeclarationRecorded,
+                ActionRoundStarted,
                 ActionRoundTimerExpired,
                 BandedProbabilityPublished,
                 CardPlayed,
+                ExposeBehaviorChanged,
+                ExposeSignatureRevealed,
                 PlayerSkipped,
                 RoundSummaryPublished,
                 SpecialActionPlayed {}

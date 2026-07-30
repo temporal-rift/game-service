@@ -6,8 +6,11 @@ import org.springframework.stereotype.Component;
 import io.github.temporalrift.game.action.domain.event.ActionEventPayload;
 import io.github.temporalrift.game.action.domain.event.ActionRoundStarted;
 import io.github.temporalrift.game.action.domain.event.ActionRoundTimerExpired;
+import io.github.temporalrift.game.action.domain.event.ActivistDeclarationRecorded;
 import io.github.temporalrift.game.action.domain.event.BandedProbabilityPublished;
 import io.github.temporalrift.game.action.domain.event.CardPlayed;
+import io.github.temporalrift.game.action.domain.event.ExposeBehaviorChanged;
+import io.github.temporalrift.game.action.domain.event.ExposeSignatureRevealed;
 import io.github.temporalrift.game.action.domain.event.PlayerSkipped;
 import io.github.temporalrift.game.action.domain.event.RoundSummaryPublished;
 import io.github.temporalrift.game.action.domain.event.SpecialActionPlayed;
@@ -47,6 +50,11 @@ class ActionEventPublisherAdapter implements ActionEventPublisher {
     @Override
     public void publish(DomainEventEnvelope<ActionEventPayload> event) {
         switch (event.payload()) {
+            case ActivistDeclarationRecorded e ->
+                producer.publishActivistDeclarationRecorded(
+                        mapper.toWire(e),
+                        DomainEventHeaders.populate(
+                                new DefaultServiceEventsProducer.ActivistDeclarationRecordedPayloadHeaders(), event));
             case ActionRoundStarted e ->
                 producer.publishActionRoundStarted(
                         mapper.toWire(e),
@@ -57,6 +65,16 @@ class ActionEventPublisherAdapter implements ActionEventPublisher {
                         mapper.toWire(e),
                         DomainEventHeaders.populate(
                                 new DefaultServiceEventsProducer.CardPlayedPayloadHeaders(), event));
+            case ExposeSignatureRevealed e ->
+                producer.publishExposeSignatureRevealed(
+                        mapper.toWire(e),
+                        DomainEventHeaders.populate(
+                                new DefaultServiceEventsProducer.ExposeSignatureRevealedPayloadHeaders(), event));
+            case ExposeBehaviorChanged e ->
+                producer.publishExposeBehaviorChanged(
+                        mapper.toWire(e),
+                        DomainEventHeaders.populate(
+                                new DefaultServiceEventsProducer.ExposeBehaviorChangedPayloadHeaders(), event));
             case SpecialActionPlayed e ->
                 producer.publishSpecialActionPlayed(
                         mapper.toWire(e),

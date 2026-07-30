@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import io.github.temporalrift.game.action.domain.CardNotInHandException;
 import io.github.temporalrift.game.action.domain.actionround.ActionRoundClosedException;
+import io.github.temporalrift.game.action.domain.actionround.DeclarationSpecialActionRequiredException;
 import io.github.temporalrift.game.action.domain.actionround.DuplicateSubmissionException;
 import io.github.temporalrift.game.action.domain.actionround.FactionRequiredException;
 import io.github.temporalrift.game.action.domain.actionround.InvalidActionTargetException;
@@ -15,6 +16,11 @@ import io.github.temporalrift.game.action.domain.actionround.InvalidSpecialActio
 import io.github.temporalrift.game.action.domain.actionround.JammedPlayerException;
 import io.github.temporalrift.game.action.domain.actionround.RoundNotFoundException;
 import io.github.temporalrift.game.action.domain.actionround.UnknownActionTargetException;
+import io.github.temporalrift.game.action.domain.activisterastate.ActivistDeclarationAlreadyRecordedException;
+import io.github.temporalrift.game.action.domain.activisterastate.DeclarationWindowClosedException;
+import io.github.temporalrift.game.action.domain.activisterastate.ExposeTargetNotEligibleException;
+import io.github.temporalrift.game.action.domain.activisterastate.ExposeUnavailableException;
+import io.github.temporalrift.game.action.domain.activisterastate.MomentumNotEligibleException;
 import io.github.temporalrift.game.action.domain.playerstate.PlayerStateNotFoundException;
 import io.github.temporalrift.game.shared.ProblemDetails;
 import io.github.temporalrift.game.shared.RestAdviceOrder;
@@ -36,6 +42,16 @@ class ActionExceptionHandler {
     @ExceptionHandler(DuplicateSubmissionException.class)
     ProblemDetail handleDuplicateSubmission(DuplicateSubmissionException ex) {
         return ProblemDetails.of(HttpStatus.CONFLICT, ex.getMessage(), "409-02");
+    }
+
+    @ExceptionHandler(DeclarationWindowClosedException.class)
+    ProblemDetail handleDeclarationWindowClosed(DeclarationWindowClosedException ex) {
+        return ProblemDetails.of(HttpStatus.CONFLICT, ex.getMessage(), "409-03");
+    }
+
+    @ExceptionHandler(ActivistDeclarationAlreadyRecordedException.class)
+    ProblemDetail handleDeclarationAlreadyRecorded(ActivistDeclarationAlreadyRecordedException ex) {
+        return ProblemDetails.of(HttpStatus.CONFLICT, ex.getMessage(), "409-04");
     }
 
     @ExceptionHandler(CardNotInHandException.class)
@@ -61,6 +77,25 @@ class ActionExceptionHandler {
     @ExceptionHandler(InvalidSpecialActionException.class)
     ProblemDetail handleInvalidSpecialAction(InvalidSpecialActionException ex) {
         return ProblemDetails.of(HttpStatus.UNPROCESSABLE_CONTENT, ex.getMessage(), "422-05");
+    }
+
+    @ExceptionHandler(DeclarationSpecialActionRequiredException.class)
+    ProblemDetail handleDeclarationSpecialAction(DeclarationSpecialActionRequiredException ex) {
+        return ProblemDetails.of(HttpStatus.UNPROCESSABLE_CONTENT, ex.getMessage(), "422-07");
+    }
+
+    @ExceptionHandler(MomentumNotEligibleException.class)
+    ProblemDetail handleMomentumNotEligible(MomentumNotEligibleException ex) {
+        return ProblemDetails.of(HttpStatus.UNPROCESSABLE_CONTENT, ex.getMessage(), "422-08");
+    }
+
+    @ExceptionHandler({
+        io.github.temporalrift.game.action.domain.activisterastate.ExposeAlreadyRecordedException.class,
+        ExposeUnavailableException.class,
+        ExposeTargetNotEligibleException.class
+    })
+    ProblemDetail handleExposeValidation(RuntimeException ex) {
+        return ProblemDetails.of(HttpStatus.UNPROCESSABLE_CONTENT, ex.getMessage(), "422-09");
     }
 
     @ExceptionHandler(UnknownActionTargetException.class)

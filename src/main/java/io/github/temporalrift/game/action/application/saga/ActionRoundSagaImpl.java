@@ -17,12 +17,17 @@ import io.github.temporalrift.game.action.application.ActionRoundEventPublicatio
 import io.github.temporalrift.game.action.domain.actionround.ActionRound;
 import io.github.temporalrift.game.action.domain.actionround.CloseOutcome;
 import io.github.temporalrift.game.action.domain.actionround.SubmittedAction;
+import io.github.temporalrift.game.action.domain.activisterastate.ActivistDeclarationMode;
+import io.github.temporalrift.game.action.domain.activisterastate.ProbabilityInfluenceSignature;
 import io.github.temporalrift.game.action.domain.event.ActionRoundTimerExpired;
 import io.github.temporalrift.game.action.domain.event.BandedProbabilityPublished;
+import io.github.temporalrift.game.action.domain.event.ExposeBehaviorChanged;
+import io.github.temporalrift.game.action.domain.event.ExposeSignatureRevealed;
 import io.github.temporalrift.game.action.domain.event.RoundSummaryPublished;
 import io.github.temporalrift.game.action.domain.event.RoundSummaryPublished.ActionSummary;
 import io.github.temporalrift.game.action.domain.port.out.ActionEventPublisher;
 import io.github.temporalrift.game.action.domain.port.out.ActionRoundRepository;
+import io.github.temporalrift.game.action.domain.port.out.ActivistEraStateRepository;
 import io.github.temporalrift.game.action.domain.port.out.FutureEventDefinitionPort;
 import io.github.temporalrift.game.action.domain.port.out.PlayerStateRepository;
 import io.github.temporalrift.game.action.domain.saga.ActionRoundSagaState;
@@ -46,6 +51,7 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
     private static final int FINAL_ROUND_NUMBER = 3;
 
     private final ActionRoundRepository actionRoundRepository;
+    private final ActivistEraStateRepository activistEraStateRepository;
     private final ActionEventPublisher actionEventPublisher;
     private final ActionRoundSagaStateManager stateManager;
     private final GameRulesPort gameRules;
@@ -56,6 +62,7 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
 
     ActionRoundSagaImpl(
             ActionRoundRepository actionRoundRepository,
+            ActivistEraStateRepository activistEraStateRepository,
             ActionEventPublisher actionEventPublisher,
             ActionRoundSagaStateManager stateManager,
             GameRulesPort gameRules,
@@ -64,6 +71,7 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
             ActionRoundTimerRegistry timerRegistry,
             Clock clock) {
         this.actionRoundRepository = actionRoundRepository;
+        this.activistEraStateRepository = activistEraStateRepository;
         this.actionEventPublisher = actionEventPublisher;
         this.stateManager = stateManager;
         this.gameRules = gameRules;
@@ -80,8 +88,26 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
         var timerSeconds = gameRules.actionRoundTimerSeconds(playerIds.size());
         var timerExpiresAt = clock.instant().plusSeconds(timerSeconds);
 
-        stateManager.initWaiting(sagaId, gameId, eraNumber, roundNumber, playerIds, timerExpiresAt);
-        var round = new ActionRound(UUID.randomUUID(), gameId, eraNumber, roundNumber, playerIds, timerSeconds);
+        List<SubmittedAction> declaredActions = roundNumber == 1
+                ? activistEraStateRepository.findDeclaredByGameIdAndEraNumber(gameId, eraNumber).stream()
+                        .<SubmittedAction>map(state -> new SubmittedAction.SpecialActionSubmission(
+                                state.activistPlayerId(),
+                                io.github.temporalrift.game.shared.Faction.ACTIVISTS,
+                                state.declarationMode() == ActivistDeclarationMode.RALLY
+                                        ? io.github.temporalrift.game.shared.SpecialAction.RALLY
+                                        : io.github.temporalrift.game.shared.SpecialAction.MOMENTUM,
+                                state.targetEventId(),
+                                state.targetOutcomeId(),
+                                null))
+                        .toList()
+                : List.<SubmittedAction>of();
+        var pendingPlayerIds = playerIds.stream()
+                .filter(playerId -> declaredActions.stream()
+                        .noneMatch(action -> action.playerId().equals(playerId)))
+                .toList();
+        stateManager.initWaiting(sagaId, gameId, eraNumber, roundNumber, pendingPlayerIds, timerExpiresAt);
+        var round = new ActionRound(
+                UUID.randomUUID(), gameId, eraNumber, roundNumber, playerIds, timerSeconds, declaredActions);
         actionRoundRepository.save(round);
         ActionRoundEventPublication.publish(round, actionEventPublisher, clock);
         return new StartResult(sagaId, timerExpiresAt);
@@ -154,8 +180,10 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
 
                 if (roundNumber == 2) {
                     publishBandedProbabilities(gameId, eraNumber, round);
+                    publishExposeSignatures(gameId, eraNumber);
                 }
                 if (roundNumber == FINAL_ROUND_NUMBER) {
+                    publishExposeBehaviorChanges(gameId, eraNumber, round);
                     publishFinalRoundActionFacts(gameId, eraNumber, round);
                 }
 
@@ -211,6 +239,54 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
                 clock));
     }
 
+    private void publishExposeSignatures(UUID gameId, int eraNumber) {
+        activistEraStateRepository
+                .findExposedByGameIdAndEraNumber(gameId, eraNumber)
+                .forEach(state -> actionEventPublisher.publish(DomainEventEnvelope.create(
+                        state.id(),
+                        io.github.temporalrift.game.action.domain.activisterastate.ActivistEraState.AGGREGATE_TYPE,
+                        gameId,
+                        DomainEventEnvelope.SCHEMA_VERSION_V1,
+                        new ExposeSignatureRevealed(
+                                gameId,
+                                eraNumber,
+                                2,
+                                state.activistPlayerId(),
+                                state.exposedPlayerId(),
+                                state.exposedSignature()),
+                        clock)));
+    }
+
+    private void publishExposeBehaviorChanges(UUID gameId, int eraNumber, ActionRound round3) {
+        activistEraStateRepository
+                .findExposedByGameIdAndEraNumber(gameId, eraNumber)
+                .forEach(state -> {
+                    var responseSignature = round3.submittedActions().stream()
+                            .filter(action -> action.playerId().equals(state.exposedPlayerId()))
+                            .findFirst()
+                            .flatMap(ProbabilityInfluenceSignature::from);
+                    if (responseSignature.isPresent() && state.recordExposeBehaviorChanged(responseSignature.get())) {
+                        activistEraStateRepository.save(state);
+                        actionEventPublisher.publish(DomainEventEnvelope.create(
+                                state.id(),
+                                io.github.temporalrift.game.action.domain.activisterastate.ActivistEraState
+                                        .AGGREGATE_TYPE,
+                                gameId,
+                                DomainEventEnvelope.SCHEMA_VERSION_V1,
+                                new ExposeBehaviorChanged(
+                                        gameId,
+                                        eraNumber,
+                                        FINAL_ROUND_NUMBER,
+                                        state.activistPlayerId(),
+                                        state.exposedPlayerId()),
+                                clock));
+                        actionEventPublisher.publishInternally(
+                                new io.github.temporalrift.game.shared.ExposeBehaviorChanged(
+                                        gameId, eraNumber, state.activistPlayerId(), state.exposedPlayerId()));
+                    }
+                });
+    }
+
     // In-process only, published directly (not through ActionRoundEventPublication): built from the
     // final round's own submittedActions, which is complete and final by the time close() returns, so
     // it cannot race the independently-dispatched per-submission ForesightDeclared/OutcomeAnnihilated
@@ -218,6 +294,22 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
     private void publishFinalRoundActionFacts(UUID gameId, int eraNumber, ActionRound round) {
         var foresightFacts = new ArrayList<EraActionFactsFinalized.ForesightFact>();
         var annihilationFacts = new ArrayList<EraActionFactsFinalized.AnnihilationFact>();
+        var exposeFacts = activistEraStateRepository.findExposedByGameIdAndEraNumber(gameId, eraNumber).stream()
+                .filter(
+                        io.github.temporalrift.game.action.domain.activisterastate.ActivistEraState
+                                ::exposeBehaviorChanged)
+                .map(state -> new EraActionFactsFinalized.ExposeFact(state.activistPlayerId(), state.exposedPlayerId()))
+                .toList();
+        var activistDeclarationFacts =
+                activistEraStateRepository.findDeclaredByGameIdAndEraNumber(gameId, eraNumber).stream()
+                        .map(state -> new EraActionFactsFinalized.ActivistDeclarationFact(
+                                state.activistPlayerId(),
+                                state.declarationMode() == ActivistDeclarationMode.RALLY
+                                        ? io.github.temporalrift.game.shared.SpecialAction.RALLY
+                                        : io.github.temporalrift.game.shared.SpecialAction.MOMENTUM,
+                                state.targetEventId(),
+                                state.targetOutcomeId()))
+                        .toList();
         for (var action : round.submittedActions()) {
             if (action instanceof SubmittedAction.SpecialActionSubmission special) {
                 switch (special.specialAction()) {
@@ -233,7 +325,7 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
                 }
             }
         }
-        actionEventPublisher.publishInternally(
-                new EraActionFactsFinalized(gameId, eraNumber, foresightFacts, annihilationFacts));
+        actionEventPublisher.publishInternally(new EraActionFactsFinalized(
+                gameId, eraNumber, foresightFacts, annihilationFacts, exposeFacts, activistDeclarationFacts));
     }
 }
