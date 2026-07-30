@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+            https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.29.xsd">
+
+    <changeSet id="action-006-create-activist-era-state" author="game-service">
+        <createTable tableName="activist_era_state">
+            <column name="id" type="UUID">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="game_id" type="UUID">
+                <constraints nullable="false"/>
+            </column>
+            <column name="era_number" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="activist_player_id" type="UUID">
+                <constraints nullable="false"/>
+            </column>
+            <column name="momentum_eligible" type="BOOLEAN">
+                <constraints nullable="false"/>
+            </column>
+            <column name="declaration_succeeded" type="BOOLEAN">
+                <constraints nullable="false"/>
+            </column>
+            <column name="declaration_mode" type="VARCHAR(20)"/>
+            <column name="target_event_id" type="UUID"/>
+            <column name="target_outcome_id" type="UUID"/>
+            <column name="exposed_player_id" type="UUID"/>
+            <column name="exposed_signature_type" type="VARCHAR(16)"/>
+            <column name="exposed_signature_event_id" type="UUID"/>
+            <column name="exposed_signature_source_outcome_id" type="UUID"/>
+            <column name="exposed_signature_target_outcome_id" type="UUID"/>
+            <column name="expose_behavior_changed" type="BOOLEAN">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addUniqueConstraint
+                tableName="activist_era_state"
+                columnNames="game_id,era_number,activist_player_id"
+                constraintName="uq_activist_era_state_game_era_player"/>
+    </changeSet>
+</databaseChangeLog>

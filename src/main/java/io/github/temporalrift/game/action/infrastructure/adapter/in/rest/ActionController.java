@@ -8,7 +8,10 @@ import org.springframework.web.bind.annotation.RestController;
 import io.github.temporalrift.game.action.application.port.in.GetRoundStatusUseCase;
 import io.github.temporalrift.game.action.application.port.in.PlayCardUseCase;
 import io.github.temporalrift.game.action.application.port.in.PlaySpecialActionUseCase;
+import io.github.temporalrift.game.action.application.port.in.RecordActivistDeclarationUseCase;
 import io.github.temporalrift.game.action.infrastructure.adapter.in.rest.model.ActionSubmissionStatus;
+import io.github.temporalrift.game.action.infrastructure.adapter.in.rest.model.ActivistDeclarationRequest;
+import io.github.temporalrift.game.action.infrastructure.adapter.in.rest.model.ActivistDeclarationResponse;
 import io.github.temporalrift.game.action.infrastructure.adapter.in.rest.model.CardActionRequest;
 import io.github.temporalrift.game.action.infrastructure.adapter.in.rest.model.RoundStatus;
 import io.github.temporalrift.game.action.infrastructure.adapter.in.rest.model.RoundStatusResponse;
@@ -24,15 +27,40 @@ class ActionController implements ActionApi {
 
     private final PlaySpecialActionUseCase playSpecialActionUseCase;
 
+    private final RecordActivistDeclarationUseCase recordActivistDeclarationUseCase;
+
     private final GetRoundStatusUseCase getRoundStatusUseCase;
 
     ActionController(
             PlayCardUseCase playCardUseCase,
             PlaySpecialActionUseCase playSpecialActionUseCase,
+            RecordActivistDeclarationUseCase recordActivistDeclarationUseCase,
             GetRoundStatusUseCase getRoundStatusUseCase) {
         this.playCardUseCase = playCardUseCase;
         this.playSpecialActionUseCase = playSpecialActionUseCase;
+        this.recordActivistDeclarationUseCase = recordActivistDeclarationUseCase;
         this.getRoundStatusUseCase = getRoundStatusUseCase;
+    }
+
+    @Override
+    public ResponseEntity<ActivistDeclarationResponse> recordActivistDeclaration(
+            UUID gameId, Integer eraNumber, ActivistDeclarationRequest activistDeclarationRequest) {
+        var result = recordActivistDeclarationUseCase.handle(new RecordActivistDeclarationUseCase.Command(
+                gameId,
+                eraNumber,
+                CurrentPlayer.id(),
+                ActionRestMapper.toDomain(activistDeclarationRequest.getSpecialAction()),
+                activistDeclarationRequest.getTargetEventId(),
+                activistDeclarationRequest.getTargetOutcomeId()));
+        return ResponseEntity.accepted()
+                .body(new ActivistDeclarationResponse(
+                        result.gameId(),
+                        result.eraNumber(),
+                        result.playerId(),
+                        ActionRestMapper.toRest(result.mode()),
+                        result.targetEventId(),
+                        result.targetOutcomeId(),
+                        ActivistDeclarationResponse.StatusEnum.DECLARED));
     }
 
     @Override

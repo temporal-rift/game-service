@@ -27,6 +27,7 @@ import io.github.temporalrift.game.TestSecurityConfig;
 import io.github.temporalrift.game.action.application.port.in.GetRoundStatusUseCase;
 import io.github.temporalrift.game.action.application.port.in.PlayCardUseCase;
 import io.github.temporalrift.game.action.application.port.in.PlaySpecialActionUseCase;
+import io.github.temporalrift.game.action.application.port.in.RecordActivistDeclarationUseCase;
 import io.github.temporalrift.game.action.domain.CardNotInHandException;
 import io.github.temporalrift.game.action.domain.actionround.ActionRoundClosedException;
 import io.github.temporalrift.game.action.domain.actionround.DuplicateSubmissionException;
@@ -60,6 +61,9 @@ class ActionControllerTest {
 
     @MockitoBean
     PlaySpecialActionUseCase playSpecialActionUseCase;
+
+    @MockitoBean
+    RecordActivistDeclarationUseCase recordActivistDeclarationUseCase;
 
     @MockitoBean
     GetRoundStatusUseCase getRoundStatusUseCase;

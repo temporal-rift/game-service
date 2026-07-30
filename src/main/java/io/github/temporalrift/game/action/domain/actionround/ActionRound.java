@@ -34,6 +34,17 @@ public class ActionRound extends AggregateRoot {
 
     public ActionRound(
             UUID id, UUID gameId, int eraNumber, int roundNumber, List<UUID> pendingPlayerIds, int timerSeconds) {
+        this(id, gameId, eraNumber, roundNumber, pendingPlayerIds, timerSeconds, List.of());
+    }
+
+    public ActionRound(
+            UUID id,
+            UUID gameId,
+            int eraNumber,
+            int roundNumber,
+            List<UUID> pendingPlayerIds,
+            int timerSeconds,
+            List<SubmittedAction> initialSubmittedActions) {
         this.id = Objects.requireNonNull(id, "id must not be null");
         this.gameId = Objects.requireNonNull(gameId, "gameId must not be null");
         this.eraNumber = eraNumber;
@@ -41,11 +52,29 @@ public class ActionRound extends AggregateRoot {
         this.timerSeconds = timerSeconds;
         this.pendingPlayerIds =
                 new ArrayList<>(Objects.requireNonNull(pendingPlayerIds, "pendingPlayerIds must not be null"));
-        this.submittedActions = new ArrayList<>();
+        this.submittedActions = new ArrayList<>(
+                Objects.requireNonNull(initialSubmittedActions, "initialSubmittedActions must not be null"));
+        initialSubmittedActions.forEach(action -> this.pendingPlayerIds.remove(action.playerId()));
         this.status = RoundStatus.OPEN;
         this.closedReason = null;
-        registerEvent(
-                new ActionRoundStarted(gameId, eraNumber, roundNumber, timerSeconds, List.copyOf(pendingPlayerIds)));
+        registerEvent(new ActionRoundStarted(
+                gameId, eraNumber, roundNumber, timerSeconds, List.copyOf(this.pendingPlayerIds)));
+        initialSubmittedActions.forEach(this::registerInitialSubmission);
+    }
+
+    private void registerInitialSubmission(SubmittedAction action) {
+        if (action instanceof SubmittedAction.SpecialActionSubmission special) {
+            registerEvent(new SpecialActionPlayed(
+                    gameId,
+                    eraNumber,
+                    roundNumber,
+                    special.playerId(),
+                    special.faction(),
+                    special.specialAction(),
+                    special.targetEventId(),
+                    special.targetOutcomeId(),
+                    special.targetPlayerId()));
+        }
     }
 
     private ActionRound(
@@ -160,6 +189,9 @@ public class ActionRound extends AggregateRoot {
         }
         if (!faction.hasSpecialAction(specialAction)) {
             throw new InvalidSpecialActionException(faction, specialAction);
+        }
+        if (specialAction == SpecialAction.RALLY || specialAction == SpecialAction.MOMENTUM) {
+            throw new DeclarationSpecialActionRequiredException(specialAction);
         }
         if ((specialAction == SpecialAction.FORESIGHT || specialAction == SpecialAction.ANNIHILATE)
                 && (targetEventId == null || targetOutcomeId == null)) {

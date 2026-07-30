@@ -55,7 +55,8 @@
         <sonar.coverage.exclusions>**/generated-sources/**/*</sonar.coverage.exclusions>
 
         <session-event.version>1.0.3</session-event.version>
-        <action-event.version>1.0.2</action-event.version>
+        <action-event.version>1.0.3</action-event.version>
+        <timeline-event.version>1.0.2</timeline-event.version>
         <scoring-event.version>1.0.1</scoring-event.version>
         <spring-retry.version>2.0.13</spring-retry.version>
         <archunit-junit5.version>1.4.2</archunit-junit5.version>
@@ -74,6 +75,11 @@
             <groupId>io.github.temporal-rift</groupId>
             <artifactId>action-event</artifactId>
             <version>${action-event.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.github.temporal-rift</groupId>
+            <artifactId>timeline-event</artifactId>
+            <version>${timeline-event.version}</version>
         </dependency>
         <dependency>
             <groupId>io.github.temporal-rift</groupId>

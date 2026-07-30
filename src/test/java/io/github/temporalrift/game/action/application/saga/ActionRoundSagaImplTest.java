@@ -29,6 +29,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import io.github.temporalrift.game.action.domain.actionround.ActionRound;
 import io.github.temporalrift.game.action.domain.actionround.RoundStatus;
+import io.github.temporalrift.game.action.domain.activisterastate.ActivistDeclarationMode;
+import io.github.temporalrift.game.action.domain.activisterastate.ActivistEraState;
 import io.github.temporalrift.game.action.domain.event.ActionRoundStarted;
 import io.github.temporalrift.game.action.domain.event.ActionRoundTimerExpired;
 import io.github.temporalrift.game.action.domain.event.BandedProbabilityPublished;
@@ -36,6 +38,7 @@ import io.github.temporalrift.game.action.domain.event.RoundSummaryPublished;
 import io.github.temporalrift.game.action.domain.event.RoundSummaryPublished.ActionSummary;
 import io.github.temporalrift.game.action.domain.port.out.ActionEventPublisher;
 import io.github.temporalrift.game.action.domain.port.out.ActionRoundRepository;
+import io.github.temporalrift.game.action.domain.port.out.ActivistEraStateRepository;
 import io.github.temporalrift.game.action.domain.port.out.FutureEventDefinitionPort;
 import io.github.temporalrift.game.action.domain.saga.ActionRoundSagaState;
 import io.github.temporalrift.game.action.domain.saga.ActionRoundSagaStatus;
@@ -66,6 +69,9 @@ class ActionRoundSagaImplTest {
     ActionRoundRepository actionRoundRepository;
 
     @Mock
+    ActivistEraStateRepository activistEraStateRepository;
+
+    @Mock
     ActionEventPublisher actionEventPublisher;
 
     @Mock
@@ -89,6 +95,7 @@ class ActionRoundSagaImplTest {
     void setUp() {
         saga = new ActionRoundSagaImpl(
                 actionRoundRepository,
+                activistEraStateRepository,
                 actionEventPublisher,
                 stateManager,
                 gameRules,
@@ -574,6 +581,40 @@ class ActionRoundSagaImplTest {
             then(actionEventPublisher).should(times(1)).publishInternally(captor.capture());
             assertThat(captor.getValue().foresightFacts()).isEmpty();
             assertThat(captor.getValue().annihilationFacts()).isEmpty();
+        }
+
+        @Test
+        @DisplayName("Round 3 — re-bundles the persisted Activist declaration for idempotent scoring projection")
+        void tryClose_round3_rebundlesActivistDeclaration() {
+            // given
+            var round = new ActionRound(UUID.randomUUID(), GAME_ID, ERA_NUMBER, 3, List.of(), TIMER_SECONDS);
+            var targetEventId = UUID.randomUUID();
+            var targetOutcomeId = UUID.randomUUID();
+            var declaration = new ActivistEraState(UUID.randomUUID(), GAME_ID, ERA_NUMBER, PLAYER_1, false);
+            declaration.declare(ActivistDeclarationMode.RALLY, targetEventId, targetOutcomeId);
+            given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA_NUMBER, 3))
+                    .willReturn(Optional.of(round));
+            given(activistEraStateRepository.findDeclaredByGameIdAndEraNumber(GAME_ID, ERA_NUMBER))
+                    .willReturn(List.of(declaration));
+            var updatedState = new ActionRoundSagaState(
+                    UUID.randomUUID(),
+                    GAME_ID,
+                    ERA_NUMBER,
+                    3,
+                    ActionRoundSagaStatus.WAITING,
+                    List.of(),
+                    TIMER_EXPIRES_AT);
+            given(stateManager.markSubmitted(GAME_ID, ERA_NUMBER, 3, PLAYER_1)).willReturn(Optional.of(updatedState));
+
+            // when
+            saga.handlePlayerSubmitted(GAME_ID, ERA_NUMBER, 3, PLAYER_1);
+
+            // then
+            var captor = ArgumentCaptor.<EraActionFactsFinalized>captor();
+            then(actionEventPublisher).should(times(1)).publishInternally(captor.capture());
+            assertThat(captor.getValue().activistDeclarationFacts())
+                    .containsExactly(new EraActionFactsFinalized.ActivistDeclarationFact(
+                            PLAYER_1, SpecialAction.RALLY, targetEventId, targetOutcomeId));
         }
 
         @Test
