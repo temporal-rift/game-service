@@ -16,9 +16,13 @@ import io.github.temporalrift.game.PostgresTestcontainersConfiguration;
 import io.github.temporalrift.game.action.domain.actionround.ActionRound;
 import io.github.temporalrift.game.action.domain.actionround.RoundStatus;
 import io.github.temporalrift.game.action.domain.actionround.SubmittedAction;
+import io.github.temporalrift.game.action.domain.activisterastate.ActivistDeclarationMode;
+import io.github.temporalrift.game.action.domain.activisterastate.ActivistEraState;
+import io.github.temporalrift.game.action.domain.activisterastate.ProbabilityInfluenceSignature;
 import io.github.temporalrift.game.action.domain.playerstate.PlayerState;
 import io.github.temporalrift.game.action.domain.port.out.ActionRoundRepository;
 import io.github.temporalrift.game.action.domain.port.out.ActionRoundSagaRepository;
+import io.github.temporalrift.game.action.domain.port.out.ActivistEraStateRepository;
 import io.github.temporalrift.game.action.domain.port.out.FutureEventDefinitionPort;
 import io.github.temporalrift.game.action.domain.port.out.FutureEventDefinitionPort.EventDefinition;
 import io.github.temporalrift.game.action.domain.port.out.FutureEventDefinitionPort.OutcomeDefinition;
@@ -35,6 +39,7 @@ import io.github.temporalrift.game.shared.SpecialAction;
     PostgresTestcontainersConfiguration.class,
     ActionRoundRepositoryAdapter.class,
     PlayerStateRepositoryAdapter.class,
+    ActivistEraStateRepositoryAdapter.class,
     ActionRoundSagaAdapter.class,
     CurrentEraFutureEventAdapter.class
 })
@@ -45,6 +50,9 @@ class ActionPersistenceIT {
 
     @Autowired
     PlayerStateRepository playerStateRepository;
+
+    @Autowired
+    ActivistEraStateRepository activistEraStateRepository;
 
     @Autowired
     ActionRoundSagaRepository actionRoundSagaRepository;
@@ -135,6 +143,55 @@ class ActionPersistenceIT {
             assertThat(saved.isJammed()).isTrue();
             assertThat(saved.hand()).containsExactlyElementsOf(updated.hand());
         });
+    }
+
+    @Test
+    void activistEraState_save_lookup_and_declared_exposed_queries_roundTripAllFields() {
+        var gameId = UUID.randomUUID();
+        var activistPlayerId = UUID.randomUUID();
+        var targetPlayerId = UUID.randomUUID();
+        var targetEventId = UUID.randomUUID();
+        var sourceOutcomeId = UUID.randomUUID();
+        var targetOutcomeId = UUID.randomUUID();
+        var state = new ActivistEraState(UUID.randomUUID(), gameId, 2, activistPlayerId, true);
+        state.declare(ActivistDeclarationMode.MOMENTUM, targetEventId, targetOutcomeId);
+        state.recordResolution(true);
+        var signature =
+                new ProbabilityInfluenceSignature(CardType.SWING, targetEventId, sourceOutcomeId, targetOutcomeId);
+        state.expose(targetPlayerId, signature);
+        state.recordExposeBehaviorChanged(
+                new ProbabilityInfluenceSignature(CardType.PUSH, targetEventId, sourceOutcomeId, targetOutcomeId));
+        activistEraStateRepository.save(state);
+
+        var emptyState = new ActivistEraState(UUID.randomUUID(), gameId, 2, UUID.randomUUID(), false);
+        activistEraStateRepository.save(emptyState);
+
+        var loaded =
+                activistEraStateRepository.findByGameIdAndEraNumberAndActivistPlayerId(gameId, 2, activistPlayerId);
+
+        assertThat(loaded).hasValueSatisfying(saved -> {
+            assertThat(saved.id()).isEqualTo(state.id());
+            assertThat(saved.momentumEligible()).isTrue();
+            assertThat(saved.declarationSucceeded()).isTrue();
+            assertThat(saved.declarationMode()).isEqualTo(ActivistDeclarationMode.MOMENTUM);
+            assertThat(saved.targetEventId()).isEqualTo(targetEventId);
+            assertThat(saved.targetOutcomeId()).isEqualTo(targetOutcomeId);
+            assertThat(saved.exposedPlayerId()).isEqualTo(targetPlayerId);
+            assertThat(saved.exposedSignature()).isEqualTo(signature);
+            assertThat(saved.exposeBehaviorChanged()).isTrue();
+        });
+        assertThat(activistEraStateRepository.findDeclaredByGameIdAndEraNumber(gameId, 2))
+                .extracting(ActivistEraState::id)
+                .containsExactly(state.id());
+        assertThat(activistEraStateRepository.findExposedByGameIdAndEraNumber(gameId, 2))
+                .extracting(ActivistEraState::id)
+                .containsExactly(state.id());
+        assertThat(activistEraStateRepository.findByGameIdAndEraNumberAndActivistPlayerId(
+                        gameId, 2, emptyState.activistPlayerId()))
+                .hasValueSatisfying(saved -> {
+                    assertThat(saved.declarationMode()).isNull();
+                    assertThat(saved.exposedSignature()).isNull();
+                });
     }
 
     @Test

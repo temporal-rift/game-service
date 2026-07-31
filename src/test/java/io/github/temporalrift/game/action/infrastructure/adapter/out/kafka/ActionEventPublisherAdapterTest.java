@@ -15,11 +15,14 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 
+import io.github.temporalrift.game.action.domain.activisterastate.ProbabilityInfluenceSignature;
 import io.github.temporalrift.game.action.domain.event.ActionEventPayload;
 import io.github.temporalrift.game.action.domain.event.ActionRoundStarted;
 import io.github.temporalrift.game.action.domain.event.ActionRoundTimerExpired;
 import io.github.temporalrift.game.action.domain.event.BandedProbabilityPublished;
 import io.github.temporalrift.game.action.domain.event.CardPlayed;
+import io.github.temporalrift.game.action.domain.event.ExposeBehaviorChanged;
+import io.github.temporalrift.game.action.domain.event.ExposeSignatureRevealed;
 import io.github.temporalrift.game.action.domain.event.PlayerSkipped;
 import io.github.temporalrift.game.action.domain.event.RoundSummaryPublished;
 import io.github.temporalrift.game.action.domain.event.SpecialActionPlayed;
@@ -109,6 +112,14 @@ class ActionEventPublisherAdapterTest {
                         targetId,
                         List.of(new BandedProbabilityPublished.OutcomeBandState(
                                 UUID.randomUUID(), ProbabilityBand.HIGH)))));
+        var exposeSignatureRevealed = new ExposeSignatureRevealed(
+                gameId,
+                1,
+                2,
+                playerId,
+                UUID.randomUUID(),
+                new ProbabilityInfluenceSignature(CardType.PUSH, targetId, UUID.randomUUID(), UUID.randomUUID()));
+        var exposeBehaviorChanged = new ExposeBehaviorChanged(gameId, 1, 3, playerId, UUID.randomUUID());
 
         // when
         adapter.publish(envelope(gameId, actionRoundStarted));
@@ -118,6 +129,8 @@ class ActionEventPublisherAdapterTest {
         adapter.publish(envelope(gameId, playerSkipped));
         adapter.publish(envelope(gameId, roundSummary));
         adapter.publish(envelope(gameId, bandedProbability));
+        adapter.publish(envelope(gameId, exposeSignatureRevealed));
+        adapter.publish(envelope(gameId, exposeBehaviorChanged));
 
         // then
         then(producer).should().publishActionRoundStarted(any(), any());
@@ -127,6 +140,8 @@ class ActionEventPublisherAdapterTest {
         then(producer).should().publishPlayerSkipped(any(), any());
         then(producer).should().publishRoundSummaryPublished(any(), any());
         then(producer).should().publishBandedProbabilityPublished(any(), any());
+        then(producer).should().publishExposeSignatureRevealed(any(), any());
+        then(producer).should().publishExposeBehaviorChanged(any(), any());
         then(applicationEventPublisher).shouldHaveNoInteractions();
     }
 
