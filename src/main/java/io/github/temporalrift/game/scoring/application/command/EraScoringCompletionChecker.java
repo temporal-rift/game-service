@@ -40,7 +40,13 @@ public class EraScoringCompletionChecker {
         if (!contextRepository.actionFactsReady(gameId, eraNumber)) {
             return;
         }
-        var expectedCount = contextRepository.expectedOutcomeCount(gameId, eraNumber);
+        if (!contextRepository.eraResolutionCompleted(gameId, eraNumber)) {
+            return;
+        }
+        if (!contextRepository.activistDeclarationsResolved(gameId, eraNumber)) {
+            return;
+        }
+        var expectedCount = contextRepository.requiredAppliedOutcomeCount(gameId, eraNumber);
         var outcomes = outcomeInboxRepository.findByGameIdAndEraNumber(gameId, eraNumber);
         if (outcomes.size() < expectedCount) {
             return;

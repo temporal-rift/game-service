@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.29.xsd">
+    <changeSet id="scoring-012-create-scoring-timeline-resolution-barrier" author="game-service">
+        <createTable tableName="scoring_timeline_resolution_barrier">
+            <column name="id" type="UUID"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="game_id" type="UUID"><constraints nullable="false"/></column>
+            <column name="era_number" type="INT"><constraints nullable="false"/></column>
+            <column name="payload" type="JSONB"><constraints nullable="false"/></column>
+        </createTable>
+        <addUniqueConstraint tableName="scoring_timeline_resolution_barrier" columnNames="game_id,era_number"
+                constraintName="uq_scoring_timeline_resolution_barrier_game_era"/>
+    </changeSet>
+</databaseChangeLog>

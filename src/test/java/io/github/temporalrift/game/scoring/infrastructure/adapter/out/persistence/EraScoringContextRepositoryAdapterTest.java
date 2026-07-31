@@ -3,6 +3,7 @@ package io.github.temporalrift.game.scoring.infrastructure.adapter.out.persisten
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
@@ -23,6 +24,7 @@ import io.github.temporalrift.game.scoring.domain.context.ChainScoringFact;
 import io.github.temporalrift.game.scoring.domain.context.EraScoringContextNotFoundException;
 import io.github.temporalrift.game.scoring.domain.context.EventOutcomeFact;
 import io.github.temporalrift.game.scoring.domain.context.PlayerFaction;
+import io.github.temporalrift.game.scoring.domain.event.EraResolutionCompleted;
 import io.github.temporalrift.game.scoring.domain.event.OutcomeApplied;
 import io.github.temporalrift.game.scoring.domain.playerscore.ScoreReason;
 import io.github.temporalrift.game.shared.Faction;
@@ -50,6 +52,15 @@ class EraScoringContextRepositoryAdapterTest {
 
     @Mock
     ScoringContextActionFactsReadyJpaRepository actionFactsReadyJpaRepository;
+
+    @Mock
+    ScoringContextActivistDeclarationJpaRepository activistDeclarationJpaRepository;
+
+    @Mock
+    ScoringContextActionFactJpaRepository actionFactJpaRepository;
+
+    @Mock
+    ScoringTimelineResolutionBarrierJpaRepository resolutionBarrierJpaRepository;
 
     @InjectMocks
     EraScoringContextRepositoryAdapter adapter;
@@ -282,6 +293,39 @@ class EraScoringContextRepositoryAdapterTest {
         then(annihilatedOutcomeJpaRepository)
                 .should()
                 .insertIfAbsent(any(UUID.class), eq(gameId), eq(2), eq(eventId), eq(outcomeId), eq(playerId));
+    }
+
+    @Test
+    void resolveActivistDeclarations_cascadedTargetResolvesFalseWithoutWaitingForOutcome() {
+        var gameId = UUID.randomUUID();
+        var playerId = UUID.randomUUID();
+        var eventId = UUID.randomUUID();
+        var declaration = new ScoringContextActivistDeclarationJpaEntity();
+        declaration.setId(UUID.randomUUID());
+        declaration.setGameId(gameId);
+        declaration.setEraNumber(2);
+        declaration.setPlayerId(playerId);
+        declaration.setMode("RALLY");
+        declaration.setTargetEventId(eventId);
+        declaration.setTargetOutcomeId(UUID.randomUUID());
+        given(activistDeclarationJpaRepository.findAllUnresolvedWithLock(gameId, 2))
+                .willReturn(List.of(declaration));
+        var barrier = new EraResolutionCompleted(
+                gameId,
+                2,
+                List.of(new EraResolutionCompleted.TerminalResolution(
+                        eventId, 0, EraResolutionCompleted.TerminalState.CASCADED, null)));
+        given(resolutionBarrierJpaRepository.findByGameIdAndEraNumber(gameId, 2))
+                .willReturn(Optional.of(ScoringTimelineResolutionBarrierJpaEntity.fromDomain(barrier)));
+
+        var resolutions = adapter.resolveActivistDeclarations(gameId, 2);
+
+        assertThat(resolutions)
+                .containsExactly(
+                        new io.github.temporalrift.game.shared.ActivistDeclarationResolved(gameId, 2, playerId, false));
+        assertThat(declaration.getResolutionSucceeded()).isFalse();
+        then(outcomeInboxJpaRepository).should(never()).findByGameIdAndEraNumberAndEventId(any(), anyInt(), any());
+        then(actionFactJpaRepository).shouldHaveNoInteractions();
     }
 
     @Test

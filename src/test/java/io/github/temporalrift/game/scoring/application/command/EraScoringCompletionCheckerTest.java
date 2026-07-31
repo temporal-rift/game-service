@@ -57,11 +57,27 @@ class EraScoringCompletionCheckerTest {
     }
 
     @Test
+    @DisplayName("terminal-resolution barrier missing — scoring waits even when action facts are ready")
+    void tryComplete_barrierMissing_noScoring() {
+        given(contextRepository.actionFactsReady(GAME_ID, ERA_NUMBER)).willReturn(true);
+        given(contextRepository.eraResolutionCompleted(GAME_ID, ERA_NUMBER)).willReturn(false);
+
+        checker.tryComplete(GAME_ID, ERA_NUMBER);
+
+        then(contextRepository).should(never()).activistDeclarationsResolved(any(), anyInt());
+        then(scoringEraCompletionRepository).should(never()).tryMarkScoringComplete(any(), anyInt());
+    }
+
+    @Test
     @DisplayName("action facts ready but outcomes below expected count — scoring not triggered")
     void tryComplete_belowExpectedCount_noScoring() {
         var outcome = outcomeApplied();
         given(contextRepository.actionFactsReady(GAME_ID, ERA_NUMBER)).willReturn(true);
-        given(contextRepository.expectedOutcomeCount(GAME_ID, ERA_NUMBER)).willReturn(3);
+        given(contextRepository.eraResolutionCompleted(GAME_ID, ERA_NUMBER)).willReturn(true);
+        given(contextRepository.activistDeclarationsResolved(GAME_ID, ERA_NUMBER))
+                .willReturn(true);
+        given(contextRepository.requiredAppliedOutcomeCount(GAME_ID, ERA_NUMBER))
+                .willReturn(3);
         given(outcomeInboxRepository.findByGameIdAndEraNumber(GAME_ID, ERA_NUMBER))
                 .willReturn(List.of(outcome));
 
@@ -72,11 +88,29 @@ class EraScoringCompletionCheckerTest {
     }
 
     @Test
+    @DisplayName("unresolved Activist declaration — scoring waits even when outcomes are complete")
+    void tryComplete_unresolvedActivistDeclaration_noScoring() {
+        given(contextRepository.actionFactsReady(GAME_ID, ERA_NUMBER)).willReturn(true);
+        given(contextRepository.eraResolutionCompleted(GAME_ID, ERA_NUMBER)).willReturn(true);
+        given(contextRepository.activistDeclarationsResolved(GAME_ID, ERA_NUMBER))
+                .willReturn(false);
+
+        checker.tryComplete(GAME_ID, ERA_NUMBER);
+
+        then(contextRepository).should(never()).expectedOutcomeCount(any(), anyInt());
+        then(scoringEraCompletionRepository).should(never()).tryMarkScoringComplete(any(), anyInt());
+    }
+
+    @Test
     @DisplayName("action facts ready and outcomes complete — claims era and triggers scoring")
     void tryComplete_readyAndComplete_triggersScoring() {
         var outcome = outcomeApplied();
         given(contextRepository.actionFactsReady(GAME_ID, ERA_NUMBER)).willReturn(true);
-        given(contextRepository.expectedOutcomeCount(GAME_ID, ERA_NUMBER)).willReturn(1);
+        given(contextRepository.eraResolutionCompleted(GAME_ID, ERA_NUMBER)).willReturn(true);
+        given(contextRepository.activistDeclarationsResolved(GAME_ID, ERA_NUMBER))
+                .willReturn(true);
+        given(contextRepository.requiredAppliedOutcomeCount(GAME_ID, ERA_NUMBER))
+                .willReturn(1);
         given(outcomeInboxRepository.findByGameIdAndEraNumber(GAME_ID, ERA_NUMBER))
                 .willReturn(List.of(outcome));
         given(scoringEraCompletionRepository.tryMarkScoringComplete(GAME_ID, ERA_NUMBER))
@@ -97,7 +131,11 @@ class EraScoringCompletionCheckerTest {
     void tryComplete_alreadyClaimed_handlerNotCalled() {
         var outcome = outcomeApplied();
         given(contextRepository.actionFactsReady(GAME_ID, ERA_NUMBER)).willReturn(true);
-        given(contextRepository.expectedOutcomeCount(GAME_ID, ERA_NUMBER)).willReturn(1);
+        given(contextRepository.eraResolutionCompleted(GAME_ID, ERA_NUMBER)).willReturn(true);
+        given(contextRepository.activistDeclarationsResolved(GAME_ID, ERA_NUMBER))
+                .willReturn(true);
+        given(contextRepository.requiredAppliedOutcomeCount(GAME_ID, ERA_NUMBER))
+                .willReturn(1);
         given(outcomeInboxRepository.findByGameIdAndEraNumber(GAME_ID, ERA_NUMBER))
                 .willReturn(List.of(outcome));
         given(scoringEraCompletionRepository.tryMarkScoringComplete(GAME_ID, ERA_NUMBER))
