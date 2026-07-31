@@ -22,6 +22,7 @@
     <include file="db/changelog/session/007-create-end-game-saga-state.xml"/>
     <include file="db/changelog/session/008-create-player-reconnect-saga-state.xml"/>
     <include file="db/changelog/session/010-index-player-reconnect-saga-due.xml"/>
+    <include file="db/changelog/session/011-create-session-activist-declaration.xml"/>
 
     <!-- Action module -->
     <include file="db/changelog/action/001-create-action-round.xml"/>

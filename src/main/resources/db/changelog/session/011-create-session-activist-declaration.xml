@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.29.xsd">
+    <changeSet id="session-011-create-session-activist-declaration" author="game-service">
+        <createTable tableName="session_activist_declaration">
+            <column name="id" type="UUID"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="game_id" type="UUID"><constraints nullable="false"/></column>
+            <column name="era_number" type="INT"><constraints nullable="false"/></column>
+            <column name="player_id" type="UUID"><constraints nullable="false"/></column>
+            <column name="target_event_id" type="UUID"><constraints nullable="false"/></column>
+            <column name="mode" type="VARCHAR(16)"><constraints nullable="false"/></column>
+        </createTable>
+        <addUniqueConstraint tableName="session_activist_declaration" columnNames="game_id,era_number,player_id"
+                constraintName="uq_session_activist_declaration_game_era_player"/>
+    </changeSet>
+</databaseChangeLog>
