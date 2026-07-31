@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 
 import java.time.Clock;
@@ -131,21 +132,16 @@ class RecordActivistDeclarationCommandHandlerTest {
                 });
         given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumber(GAME_ID, ERA_NUMBER, 1))
                 .willAnswer(invocation -> roundOneCreated.get() ? Optional.of(mockRound()) : Optional.empty());
+        var command = new RecordActivistDeclarationUseCase.Command(
+                GAME_ID, ERA_NUMBER, PLAYER_ID, ActivistDeclarationMode.RALLY, TARGET_EVENT_ID, TARGET_OUTCOME_ID);
 
-        assertThatThrownBy(() -> handler.handle(new RecordActivistDeclarationUseCase.Command(
-                        GAME_ID,
-                        ERA_NUMBER,
-                        PLAYER_ID,
-                        ActivistDeclarationMode.RALLY,
-                        TARGET_EVENT_ID,
-                        TARGET_OUTCOME_ID)))
-                .isInstanceOf(DeclarationWindowClosedException.class);
+        assertThatThrownBy(() -> handler.handle(command)).isInstanceOf(DeclarationWindowClosedException.class);
 
         then(activistEraStateRepository).should(never()).save(any());
         then(actionEventPublisher).shouldHaveNoInteractions();
     }
 
     private static io.github.temporalrift.game.action.domain.actionround.ActionRound mockRound() {
-        return org.mockito.Mockito.mock(io.github.temporalrift.game.action.domain.actionround.ActionRound.class);
+        return mock(io.github.temporalrift.game.action.domain.actionround.ActionRound.class);
     }
 }

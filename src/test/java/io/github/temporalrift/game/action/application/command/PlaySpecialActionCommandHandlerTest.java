@@ -9,6 +9,7 @@ import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.BDDMockito.willThrow;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 
 import java.time.Clock;
@@ -33,12 +34,16 @@ import io.github.temporalrift.game.action.domain.actionround.FactionRequiredExce
 import io.github.temporalrift.game.action.domain.actionround.JammedPlayerException;
 import io.github.temporalrift.game.action.domain.actionround.RoundNotFoundException;
 import io.github.temporalrift.game.action.domain.actionround.UnknownActionTargetException;
+import io.github.temporalrift.game.action.domain.activisterastate.ActivistEraState;
+import io.github.temporalrift.game.action.domain.activisterastate.ExposeUnavailableException;
 import io.github.temporalrift.game.action.domain.event.SpecialActionPlayed;
 import io.github.temporalrift.game.action.domain.playerstate.PlayerState;
 import io.github.temporalrift.game.action.domain.playerstate.PlayerStateNotFoundException;
 import io.github.temporalrift.game.action.domain.port.out.ActionEventPublisher;
 import io.github.temporalrift.game.action.domain.port.out.ActionRoundRepository;
+import io.github.temporalrift.game.action.domain.port.out.ActivistEraStateRepository;
 import io.github.temporalrift.game.action.domain.port.out.PlayerStateRepository;
+import io.github.temporalrift.game.shared.CardType;
 import io.github.temporalrift.game.shared.Faction;
 import io.github.temporalrift.game.shared.SpecialAction;
 
@@ -56,6 +61,9 @@ class PlaySpecialActionCommandHandlerTest {
 
     @Mock
     PlayerStateRepository playerStateRepository;
+
+    @Mock
+    ActivistEraStateRepository activistEraStateRepository;
 
     @Mock
     ActionEventPublisher actionEventPublisher;
@@ -281,6 +289,69 @@ class PlaySpecialActionCommandHandlerTest {
         // when / then
         assertThatExceptionOfType(UnknownActionTargetException.class).isThrownBy(() -> handler.handle(command));
         then(actionRoundRepository).shouldHaveNoInteractions();
+    }
+
+    @Test
+    @DisplayName("handle — Activist Expose outside Round 2 — rejects before submitting")
+    void handleActivistExposeOutsideRoundTwoRejectsBeforeSubmitting() {
+        var command = new PlaySpecialActionUseCase.Command(
+                GAME_ID,
+                ERA,
+                1,
+                PLAYER_ID,
+                SpecialAction.EXPOSE,
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                UUID.randomUUID());
+        given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA, 1))
+                .willReturn(Optional.of(round));
+        given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(playerState));
+        given(playerState.faction()).willReturn(Faction.ACTIVISTS);
+
+        assertThatExceptionOfType(ExposeUnavailableException.class).isThrownBy(() -> handler.handle(command));
+
+        then(round).should(never()).submitSpecial(any(), any(), any(), any(), any(), any(), anyBoolean());
+        then(activistEraStateRepository).shouldHaveNoInteractions();
+    }
+
+    @Test
+    @DisplayName("handle — Activist Expose in Round 2 — records the Round-1 probability signature")
+    void handleActivistExposeRecordsRoundOneProbabilitySignature() {
+        var targetPlayerId = UUID.randomUUID();
+        var targetEventId = UUID.randomUUID();
+        var sourceOutcomeId = UUID.randomUUID();
+        var targetOutcomeId = UUID.randomUUID();
+        var command = new PlaySpecialActionUseCase.Command(
+                GAME_ID, 2, 2, PLAYER_ID, SpecialAction.EXPOSE, targetEventId, targetOutcomeId, targetPlayerId);
+        var roundOne = mock(ActionRound.class);
+        var roundOneCard = new io.github.temporalrift.game.action.domain.actionround.SubmittedAction.CardAction(
+                targetPlayerId, UUID.randomUUID(), CardType.PUSH, targetEventId, sourceOutcomeId, targetOutcomeId);
+        given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, 2, 2))
+                .willReturn(Optional.of(round));
+        given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumber(GAME_ID, 2, 1))
+                .willReturn(Optional.of(roundOne));
+        given(roundOne.submittedActions()).willReturn(List.of(roundOneCard));
+        given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(playerState));
+        given(playerState.faction()).willReturn(Faction.ACTIVISTS);
+        given(playerState.isJammed()).willReturn(false);
+        given(activistEraStateRepository.findByGameIdAndEraNumberAndActivistPlayerId(GAME_ID, 2, PLAYER_ID))
+                .willReturn(Optional.empty());
+        given(activistEraStateRepository.findByGameIdAndEraNumberAndActivistPlayerId(GAME_ID, 1, PLAYER_ID))
+                .willReturn(Optional.empty());
+        given(round.submitSpecial(any(), any(), any(), any(), any(), any(), anyBoolean()))
+                .willReturn(false);
+        given(round.id()).willReturn(UUID.randomUUID());
+        given(round.gameId()).willReturn(GAME_ID);
+        given(round.pullEvents()).willReturn(List.of(specialActionPlayedEvent()));
+
+        handler.handle(command);
+
+        var state = org.mockito.ArgumentCaptor.forClass(ActivistEraState.class);
+        then(activistEraStateRepository).should().save(state.capture());
+        assertThat(state.getValue().exposedPlayerId()).isEqualTo(targetPlayerId);
+        assertThat(state.getValue().exposedSignature())
+                .isEqualTo(new io.github.temporalrift.game.action.domain.activisterastate.ProbabilityInfluenceSignature(
+                        CardType.PUSH, targetEventId, sourceOutcomeId, targetOutcomeId));
     }
 
     private static SpecialActionPlayed specialActionPlayedEvent() {
