@@ -17,16 +17,20 @@ class ActivistEraStateTest {
         var state = state(false);
 
         state.declare(ActivistDeclarationMode.RALLY, UUID.randomUUID(), UUID.randomUUID());
+        var eventId = UUID.randomUUID();
+        var outcomeId = UUID.randomUUID();
 
-        assertThatThrownBy(() -> state.declare(ActivistDeclarationMode.RALLY, UUID.randomUUID(), UUID.randomUUID()))
+        assertThatThrownBy(() -> state.declare(ActivistDeclarationMode.RALLY, eventId, outcomeId))
                 .isInstanceOf(ActivistDeclarationAlreadyRecordedException.class);
     }
 
     @Test
     void momentum_requiresPreviousSuccessfulDeclaration() {
         var state = state(false);
+        var eventId = UUID.randomUUID();
+        var outcomeId = UUID.randomUUID();
 
-        assertThatThrownBy(() -> state.declare(ActivistDeclarationMode.MOMENTUM, UUID.randomUUID(), UUID.randomUUID()))
+        assertThatThrownBy(() -> state.declare(ActivistDeclarationMode.MOMENTUM, eventId, outcomeId))
                 .isInstanceOf(MomentumNotEligibleException.class);
     }
 
