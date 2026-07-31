@@ -17,7 +17,6 @@ import io.github.temporalrift.game.action.application.ActionRoundEventPublicatio
 import io.github.temporalrift.game.action.domain.actionround.ActionRound;
 import io.github.temporalrift.game.action.domain.actionround.CloseOutcome;
 import io.github.temporalrift.game.action.domain.actionround.SubmittedAction;
-import io.github.temporalrift.game.action.domain.activisterastate.ActivistDeclarationMode;
 import io.github.temporalrift.game.action.domain.activisterastate.ProbabilityInfluenceSignature;
 import io.github.temporalrift.game.action.domain.event.ActionRoundTimerExpired;
 import io.github.temporalrift.game.action.domain.event.BandedProbabilityPublished;
@@ -44,6 +43,7 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
 
     private static final String CLOSE_REASON_ALL_SUBMITTED = "ALL_SUBMITTED";
     private static final String CLOSE_REASON_TIMER_EXPIRED = "TIMER_EXPIRED";
+    private static final int SIGNATURE_REVEAL_ROUND_NUMBER = 2;
 
     // Era saga hard-caps rounds at 3 (see EraSagaAdvancer.FINAL_ROUND, session module) — this module
     // needs its own copy because it is the one computing the round boundary; scoring no longer needs
@@ -52,6 +52,7 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
 
     private final ActionRoundRepository actionRoundRepository;
     private final ActivistEraStateRepository activistEraStateRepository;
+    private final PlayerStateRepository playerStateRepository;
     private final ActionEventPublisher actionEventPublisher;
     private final ActionRoundSagaStateManager stateManager;
     private final GameRulesPort gameRules;
@@ -63,6 +64,7 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
     ActionRoundSagaImpl(
             ActionRoundRepository actionRoundRepository,
             ActivistEraStateRepository activistEraStateRepository,
+            PlayerStateRepository playerStateRepository,
             ActionEventPublisher actionEventPublisher,
             ActionRoundSagaStateManager stateManager,
             GameRulesPort gameRules,
@@ -72,6 +74,7 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
             Clock clock) {
         this.actionRoundRepository = actionRoundRepository;
         this.activistEraStateRepository = activistEraStateRepository;
+        this.playerStateRepository = playerStateRepository;
         this.actionEventPublisher = actionEventPublisher;
         this.stateManager = stateManager;
         this.gameRules = gameRules;
@@ -84,6 +87,10 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
     @Override
     @Transactional(propagation = REQUIRES_NEW)
     public StartResult start(UUID gameId, int eraNumber, int roundNumber, List<UUID> playerIds) {
+        // Declaration handlers lock one player row before checking the Round-1 boundary. Locking
+        // every player row here prevents a declaration from being accepted after we read it but
+        // before the round is created: either this transaction sees it, or the handler sees Round 1.
+        playerStateRepository.lockAllByGameId(gameId);
         var sagaId = UUID.randomUUID();
         var timerSeconds = gameRules.actionRoundTimerSeconds(playerIds.size());
         var timerExpiresAt = clock.instant().plusSeconds(timerSeconds);
@@ -93,9 +100,7 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
                         .<SubmittedAction>map(state -> new SubmittedAction.SpecialActionSubmission(
                                 state.activistPlayerId(),
                                 io.github.temporalrift.game.shared.Faction.ACTIVISTS,
-                                state.declarationMode() == ActivistDeclarationMode.RALLY
-                                        ? io.github.temporalrift.game.shared.SpecialAction.RALLY
-                                        : io.github.temporalrift.game.shared.SpecialAction.MOMENTUM,
+                                state.declarationMode().toSpecialAction(),
                                 state.targetEventId(),
                                 state.targetOutcomeId(),
                                 null))
@@ -110,6 +115,9 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
                 UUID.randomUUID(), gameId, eraNumber, roundNumber, playerIds, timerSeconds, declaredActions);
         actionRoundRepository.save(round);
         ActionRoundEventPublication.publish(round, actionEventPublisher, clock);
+        if (pendingPlayerIds.isEmpty()) {
+            tryClose(sagaId, gameId, eraNumber, roundNumber, CLOSE_REASON_ALL_SUBMITTED);
+        }
         return new StartResult(sagaId, timerExpiresAt);
     }
 
@@ -178,7 +186,7 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
 
                 publishRoundSummary(round, gameId, eraNumber, roundNumber, skippedPlayerIds);
 
-                if (roundNumber == 2) {
+                if (roundNumber == SIGNATURE_REVEAL_ROUND_NUMBER) {
                     publishBandedProbabilities(gameId, eraNumber, round);
                     publishExposeSignatures(gameId, eraNumber);
                 }
@@ -250,7 +258,7 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
                         new ExposeSignatureRevealed(
                                 gameId,
                                 eraNumber,
-                                2,
+                                SIGNATURE_REVEAL_ROUND_NUMBER,
                                 state.activistPlayerId(),
                                 state.exposedPlayerId(),
                                 state.exposedSignature()),
@@ -304,9 +312,7 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
                 activistEraStateRepository.findDeclaredByGameIdAndEraNumber(gameId, eraNumber).stream()
                         .map(state -> new EraActionFactsFinalized.ActivistDeclarationFact(
                                 state.activistPlayerId(),
-                                state.declarationMode() == ActivistDeclarationMode.RALLY
-                                        ? io.github.temporalrift.game.shared.SpecialAction.RALLY
-                                        : io.github.temporalrift.game.shared.SpecialAction.MOMENTUM,
+                                state.declarationMode().toSpecialAction(),
                                 state.targetEventId(),
                                 state.targetOutcomeId()))
                         .toList();

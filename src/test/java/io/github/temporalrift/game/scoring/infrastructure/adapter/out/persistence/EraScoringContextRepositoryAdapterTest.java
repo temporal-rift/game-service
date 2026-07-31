@@ -19,6 +19,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import tools.jackson.databind.ObjectMapper;
 
 import io.github.temporalrift.game.scoring.domain.context.ChainScoringFact;
 import io.github.temporalrift.game.scoring.domain.context.EraScoringContextNotFoundException;
@@ -61,6 +62,9 @@ class EraScoringContextRepositoryAdapterTest {
 
     @Mock
     ScoringTimelineResolutionBarrierJpaRepository resolutionBarrierJpaRepository;
+
+    @Mock
+    ObjectMapper objectMapper;
 
     @InjectMocks
     EraScoringContextRepositoryAdapter adapter;
@@ -200,6 +204,30 @@ class EraScoringContextRepositoryAdapterTest {
         adapter.upsertExpectedOutcomeCount(gameId, 2, 3);
 
         then(eraOutcomeExpectationJpaRepository).should().upsert(any(UUID.class), eq(gameId), eq(2), eq(3));
+    }
+
+    @Test
+    void saveEraResolutionCompleted_usesAtomicInsertIfAbsent() {
+        var resolution = new EraResolutionCompleted(
+                UUID.randomUUID(),
+                2,
+                List.of(new EraResolutionCompleted.TerminalResolution(
+                        UUID.randomUUID(),
+                        0,
+                        EraResolutionCompleted.TerminalState.OUTCOME_APPLIED,
+                        UUID.randomUUID())));
+        given(objectMapper.writeValueAsString(resolution)).willReturn("{\"terminalResolutions\":[]}");
+
+        adapter.saveEraResolutionCompleted(resolution);
+
+        then(resolutionBarrierJpaRepository)
+                .should()
+                .insertIfAbsent(
+                        any(UUID.class),
+                        eq(resolution.gameId()),
+                        eq(resolution.eraNumber()),
+                        eq("{\"terminalResolutions\":[]}"));
+        then(resolutionBarrierJpaRepository).should(never()).findByGameIdAndEraNumber(any(), anyInt());
     }
 
     @Test

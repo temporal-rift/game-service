@@ -15,6 +15,13 @@ public interface PlayerStateRepository {
     Optional<PlayerState> findByGameIdAndPlayerId(UUID gameId, UUID playerId);
 
     /**
+     * Returns an existing player state under a pessimistic write lock.
+     *
+     * <p>This is used to serialize a declaration against creation of its action round.
+     */
+    Optional<PlayerState> findByGameIdAndPlayerIdWithLock(UUID gameId, UUID playerId);
+
+    /**
      * Atomically creates the player state if absent, then returns it under a pessimistic write
      * lock. For read-modify-write updates from concurrent writers (e.g. the faction and hand
      * projection listeners firing after independent commits): the lock serializes updates on the
@@ -24,4 +31,7 @@ public interface PlayerStateRepository {
     PlayerState findOrCreateWithLock(UUID gameId, UUID playerId);
 
     List<PlayerState> findAllByGameId(UUID gameId);
+
+    /** Locks all existing player states for a game in player order. */
+    void lockAllByGameId(UUID gameId);
 }

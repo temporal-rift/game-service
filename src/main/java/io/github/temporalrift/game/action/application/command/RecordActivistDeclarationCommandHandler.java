@@ -21,7 +21,6 @@ import io.github.temporalrift.game.action.domain.port.out.ActivistEraStateReposi
 import io.github.temporalrift.game.action.domain.port.out.PlayerStateRepository;
 import io.github.temporalrift.game.shared.DomainEventEnvelope;
 import io.github.temporalrift.game.shared.Faction;
-import io.github.temporalrift.game.shared.SpecialAction;
 
 @Service
 class RecordActivistDeclarationCommandHandler implements RecordActivistDeclarationUseCase {
@@ -61,7 +60,7 @@ class RecordActivistDeclarationCommandHandler implements RecordActivistDeclarati
             throw new DeclarationWindowClosedException(command.gameId(), command.eraNumber());
         }
         var playerState = playerStateRepository
-                .findByGameIdAndPlayerId(command.gameId(), command.playerId())
+                .findByGameIdAndPlayerIdWithLock(command.gameId(), command.playerId())
                 .orElseThrow(() -> new PlayerStateNotFoundException(command.gameId(), command.playerId()));
         validateActivist(playerState.faction(), playerState.isJammed(), command.playerId(), command.mode());
         var state = activistEraStateRepository
@@ -116,11 +115,7 @@ class RecordActivistDeclarationCommandHandler implements RecordActivistDeclarati
                 state.eraNumber(),
                 DECLARATION_ROUND_NUMBER,
                 state.activistPlayerId(),
-                state.declarationMode()
-                                == io.github.temporalrift.game.action.domain.activisterastate.ActivistDeclarationMode
-                                        .RALLY
-                        ? SpecialAction.RALLY
-                        : SpecialAction.MOMENTUM,
+                state.declarationMode().toSpecialAction(),
                 state.targetEventId(),
                 state.targetOutcomeId()));
     }
@@ -136,10 +131,7 @@ class RecordActivistDeclarationCommandHandler implements RecordActivistDeclarati
         if (faction == null) {
             throw new FactionRequiredException(playerId);
         }
-        var specialAction =
-                mode == io.github.temporalrift.game.action.domain.activisterastate.ActivistDeclarationMode.RALLY
-                        ? SpecialAction.RALLY
-                        : SpecialAction.MOMENTUM;
+        var specialAction = mode.toSpecialAction();
         if (faction != Faction.ACTIVISTS) {
             throw new InvalidSpecialActionException(faction, specialAction);
         }

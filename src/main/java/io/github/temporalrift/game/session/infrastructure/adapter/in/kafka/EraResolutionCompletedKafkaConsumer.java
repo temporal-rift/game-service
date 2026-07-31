@@ -4,6 +4,7 @@ import static org.springframework.transaction.annotation.Propagation.REQUIRES_NE
 
 import java.time.Clock;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 
@@ -95,6 +96,7 @@ class EraResolutionCompletedKafkaConsumer {
         var resolution = objectMapper.convertValue(envelope.payload(), EraResolutionCompleted.class);
         var cascadedEventIds = resolution.terminalResolutions().stream()
                 .filter(entry -> entry.terminalState() == EraResolutionCompleted.TerminalState.CASCADED)
+                .sorted(Comparator.comparingInt(EraResolutionCompleted.TerminalResolution::revealIndex))
                 .map(EraResolutionCompleted.TerminalResolution::eventId)
                 .toList();
         if (cascadedEventIds.isEmpty()) {

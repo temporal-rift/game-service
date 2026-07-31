@@ -22,8 +22,11 @@ class ActionEventWireMapperTest {
                 mapper.toWire(new ExposeBehaviorChanged(UUID.randomUUID(), 2, 3, UUID.randomUUID(), UUID.randomUUID()));
 
         assertThat(payload.getAdditionalProperties()).isEmpty();
-        assertThat(Arrays.stream(ExposeBehaviorChangedPayload.class.getDeclaredFields())
-                        .map(Field::getName))
+        var fieldNames = Arrays.stream(ExposeBehaviorChangedPayload.class.getDeclaredFields())
+                .map(Field::getName)
+                .toList();
+        assertThat(fieldNames)
+                .isNotEmpty()
                 .doesNotContain("signature", "targetEventId", "sourceOutcomeId", "targetOutcomeId");
     }
 }

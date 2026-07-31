@@ -8,6 +8,7 @@ import java.util.stream.Collectors;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import tools.jackson.databind.ObjectMapper;
 
 import io.github.temporalrift.game.scoring.domain.context.ActionScoringFact;
 import io.github.temporalrift.game.scoring.domain.context.ChainScoringFact;
@@ -35,6 +36,7 @@ class EraScoringContextRepositoryAdapter implements EraScoringContextRepository 
     private final ScoringContextActivistDeclarationJpaRepository activistDeclarationJpaRepository;
     private final ScoringContextActionFactJpaRepository actionFactJpaRepository;
     private final ScoringTimelineResolutionBarrierJpaRepository resolutionBarrierJpaRepository;
+    private final ObjectMapper objectMapper;
 
     EraScoringContextRepositoryAdapter(
             ScoringContextPlayerJpaRepository playerJpaRepository,
@@ -46,7 +48,8 @@ class EraScoringContextRepositoryAdapter implements EraScoringContextRepository 
             ScoringContextActionFactsReadyJpaRepository actionFactsReadyJpaRepository,
             ScoringContextActivistDeclarationJpaRepository activistDeclarationJpaRepository,
             ScoringContextActionFactJpaRepository actionFactJpaRepository,
-            ScoringTimelineResolutionBarrierJpaRepository resolutionBarrierJpaRepository) {
+            ScoringTimelineResolutionBarrierJpaRepository resolutionBarrierJpaRepository,
+            ObjectMapper objectMapper) {
         this.playerJpaRepository = playerJpaRepository;
         this.eraOutcomeExpectationJpaRepository = eraOutcomeExpectationJpaRepository;
         this.chainFactJpaRepository = chainFactJpaRepository;
@@ -57,6 +60,7 @@ class EraScoringContextRepositoryAdapter implements EraScoringContextRepository 
         this.activistDeclarationJpaRepository = activistDeclarationJpaRepository;
         this.actionFactJpaRepository = actionFactJpaRepository;
         this.resolutionBarrierJpaRepository = resolutionBarrierJpaRepository;
+        this.objectMapper = objectMapper;
     }
 
     @Override
@@ -192,6 +196,10 @@ class EraScoringContextRepositoryAdapter implements EraScoringContextRepository 
     @Override
     @Transactional
     public void recordActionFact(UUID gameId, int eraNumber, UUID playerId, Faction faction, ScoreReason reason) {
+        insertActionFact(gameId, eraNumber, playerId, faction, reason);
+    }
+
+    private void insertActionFact(UUID gameId, int eraNumber, UUID playerId, Faction faction, ScoreReason reason) {
         actionFactJpaRepository.insertIfAbsent(
                 UUID.randomUUID(), gameId, eraNumber, playerId, faction.name(), reason.name());
     }
@@ -212,10 +220,11 @@ class EraScoringContextRepositoryAdapter implements EraScoringContextRepository 
     @Override
     @Transactional
     public void saveEraResolutionCompleted(EraResolutionCompleted resolution) {
-        resolutionBarrierJpaRepository
-                .findByGameIdAndEraNumber(resolution.gameId(), resolution.eraNumber())
-                .orElseGet(() -> resolutionBarrierJpaRepository.save(
-                        ScoringTimelineResolutionBarrierJpaEntity.fromDomain(resolution)));
+        resolutionBarrierJpaRepository.insertIfAbsent(
+                UUID.randomUUID(),
+                resolution.gameId(),
+                resolution.eraNumber(),
+                objectMapper.writeValueAsString(resolution));
     }
 
     @Override
@@ -275,7 +284,7 @@ class EraScoringContextRepositoryAdapter implements EraScoringContextRepository 
             var reason = declaration.getMode().equals("RALLY")
                     ? ScoreReason.DECLARED_OUTCOME_WON_WITH_RALLY
                     : ScoreReason.DECLARED_OUTCOME_WON;
-            recordActionFact(
+            insertActionFact(
                     declaration.getGameId(),
                     declaration.getEraNumber(),
                     declaration.getPlayerId(),

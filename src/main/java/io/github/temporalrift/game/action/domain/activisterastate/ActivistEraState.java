@@ -34,56 +34,33 @@ public final class ActivistEraState extends AggregateRoot {
         this.momentumEligible = momentumEligible;
     }
 
-    private ActivistEraState(
-            UUID id,
-            UUID gameId,
-            int eraNumber,
-            UUID activistPlayerId,
-            boolean momentumEligible,
-            boolean declarationSucceeded,
-            ActivistDeclarationMode declarationMode,
-            UUID targetEventId,
-            UUID targetOutcomeId,
-            UUID exposedPlayerId,
-            ProbabilityInfluenceSignature exposedSignature,
-            boolean exposeBehaviorChanged) {
-        this(id, gameId, eraNumber, activistPlayerId, momentumEligible);
-        this.declarationSucceeded = declarationSucceeded;
-        this.declarationMode = declarationMode;
-        this.targetEventId = targetEventId;
-        this.targetOutcomeId = targetOutcomeId;
-        this.exposedPlayerId = exposedPlayerId;
-        this.exposedSignature = exposedSignature;
-        this.exposeBehaviorChanged = exposeBehaviorChanged;
+    private ActivistEraState(UUID id, UUID gameId, int eraNumber, UUID activistPlayerId, PersistedState state) {
+        this(id, gameId, eraNumber, activistPlayerId, state.momentumEligible());
+        this.declarationSucceeded = state.declaration().succeeded();
+        this.declarationMode = state.declaration().mode();
+        this.targetEventId = state.declaration().targetEventId();
+        this.targetOutcomeId = state.declaration().targetOutcomeId();
+        this.exposedPlayerId = state.expose().playerId();
+        this.exposedSignature = state.expose().signature();
+        this.exposeBehaviorChanged = state.expose().behaviorChanged();
     }
 
     public static ActivistEraState reconstitute(
-            UUID id,
-            UUID gameId,
-            int eraNumber,
-            UUID activistPlayerId,
-            boolean momentumEligible,
-            boolean declarationSucceeded,
-            ActivistDeclarationMode declarationMode,
-            UUID targetEventId,
-            UUID targetOutcomeId,
-            UUID exposedPlayerId,
-            ProbabilityInfluenceSignature exposedSignature,
-            boolean exposeBehaviorChanged) {
-        return new ActivistEraState(
-                id,
-                gameId,
-                eraNumber,
-                activistPlayerId,
-                momentumEligible,
-                declarationSucceeded,
-                declarationMode,
-                targetEventId,
-                targetOutcomeId,
-                exposedPlayerId,
-                exposedSignature,
-                exposeBehaviorChanged);
+            UUID id, UUID gameId, int eraNumber, UUID activistPlayerId, PersistedState state) {
+        return new ActivistEraState(id, gameId, eraNumber, activistPlayerId, state);
     }
+
+    public record PersistedState(boolean momentumEligible, Declaration declaration, Expose expose) {
+        public PersistedState {
+            Objects.requireNonNull(declaration, "declaration must not be null");
+            Objects.requireNonNull(expose, "expose must not be null");
+        }
+    }
+
+    public record Declaration(
+            boolean succeeded, ActivistDeclarationMode mode, UUID targetEventId, UUID targetOutcomeId) {}
+
+    public record Expose(UUID playerId, ProbabilityInfluenceSignature signature, boolean behaviorChanged) {}
 
     public UUID id() {
         return id;
@@ -114,15 +91,18 @@ public final class ActivistEraState extends AggregateRoot {
     }
 
     public void declare(ActivistDeclarationMode mode, UUID targetEventId, UUID targetOutcomeId) {
+        Objects.requireNonNull(mode, "mode must not be null");
+        Objects.requireNonNull(targetEventId, "targetEventId must not be null");
+        Objects.requireNonNull(targetOutcomeId, "targetOutcomeId must not be null");
         if (declarationMode != null) {
             throw new ActivistDeclarationAlreadyRecordedException(activistPlayerId, eraNumber);
         }
         if (mode == ActivistDeclarationMode.MOMENTUM && !momentumEligible) {
             throw new MomentumNotEligibleException(activistPlayerId, eraNumber);
         }
-        declarationMode = Objects.requireNonNull(mode, "mode must not be null");
-        this.targetEventId = Objects.requireNonNull(targetEventId, "targetEventId must not be null");
-        this.targetOutcomeId = Objects.requireNonNull(targetOutcomeId, "targetOutcomeId must not be null");
+        declarationMode = mode;
+        this.targetEventId = targetEventId;
+        this.targetOutcomeId = targetOutcomeId;
     }
 
     public void recordResolution(boolean succeeded) {
@@ -133,11 +113,13 @@ public final class ActivistEraState extends AggregateRoot {
     }
 
     public void expose(UUID targetPlayerId, ProbabilityInfluenceSignature signature) {
+        Objects.requireNonNull(targetPlayerId, "targetPlayerId must not be null");
+        Objects.requireNonNull(signature, "signature must not be null");
         if (exposedPlayerId != null) {
             throw new ExposeAlreadyRecordedException();
         }
-        exposedPlayerId = Objects.requireNonNull(targetPlayerId, "targetPlayerId must not be null");
-        exposedSignature = Objects.requireNonNull(signature, "signature must not be null");
+        exposedPlayerId = targetPlayerId;
+        exposedSignature = signature;
     }
 
     public boolean recordExposeBehaviorChanged(ProbabilityInfluenceSignature responseSignature) {

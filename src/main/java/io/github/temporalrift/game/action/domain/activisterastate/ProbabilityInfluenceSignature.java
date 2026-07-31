@@ -11,19 +11,20 @@ public record ProbabilityInfluenceSignature(
         CardType type, UUID targetEventId, UUID sourceOutcomeId, UUID targetOutcomeId) {
 
     public ProbabilityInfluenceSignature {
-        if (type != CardType.PUSH && type != CardType.SUPPRESS && type != CardType.SWING) {
+        if (!isSupported(type)) {
             throw new IllegalArgumentException("Expose supports only Push, Suppress, and Swing signatures");
         }
     }
 
     public static Optional<ProbabilityInfluenceSignature> from(SubmittedAction action) {
-        if (action instanceof SubmittedAction.CardAction card
-                && (card.cardType() == CardType.PUSH
-                        || card.cardType() == CardType.SUPPRESS
-                        || card.cardType() == CardType.SWING)) {
+        if (action instanceof SubmittedAction.CardAction card && isSupported(card.cardType())) {
             return Optional.of(new ProbabilityInfluenceSignature(
                     card.cardType(), card.targetEventId(), card.sourceOutcomeId(), card.targetOutcomeId()));
         }
         return Optional.empty();
+    }
+
+    private static boolean isSupported(CardType cardType) {
+        return cardType == CardType.PUSH || cardType == CardType.SUPPRESS || cardType == CardType.SWING;
     }
 }
