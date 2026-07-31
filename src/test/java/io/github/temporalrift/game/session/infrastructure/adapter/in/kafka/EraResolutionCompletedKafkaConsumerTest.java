@@ -103,7 +103,9 @@ class EraResolutionCompletedKafkaConsumerTest {
     void handle_thresholdCrossed_usesRevealOrderedCollapsingEventForActivistWinners() {
         var firstCascadedEvent = UUID.randomUUID();
         var collapsingEvent = UUID.randomUUID();
-        var resolution = resolution(2, cascaded(firstCascadedEvent, 0), cascaded(collapsingEvent, 1));
+        // The contract requires EventsDrawn order, but this consumer still sorts by revealIndex so
+        // a malformed/reordered transport list cannot award collapse winners for the wrong event.
+        var resolution = resolution(2, cascaded(collapsingEvent, 1), cascaded(firstCascadedEvent, 0));
         var game = Game.reconstitute(GAME_ID, LOBBY_ID, List.of(), 2, 1, GameStatus.IN_PROGRESS);
         givenProcessedResolution(resolution);
         given(gameRepository.findByIdWithLock(GAME_ID)).willReturn(Optional.of(game));

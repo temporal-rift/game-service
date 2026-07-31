@@ -31,6 +31,35 @@ class ActivistEraStateTest {
     }
 
     @Test
+    void invalidDeclarationArgumentsDoNotConsumeTheDeclarationSlot() {
+        var state = state(true);
+        var eventId = UUID.randomUUID();
+        var outcomeId = UUID.randomUUID();
+
+        assertThatThrownBy(() -> state.declare(ActivistDeclarationMode.RALLY, eventId, null))
+                .isInstanceOf(NullPointerException.class);
+
+        state.declare(ActivistDeclarationMode.RALLY, eventId, outcomeId);
+
+        assertThat(state.targetEventId()).isEqualTo(eventId);
+        assertThat(state.targetOutcomeId()).isEqualTo(outcomeId);
+    }
+
+    @Test
+    void invalidExposeArgumentsDoNotConsumeTheExposeSlot() {
+        var state = state(false);
+        var playerId = UUID.randomUUID();
+        var signature = new ProbabilityInfluenceSignature(CardType.PUSH, UUID.randomUUID(), null, UUID.randomUUID());
+
+        assertThatThrownBy(() -> state.expose(playerId, null)).isInstanceOf(NullPointerException.class);
+
+        state.expose(playerId, signature);
+
+        assertThat(state.exposedPlayerId()).isEqualTo(playerId);
+        assertThat(state.exposedSignature()).isEqualTo(signature);
+    }
+
+    @Test
     void exposeBehaviorChangesOnlyForDifferentQualifyingRoundThreeSignature() {
         var state = state(false);
         var roundOneSignature =

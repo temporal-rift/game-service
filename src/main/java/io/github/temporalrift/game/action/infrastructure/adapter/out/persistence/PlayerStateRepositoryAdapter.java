@@ -37,6 +37,11 @@ class PlayerStateRepositoryAdapter implements PlayerStateRepository {
     }
 
     @Override
+    public Optional<PlayerState> findByGameIdAndPlayerIdWithLock(UUID gameId, UUID playerId) {
+        return jpaRepository.findByGameIdAndPlayerIdWithLock(gameId, playerId).map(this::toDomain);
+    }
+
+    @Override
     public PlayerState findOrCreateWithLock(UUID gameId, UUID playerId) {
         jpaRepository.insertIfAbsent(UUID.randomUUID(), gameId, playerId);
         return jpaRepository
@@ -51,6 +56,11 @@ class PlayerStateRepositoryAdapter implements PlayerStateRepository {
         return jpaRepository.findAllByGameId(gameId).stream()
                 .map(this::toDomain)
                 .toList();
+    }
+
+    @Override
+    public void lockAllByGameId(UUID gameId) {
+        jpaRepository.findAllByGameIdWithLock(gameId);
     }
 
     private PlayerStateJpaEntity toEntity(PlayerState state) {

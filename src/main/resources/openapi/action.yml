@@ -103,7 +103,8 @@ paths:
                 $ref: '#/components/schemas/SubmitActionResponse'
         '409':
           description: |
-            Round already closed (`code: 409-01`) or player already submitted (`code: 409-02`).
+            Round already closed (`code: 409-01`), player already submitted (`code: 409-02`), or Expose was already
+            used in this era (`code: 409-05`).
           content:
             application/problem+json:
               schema:
@@ -245,7 +246,9 @@ components:
               description: |
                 Rally and Momentum are accepted only by the declaration endpoint during the pre-Round-1 declaration
                 window. Expose is valid only in Round 2 and requires targetPlayerId to identify a player with a
-                qualifying Round-1 probability-influence signature.
+                qualifying Round-1 probability-influence signature. The generic action request still requires
+                targetEventId and targetOutcomeId for Expose, but Expose ignores those values and targets only the
+                named player.
             targetEventId:
               type: string
               format: uuid

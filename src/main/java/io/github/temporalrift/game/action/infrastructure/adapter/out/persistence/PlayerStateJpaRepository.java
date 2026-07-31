@@ -29,5 +29,9 @@ interface PlayerStateJpaRepository extends JpaRepository<PlayerStateJpaEntity, U
     Optional<PlayerStateJpaEntity> findByGameIdAndPlayerIdWithLock(
             @Param("gameId") UUID gameId, @Param("playerId") UUID playerId);
 
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select state from PlayerStateJpaEntity state where state.gameId = :gameId order by state.playerId")
+    List<PlayerStateJpaEntity> findAllByGameIdWithLock(@Param("gameId") UUID gameId);
+
     List<PlayerStateJpaEntity> findAllByGameId(UUID gameId);
 }

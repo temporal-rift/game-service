@@ -78,21 +78,24 @@ class ActivistEraStateRepositoryAdapter implements ActivistEraStateRepository {
                 entity.getGameId(),
                 entity.getEraNumber(),
                 entity.getActivistPlayerId(),
-                entity.isMomentumEligible(),
-                entity.isDeclarationSucceeded(),
-                entity.getDeclarationMode() == null
-                        ? null
-                        : ActivistDeclarationMode.valueOf(entity.getDeclarationMode()),
-                entity.getTargetEventId(),
-                entity.getTargetOutcomeId(),
-                entity.getExposedPlayerId(),
-                entity.getExposedSignatureType() == null
-                        ? null
-                        : new ProbabilityInfluenceSignature(
-                                CardType.valueOf(entity.getExposedSignatureType()),
-                                entity.getExposedSignatureEventId(),
-                                entity.getExposedSignatureSourceOutcomeId(),
-                                entity.getExposedSignatureTargetOutcomeId()),
-                entity.isExposeBehaviorChanged());
+                new ActivistEraState.PersistedState(
+                        entity.isMomentumEligible(),
+                        new ActivistEraState.Declaration(
+                                entity.isDeclarationSucceeded(),
+                                entity.getDeclarationMode() == null
+                                        ? null
+                                        : ActivistDeclarationMode.valueOf(entity.getDeclarationMode()),
+                                entity.getTargetEventId(),
+                                entity.getTargetOutcomeId()),
+                        new ActivistEraState.Expose(
+                                entity.getExposedPlayerId(),
+                                entity.getExposedSignatureType() == null
+                                        ? null
+                                        : new ProbabilityInfluenceSignature(
+                                                CardType.valueOf(entity.getExposedSignatureType()),
+                                                entity.getExposedSignatureEventId(),
+                                                entity.getExposedSignatureSourceOutcomeId(),
+                                                entity.getExposedSignatureTargetOutcomeId()),
+                                entity.isExposeBehaviorChanged())));
     }
 }

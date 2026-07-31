@@ -35,6 +35,7 @@ import io.github.temporalrift.game.action.domain.actionround.FactionRequiredExce
 import io.github.temporalrift.game.action.domain.actionround.InvalidActionTargetException;
 import io.github.temporalrift.game.action.domain.actionround.JammedPlayerException;
 import io.github.temporalrift.game.action.domain.actionround.RoundNotFoundException;
+import io.github.temporalrift.game.action.domain.activisterastate.ExposeAlreadyRecordedException;
 import io.github.temporalrift.game.shared.PlayerPrincipal;
 import io.github.temporalrift.game.shared.infrastructure.config.PlayerAuthenticationToken;
 import io.github.temporalrift.game.shared.infrastructure.config.SecurityConfig;
@@ -272,6 +273,49 @@ class ActionControllerTest {
                 .andExpect(jsonPath("$.code").value("422-03"));
     }
 
+    @Test
+    @DisplayName("Given a prior Expose, then submits a 409 conflict")
+    void exposeAlreadyRecorded() throws Exception {
+        given(playSpecialActionUseCase.handle(any())).willThrow(new ExposeAlreadyRecordedException());
+
+        mockMvc.perform(post("/games/{gameId}/eras/{eraNumber}/rounds/{roundNumber}/actions", GAME_ID, ERA, ROUND)
+                        .with(auth())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(specialJson()))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("409-05"));
+    }
+
+    @Test
+    @DisplayName("Given a declaration request, when POSTed, then dispatches it and returns 202")
+    void recordActivistDeclaration() throws Exception {
+        given(recordActivistDeclarationUseCase.handle(any()))
+                .willReturn(new RecordActivistDeclarationUseCase.Result(
+                        GAME_ID,
+                        ERA,
+                        PLAYER_ID,
+                        io.github.temporalrift.game.action.domain.activisterastate.ActivistDeclarationMode.RALLY,
+                        TARGET_EVENT_ID,
+                        TARGET_OUTCOME_ID));
+
+        mockMvc.perform(post("/games/{gameId}/eras/{eraNumber}/declarations", GAME_ID, ERA)
+                        .with(auth())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(declarationJson()))
+                .andExpect(status().isAccepted())
+                .andExpect(jsonPath("$.playerId").value(PLAYER_ID.toString()))
+                .andExpect(jsonPath("$.specialAction").value("RALLY"))
+                .andExpect(jsonPath("$.status").value("DECLARED"));
+
+        var captor = ArgumentCaptor.forClass(RecordActivistDeclarationUseCase.Command.class);
+        org.mockito.BDDMockito.then(recordActivistDeclarationUseCase).should().handle(captor.capture());
+        assertThat(captor.getValue().gameId()).isEqualTo(GAME_ID);
+        assertThat(captor.getValue().eraNumber()).isEqualTo(ERA);
+        assertThat(captor.getValue().playerId()).isEqualTo(PLAYER_ID);
+        assertThat(captor.getValue().mode())
+                .isEqualTo(io.github.temporalrift.game.action.domain.activisterastate.ActivistDeclarationMode.RALLY);
+    }
+
     private static String cardJson() {
         return """
                 {
@@ -294,5 +338,15 @@ class ActionControllerTest {
                   "targetPlayerId": "%s"
                 }
                 """.formatted(TARGET_EVENT_ID, TARGET_OUTCOME_ID, TARGET_PLAYER_ID);
+    }
+
+    private static String declarationJson() {
+        return """
+                {
+                  "specialAction": "RALLY",
+                  "targetEventId": "%s",
+                  "targetOutcomeId": "%s"
+                }
+                """.formatted(TARGET_EVENT_ID, TARGET_OUTCOME_ID);
     }
 }

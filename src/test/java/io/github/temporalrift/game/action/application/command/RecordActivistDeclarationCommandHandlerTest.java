@@ -73,7 +73,8 @@ class RecordActivistDeclarationCommandHandlerTest {
         // given
         given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumber(GAME_ID, ERA_NUMBER, 1))
                 .willReturn(Optional.empty());
-        given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(playerState));
+        given(playerStateRepository.findByGameIdAndPlayerIdWithLock(GAME_ID, PLAYER_ID))
+                .willReturn(Optional.of(playerState));
         given(playerState.faction()).willReturn(Faction.ACTIVISTS);
         given(playerState.isJammed()).willReturn(false);
         given(activistEraStateRepository.findByGameIdAndEraNumberAndActivistPlayerId(GAME_ID, ERA_NUMBER, PLAYER_ID))
@@ -100,5 +101,16 @@ class RecordActivistDeclarationCommandHandlerTest {
             return true;
         }));
         then(activistEraStateRepository).should().save(any(ActivistEraState.class));
+        then(actionEventPublisher)
+                .should()
+                .publishInternally(argThat(
+                        event -> event.equals(new io.github.temporalrift.game.shared.ActivistDeclarationRecorded(
+                                GAME_ID,
+                                ERA_NUMBER,
+                                1,
+                                PLAYER_ID,
+                                io.github.temporalrift.game.shared.SpecialAction.RALLY,
+                                TARGET_EVENT_ID,
+                                TARGET_OUTCOME_ID))));
     }
 }

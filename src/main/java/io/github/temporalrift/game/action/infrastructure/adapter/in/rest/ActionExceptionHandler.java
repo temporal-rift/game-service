@@ -18,6 +18,7 @@ import io.github.temporalrift.game.action.domain.actionround.RoundNotFoundExcept
 import io.github.temporalrift.game.action.domain.actionround.UnknownActionTargetException;
 import io.github.temporalrift.game.action.domain.activisterastate.ActivistDeclarationAlreadyRecordedException;
 import io.github.temporalrift.game.action.domain.activisterastate.DeclarationWindowClosedException;
+import io.github.temporalrift.game.action.domain.activisterastate.ExposeAlreadyRecordedException;
 import io.github.temporalrift.game.action.domain.activisterastate.ExposeTargetNotEligibleException;
 import io.github.temporalrift.game.action.domain.activisterastate.ExposeUnavailableException;
 import io.github.temporalrift.game.action.domain.activisterastate.MomentumNotEligibleException;
@@ -89,11 +90,12 @@ class ActionExceptionHandler {
         return ProblemDetails.of(HttpStatus.UNPROCESSABLE_CONTENT, ex.getMessage(), "422-08");
     }
 
-    @ExceptionHandler({
-        io.github.temporalrift.game.action.domain.activisterastate.ExposeAlreadyRecordedException.class,
-        ExposeUnavailableException.class,
-        ExposeTargetNotEligibleException.class
-    })
+    @ExceptionHandler(ExposeAlreadyRecordedException.class)
+    ProblemDetail handleExposeAlreadyRecorded(ExposeAlreadyRecordedException ex) {
+        return ProblemDetails.of(HttpStatus.CONFLICT, ex.getMessage(), "409-05");
+    }
+
+    @ExceptionHandler({ExposeUnavailableException.class, ExposeTargetNotEligibleException.class})
     ProblemDetail handleExposeValidation(RuntimeException ex) {
         return ProblemDetails.of(HttpStatus.UNPROCESSABLE_CONTENT, ex.getMessage(), "422-09");
     }

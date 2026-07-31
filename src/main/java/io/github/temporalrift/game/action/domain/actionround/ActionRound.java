@@ -63,17 +63,25 @@ public class ActionRound extends AggregateRoot {
     }
 
     private void registerInitialSubmission(SubmittedAction action) {
-        if (action instanceof SubmittedAction.SpecialActionSubmission special) {
+        if (action
+                instanceof
+                SubmittedAction.SpecialActionSubmission(
+                        UUID playerId,
+                        Faction faction,
+                        SpecialAction specialAction,
+                        UUID targetEventId,
+                        UUID targetOutcomeId,
+                        UUID targetPlayerId)) {
             registerEvent(new SpecialActionPlayed(
                     gameId,
                     eraNumber,
                     roundNumber,
-                    special.playerId(),
-                    special.faction(),
-                    special.specialAction(),
-                    special.targetEventId(),
-                    special.targetOutcomeId(),
-                    special.targetPlayerId()));
+                    playerId,
+                    faction,
+                    specialAction,
+                    targetEventId,
+                    targetOutcomeId,
+                    targetPlayerId));
         }
     }
 

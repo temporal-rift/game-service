@@ -40,6 +40,7 @@ import io.github.temporalrift.game.action.domain.port.out.ActionEventPublisher;
 import io.github.temporalrift.game.action.domain.port.out.ActionRoundRepository;
 import io.github.temporalrift.game.action.domain.port.out.ActivistEraStateRepository;
 import io.github.temporalrift.game.action.domain.port.out.FutureEventDefinitionPort;
+import io.github.temporalrift.game.action.domain.port.out.PlayerStateRepository;
 import io.github.temporalrift.game.action.domain.saga.ActionRoundSagaState;
 import io.github.temporalrift.game.action.domain.saga.ActionRoundSagaStatus;
 import io.github.temporalrift.game.shared.ActionRoundClosed;
@@ -72,6 +73,9 @@ class ActionRoundSagaImplTest {
     ActivistEraStateRepository activistEraStateRepository;
 
     @Mock
+    PlayerStateRepository playerStateRepository;
+
+    @Mock
     ActionEventPublisher actionEventPublisher;
 
     @Mock
@@ -96,6 +100,7 @@ class ActionRoundSagaImplTest {
         saga = new ActionRoundSagaImpl(
                 actionRoundRepository,
                 activistEraStateRepository,
+                playerStateRepository,
                 actionEventPublisher,
                 stateManager,
                 gameRules,
@@ -151,6 +156,26 @@ class ActionRoundSagaImplTest {
 
             // then
             then(gameRules).should(times(1)).actionRoundTimerSeconds(PLAYER_IDS.size());
+        }
+
+        @Test
+        @DisplayName("closes a round immediately when every player already declared")
+        void start_withNoPendingPlayers_closesImmediately() {
+            var declared = new ActivistEraState(UUID.randomUUID(), GAME_ID, ERA_NUMBER, PLAYER_1, true);
+            declared.declare(ActivistDeclarationMode.RALLY, UUID.randomUUID(), UUID.randomUUID());
+            var closedRound = new ActionRound(
+                    UUID.randomUUID(), GAME_ID, ERA_NUMBER, ROUND_NUMBER, List.of(), TIMER_SECONDS, List.of());
+            given(gameRules.actionRoundTimerSeconds(1)).willReturn(TIMER_SECONDS);
+            given(activistEraStateRepository.findDeclaredByGameIdAndEraNumber(GAME_ID, ERA_NUMBER))
+                    .willReturn(List.of(declared));
+            given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(
+                            GAME_ID, ERA_NUMBER, ROUND_NUMBER))
+                    .willReturn(Optional.of(closedRound));
+
+            saga.start(GAME_ID, ERA_NUMBER, ROUND_NUMBER, List.of(PLAYER_1));
+
+            then(stateManager).should().complete(GAME_ID, ERA_NUMBER, ROUND_NUMBER);
+            then(timerRegistry).should().cancel(any(UUID.class));
         }
     }
 
