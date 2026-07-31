@@ -15,16 +15,16 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.ObjectMapper;
 
-import io.github.temporalrift.game.session.domain.event.ParadoxCascaded;
+import io.github.temporalrift.game.session.domain.event.EraResolutionCompleted;
 import io.github.temporalrift.game.session.domain.event.TimelineCollapsed;
 import io.github.temporalrift.game.session.domain.game.Game;
 import io.github.temporalrift.game.session.domain.game.GameAlreadyOverException;
 import io.github.temporalrift.game.session.domain.game.GameNotFoundException;
-import io.github.temporalrift.game.session.domain.game.GameStatus;
 import io.github.temporalrift.game.session.domain.lobby.LobbyNotFoundException;
 import io.github.temporalrift.game.session.domain.lobby.LobbyPlayer;
 import io.github.temporalrift.game.session.domain.port.out.GameRepository;
 import io.github.temporalrift.game.session.domain.port.out.LobbyRepository;
+import io.github.temporalrift.game.session.domain.port.out.SessionActivistDeclarationRepository;
 import io.github.temporalrift.game.session.domain.port.out.SessionEventPublisher;
 import io.github.temporalrift.game.session.domain.port.out.SessionGameRulesPort;
 import io.github.temporalrift.game.shared.DomainEventEnvelope;
@@ -32,25 +32,27 @@ import io.github.temporalrift.game.shared.InboundEnvelope;
 import io.github.temporalrift.game.shared.ProcessedEventRepository;
 
 @Component
-class ParadoxCascadedKafkaConsumer {
+class EraResolutionCompletedKafkaConsumer {
 
-    private static final Logger log = LoggerFactory.getLogger(ParadoxCascadedKafkaConsumer.class);
-    private static final String EVENT_TYPE = "timeline.ParadoxCascaded";
-    private static final String CONSUMER = "session.paradox-cascaded";
+    private static final Logger log = LoggerFactory.getLogger(EraResolutionCompletedKafkaConsumer.class);
+    private static final String EVENT_TYPE = "timeline.EraResolutionCompleted";
+    private static final String CONSUMER = "session.era-resolution-completed";
 
     private final ProcessedEventRepository processedEventRepository;
     private final GameRepository gameRepository;
     private final LobbyRepository lobbyRepository;
+    private final SessionActivistDeclarationRepository declarationRepository;
     private final SessionEventPublisher eventPublisher;
     private final ApplicationEventPublisher applicationEventPublisher;
     private final SessionGameRulesPort gameRules;
     private final ObjectMapper objectMapper;
     private final Clock clock;
 
-    ParadoxCascadedKafkaConsumer(
+    EraResolutionCompletedKafkaConsumer(
             ProcessedEventRepository processedEventRepository,
             GameRepository gameRepository,
             LobbyRepository lobbyRepository,
+            SessionActivistDeclarationRepository declarationRepository,
             SessionEventPublisher eventPublisher,
             ApplicationEventPublisher applicationEventPublisher,
             SessionGameRulesPort gameRules,
@@ -59,6 +61,7 @@ class ParadoxCascadedKafkaConsumer {
         this.processedEventRepository = processedEventRepository;
         this.gameRepository = gameRepository;
         this.lobbyRepository = lobbyRepository;
+        this.declarationRepository = declarationRepository;
         this.eventPublisher = eventPublisher;
         this.applicationEventPublisher = applicationEventPublisher;
         this.gameRules = gameRules;
@@ -66,7 +69,7 @@ class ParadoxCascadedKafkaConsumer {
         this.clock = clock;
     }
 
-    @KafkaListener(topics = "timeline.events", groupId = "game-service.session.paradox-cascaded")
+    @KafkaListener(topics = "timeline.events", groupId = "game-service.session.era-resolution-completed")
     @Transactional(propagation = REQUIRES_NEW)
     public void handle(InboundEnvelope envelope) {
         if (envelope.eventId() == null || envelope.payload() == null) {
@@ -76,8 +79,6 @@ class ParadoxCascadedKafkaConsumer {
         if (!EVENT_TYPE.equals(envelope.eventType())) {
             return;
         }
-        // Check version before claiming: claiming an unsupported version would permanently mark the
-        // event processed, so it could never be reprocessed once this consumer learns to handle it.
         if (envelope.version() != DomainEventEnvelope.SCHEMA_VERSION_V1) {
             log.warn(
                     "Unsupported {} envelope version {} for event {} — skipping",
@@ -91,41 +92,54 @@ class ParadoxCascadedKafkaConsumer {
             return;
         }
 
-        var paradox = objectMapper.convertValue(envelope.payload(), ParadoxCascaded.class);
-        var gameId = paradox.gameId();
+        var resolution = objectMapper.convertValue(envelope.payload(), EraResolutionCompleted.class);
+        var cascadedEventIds = resolution.terminalResolutions().stream()
+                .filter(entry -> entry.terminalState() == EraResolutionCompleted.TerminalState.CASCADED)
+                .map(EraResolutionCompleted.TerminalResolution::eventId)
+                .toList();
+        if (cascadedEventIds.isEmpty()) {
+            return;
+        }
 
-        var game = gameRepository.findById(gameId).orElseThrow(() -> new GameNotFoundException(gameId));
+        var game = gameRepository
+                .findByIdWithLock(resolution.gameId())
+                .orElseThrow(() -> new GameNotFoundException(resolution.gameId()));
+        final UUID collapsingEventId;
         try {
-            game.recordCascadedParadox(gameRules.maxCascadedParadoxes());
+            collapsingEventId =
+                    game.recordCascadedParadoxesInRevealOrder(cascadedEventIds, gameRules.maxCascadedParadoxes());
         } catch (GameAlreadyOverException _) {
-            log.info("ParadoxCascaded ignored for game {} — already over", gameId);
+            log.info("EraResolutionCompleted ignored for game {} — already over", resolution.gameId());
             return;
         }
         gameRepository.save(game);
 
-        if (game.status() == GameStatus.ENDED_BY_COLLAPSE) {
-            // The lobby roster is the system of record for assigned factions; saga state is
-            // workflow bookkeeping and must not be read as game data.
-            var players = lobbyRepository
-                    .findById(game.lobbyId())
-                    .orElseThrow(() -> new LobbyNotFoundException(game.lobbyId()))
-                    .currentPlayers();
-
-            var collapsed = buildTimelineCollapsed(gameId, paradox.eraNumber(), players);
-            eventPublisher.publish(DomainEventEnvelope.create(
-                    gameId, Game.AGGREGATE_TYPE, gameId, DomainEventEnvelope.SCHEMA_VERSION_V1, collapsed, clock));
-            applicationEventPublisher.publishEvent(collapsed);
+        if (collapsingEventId != null) {
+            publishTimelineCollapsed(game, resolution.eraNumber(), collapsingEventId);
         }
     }
 
-    private TimelineCollapsed buildTimelineCollapsed(UUID gameId, int eraNumber, List<LobbyPlayer> players) {
+    private void publishTimelineCollapsed(Game game, int eraNumber, UUID collapsingEventId) {
+        var players = lobbyRepository
+                .findById(game.lobbyId())
+                .orElseThrow(() -> new LobbyNotFoundException(game.lobbyId()))
+                .currentPlayers();
+        var winnerIds = declarationRepository.findPlayerIdsTargeting(game.id(), eraNumber, collapsingEventId);
+        var collapsed = buildTimelineCollapsed(game.id(), eraNumber, players, winnerIds);
+        eventPublisher.publish(DomainEventEnvelope.create(
+                game.id(), Game.AGGREGATE_TYPE, game.id(), DomainEventEnvelope.SCHEMA_VERSION_V1, collapsed, clock));
+        applicationEventPublisher.publishEvent(collapsed);
+    }
+
+    private TimelineCollapsed buildTimelineCollapsed(
+            UUID gameId, int eraNumber, List<LobbyPlayer> players, List<UUID> winnerIds) {
         var winners = new ArrayList<TimelineCollapsed.PlayerFactionResult>();
         var losers = new ArrayList<TimelineCollapsed.PlayerFactionResult>();
         for (var player : players) {
             var faction = player.faction();
             var result = new TimelineCollapsed.PlayerFactionResult(
                     player.playerId(), faction == null ? null : faction.name());
-            if (faction != null && gameRules.collapseWinnerFactions().contains(faction)) {
+            if (winnerIds.contains(player.playerId())) {
                 winners.add(result);
             } else {
                 losers.add(result);

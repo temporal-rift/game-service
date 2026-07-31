@@ -23,8 +23,7 @@ public record SessionRulesProperties(
         @Min(1) int winScoreThreshold,
         @Min(1) int reconnectGracePeriodSeconds,
         @NotEmpty Map<Integer, Integer> actionRoundTimerSeconds,
-        @NotEmpty Set<Faction> stabilizationWinnerFactions,
-        @NotEmpty Set<Faction> collapseWinnerFactions)
+        @NotEmpty Set<Faction> stabilizationWinnerFactions)
         implements SessionGameRulesPort {
 
     private static final int DEFAULT_ACTION_ROUND_TIMER_SECONDS = 60;

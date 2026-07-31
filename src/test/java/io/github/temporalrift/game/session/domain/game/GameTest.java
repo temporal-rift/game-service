@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.assertj.core.api.Assertions.assertThatNullPointerException;
 
 import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 import java.util.stream.IntStream;
 
@@ -194,6 +195,20 @@ class GameTest {
         var game = Game.reconstitute(
                 GAME_ID, LOBBY_ID, new ArrayList<>(), 1, MAX_CASCADED_PARADOXES + 1, GameStatus.IN_PROGRESS);
         game.recordCascadedParadox(MAX_CASCADED_PARADOXES);
+        assertThat(game.status()).isEqualTo(GameStatus.ENDED_BY_COLLAPSE);
+    }
+
+    @Test
+    void recordCascadedParadoxesInRevealOrder_returnsTheThresholdCrossingEvent() {
+        var game = Game.reconstitute(GAME_ID, LOBBY_ID, List.of(), 1, 1, GameStatus.IN_PROGRESS);
+        var firstCascadedEvent = UUID.randomUUID();
+        var collapsingEvent = UUID.randomUUID();
+
+        var result = game.recordCascadedParadoxesInRevealOrder(
+                List.of(firstCascadedEvent, collapsingEvent), MAX_CASCADED_PARADOXES);
+
+        assertThat(result).isEqualTo(collapsingEvent);
+        assertThat(game.cascadedParadoxCounter()).isEqualTo(MAX_CASCADED_PARADOXES);
         assertThat(game.status()).isEqualTo(GameStatus.ENDED_BY_COLLAPSE);
     }
 
