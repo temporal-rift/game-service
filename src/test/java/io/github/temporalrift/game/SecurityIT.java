@@ -15,6 +15,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import io.github.temporalrift.game.action.application.port.in.GetRoundStatusUseCase;
 import io.github.temporalrift.game.action.application.port.in.PlayCardUseCase;
 import io.github.temporalrift.game.action.application.port.in.PlaySpecialActionUseCase;
+import io.github.temporalrift.game.action.application.port.in.RecordActivistDeclarationUseCase;
 import io.github.temporalrift.game.scoring.application.port.in.GetScoresUseCase;
 import io.github.temporalrift.game.scoring.application.port.in.GetScoringHistoryUseCase;
 import io.github.temporalrift.game.session.application.port.in.CreateLobbyUseCase;
@@ -36,6 +37,9 @@ class SecurityIT {
 
     @MockitoBean
     private PlaySpecialActionUseCase playSpecialActionUseCase;
+
+    @MockitoBean
+    private RecordActivistDeclarationUseCase recordActivistDeclarationUseCase;
 
     @MockitoBean
     private GetRoundStatusUseCase getRoundStatusUseCase;
