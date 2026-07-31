@@ -10,7 +10,6 @@ spring:
       ddl-auto: validate
     show-sql: false
   kafka:
-    bootstrap-servers: localhost:9092
     properties:
       security.protocol: PLAINTEXT
     consumer:
@@ -29,7 +28,7 @@ spring:
     stream:
       kafka:
         binder:
-          brokers: localhost:9092
+          brokers: ${spring.kafka.bootstrap-servers}
           configuration:
             security.protocol: PLAINTEXT
 
