@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
 import org.springframework.context.annotation.Import;
+import org.springframework.test.context.ActiveProfiles;
 
 import io.github.temporalrift.game.PostgresTestcontainersConfiguration;
 import io.github.temporalrift.game.scoring.domain.context.ChainScoringFact;
@@ -20,6 +21,7 @@ import io.github.temporalrift.game.scoring.domain.port.out.EraScoringContextRepo
 import io.github.temporalrift.game.shared.Faction;
 
 @DataJpaTest
+@ActiveProfiles("test")
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @Import({PostgresTestcontainersConfiguration.class, EraScoringContextRepositoryAdapter.class})
 class ScoringPersistenceIT {
