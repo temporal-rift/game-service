@@ -1,16 +1,19 @@
 package io.github.temporalrift.game.action.application.command;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
+import static org.mockito.Mockito.never;
 
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -24,6 +27,7 @@ import io.github.temporalrift.game.action.application.ActionTargetValidator;
 import io.github.temporalrift.game.action.application.port.in.RecordActivistDeclarationUseCase;
 import io.github.temporalrift.game.action.domain.activisterastate.ActivistDeclarationMode;
 import io.github.temporalrift.game.action.domain.activisterastate.ActivistEraState;
+import io.github.temporalrift.game.action.domain.activisterastate.DeclarationWindowClosedException;
 import io.github.temporalrift.game.action.domain.event.ActivistDeclarationRecorded;
 import io.github.temporalrift.game.action.domain.playerstate.PlayerState;
 import io.github.temporalrift.game.action.domain.port.out.ActionEventPublisher;
@@ -112,5 +116,36 @@ class RecordActivistDeclarationCommandHandlerTest {
                                 io.github.temporalrift.game.shared.SpecialAction.RALLY,
                                 TARGET_EVENT_ID,
                                 TARGET_OUTCOME_ID))));
+    }
+
+    @Test
+    @DisplayName("handle — Round 1 created while waiting for the player lock — rejects the declaration")
+    void handleRejectsDeclarationWhenRoundOneCommitsWhileWaitingForPlayerLock() {
+        // The callback represents ActionRoundSagaImpl committing Round 1 while this handler is
+        // blocked on the player row. The boundary must be read only after that lock is acquired.
+        var roundOneCreated = new AtomicBoolean();
+        given(playerStateRepository.findByGameIdAndPlayerIdWithLock(GAME_ID, PLAYER_ID))
+                .willAnswer(invocation -> {
+                    roundOneCreated.set(true);
+                    return Optional.of(playerState);
+                });
+        given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumber(GAME_ID, ERA_NUMBER, 1))
+                .willAnswer(invocation -> roundOneCreated.get() ? Optional.of(mockRound()) : Optional.empty());
+
+        assertThatThrownBy(() -> handler.handle(new RecordActivistDeclarationUseCase.Command(
+                        GAME_ID,
+                        ERA_NUMBER,
+                        PLAYER_ID,
+                        ActivistDeclarationMode.RALLY,
+                        TARGET_EVENT_ID,
+                        TARGET_OUTCOME_ID)))
+                .isInstanceOf(DeclarationWindowClosedException.class);
+
+        then(activistEraStateRepository).should(never()).save(any());
+        then(actionEventPublisher).shouldHaveNoInteractions();
+    }
+
+    private static io.github.temporalrift.game.action.domain.actionround.ActionRound mockRound() {
+        return org.mockito.Mockito.mock(io.github.temporalrift.game.action.domain.actionround.ActionRound.class);
     }
 }

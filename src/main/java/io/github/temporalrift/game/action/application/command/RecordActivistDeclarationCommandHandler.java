@@ -54,14 +54,14 @@ class RecordActivistDeclarationCommandHandler implements RecordActivistDeclarati
     public Result handle(Command command) {
         actionTargetValidator.validate(
                 command.gameId(), command.eraNumber(), command.targetEventId(), command.targetOutcomeId());
+        var playerState = playerStateRepository
+                .findByGameIdAndPlayerIdWithLock(command.gameId(), command.playerId())
+                .orElseThrow(() -> new PlayerStateNotFoundException(command.gameId(), command.playerId()));
         if (actionRoundRepository
                 .findByGameIdAndEraNumberAndRoundNumber(command.gameId(), command.eraNumber(), DECLARATION_ROUND_NUMBER)
                 .isPresent()) {
             throw new DeclarationWindowClosedException(command.gameId(), command.eraNumber());
         }
-        var playerState = playerStateRepository
-                .findByGameIdAndPlayerIdWithLock(command.gameId(), command.playerId())
-                .orElseThrow(() -> new PlayerStateNotFoundException(command.gameId(), command.playerId()));
         validateActivist(playerState.faction(), playerState.isJammed(), command.playerId(), command.mode());
         var state = activistEraStateRepository
                 .findByGameIdAndEraNumberAndActivistPlayerId(command.gameId(), command.eraNumber(), command.playerId())
