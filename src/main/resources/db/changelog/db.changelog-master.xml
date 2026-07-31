@@ -29,6 +29,7 @@
     <include file="db/changelog/action/003-create-action-future-event-definition.xml"/>
     <include file="db/changelog/action/004-create-action-round-saga-state.xml"/>
     <include file="db/changelog/action/005-index-action-round-saga-due.xml"/>
+    <include file="db/changelog/action/006-create-activist-era-state.xml"/>
 
     <!-- Scoring module -->
     <include file="db/changelog/scoring/001-create-scoring-context-player.xml"/>
@@ -40,6 +41,9 @@
     <include file="db/changelog/scoring/007-create-scoring-context-event-outcome.xml"/>
     <include file="db/changelog/scoring/008-create-scoring-context-annihilated-outcome.xml"/>
     <include file="db/changelog/scoring/009-create-scoring-context-action-facts-ready.xml"/>
+    <include file="db/changelog/scoring/010-create-scoring-context-activist-declaration.xml"/>
+    <include file="db/changelog/scoring/011-create-scoring-context-action-fact.xml"/>
+    <include file="db/changelog/scoring/012-create-scoring-timeline-resolution-barrier.xml"/>
 
 </databaseChangeLog>
 

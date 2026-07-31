@@ -2,6 +2,7 @@ package io.github.temporalrift.game.scoring.application.listener;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.never;
 
@@ -13,15 +14,20 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 
 import io.github.temporalrift.game.scoring.application.command.EraScoringCompletionChecker;
 import io.github.temporalrift.game.scoring.domain.port.out.EraScoringContextRepository;
+import io.github.temporalrift.game.shared.ActivistDeclarationRecorded;
+import io.github.temporalrift.game.shared.ActivistDeclarationResolved;
 import io.github.temporalrift.game.shared.EraActionFactsFinalized;
 import io.github.temporalrift.game.shared.EventsDrawn;
+import io.github.temporalrift.game.shared.ExposeBehaviorChanged;
 import io.github.temporalrift.game.shared.Faction;
 import io.github.temporalrift.game.shared.FactionAssigned;
 import io.github.temporalrift.game.shared.ForesightDeclared;
 import io.github.temporalrift.game.shared.OutcomeAnnihilated;
+import io.github.temporalrift.game.shared.SpecialAction;
 
 @ExtendWith(MockitoExtension.class)
 class ScoringContextProjectionEventListenerTest {
@@ -31,6 +37,9 @@ class ScoringContextProjectionEventListenerTest {
 
     @Mock
     EraScoringCompletionChecker completionChecker;
+
+    @Mock
+    ApplicationEventPublisher applicationEventPublisher;
 
     @InjectMocks
     ScoringContextProjectionEventListener listener;
@@ -137,6 +146,39 @@ class ScoringContextProjectionEventListenerTest {
     }
 
     @Test
+    void onActivistDeclarationRecorded_projectsThenPublishesOnlyDurableResolution() {
+        var gameId = UUID.randomUUID();
+        var playerId = UUID.randomUUID();
+        var declaration = new ActivistDeclarationRecorded(
+                gameId, 2, 1, playerId, SpecialAction.RALLY, UUID.randomUUID(), UUID.randomUUID());
+        var resolution = new ActivistDeclarationResolved(gameId, 2, playerId, true);
+        given(contextRepository.resolveActivistDeclarations(gameId, 2)).willReturn(List.of(resolution));
+
+        listener.onActivistDeclarationRecorded(declaration);
+
+        then(contextRepository).should().upsertActivistDeclaration(declaration);
+        then(applicationEventPublisher).should().publishEvent(resolution);
+    }
+
+    @Test
+    void onExposeBehaviorChanged_recordsExactlyTheActivistExposeFact() {
+        var gameId = UUID.randomUUID();
+        var activistPlayerId = UUID.randomUUID();
+
+        listener.onExposeBehaviorChanged(new ExposeBehaviorChanged(gameId, 2, activistPlayerId, UUID.randomUUID()));
+
+        then(contextRepository)
+                .should()
+                .recordActionFact(
+                        gameId,
+                        2,
+                        activistPlayerId,
+                        Faction.ACTIVISTS,
+                        io.github.temporalrift.game.scoring.domain.playerscore.ScoreReason
+                                .EXPOSE_CHANGED_PLAYER_BEHAVIOR);
+    }
+
+    @Test
     void onEraActionFactsFinalized_appliesForesightAndAnnihilationFactsThenMarksReadyAndTriesCompletion() {
         var gameId = UUID.randomUUID();
         var foresightEventId = UUID.randomUUID();
@@ -145,13 +187,19 @@ class ScoringContextProjectionEventListenerTest {
         var annihilatedEventId = UUID.randomUUID();
         var annihilatedOutcomeId = UUID.randomUUID();
         var annihilatingPlayerId = UUID.randomUUID();
+        var activistPlayerId = UUID.randomUUID();
+        var activistEventId = UUID.randomUUID();
+        var activistOutcomeId = UUID.randomUUID();
         var event = new EraActionFactsFinalized(
                 gameId,
                 2,
                 List.of(new EraActionFactsFinalized.ForesightFact(
                         foresightEventId, foresightOutcomeId, foresightPlayerId)),
                 List.of(new EraActionFactsFinalized.AnnihilationFact(
-                        annihilatedEventId, annihilatedOutcomeId, annihilatingPlayerId)));
+                        annihilatedEventId, annihilatedOutcomeId, annihilatingPlayerId)),
+                List.of(),
+                List.of(new EraActionFactsFinalized.ActivistDeclarationFact(
+                        activistPlayerId, SpecialAction.RALLY, activistEventId, activistOutcomeId)));
 
         listener.onEraActionFactsFinalized(event);
 
@@ -161,6 +209,10 @@ class ScoringContextProjectionEventListenerTest {
         then(contextRepository)
                 .should()
                 .recordAnnihilatedOutcome(gameId, 2, annihilatedEventId, annihilatedOutcomeId, annihilatingPlayerId);
+        then(contextRepository)
+                .should()
+                .upsertActivistDeclaration(new ActivistDeclarationRecorded(
+                        gameId, 2, 1, activistPlayerId, SpecialAction.RALLY, activistEventId, activistOutcomeId));
         then(contextRepository).should().markActionFactsReady(gameId, 2);
         then(completionChecker).should().tryComplete(gameId, 2);
     }

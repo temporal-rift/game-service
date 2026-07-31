@@ -17,11 +17,13 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import tools.jackson.databind.ObjectMapper;
 
 import io.github.temporalrift.game.scoring.application.command.EraScoringCompletionChecker;
 import io.github.temporalrift.game.scoring.domain.event.ChainBroken;
 import io.github.temporalrift.game.scoring.domain.event.ChainCompleted;
+import io.github.temporalrift.game.scoring.domain.event.EraResolutionCompleted;
 import io.github.temporalrift.game.scoring.domain.event.OutcomeApplied;
 import io.github.temporalrift.game.scoring.domain.playerscore.ScoreReason;
 import io.github.temporalrift.game.scoring.domain.port.out.EraScoringContextRepository;
@@ -46,6 +48,9 @@ class TimelineScoringKafkaConsumerTest {
 
     @Mock
     EraScoringCompletionChecker completionChecker;
+
+    @Mock
+    ApplicationEventPublisher applicationEventPublisher;
 
     @Mock
     ObjectMapper objectMapper;
@@ -117,6 +122,37 @@ class TimelineScoringKafkaConsumerTest {
         consumer.handle(envelope);
 
         then(outcomeInboxRepository).should().save(outcome);
+        then(completionChecker).should().tryComplete(GAME_ID, ERA_NUMBER);
+    }
+
+    @Test
+    @DisplayName("EraResolutionCompleted — persists the barrier before resolving declarations and checking completion")
+    void handle_eraResolutionCompleted_persistsBarrierThenResolvesDeclarations() {
+        var resolution = new EraResolutionCompleted(
+                GAME_ID,
+                ERA_NUMBER,
+                List.of(new EraResolutionCompleted.TerminalResolution(
+                        UUID.randomUUID(), 0, EraResolutionCompleted.TerminalState.CASCADED, null)));
+        var envelope = new InboundEnvelope(
+                UUID.randomUUID(),
+                "timeline.EraResolutionCompleted",
+                GAME_ID,
+                "EraResolution",
+                GAME_ID,
+                Instant.now(),
+                1,
+                resolution);
+        given(processedEventRepository.tryMarkProcessed(envelope.eventId(), "scoring.timeline-events"))
+                .willReturn(true);
+        given(objectMapper.convertValue(envelope.payload(), EraResolutionCompleted.class))
+                .willReturn(resolution);
+        given(contextRepository.resolveActivistDeclarations(GAME_ID, ERA_NUMBER))
+                .willReturn(List.of());
+
+        consumer.handle(envelope);
+
+        then(contextRepository).should().saveEraResolutionCompleted(resolution);
+        then(contextRepository).should().resolveActivistDeclarations(GAME_ID, ERA_NUMBER);
         then(completionChecker).should().tryComplete(GAME_ID, ERA_NUMBER);
     }
 

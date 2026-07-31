@@ -20,6 +20,8 @@ import io.github.temporalrift.game.scoring.domain.playerscore.ScoreReason;
 import io.github.temporalrift.game.scoring.domain.port.out.EraScoringContextRepository;
 import io.github.temporalrift.game.scoring.domain.port.out.PlayerScoreRepository;
 import io.github.temporalrift.game.scoring.domain.port.out.ScoringEventPublisher;
+import io.github.temporalrift.game.shared.ActivistDeclarationRecorded;
+import io.github.temporalrift.game.shared.ActivistDeclarationResolved;
 import io.github.temporalrift.game.shared.DomainEventEnvelope;
 import io.github.temporalrift.game.shared.Faction;
 import io.github.temporalrift.game.shared.ScoresUpdated;
@@ -276,6 +278,42 @@ class UpdateScoresCommandHandlerTest {
 
         @Override
         public void recordAnnihilatedOutcome(UUID gameId, int eraNumber, UUID eventId, UUID outcomeId, UUID playerId) {
+            throw new UnsupportedOperationException("not used by UpdateScoresCommandHandler");
+        }
+
+        @Override
+        public void recordActionFact(UUID gameId, int eraNumber, UUID playerId, Faction faction, ScoreReason reason) {
+            throw new UnsupportedOperationException("not used by UpdateScoresCommandHandler");
+        }
+
+        @Override
+        public void upsertActivistDeclaration(ActivistDeclarationRecorded declaration) {
+            throw new UnsupportedOperationException("not used by UpdateScoresCommandHandler");
+        }
+
+        @Override
+        public void saveEraResolutionCompleted(
+                io.github.temporalrift.game.scoring.domain.event.EraResolutionCompleted resolution) {
+            throw new UnsupportedOperationException("not used by UpdateScoresCommandHandler");
+        }
+
+        @Override
+        public boolean eraResolutionCompleted(UUID gameId, int eraNumber) {
+            throw new UnsupportedOperationException("not used by UpdateScoresCommandHandler");
+        }
+
+        @Override
+        public int requiredAppliedOutcomeCount(UUID gameId, int eraNumber) {
+            throw new UnsupportedOperationException("not used by UpdateScoresCommandHandler");
+        }
+
+        @Override
+        public List<ActivistDeclarationResolved> resolveActivistDeclarations(UUID gameId, int eraNumber) {
+            throw new UnsupportedOperationException("not used by UpdateScoresCommandHandler");
+        }
+
+        @Override
+        public boolean activistDeclarationsResolved(UUID gameId, int eraNumber) {
             throw new UnsupportedOperationException("not used by UpdateScoresCommandHandler");
         }
 

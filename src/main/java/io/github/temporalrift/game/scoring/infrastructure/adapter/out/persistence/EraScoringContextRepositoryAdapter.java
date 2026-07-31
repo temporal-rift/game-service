@@ -9,13 +9,17 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
+import io.github.temporalrift.game.scoring.domain.context.ActionScoringFact;
 import io.github.temporalrift.game.scoring.domain.context.ChainScoringFact;
 import io.github.temporalrift.game.scoring.domain.context.EraScoringContext;
 import io.github.temporalrift.game.scoring.domain.context.EraScoringContextNotFoundException;
 import io.github.temporalrift.game.scoring.domain.context.EventOutcomeFact;
 import io.github.temporalrift.game.scoring.domain.context.PlayerFaction;
+import io.github.temporalrift.game.scoring.domain.event.EraResolutionCompleted;
 import io.github.temporalrift.game.scoring.domain.playerscore.ScoreReason;
 import io.github.temporalrift.game.scoring.domain.port.out.EraScoringContextRepository;
+import io.github.temporalrift.game.shared.ActivistDeclarationRecorded;
+import io.github.temporalrift.game.shared.ActivistDeclarationResolved;
 import io.github.temporalrift.game.shared.Faction;
 
 @Component
@@ -28,6 +32,9 @@ class EraScoringContextRepositoryAdapter implements EraScoringContextRepository 
     private final ScoringContextAnnihilatedOutcomeJpaRepository annihilatedOutcomeJpaRepository;
     private final ScoringTimelineOutcomeInboxJpaRepository outcomeInboxJpaRepository;
     private final ScoringContextActionFactsReadyJpaRepository actionFactsReadyJpaRepository;
+    private final ScoringContextActivistDeclarationJpaRepository activistDeclarationJpaRepository;
+    private final ScoringContextActionFactJpaRepository actionFactJpaRepository;
+    private final ScoringTimelineResolutionBarrierJpaRepository resolutionBarrierJpaRepository;
 
     EraScoringContextRepositoryAdapter(
             ScoringContextPlayerJpaRepository playerJpaRepository,
@@ -36,7 +43,10 @@ class EraScoringContextRepositoryAdapter implements EraScoringContextRepository 
             ScoringContextEventOutcomeJpaRepository eventOutcomeJpaRepository,
             ScoringContextAnnihilatedOutcomeJpaRepository annihilatedOutcomeJpaRepository,
             ScoringTimelineOutcomeInboxJpaRepository outcomeInboxJpaRepository,
-            ScoringContextActionFactsReadyJpaRepository actionFactsReadyJpaRepository) {
+            ScoringContextActionFactsReadyJpaRepository actionFactsReadyJpaRepository,
+            ScoringContextActivistDeclarationJpaRepository activistDeclarationJpaRepository,
+            ScoringContextActionFactJpaRepository actionFactJpaRepository,
+            ScoringTimelineResolutionBarrierJpaRepository resolutionBarrierJpaRepository) {
         this.playerJpaRepository = playerJpaRepository;
         this.eraOutcomeExpectationJpaRepository = eraOutcomeExpectationJpaRepository;
         this.chainFactJpaRepository = chainFactJpaRepository;
@@ -44,6 +54,9 @@ class EraScoringContextRepositoryAdapter implements EraScoringContextRepository 
         this.annihilatedOutcomeJpaRepository = annihilatedOutcomeJpaRepository;
         this.outcomeInboxJpaRepository = outcomeInboxJpaRepository;
         this.actionFactsReadyJpaRepository = actionFactsReadyJpaRepository;
+        this.activistDeclarationJpaRepository = activistDeclarationJpaRepository;
+        this.actionFactJpaRepository = actionFactJpaRepository;
+        this.resolutionBarrierJpaRepository = resolutionBarrierJpaRepository;
     }
 
     @Override
@@ -69,7 +82,17 @@ class EraScoringContextRepositoryAdapter implements EraScoringContextRepository 
         unconsumedChainFacts.forEach(entity -> entity.setConsumed(true));
         chainFactJpaRepository.saveAll(unconsumedChainFacts);
 
-        return new EraScoringContext(gameId, eraNumber, players, eventOutcomes, List.of(), chainFacts);
+        var unconsumedActionFacts = actionFactJpaRepository.findAllUnconsumedWithLock(gameId, eraNumber);
+        var actionFacts = unconsumedActionFacts.stream()
+                .map(entity -> new ActionScoringFact(
+                        entity.getPlayerId(),
+                        Faction.valueOf(entity.getFaction()),
+                        ScoreReason.valueOf(entity.getReason())))
+                .toList();
+        unconsumedActionFacts.forEach(entity -> entity.setConsumed(true));
+        actionFactJpaRepository.saveAll(unconsumedActionFacts);
+
+        return new EraScoringContext(gameId, eraNumber, players, eventOutcomes, actionFacts, chainFacts);
     }
 
     private List<EventOutcomeFact> buildEventOutcomeFacts(UUID gameId, int eraNumber) {
@@ -164,6 +187,103 @@ class EraScoringContextRepositoryAdapter implements EraScoringContextRepository 
     public void recordAnnihilatedOutcome(UUID gameId, int eraNumber, UUID eventId, UUID outcomeId, UUID playerId) {
         annihilatedOutcomeJpaRepository.insertIfAbsent(
                 UUID.randomUUID(), gameId, eraNumber, eventId, outcomeId, playerId);
+    }
+
+    @Override
+    @Transactional
+    public void recordActionFact(UUID gameId, int eraNumber, UUID playerId, Faction faction, ScoreReason reason) {
+        actionFactJpaRepository.insertIfAbsent(
+                UUID.randomUUID(), gameId, eraNumber, playerId, faction.name(), reason.name());
+    }
+
+    @Override
+    @Transactional
+    public void upsertActivistDeclaration(ActivistDeclarationRecorded declaration) {
+        activistDeclarationJpaRepository.insertIfAbsent(
+                UUID.randomUUID(),
+                declaration.gameId(),
+                declaration.eraNumber(),
+                declaration.playerId(),
+                declaration.mode().name(),
+                declaration.targetEventId(),
+                declaration.targetOutcomeId());
+    }
+
+    @Override
+    @Transactional
+    public void saveEraResolutionCompleted(EraResolutionCompleted resolution) {
+        resolutionBarrierJpaRepository
+                .findByGameIdAndEraNumber(resolution.gameId(), resolution.eraNumber())
+                .orElseGet(() -> resolutionBarrierJpaRepository.save(
+                        ScoringTimelineResolutionBarrierJpaEntity.fromDomain(resolution)));
+    }
+
+    @Override
+    public boolean eraResolutionCompleted(UUID gameId, int eraNumber) {
+        return resolutionBarrierJpaRepository
+                .findByGameIdAndEraNumber(gameId, eraNumber)
+                .isPresent();
+    }
+
+    @Override
+    public int requiredAppliedOutcomeCount(UUID gameId, int eraNumber) {
+        return resolutionBarrierJpaRepository
+                .findByGameIdAndEraNumber(gameId, eraNumber)
+                .map(ScoringTimelineResolutionBarrierJpaEntity::payload)
+                .map(EraResolutionCompleted::terminalResolutions)
+                .map(resolutions -> (int) resolutions.stream()
+                        .filter(resolution ->
+                                resolution.terminalState() == EraResolutionCompleted.TerminalState.OUTCOME_APPLIED)
+                        .count())
+                .orElse(0);
+    }
+
+    @Override
+    @Transactional
+    public List<ActivistDeclarationResolved> resolveActivistDeclarations(UUID gameId, int eraNumber) {
+        var terminalResolutions = resolutionBarrierJpaRepository
+                .findByGameIdAndEraNumber(gameId, eraNumber)
+                .map(ScoringTimelineResolutionBarrierJpaEntity::payload)
+                .map(EraResolutionCompleted::terminalResolutions)
+                .orElse(List.of());
+        return activistDeclarationJpaRepository.findAllUnresolvedWithLock(gameId, eraNumber).stream()
+                .map(declaration -> terminalResolutions.stream()
+                        .filter(resolution -> resolution.eventId().equals(declaration.getTargetEventId()))
+                        .findFirst()
+                        .flatMap(resolution ->
+                                resolution.terminalState() == EraResolutionCompleted.TerminalState.CASCADED
+                                        ? java.util.Optional.of(resolveDeclaration(declaration, null))
+                                        : outcomeInboxJpaRepository
+                                                .findByGameIdAndEraNumberAndEventId(
+                                                        gameId, eraNumber, declaration.getTargetEventId())
+                                                .map(outcome -> resolveDeclaration(declaration, outcome))))
+                .flatMap(java.util.Optional::stream)
+                .toList();
+    }
+
+    @Override
+    public boolean activistDeclarationsResolved(UUID gameId, int eraNumber) {
+        return !activistDeclarationJpaRepository.existsByGameIdAndEraNumberAndResolutionSucceededIsNull(
+                gameId, eraNumber);
+    }
+
+    private ActivistDeclarationResolved resolveDeclaration(
+            ScoringContextActivistDeclarationJpaEntity declaration, ScoringTimelineOutcomeInboxJpaEntity outcome) {
+        var succeeded = outcome != null && declaration.getTargetOutcomeId().equals(outcome.getWinningOutcomeId());
+        declaration.setResolutionSucceeded(succeeded);
+        if (succeeded) {
+            var reason = declaration.getMode().equals("RALLY")
+                    ? ScoreReason.DECLARED_OUTCOME_WON_WITH_RALLY
+                    : ScoreReason.DECLARED_OUTCOME_WON;
+            recordActionFact(
+                    declaration.getGameId(),
+                    declaration.getEraNumber(),
+                    declaration.getPlayerId(),
+                    Faction.ACTIVISTS,
+                    reason);
+        }
+        return new ActivistDeclarationResolved(
+                declaration.getGameId(), declaration.getEraNumber(), declaration.getPlayerId(), succeeded);
     }
 
     @Override
