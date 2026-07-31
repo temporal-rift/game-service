@@ -78,6 +78,24 @@ public class Game extends AggregateRoot {
         }
     }
 
+    /**
+     * Applies a complete era's cascades in the rules-defined reveal order.
+     *
+     * @return the event that crossed the global cascade threshold, or {@code null} when the threshold was not reached
+     */
+    public UUID recordCascadedParadoxesInRevealOrder(List<UUID> cascadedEventIds, int maxCascadedParadoxes) {
+        requireInProgress();
+        UUID collapsingEventId = null;
+        for (var eventId : cascadedEventIds) {
+            cascadedParadoxCounter++;
+            if (collapsingEventId == null && cascadedParadoxCounter >= maxCascadedParadoxes) {
+                status = GameStatus.ENDED_BY_COLLAPSE;
+                collapsingEventId = eventId;
+            }
+        }
+        return collapsingEventId;
+    }
+
     public void endEra(int maxEras) {
         requireInProgress();
         if (eraCounter >= maxEras) {
