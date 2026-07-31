@@ -460,6 +460,20 @@
                 <version>3.6.1</version>
                 <executions>
                     <execution>
+                        <id>add-openapi-generated-sources</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>add-source</goal>
+                        </goals>
+                        <configuration>
+                            <sources>
+                                <source>${project.build.directory}/generated-sources/openapi/session/src/main/java</source>
+                                <source>${project.build.directory}/generated-sources/openapi/action/src/main/java</source>
+                                <source>${project.build.directory}/generated-sources/openapi/scoring/src/main/java</source>
+                            </sources>
+                        </configuration>
+                    </execution>
+                    <execution>
                         <id>add-zenwave-generated-test-sources</id>
                         <phase>generate-test-sources</phase>
                         <goals>
