@@ -18,7 +18,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import io.github.temporalrift.game.scoring.domain.event.ChainCompleted;
-import io.github.temporalrift.game.session.domain.event.ParadoxCascaded;
+import io.github.temporalrift.game.session.domain.event.EraResolutionCompleted;
 import io.github.temporalrift.game.session.domain.game.Game;
 import io.github.temporalrift.game.session.domain.port.out.GameRepository;
 import io.github.temporalrift.game.shared.InboundEnvelope;
@@ -54,15 +54,20 @@ class TimelineEventsConsumerGroupsIT {
         transactionTemplate.executeWithoutResult(
                 _ -> gameRepository.save(new Game(gameId, UUID.randomUUID(), List.of())));
 
-        var paradoxEnvelope = new InboundEnvelope(
-                UUID.randomUUID(),
-                "timeline.ParadoxCascaded",
+        var resolution = new EraResolutionCompleted(
                 gameId,
-                "FutureEvent",
+                1,
+                List.of(new EraResolutionCompleted.TerminalResolution(
+                        UUID.randomUUID(), 0, EraResolutionCompleted.TerminalState.CASCADED, null)));
+        var resolutionEnvelope = new InboundEnvelope(
+                UUID.randomUUID(),
+                "timeline.EraResolutionCompleted",
+                gameId,
+                "Game",
                 gameId,
                 Instant.now(),
                 1,
-                new ParadoxCascaded(gameId, 1, UUID.randomUUID(), UUID.randomUUID(), List.of()));
+                resolution);
         var chainEnvelope = new InboundEnvelope(
                 UUID.randomUUID(),
                 "timeline.ChainCompleted",
@@ -75,10 +80,10 @@ class TimelineEventsConsumerGroupsIT {
 
         // Same key — both records land in the same partition, which is exactly the case the shared
         // consumer group could not deliver to both listeners.
-        kafkaTemplate.send(TOPIC, gameId.toString(), paradoxEnvelope);
+        kafkaTemplate.send(TOPIC, gameId.toString(), resolutionEnvelope);
         kafkaTemplate.send(TOPIC, gameId.toString(), chainEnvelope);
 
-        awaitProcessed(paradoxEnvelope.eventId(), "session.paradox-cascaded");
+        awaitProcessed(resolutionEnvelope.eventId(), "session.era-resolution-completed");
         awaitProcessed(chainEnvelope.eventId(), "scoring.timeline-events");
     }
 
