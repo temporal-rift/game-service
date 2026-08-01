@@ -92,6 +92,24 @@ class AwardUnidentifiedFactionScoresTest {
         then(playerScoreRepository).shouldHaveNoMoreInteractions();
     }
 
+    @Test
+    void award_eligibleRevisionistAddsTheBonusToAnExistingScore() {
+        var gameId = UUID.randomUUID();
+        var playerId = UUID.randomUUID();
+        var existing = new PlayerScore(UUID.randomUUID(), gameId, playerId, Faction.REVISIONISTS);
+        existing.apply(1, ScoreReason.SECRET_OUTCOME_WON);
+        given(playerScoreRepository.findAllByGameIdWithLock(gameId)).willReturn(List.of(existing));
+        given(factionIdentificationRepository.wasIdentifiedBeforeGameEnd(gameId, playerId))
+                .willReturn(false);
+        given(endGameScoreFactRepository.claim(gameId, playerId, ScoreReason.FACTION_UNIDENTIFIED))
+                .willReturn(true);
+
+        handler.award(reveal(gameId, playerId, Faction.REVISIONISTS));
+
+        then(playerScoreRepository).should().saveAll(List.of(existing));
+        assertThat(existing.totalScore()).isEqualTo(10);
+    }
+
     private FactionRevealed reveal(UUID gameId, UUID playerId, Faction faction) {
         return new FactionRevealed(gameId, List.of(new FactionRevealed.PlayerFactionResult(playerId, faction.name())));
     }
