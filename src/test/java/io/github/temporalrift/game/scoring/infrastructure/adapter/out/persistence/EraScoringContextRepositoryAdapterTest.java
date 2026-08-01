@@ -30,6 +30,7 @@ import io.github.temporalrift.game.scoring.domain.event.OutcomeApplied;
 import io.github.temporalrift.game.scoring.domain.playerscore.ScoreReason;
 import io.github.temporalrift.game.shared.ActivistDeclarationRecorded;
 import io.github.temporalrift.game.shared.Faction;
+import io.github.temporalrift.game.shared.SpecialAction;
 
 @ExtendWith(MockitoExtension.class)
 class EraScoringContextRepositoryAdapterTest {
@@ -60,6 +61,9 @@ class EraScoringContextRepositoryAdapterTest {
 
     @Mock
     ScoringContextActionFactJpaRepository actionFactJpaRepository;
+
+    @Mock
+    ScoringContextRevisionistActionJpaRepository revisionistActionJpaRepository;
 
     @Mock
     ScoringTimelineResolutionBarrierJpaRepository resolutionBarrierJpaRepository;
@@ -467,6 +471,94 @@ class EraScoringContextRepositoryAdapterTest {
     }
 
     @Test
+    void recordRevisionistAction_delegatesToIdempotentInsert() {
+        var gameId = UUID.randomUUID();
+        var playerId = UUID.randomUUID();
+        var eventId = UUID.randomUUID();
+        var outcomeId = UUID.randomUUID();
+
+        adapter.recordRevisionistAction(gameId, 2, playerId, SpecialAction.REWRITE, eventId, outcomeId);
+
+        then(revisionistActionJpaRepository)
+                .should()
+                .insertIfAbsent(
+                        any(UUID.class), eq(gameId), eq(2), eq(playerId), eq("REWRITE"), eq(eventId), eq(outcomeId));
+    }
+
+    @Test
+    void resolveRevisionistActions_appliedWinningRewriteRecordsSecretOutcomeFact() {
+        var gameId = UUID.randomUUID();
+        var playerId = UUID.randomUUID();
+        var eventId = UUID.randomUUID();
+        var outcomeId = UUID.randomUUID();
+        var action = revisionistAction(gameId, playerId, SpecialAction.REWRITE, eventId, outcomeId);
+        given(revisionistActionJpaRepository.findAllUnresolvedWithLock(gameId, 2))
+                .willReturn(List.of(action));
+        given(resolutionBarrierJpaRepository.findByGameIdAndEraNumber(gameId, 2))
+                .willReturn(Optional.of(resolutionBarrier(gameId, eventId, outcomeId)));
+        given(outcomeInboxJpaRepository.findByGameIdAndEraNumberAndEventId(gameId, 2, eventId))
+                .willReturn(Optional.of(ScoringTimelineOutcomeInboxJpaEntity.fromDomain(
+                        new OutcomeApplied(gameId, 2, eventId, outcomeId, List.of()))));
+
+        adapter.resolveRevisionistActions(gameId, 2);
+
+        assertThat(action.getResolved()).isTrue();
+        then(actionFactJpaRepository)
+                .should()
+                .insertIfAbsent(
+                        any(UUID.class),
+                        eq(gameId),
+                        eq(2),
+                        eq(playerId),
+                        eq(Faction.REVISIONISTS.name()),
+                        eq(ScoreReason.SECRET_OUTCOME_WON.name()));
+    }
+
+    @Test
+    void resolveRevisionistActions_appliedNonWinningMimicResolvesWithoutScoringFact() {
+        var gameId = UUID.randomUUID();
+        var playerId = UUID.randomUUID();
+        var eventId = UUID.randomUUID();
+        var targetOutcomeId = UUID.randomUUID();
+        var winningOutcomeId = UUID.randomUUID();
+        var action = revisionistAction(gameId, playerId, SpecialAction.MIMIC, eventId, targetOutcomeId);
+        given(revisionistActionJpaRepository.findAllUnresolvedWithLock(gameId, 2))
+                .willReturn(List.of(action));
+        given(resolutionBarrierJpaRepository.findByGameIdAndEraNumber(gameId, 2))
+                .willReturn(Optional.of(resolutionBarrier(gameId, eventId, winningOutcomeId)));
+        given(outcomeInboxJpaRepository.findByGameIdAndEraNumberAndEventId(gameId, 2, eventId))
+                .willReturn(Optional.of(ScoringTimelineOutcomeInboxJpaEntity.fromDomain(
+                        new OutcomeApplied(gameId, 2, eventId, winningOutcomeId, List.of()))));
+
+        adapter.resolveRevisionistActions(gameId, 2);
+
+        assertThat(action.getResolved()).isTrue();
+        then(actionFactJpaRepository).shouldHaveNoInteractions();
+    }
+
+    @Test
+    void resolveRevisionistActions_cascadedTargetResolvesFalseWithoutWaitingForOutcome() {
+        var gameId = UUID.randomUUID();
+        var action =
+                revisionistAction(gameId, UUID.randomUUID(), SpecialAction.MIMIC, UUID.randomUUID(), UUID.randomUUID());
+        given(revisionistActionJpaRepository.findAllUnresolvedWithLock(gameId, 2))
+                .willReturn(List.of(action));
+        var barrier = new EraResolutionCompleted(
+                gameId,
+                2,
+                List.of(new EraResolutionCompleted.TerminalResolution(
+                        action.getTargetEventId(), 0, EraResolutionCompleted.TerminalState.CASCADED, null)));
+        given(resolutionBarrierJpaRepository.findByGameIdAndEraNumber(gameId, 2))
+                .willReturn(Optional.of(ScoringTimelineResolutionBarrierJpaEntity.fromDomain(barrier)));
+
+        adapter.resolveRevisionistActions(gameId, 2);
+
+        assertThat(action.getResolved()).isFalse();
+        then(outcomeInboxJpaRepository).shouldHaveNoInteractions();
+        then(actionFactJpaRepository).shouldHaveNoInteractions();
+    }
+
+    @Test
     void actionFactsReady_delegatesToExistsById() {
         var gameId = UUID.randomUUID();
         given(actionFactsReadyJpaRepository.existsById(new GameEraKey(gameId, 2)))
@@ -482,5 +574,27 @@ class EraScoringContextRepositoryAdapterTest {
         adapter.markActionFactsReady(gameId, 2);
 
         then(actionFactsReadyJpaRepository).should().insertIfAbsent(gameId, 2);
+    }
+
+    private ScoringContextRevisionistActionJpaEntity revisionistAction(
+            UUID gameId, UUID playerId, SpecialAction specialAction, UUID eventId, UUID outcomeId) {
+        var action = new ScoringContextRevisionistActionJpaEntity();
+        action.setId(UUID.randomUUID());
+        action.setGameId(gameId);
+        action.setEraNumber(2);
+        action.setPlayerId(playerId);
+        action.setAction(specialAction.name());
+        action.setTargetEventId(eventId);
+        action.setTargetOutcomeId(outcomeId);
+        return action;
+    }
+
+    private ScoringTimelineResolutionBarrierJpaEntity resolutionBarrier(UUID gameId, UUID eventId, UUID outcomeId) {
+        var resolution = new EraResolutionCompleted(
+                gameId,
+                2,
+                List.of(new EraResolutionCompleted.TerminalResolution(
+                        eventId, 0, EraResolutionCompleted.TerminalState.OUTCOME_APPLIED, outcomeId)));
+        return ScoringTimelineResolutionBarrierJpaEntity.fromDomain(resolution);
     }
 }

@@ -31,16 +31,32 @@ class ScoringContextRevisionistActionJpaEntity extends GameEraScopedJpaEntity {
         return playerId;
     }
 
+    void setPlayerId(UUID playerId) {
+        this.playerId = playerId;
+    }
+
     String getAction() {
         return action;
+    }
+
+    void setAction(String action) {
+        this.action = action;
     }
 
     UUID getTargetEventId() {
         return targetEventId;
     }
 
+    void setTargetEventId(UUID targetEventId) {
+        this.targetEventId = targetEventId;
+    }
+
     UUID getTargetOutcomeId() {
         return targetOutcomeId;
+    }
+
+    void setTargetOutcomeId(UUID targetOutcomeId) {
+        this.targetOutcomeId = targetOutcomeId;
     }
 
     Boolean getResolved() {
