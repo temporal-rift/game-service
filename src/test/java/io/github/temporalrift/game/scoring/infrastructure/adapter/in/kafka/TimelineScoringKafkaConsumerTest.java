@@ -122,6 +122,7 @@ class TimelineScoringKafkaConsumerTest {
         consumer.handle(envelope);
 
         then(outcomeInboxRepository).should().save(outcome);
+        then(contextRepository).should().resolveRevisionistActions(GAME_ID, ERA_NUMBER);
         then(completionChecker).should().tryComplete(GAME_ID, ERA_NUMBER);
     }
 
@@ -152,6 +153,7 @@ class TimelineScoringKafkaConsumerTest {
         consumer.handle(envelope);
 
         then(contextRepository).should().saveEraResolutionCompleted(resolution);
+        then(contextRepository).should().resolveRevisionistActions(GAME_ID, ERA_NUMBER);
         then(contextRepository).should().resolveActivistDeclarations(GAME_ID, ERA_NUMBER);
         then(completionChecker).should().tryComplete(GAME_ID, ERA_NUMBER);
     }

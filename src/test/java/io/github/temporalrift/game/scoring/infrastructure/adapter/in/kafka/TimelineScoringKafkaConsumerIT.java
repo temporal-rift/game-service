@@ -164,6 +164,46 @@ class TimelineScoringKafkaConsumerIT {
                                 .isEqualTo(ScoreReason.DECLARED_OUTCOME_WON.pointsDelta())));
     }
 
+    @Test
+    void handle_outcomesBeforeDuplicateRevisionistFinalization_awardsTheFactOnce() {
+        var gameId = UUID.randomUUID();
+        var playerId = UUID.randomUUID();
+        var eraNumber = 1;
+        var eventId = UUID.randomUUID();
+        var winningOutcomeId = UUID.randomUUID();
+        contextRepository.upsertPlayerFaction(gameId, playerId, Faction.REVISIONISTS);
+        contextRepository.upsertExpectedOutcomeCount(gameId, eraNumber, 1);
+
+        // Timeline resolution is allowed to finish before the final action-round bundle arrives.
+        // The later bundle must resolve against the persisted terminal facts, and duplicate delivery
+        // must remain a single score entry.
+        consumer.handle(outcomeEnvelope(gameId, eraNumber, eventId, winningOutcomeId));
+        consumer.handle(terminalBarrierEnvelope(gameId, eraNumber, eventId, winningOutcomeId));
+        assertThat(playerScoreRepository.findAllByGameId(gameId)).isEmpty();
+
+        var finalization = new EraActionFactsFinalized(
+                gameId,
+                eraNumber,
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(new EraActionFactsFinalized.RevisionistFact(
+                        playerId, SpecialAction.REWRITE, eventId, winningOutcomeId)));
+        transactionTemplate.executeWithoutResult(_ -> applicationEventPublisher.publishEvent(finalization));
+        transactionTemplate.executeWithoutResult(_ -> applicationEventPublisher.publishEvent(finalization));
+
+        await().atMost(Duration.ofSeconds(10))
+                .untilAsserted(() -> assertThat(playerScoreRepository.findAllByGameId(gameId))
+                        .singleElement()
+                        .satisfies(score -> {
+                            assertThat(score.totalScore()).isEqualTo(ScoreReason.SECRET_OUTCOME_WON.pointsDelta());
+                            assertThat(score.history())
+                                    .extracting(entry -> entry.reason())
+                                    .containsExactly(ScoreReason.SECRET_OUTCOME_WON);
+                        }));
+    }
+
     private void prepareRallyDeclaration(
             UUID gameId, int eraNumber, UUID playerId, UUID eventId, UUID targetOutcomeId) {
         contextRepository.upsertPlayerFaction(gameId, playerId, Faction.ACTIVISTS);

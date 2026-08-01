@@ -190,6 +190,9 @@ class ScoringContextProjectionEventListenerTest {
         var activistPlayerId = UUID.randomUUID();
         var activistEventId = UUID.randomUUID();
         var activistOutcomeId = UUID.randomUUID();
+        var revisionistPlayerId = UUID.randomUUID();
+        var revisionistEventId = UUID.randomUUID();
+        var revisionistOutcomeId = UUID.randomUUID();
         var event = new EraActionFactsFinalized(
                 gameId,
                 2,
@@ -199,7 +202,9 @@ class ScoringContextProjectionEventListenerTest {
                         annihilatedEventId, annihilatedOutcomeId, annihilatingPlayerId)),
                 List.of(),
                 List.of(new EraActionFactsFinalized.ActivistDeclarationFact(
-                        activistPlayerId, SpecialAction.RALLY, activistEventId, activistOutcomeId)));
+                        activistPlayerId, SpecialAction.RALLY, activistEventId, activistOutcomeId)),
+                List.of(new EraActionFactsFinalized.RevisionistFact(
+                        revisionistPlayerId, SpecialAction.REWRITE, revisionistEventId, revisionistOutcomeId)));
 
         listener.onEraActionFactsFinalized(event);
 
@@ -213,6 +218,16 @@ class ScoringContextProjectionEventListenerTest {
                 .should()
                 .upsertActivistDeclaration(new ActivistDeclarationRecorded(
                         gameId, 2, 1, activistPlayerId, SpecialAction.RALLY, activistEventId, activistOutcomeId));
+        then(contextRepository)
+                .should()
+                .recordRevisionistAction(
+                        gameId,
+                        2,
+                        revisionistPlayerId,
+                        SpecialAction.REWRITE,
+                        revisionistEventId,
+                        revisionistOutcomeId);
+        then(contextRepository).should().resolveRevisionistActions(gameId, 2);
         then(contextRepository).should().markActionFactsReady(gameId, 2);
         then(completionChecker).should().tryComplete(gameId, 2);
     }
