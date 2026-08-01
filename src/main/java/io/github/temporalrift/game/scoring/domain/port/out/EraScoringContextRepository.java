@@ -8,6 +8,7 @@ import io.github.temporalrift.game.scoring.domain.playerscore.ScoreReason;
 import io.github.temporalrift.game.shared.ActivistDeclarationRecorded;
 import io.github.temporalrift.game.shared.ActivistDeclarationResolved;
 import io.github.temporalrift.game.shared.Faction;
+import io.github.temporalrift.game.shared.SpecialAction;
 
 public interface EraScoringContextRepository {
 
@@ -44,4 +45,18 @@ public interface EraScoringContextRepository {
     boolean actionFactsReady(UUID gameId, int eraNumber);
 
     void markActionFactsReady(UUID gameId, int eraNumber);
+
+    default void recordRevisionistAction(
+            UUID gameId,
+            int eraNumber,
+            UUID playerId,
+            SpecialAction action,
+            UUID targetEventId,
+            UUID targetOutcomeId) {}
+
+    default void resolveRevisionistActions(UUID gameId, int eraNumber) {}
+
+    default boolean revisionistActionsResolved(UUID gameId, int eraNumber) {
+        return true;
+    }
 }

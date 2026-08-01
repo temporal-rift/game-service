@@ -201,7 +201,10 @@ public class ActionRound extends AggregateRoot {
         if (specialAction == SpecialAction.RALLY || specialAction == SpecialAction.MOMENTUM) {
             throw new DeclarationSpecialActionRequiredException(specialAction);
         }
-        if ((specialAction == SpecialAction.FORESIGHT || specialAction == SpecialAction.ANNIHILATE)
+        if ((specialAction == SpecialAction.FORESIGHT
+                        || specialAction == SpecialAction.ANNIHILATE
+                        || specialAction == SpecialAction.REWRITE
+                        || specialAction == SpecialAction.MIMIC)
                 && (targetEventId == null || targetOutcomeId == null)) {
             throw InvalidActionTargetException.specialActionRequiresTarget(specialAction);
         }

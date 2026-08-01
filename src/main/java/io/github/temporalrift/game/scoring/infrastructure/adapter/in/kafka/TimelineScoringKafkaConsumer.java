@@ -94,6 +94,7 @@ class TimelineScoringKafkaConsumer {
     private void handleOutcomeApplied(InboundEnvelope envelope) {
         var outcome = objectMapper.convertValue(envelope.payload(), OutcomeApplied.class);
         outcomeInboxRepository.save(outcome);
+        contextRepository.resolveRevisionistActions(outcome.gameId(), outcome.eraNumber());
         contextRepository
                 .resolveActivistDeclarations(outcome.gameId(), outcome.eraNumber())
                 .forEach(applicationEventPublisher::publishEvent);
@@ -115,6 +116,7 @@ class TimelineScoringKafkaConsumer {
     private void handleEraResolutionCompleted(InboundEnvelope envelope) {
         var resolution = objectMapper.convertValue(envelope.payload(), EraResolutionCompleted.class);
         contextRepository.saveEraResolutionCompleted(resolution);
+        contextRepository.resolveRevisionistActions(resolution.gameId(), resolution.eraNumber());
         contextRepository
                 .resolveActivistDeclarations(resolution.gameId(), resolution.eraNumber())
                 .forEach(applicationEventPublisher::publishEvent);

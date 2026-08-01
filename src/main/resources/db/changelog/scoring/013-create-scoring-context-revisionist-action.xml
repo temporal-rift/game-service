@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+            https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.29.xsd">
+
+    <changeSet id="scoring-013-create-scoring-context-revisionist-action" author="game-service">
+        <createTable tableName="scoring_context_revisionist_action">
+            <column name="id" type="UUID"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="game_id" type="UUID"><constraints nullable="false"/></column>
+            <column name="era_number" type="INT"><constraints nullable="false"/></column>
+            <column name="player_id" type="UUID"><constraints nullable="false"/></column>
+            <column name="action" type="VARCHAR(32)"><constraints nullable="false"/></column>
+            <column name="target_event_id" type="UUID"><constraints nullable="false"/></column>
+            <column name="target_outcome_id" type="UUID"><constraints nullable="false"/></column>
+            <column name="resolved" type="BOOLEAN"/>
+        </createTable>
+        <addUniqueConstraint
+                tableName="scoring_context_revisionist_action"
+                columnNames="game_id,era_number,player_id,action,target_event_id,target_outcome_id"
+                constraintName="uq_scoring_revisionist_action_game_era_player_action_target"/>
+    </changeSet>
+</databaseChangeLog>

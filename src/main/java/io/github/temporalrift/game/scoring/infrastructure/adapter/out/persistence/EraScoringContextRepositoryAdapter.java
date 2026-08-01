@@ -22,6 +22,7 @@ import io.github.temporalrift.game.scoring.domain.port.out.EraScoringContextRepo
 import io.github.temporalrift.game.shared.ActivistDeclarationRecorded;
 import io.github.temporalrift.game.shared.ActivistDeclarationResolved;
 import io.github.temporalrift.game.shared.Faction;
+import io.github.temporalrift.game.shared.SpecialAction;
 
 @Component
 class EraScoringContextRepositoryAdapter implements EraScoringContextRepository {
@@ -35,6 +36,7 @@ class EraScoringContextRepositoryAdapter implements EraScoringContextRepository 
     private final ScoringContextActionFactsReadyJpaRepository actionFactsReadyJpaRepository;
     private final ScoringContextActivistDeclarationJpaRepository activistDeclarationJpaRepository;
     private final ScoringContextActionFactJpaRepository actionFactJpaRepository;
+    private final ScoringContextRevisionistActionJpaRepository revisionistActionJpaRepository;
     private final ScoringTimelineResolutionBarrierJpaRepository resolutionBarrierJpaRepository;
     private final ObjectMapper objectMapper;
 
@@ -48,6 +50,7 @@ class EraScoringContextRepositoryAdapter implements EraScoringContextRepository 
             ScoringContextActionFactsReadyJpaRepository actionFactsReadyJpaRepository,
             ScoringContextActivistDeclarationJpaRepository activistDeclarationJpaRepository,
             ScoringContextActionFactJpaRepository actionFactJpaRepository,
+            ScoringContextRevisionistActionJpaRepository revisionistActionJpaRepository,
             ScoringTimelineResolutionBarrierJpaRepository resolutionBarrierJpaRepository,
             ObjectMapper objectMapper) {
         this.playerJpaRepository = playerJpaRepository;
@@ -59,6 +62,7 @@ class EraScoringContextRepositoryAdapter implements EraScoringContextRepository 
         this.actionFactsReadyJpaRepository = actionFactsReadyJpaRepository;
         this.activistDeclarationJpaRepository = activistDeclarationJpaRepository;
         this.actionFactJpaRepository = actionFactJpaRepository;
+        this.revisionistActionJpaRepository = revisionistActionJpaRepository;
         this.resolutionBarrierJpaRepository = resolutionBarrierJpaRepository;
         this.objectMapper = objectMapper;
     }
@@ -309,5 +313,59 @@ class EraScoringContextRepositoryAdapter implements EraScoringContextRepository 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void markActionFactsReady(UUID gameId, int eraNumber) {
         actionFactsReadyJpaRepository.insertIfAbsent(gameId, eraNumber);
+    }
+
+    @Override
+    @Transactional
+    public void recordRevisionistAction(
+            UUID gameId, int eraNumber, UUID playerId, SpecialAction action, UUID targetEventId, UUID targetOutcomeId) {
+        revisionistActionJpaRepository.insertIfAbsent(
+                UUID.randomUUID(), gameId, eraNumber, playerId, action.name(), targetEventId, targetOutcomeId);
+    }
+
+    @Override
+    @Transactional
+    public void resolveRevisionistActions(UUID gameId, int eraNumber) {
+        var terminalResolutions = resolutionBarrierJpaRepository
+                .findByGameIdAndEraNumber(gameId, eraNumber)
+                .map(ScoringTimelineResolutionBarrierJpaEntity::payload)
+                .map(EraResolutionCompleted::terminalResolutions)
+                .orElse(List.of());
+        for (var action : revisionistActionJpaRepository.findAllUnresolvedWithLock(gameId, eraNumber)) {
+            terminalResolutions.stream()
+                    .filter(resolution -> resolution.eventId().equals(action.getTargetEventId()))
+                    .findFirst()
+                    .ifPresent(resolution -> resolveRevisionistAction(action, resolution));
+        }
+    }
+
+    private void resolveRevisionistAction(
+            ScoringContextRevisionistActionJpaEntity action, EraResolutionCompleted.TerminalResolution resolution) {
+        if (resolution.terminalState() == EraResolutionCompleted.TerminalState.CASCADED) {
+            action.setResolved(false);
+            return;
+        }
+        outcomeInboxJpaRepository
+                .findByGameIdAndEraNumberAndEventId(
+                        action.getGameId(), action.getEraNumber(), action.getTargetEventId())
+                .ifPresent(outcome -> {
+                    action.setResolved(true);
+                    if (action.getTargetOutcomeId().equals(outcome.getWinningOutcomeId())) {
+                        var reason = SpecialAction.REWRITE.name().equals(action.getAction())
+                                ? ScoreReason.SECRET_OUTCOME_WON
+                                : ScoreReason.MIMIC_CONTRIBUTED_TO_WIN;
+                        insertActionFact(
+                                action.getGameId(),
+                                action.getEraNumber(),
+                                action.getPlayerId(),
+                                Faction.REVISIONISTS,
+                                reason);
+                    }
+                });
+    }
+
+    @Override
+    public boolean revisionistActionsResolved(UUID gameId, int eraNumber) {
+        return !revisionistActionJpaRepository.existsByGameIdAndEraNumberAndResolvedIsNull(gameId, eraNumber);
     }
 }
