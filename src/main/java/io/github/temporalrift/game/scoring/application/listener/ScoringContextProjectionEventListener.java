@@ -121,6 +121,15 @@ class ScoringContextProjectionEventListener {
                         fact.mode(),
                         fact.targetEventId(),
                         fact.targetOutcomeId())));
+        event.revisionistFacts()
+                .forEach(fact -> contextRepository.recordRevisionistAction(
+                        event.gameId(),
+                        event.eraNumber(),
+                        fact.playerId(),
+                        fact.action(),
+                        fact.targetEventId(),
+                        fact.targetOutcomeId()));
+        contextRepository.resolveRevisionistActions(event.gameId(), event.eraNumber());
         contextRepository.markActionFactsReady(event.gameId(), event.eraNumber());
         publishResolutions(event.gameId(), event.eraNumber());
         completionChecker.tryComplete(event.gameId(), event.eraNumber());

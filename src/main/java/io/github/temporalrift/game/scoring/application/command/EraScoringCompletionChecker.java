@@ -46,6 +46,9 @@ public class EraScoringCompletionChecker {
         if (!contextRepository.activistDeclarationsResolved(gameId, eraNumber)) {
             return;
         }
+        if (!contextRepository.revisionistActionsResolved(gameId, eraNumber)) {
+            return;
+        }
         var expectedCount = contextRepository.requiredAppliedOutcomeCount(gameId, eraNumber);
         var outcomes = outcomeInboxRepository.findByGameIdAndEraNumber(gameId, eraNumber);
         if (outcomes.size() < expectedCount) {

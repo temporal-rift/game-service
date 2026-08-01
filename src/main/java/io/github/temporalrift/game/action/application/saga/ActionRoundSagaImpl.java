@@ -4,6 +4,7 @@ import static org.springframework.transaction.annotation.Propagation.REQUIRES_NE
 
 import java.time.Clock;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.UUID;
 
@@ -302,6 +303,8 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
     private void publishFinalRoundActionFacts(UUID gameId, int eraNumber, ActionRound round) {
         var foresightFacts = new ArrayList<EraActionFactsFinalized.ForesightFact>();
         var annihilationFacts = new ArrayList<EraActionFactsFinalized.AnnihilationFact>();
+        var mimicFacts = new ArrayList<EraActionFactsFinalized.RevisionistFact>();
+        var latestRewriteFacts = new LinkedHashMap<UUID, EraActionFactsFinalized.RevisionistFact>();
         var exposeFacts = activistEraStateRepository.findExposedByGameIdAndEraNumber(gameId, eraNumber).stream()
                 .filter(
                         io.github.temporalrift.game.action.domain.activisterastate.ActivistEraState
@@ -316,7 +319,16 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
                                 state.targetEventId(),
                                 state.targetOutcomeId()))
                         .toList();
-        for (var action : round.submittedActions()) {
+        var eraRounds = new ArrayList<ActionRound>();
+        for (var roundNumber = 1; roundNumber < FINAL_ROUND_NUMBER; roundNumber++) {
+            actionRoundRepository
+                    .findByGameIdAndEraNumberAndRoundNumber(gameId, eraNumber, roundNumber)
+                    .ifPresent(eraRounds::add);
+        }
+        eraRounds.add(round);
+        for (var action : eraRounds.stream()
+                .flatMap(actionRound -> actionRound.submittedActions().stream())
+                .toList()) {
             if (action instanceof SubmittedAction.SpecialActionSubmission special) {
                 switch (special.specialAction()) {
                     case FORESIGHT ->
@@ -325,6 +337,20 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
                     case ANNIHILATE ->
                         annihilationFacts.add(new EraActionFactsFinalized.AnnihilationFact(
                                 special.targetEventId(), special.targetOutcomeId(), special.playerId()));
+                    case REWRITE ->
+                        latestRewriteFacts.put(
+                                special.playerId(),
+                                new EraActionFactsFinalized.RevisionistFact(
+                                        special.playerId(),
+                                        special.specialAction(),
+                                        special.targetEventId(),
+                                        special.targetOutcomeId()));
+                    case MIMIC ->
+                        mimicFacts.add(new EraActionFactsFinalized.RevisionistFact(
+                                special.playerId(),
+                                special.specialAction(),
+                                special.targetEventId(),
+                                special.targetOutcomeId()));
                     default -> {
                         // Every other special action has no scoring-context fact to bundle.
                     }
@@ -332,6 +358,13 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
             }
         }
         actionEventPublisher.publishInternally(new EraActionFactsFinalized(
-                gameId, eraNumber, foresightFacts, annihilationFacts, exposeFacts, activistDeclarationFacts));
+                gameId,
+                eraNumber,
+                foresightFacts,
+                annihilationFacts,
+                exposeFacts,
+                activistDeclarationFacts,
+                java.util.stream.Stream.concat(latestRewriteFacts.values().stream(), mimicFacts.stream())
+                        .toList()));
     }
 }

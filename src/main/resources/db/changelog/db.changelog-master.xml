@@ -45,6 +45,7 @@
     <include file="db/changelog/scoring/010-create-scoring-context-activist-declaration.xml"/>
     <include file="db/changelog/scoring/011-create-scoring-context-action-fact.xml"/>
     <include file="db/changelog/scoring/012-create-scoring-timeline-resolution-barrier.xml"/>
+    <include file="db/changelog/scoring/013-create-scoring-context-revisionist-action.xml"/>
 
 </databaseChangeLog>
 
