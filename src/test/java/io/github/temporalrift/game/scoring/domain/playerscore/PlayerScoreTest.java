@@ -145,6 +145,28 @@ class PlayerScoreTest {
     }
 
     @Test
+    @DisplayName("applyEndGame records the unidentified-faction bonus in the reserved end-game era")
+    void applyEndGame_recordsUnidentifiedFactionBonus() {
+        var score = new PlayerScore(UUID.randomUUID(), GAME_ID, PLAYER_ID, Faction.REVISIONISTS);
+
+        var entry = score.applyEndGame(ScoreReason.FACTION_UNIDENTIFIED);
+
+        assertThat(entry.eraNumber()).isZero();
+        assertThat(entry.pointsDelta()).isEqualTo(6);
+        assertThat(score.totalScore()).isEqualTo(6);
+    }
+
+    @Test
+    @DisplayName("applyEndGame rejects non-end-game reasons")
+    void applyEndGame_rejectsOtherReasons() {
+        var score = new PlayerScore(UUID.randomUUID(), GAME_ID, PLAYER_ID, Faction.REVISIONISTS);
+
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> score.applyEndGame(ScoreReason.SECRET_OUTCOME_WON))
+                .withMessage("only FACTION_UNIDENTIFIED may be applied at game end");
+    }
+
+    @Test
     @DisplayName("score entry rejects missing reason")
     void scoreEntryRejectsMissingReason() {
         assertThatExceptionOfType(NullPointerException.class)
