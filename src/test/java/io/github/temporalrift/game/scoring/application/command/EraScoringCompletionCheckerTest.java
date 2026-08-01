@@ -76,6 +76,7 @@ class EraScoringCompletionCheckerTest {
         given(contextRepository.eraResolutionCompleted(GAME_ID, ERA_NUMBER)).willReturn(true);
         given(contextRepository.activistDeclarationsResolved(GAME_ID, ERA_NUMBER))
                 .willReturn(true);
+        given(contextRepository.revisionistActionsResolved(GAME_ID, ERA_NUMBER)).willReturn(true);
         given(contextRepository.requiredAppliedOutcomeCount(GAME_ID, ERA_NUMBER))
                 .willReturn(3);
         given(outcomeInboxRepository.findByGameIdAndEraNumber(GAME_ID, ERA_NUMBER))
@@ -102,6 +103,21 @@ class EraScoringCompletionCheckerTest {
     }
 
     @Test
+    @DisplayName("unresolved Revisionist action — scoring waits even when Activist declarations are resolved")
+    void tryComplete_unresolvedRevisionistAction_noScoring() {
+        given(contextRepository.actionFactsReady(GAME_ID, ERA_NUMBER)).willReturn(true);
+        given(contextRepository.eraResolutionCompleted(GAME_ID, ERA_NUMBER)).willReturn(true);
+        given(contextRepository.activistDeclarationsResolved(GAME_ID, ERA_NUMBER))
+                .willReturn(true);
+        given(contextRepository.revisionistActionsResolved(GAME_ID, ERA_NUMBER)).willReturn(false);
+
+        checker.tryComplete(GAME_ID, ERA_NUMBER);
+
+        then(contextRepository).should(never()).requiredAppliedOutcomeCount(any(), anyInt());
+        then(scoringEraCompletionRepository).should(never()).tryMarkScoringComplete(any(), anyInt());
+    }
+
+    @Test
     @DisplayName("action facts ready and outcomes complete — claims era and triggers scoring")
     void tryComplete_readyAndComplete_triggersScoring() {
         var outcome = outcomeApplied();
@@ -109,6 +125,7 @@ class EraScoringCompletionCheckerTest {
         given(contextRepository.eraResolutionCompleted(GAME_ID, ERA_NUMBER)).willReturn(true);
         given(contextRepository.activistDeclarationsResolved(GAME_ID, ERA_NUMBER))
                 .willReturn(true);
+        given(contextRepository.revisionistActionsResolved(GAME_ID, ERA_NUMBER)).willReturn(true);
         given(contextRepository.requiredAppliedOutcomeCount(GAME_ID, ERA_NUMBER))
                 .willReturn(1);
         given(outcomeInboxRepository.findByGameIdAndEraNumber(GAME_ID, ERA_NUMBER))
@@ -134,6 +151,7 @@ class EraScoringCompletionCheckerTest {
         given(contextRepository.eraResolutionCompleted(GAME_ID, ERA_NUMBER)).willReturn(true);
         given(contextRepository.activistDeclarationsResolved(GAME_ID, ERA_NUMBER))
                 .willReturn(true);
+        given(contextRepository.revisionistActionsResolved(GAME_ID, ERA_NUMBER)).willReturn(true);
         given(contextRepository.requiredAppliedOutcomeCount(GAME_ID, ERA_NUMBER))
                 .willReturn(1);
         given(outcomeInboxRepository.findByGameIdAndEraNumber(GAME_ID, ERA_NUMBER))
