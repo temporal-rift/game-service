@@ -580,6 +580,64 @@ class ActionRoundSagaImplTest {
         }
 
         @Test
+        @DisplayName("Round 3 — retains the latest Rewrite and every Mimic from the era")
+        void tryClose_round3_collectsRevisionistFactsAcrossTheEra() {
+            var firstRewriteEventId = UUID.randomUUID();
+            var firstRewriteOutcomeId = UUID.randomUUID();
+            var latestRewriteEventId = UUID.randomUUID();
+            var latestRewriteOutcomeId = UUID.randomUUID();
+            var mimicEventId = UUID.randomUUID();
+            var mimicOutcomeId = UUID.randomUUID();
+            var round1 = new ActionRound(UUID.randomUUID(), GAME_ID, ERA_NUMBER, 1, List.of(PLAYER_1), TIMER_SECONDS);
+            round1.submitSpecial(
+                    PLAYER_1,
+                    Faction.REVISIONISTS,
+                    SpecialAction.REWRITE,
+                    firstRewriteEventId,
+                    firstRewriteOutcomeId,
+                    null,
+                    false);
+            var round2 = new ActionRound(UUID.randomUUID(), GAME_ID, ERA_NUMBER, 2, List.of(PLAYER_1), TIMER_SECONDS);
+            round2.submitSpecial(
+                    PLAYER_1,
+                    Faction.REVISIONISTS,
+                    SpecialAction.REWRITE,
+                    latestRewriteEventId,
+                    latestRewriteOutcomeId,
+                    null,
+                    false);
+            var round3 = new ActionRound(UUID.randomUUID(), GAME_ID, ERA_NUMBER, 3, List.of(PLAYER_1), TIMER_SECONDS);
+            round3.submitSpecial(
+                    PLAYER_1, Faction.REVISIONISTS, SpecialAction.MIMIC, mimicEventId, mimicOutcomeId, null, false);
+            given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA_NUMBER, 3))
+                    .willReturn(Optional.of(round3));
+            given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumber(GAME_ID, ERA_NUMBER, 1))
+                    .willReturn(Optional.of(round1));
+            given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumber(GAME_ID, ERA_NUMBER, 2))
+                    .willReturn(Optional.of(round2));
+            var updatedState = new ActionRoundSagaState(
+                    UUID.randomUUID(),
+                    GAME_ID,
+                    ERA_NUMBER,
+                    3,
+                    ActionRoundSagaStatus.WAITING,
+                    List.of(),
+                    TIMER_EXPIRES_AT);
+            given(stateManager.markSubmitted(GAME_ID, ERA_NUMBER, 3, PLAYER_1)).willReturn(Optional.of(updatedState));
+
+            saga.handlePlayerSubmitted(GAME_ID, ERA_NUMBER, 3, PLAYER_1);
+
+            var captor = ArgumentCaptor.<EraActionFactsFinalized>captor();
+            then(actionEventPublisher).should().publishInternally(captor.capture());
+            assertThat(captor.getValue().revisionistFacts())
+                    .containsExactly(
+                            new EraActionFactsFinalized.RevisionistFact(
+                                    PLAYER_1, SpecialAction.REWRITE, latestRewriteEventId, latestRewriteOutcomeId),
+                            new EraActionFactsFinalized.RevisionistFact(
+                                    PLAYER_1, SpecialAction.MIMIC, mimicEventId, mimicOutcomeId));
+        }
+
+        @Test
         @DisplayName("Round 3 with no special actions — still publishes with empty fact lists")
         void tryClose_round3WithNoSpecials_publishesEmptyBundle() {
             // given
