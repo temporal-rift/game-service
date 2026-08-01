@@ -40,6 +40,24 @@ public class PlayerScore {
 
     public ScoreEntry apply(int eraNumber, ScoreReason reason) {
         validateEra(eraNumber);
+        return applyScore(eraNumber, reason);
+    }
+
+    /**
+     * Applies the one-time game-end score entry outside the numbered-era scoring loop.
+     *
+     * <p>The history records this entry with era {@code 0}, which is reserved exclusively for
+     * {@link ScoreReason#FACTION_UNIDENTIFIED}; callers must use {@link #apply(int, ScoreReason)}
+     * for ordinary era scoring.
+     */
+    public ScoreEntry applyEndGame(ScoreReason reason) {
+        if (reason != ScoreReason.FACTION_UNIDENTIFIED) {
+            throw new IllegalArgumentException("only FACTION_UNIDENTIFIED may be applied at game end");
+        }
+        return applyScore(0, reason);
+    }
+
+    private ScoreEntry applyScore(int eraNumber, ScoreReason reason) {
         Objects.requireNonNull(reason, "reason must not be null");
         if (!reason.belongsTo(faction)) {
             throw new InvalidScoreReasonException(faction, reason);

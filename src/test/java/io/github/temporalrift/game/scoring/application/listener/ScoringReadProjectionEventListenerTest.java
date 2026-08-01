@@ -12,6 +12,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import io.github.temporalrift.game.scoring.application.command.AwardUnidentifiedFactionScores;
 import io.github.temporalrift.game.scoring.domain.port.out.ScoringGameVisibilityRepository;
 import io.github.temporalrift.game.scoring.domain.port.out.ScoringPlayerRepository;
 import io.github.temporalrift.game.shared.FactionRevealed;
@@ -30,6 +31,9 @@ class ScoringReadProjectionEventListenerTest {
     @Mock
     ScoringPlayerRepository playerRepository;
 
+    @Mock
+    AwardUnidentifiedFactionScores awardUnidentifiedFactionScores;
+
     @InjectMocks
     ScoringReadProjectionEventListener listener;
 
@@ -42,11 +46,13 @@ class ScoringReadProjectionEventListenerTest {
     }
 
     @Test
-    @DisplayName("FactionRevealed — marks factions revealed for the game")
+    @DisplayName("FactionRevealed — awards end-game facts before making factions visible")
     void onFactionRevealed_marksRevealed() {
-        listener.onFactionRevealed(
-                new FactionRevealed(GAME_ID, List.of(new FactionRevealed.PlayerFactionResult(PLAYER_ID, "ERASERS"))));
+        var event =
+                new FactionRevealed(GAME_ID, List.of(new FactionRevealed.PlayerFactionResult(PLAYER_ID, "ERASERS")));
+        listener.onFactionRevealed(event);
 
+        then(awardUnidentifiedFactionScores).should().award(event);
         then(visibilityRepository).should().markFactionsRevealed(GAME_ID);
     }
 }

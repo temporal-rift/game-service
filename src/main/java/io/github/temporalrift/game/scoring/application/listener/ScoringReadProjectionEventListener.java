@@ -3,6 +3,7 @@ package io.github.temporalrift.game.scoring.application.listener;
 import org.springframework.modulith.events.ApplicationModuleListener;
 import org.springframework.stereotype.Component;
 
+import io.github.temporalrift.game.scoring.application.command.AwardUnidentifiedFactionScores;
 import io.github.temporalrift.game.scoring.domain.port.out.ScoringGameVisibilityRepository;
 import io.github.temporalrift.game.scoring.domain.port.out.ScoringPlayerRepository;
 import io.github.temporalrift.game.shared.FactionRevealed;
@@ -18,11 +19,15 @@ class ScoringReadProjectionEventListener {
 
     private final ScoringGameVisibilityRepository visibilityRepository;
     private final ScoringPlayerRepository playerRepository;
+    private final AwardUnidentifiedFactionScores awardUnidentifiedFactionScores;
 
     ScoringReadProjectionEventListener(
-            ScoringGameVisibilityRepository visibilityRepository, ScoringPlayerRepository playerRepository) {
+            ScoringGameVisibilityRepository visibilityRepository,
+            ScoringPlayerRepository playerRepository,
+            AwardUnidentifiedFactionScores awardUnidentifiedFactionScores) {
         this.visibilityRepository = visibilityRepository;
         this.playerRepository = playerRepository;
+        this.awardUnidentifiedFactionScores = awardUnidentifiedFactionScores;
     }
 
     @ApplicationModuleListener
@@ -32,6 +37,7 @@ class ScoringReadProjectionEventListener {
 
     @ApplicationModuleListener
     void onFactionRevealed(FactionRevealed event) {
+        awardUnidentifiedFactionScores.award(event);
         visibilityRepository.markFactionsRevealed(event.gameId());
     }
 }
