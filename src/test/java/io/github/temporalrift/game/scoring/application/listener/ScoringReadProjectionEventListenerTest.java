@@ -1,6 +1,7 @@
 package io.github.temporalrift.game.scoring.application.listener;
 
 import static org.mockito.BDDMockito.then;
+import static org.mockito.Mockito.inOrder;
 
 import java.util.List;
 import java.util.UUID;
@@ -52,7 +53,8 @@ class ScoringReadProjectionEventListenerTest {
                 new FactionRevealed(GAME_ID, List.of(new FactionRevealed.PlayerFactionResult(PLAYER_ID, "ERASERS")));
         listener.onFactionRevealed(event);
 
-        then(awardUnidentifiedFactionScores).should().award(event);
-        then(visibilityRepository).should().markFactionsRevealed(GAME_ID);
+        var inOrder = inOrder(awardUnidentifiedFactionScores, visibilityRepository);
+        inOrder.verify(awardUnidentifiedFactionScores).award(event);
+        inOrder.verify(visibilityRepository).markFactionsRevealed(GAME_ID);
     }
 }
