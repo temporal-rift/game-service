@@ -46,17 +46,10 @@ public interface EraScoringContextRepository {
 
     void markActionFactsReady(UUID gameId, int eraNumber);
 
-    default void recordRevisionistAction(
-            UUID gameId,
-            int eraNumber,
-            UUID playerId,
-            SpecialAction action,
-            UUID targetEventId,
-            UUID targetOutcomeId) {}
+    void recordRevisionistAction(
+            UUID gameId, int eraNumber, UUID playerId, SpecialAction action, UUID targetEventId, UUID targetOutcomeId);
 
-    default void resolveRevisionistActions(UUID gameId, int eraNumber) {}
+    void resolveRevisionistActions(UUID gameId, int eraNumber);
 
-    default boolean revisionistActionsResolved(UUID gameId, int eraNumber) {
-        return true;
-    }
+    boolean revisionistActionsResolved(UUID gameId, int eraNumber);
 }
