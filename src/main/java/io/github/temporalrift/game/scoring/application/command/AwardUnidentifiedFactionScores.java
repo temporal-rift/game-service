@@ -54,7 +54,10 @@ public class AwardUnidentifiedFactionScores {
                         player.playerId(),
                         playerId ->
                                 new PlayerScore(UUID.randomUUID(), reveal.gameId(), playerId, Faction.REVISIONISTS)))
-                .peek(score -> score.applyEndGame(ScoreReason.FACTION_UNIDENTIFIED))
+                .map(score -> {
+                    score.applyEndGame(ScoreReason.FACTION_UNIDENTIFIED);
+                    return score;
+                })
                 .toList();
         if (!awarded.isEmpty()) {
             playerScoreRepository.saveAll(List.copyOf(awarded));

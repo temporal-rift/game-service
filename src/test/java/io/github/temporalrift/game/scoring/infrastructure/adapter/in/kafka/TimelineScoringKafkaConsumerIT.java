@@ -20,6 +20,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 import io.github.temporalrift.game.TestcontainersConfiguration;
 import io.github.temporalrift.game.scoring.domain.event.EraResolutionCompleted;
 import io.github.temporalrift.game.scoring.domain.event.OutcomeApplied;
+import io.github.temporalrift.game.scoring.domain.playerscore.ScoreEntry;
 import io.github.temporalrift.game.scoring.domain.playerscore.ScoreReason;
 import io.github.temporalrift.game.scoring.domain.port.out.EraScoringContextRepository;
 import io.github.temporalrift.game.scoring.domain.port.out.PlayerScoreRepository;
@@ -199,7 +200,7 @@ class TimelineScoringKafkaConsumerIT {
                         .satisfies(score -> {
                             assertThat(score.totalScore()).isEqualTo(ScoreReason.SECRET_OUTCOME_WON.pointsDelta());
                             assertThat(score.history())
-                                    .extracting(entry -> entry.reason())
+                                    .extracting(ScoreEntry::reason)
                                     .containsExactly(ScoreReason.SECRET_OUTCOME_WON);
                         }));
     }
