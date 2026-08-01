@@ -25,6 +25,7 @@ import io.github.temporalrift.game.shared.ActivistDeclarationResolved;
 import io.github.temporalrift.game.shared.DomainEventEnvelope;
 import io.github.temporalrift.game.shared.Faction;
 import io.github.temporalrift.game.shared.ScoresUpdated;
+import io.github.temporalrift.game.shared.SpecialAction;
 
 @DisplayName("UpdateScoresCommandHandler")
 class UpdateScoresCommandHandlerTest {
@@ -324,6 +325,27 @@ class UpdateScoresCommandHandlerTest {
 
         @Override
         public void markActionFactsReady(UUID gameId, int eraNumber) {
+            throw new UnsupportedOperationException("not used by UpdateScoresCommandHandler");
+        }
+
+        @Override
+        public void recordRevisionistAction(
+                UUID gameId,
+                int eraNumber,
+                UUID playerId,
+                SpecialAction action,
+                UUID targetEventId,
+                UUID targetOutcomeId) {
+            throw new UnsupportedOperationException("not used by UpdateScoresCommandHandler");
+        }
+
+        @Override
+        public void resolveRevisionistActions(UUID gameId, int eraNumber) {
+            throw new UnsupportedOperationException("not used by UpdateScoresCommandHandler");
+        }
+
+        @Override
+        public boolean revisionistActionsResolved(UUID gameId, int eraNumber) {
             throw new UnsupportedOperationException("not used by UpdateScoresCommandHandler");
         }
     }
