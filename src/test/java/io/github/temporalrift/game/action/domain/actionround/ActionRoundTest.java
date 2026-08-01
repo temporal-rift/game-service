@@ -336,6 +336,37 @@ class ActionRoundTest {
     }
 
     @Test
+    @DisplayName("submitSpecial — REWRITE without a target — throws InvalidActionTargetException")
+    void submitSpecialRewriteWithoutTargetThrows() {
+        var round = openRound(List.of(PLAYER_A));
+        round.pullEvents();
+
+        assertThatExceptionOfType(InvalidActionTargetException.class)
+                .isThrownBy(() -> round.submitSpecial(
+                        PLAYER_A, Faction.REVISIONISTS, SpecialAction.REWRITE, null, null, null, false));
+        assertThat(round.pendingPlayerIds()).containsExactly(PLAYER_A);
+        assertThat(round.submittedActions()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("submitSpecial — MIMIC with a target — registers private special action")
+    void submitSpecialMimicWithTargetRegistersSpecialAction() {
+        var round = openRound(List.of(PLAYER_A));
+        round.pullEvents();
+        var eventId = UUID.randomUUID();
+        var outcomeId = UUID.randomUUID();
+
+        round.submitSpecial(PLAYER_A, Faction.REVISIONISTS, SpecialAction.MIMIC, eventId, outcomeId, null, false);
+
+        var events = round.pullEvents();
+        assertThat(events).singleElement().isInstanceOfSatisfying(SpecialActionPlayed.class, played -> {
+            assertThat(played.specialAction()).isEqualTo(SpecialAction.MIMIC);
+            assertThat(played.targetEventId()).isEqualTo(eventId);
+            assertThat(played.targetOutcomeId()).isEqualTo(outcomeId);
+        });
+    }
+
+    @Test
     @DisplayName("submitSpecial — ANNIHILATE without a targetOutcomeId — throws InvalidActionTargetException")
     void submitSpecialAnnihilateWithoutTargetOutcomeThrows() {
         // given
