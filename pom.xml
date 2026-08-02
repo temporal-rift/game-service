@@ -361,6 +361,7 @@
                             <goal>unpack-dependencies</goal>
                         </goals>
                         <configuration>
+                            <includeGroupIds>io.github.temporal-rift</includeGroupIds>
                             <includeArtifactIds>session-api</includeArtifactIds>
                             <includes>openapi/**</includes>
                             <outputDirectory>${project.build.directory}/dependency-specs/session-api</outputDirectory>
@@ -373,6 +374,7 @@
                             <goal>unpack-dependencies</goal>
                         </goals>
                         <configuration>
+                            <includeGroupIds>io.github.temporal-rift</includeGroupIds>
                             <includeArtifactIds>action-api</includeArtifactIds>
                             <includes>openapi/**</includes>
                             <outputDirectory>${project.build.directory}/dependency-specs/action-api</outputDirectory>
@@ -385,6 +387,7 @@
                             <goal>unpack-dependencies</goal>
                         </goals>
                         <configuration>
+                            <includeGroupIds>io.github.temporal-rift</includeGroupIds>
                             <includeArtifactIds>scoring-api</includeArtifactIds>
                             <includes>openapi/**</includes>
                             <outputDirectory>${project.build.directory}/dependency-specs/scoring-api</outputDirectory>
