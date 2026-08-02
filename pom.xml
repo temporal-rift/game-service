@@ -6,7 +6,7 @@
     <parent>
         <groupId>io.github.temporal-rift</groupId>
         <artifactId>temporal-rift-bom</artifactId>
-        <version>1.5.2</version>
+        <version>1.5.3</version>
         <relativePath/>
     </parent>
 
@@ -311,7 +311,7 @@
                             <goal>generate</goal>
                         </goals>
                         <configuration>
-                            <inputSpec>${project.build.directory}/dependency-specs/session-api/openapi/session.yml
+                            <inputSpec>${project.build.directory}/dependency-specs/session-api-${session-api.version}-jar/openapi/session.yml
                             </inputSpec>
                             <output>${project.build.directory}/generated-sources/openapi/session</output>
                             <apiPackage>io.github.temporalrift.game.session.infrastructure.adapter.in.rest</apiPackage>
@@ -325,7 +325,7 @@
                             <goal>generate</goal>
                         </goals>
                         <configuration>
-                            <inputSpec>${project.build.directory}/dependency-specs/action-api/openapi/action.yml
+                            <inputSpec>${project.build.directory}/dependency-specs/action-api-${action-api.version}-jar/openapi/action.yml
                             </inputSpec>
                             <output>${project.build.directory}/generated-sources/openapi/action</output>
                             <apiPackage>io.github.temporalrift.game.action.infrastructure.adapter.in.rest</apiPackage>
@@ -339,97 +339,12 @@
                             <goal>generate</goal>
                         </goals>
                         <configuration>
-                            <inputSpec>${project.build.directory}/dependency-specs/scoring-api/openapi/scoring.yml
+                            <inputSpec>${project.build.directory}/dependency-specs/scoring-api-${scoring-api.version}-jar/openapi/scoring.yml
                             </inputSpec>
                             <output>${project.build.directory}/generated-sources/openapi/scoring</output>
                             <apiPackage>io.github.temporalrift.game.scoring.infrastructure.adapter.in.rest</apiPackage>
                             <modelPackage>io.github.temporalrift.game.scoring.infrastructure.adapter.in.rest.model
                             </modelPackage>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-dependency-plugin</artifactId>
-                <version>3.11.0</version>
-                <executions>
-                    <execution>
-                        <id>unpack-session-api-spec</id>
-                        <phase>initialize</phase>
-                        <goals>
-                            <goal>unpack-dependencies</goal>
-                        </goals>
-                        <configuration>
-                            <includeGroupIds>io.github.temporal-rift</includeGroupIds>
-                            <includeArtifactIds>session-api</includeArtifactIds>
-                            <includes>openapi/**</includes>
-                            <outputDirectory>${project.build.directory}/dependency-specs/session-api</outputDirectory>
-                        </configuration>
-                    </execution>
-                    <execution>
-                        <id>unpack-action-api-spec</id>
-                        <phase>initialize</phase>
-                        <goals>
-                            <goal>unpack-dependencies</goal>
-                        </goals>
-                        <configuration>
-                            <includeGroupIds>io.github.temporal-rift</includeGroupIds>
-                            <includeArtifactIds>action-api</includeArtifactIds>
-                            <includes>openapi/**</includes>
-                            <outputDirectory>${project.build.directory}/dependency-specs/action-api</outputDirectory>
-                        </configuration>
-                    </execution>
-                    <execution>
-                        <id>unpack-scoring-api-spec</id>
-                        <phase>initialize</phase>
-                        <goals>
-                            <goal>unpack-dependencies</goal>
-                        </goals>
-                        <configuration>
-                            <includeGroupIds>io.github.temporal-rift</includeGroupIds>
-                            <includeArtifactIds>scoring-api</includeArtifactIds>
-                            <includes>openapi/**</includes>
-                            <outputDirectory>${project.build.directory}/dependency-specs/scoring-api</outputDirectory>
-                        </configuration>
-                    </execution>
-                    <!-- Separate output dirs per module - session-event, action-event and scoring-event all
-                         package their spec at the same internal path (asyncapi/asyncapi.yml), so a shared
-                         output directory would have each unpack silently overwrite the previous one. -->
-                    <execution>
-                        <id>unpack-session-event-spec</id>
-                        <phase>generate-sources</phase>
-                        <goals>
-                            <goal>unpack-dependencies</goal>
-                        </goals>
-                        <configuration>
-                            <includeArtifactIds>session-event</includeArtifactIds>
-                            <includes>asyncapi/**</includes>
-                            <outputDirectory>${project.build.directory}/dependency-specs/session</outputDirectory>
-                        </configuration>
-                    </execution>
-                    <execution>
-                        <id>unpack-action-event-spec</id>
-                        <phase>generate-sources</phase>
-                        <goals>
-                            <goal>unpack-dependencies</goal>
-                        </goals>
-                        <configuration>
-                            <includeArtifactIds>action-event</includeArtifactIds>
-                            <includes>asyncapi/**</includes>
-                            <outputDirectory>${project.build.directory}/dependency-specs/action</outputDirectory>
-                        </configuration>
-                    </execution>
-                    <execution>
-                        <id>unpack-scoring-event-spec</id>
-                        <phase>generate-sources</phase>
-                        <goals>
-                            <goal>unpack-dependencies</goal>
-                        </goals>
-                        <configuration>
-                            <includeArtifactIds>scoring-event</includeArtifactIds>
-                            <includes>asyncapi/**</includes>
-                            <outputDirectory>${project.build.directory}/dependency-specs/scoring</outputDirectory>
                         </configuration>
                     </execution>
                 </executions>
@@ -445,7 +360,7 @@
                             <goal>generate</goal>
                         </goals>
                         <configuration>
-                            <inputSpec>${project.build.directory}/dependency-specs/session/asyncapi/asyncapi.yml
+                            <inputSpec>${project.build.directory}/dependency-specs/session-event-${session-event.version}-jar/asyncapi/asyncapi.yml
                             </inputSpec>
                             <configOptions>
                                 <role>provider</role>
@@ -466,7 +381,7 @@
                             <goal>generate</goal>
                         </goals>
                         <configuration>
-                            <inputSpec>${project.build.directory}/dependency-specs/action/asyncapi/asyncapi.yml
+                            <inputSpec>${project.build.directory}/dependency-specs/action-event-${action-event.version}-jar/asyncapi/asyncapi.yml
                             </inputSpec>
                             <configOptions>
                                 <role>provider</role>
@@ -487,7 +402,7 @@
                             <goal>generate</goal>
                         </goals>
                         <configuration>
-                            <inputSpec>${project.build.directory}/dependency-specs/scoring/asyncapi/asyncapi.yml
+                            <inputSpec>${project.build.directory}/dependency-specs/scoring-event-${scoring-event.version}-jar/asyncapi/asyncapi.yml
                             </inputSpec>
                             <configOptions>
                                 <role>provider</role>
