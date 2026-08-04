@@ -1,5 +1,6 @@
 package io.github.temporalrift.game.shared.infrastructure.config;
 
+import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 
 import org.springframework.core.convert.converter.Converter;
@@ -14,15 +15,19 @@ public class PlayerAuthenticationConverter implements Converter<Jwt, AbstractAut
     @Override
     public AbstractAuthenticationToken convert(Jwt source) {
         var sub = source.getSubject();
-        if (sub == null) {
+        if (sub == null || sub.isBlank()) {
             throw new InvalidBearerTokenException("Missing sub claim");
         }
-        UUID playerId;
         try {
-            playerId = UUID.fromString(sub);
+            return new PlayerAuthenticationToken(new PlayerPrincipal(UUID.fromString(sub)));
         } catch (IllegalArgumentException _) {
-            throw new InvalidBearerTokenException("sub claim is not a valid UUID");
+            var issuer = source.getIssuer();
+            if (issuer == null) {
+                throw new InvalidBearerTokenException("Missing iss claim for opaque sub claim");
+            }
+            var identity = issuer + "\0" + sub;
+            var playerId = UUID.nameUUIDFromBytes(identity.getBytes(StandardCharsets.UTF_8));
+            return new PlayerAuthenticationToken(new PlayerPrincipal(playerId));
         }
-        return new PlayerAuthenticationToken(new PlayerPrincipal(playerId));
     }
 }

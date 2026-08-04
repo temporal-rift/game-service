@@ -2,38 +2,25 @@ package io.github.temporalrift.game.action.infrastructure.adapter.out.kafka;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 
 import java.util.List;
 import java.util.UUID;
 
-import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 
-import io.github.temporalrift.game.action.domain.activisterastate.ProbabilityInfluenceSignature;
 import io.github.temporalrift.game.action.domain.event.ActionEventPayload;
 import io.github.temporalrift.game.action.domain.event.ActionRoundStarted;
-import io.github.temporalrift.game.action.domain.event.ActionRoundTimerExpired;
-import io.github.temporalrift.game.action.domain.event.BandedProbabilityPublished;
 import io.github.temporalrift.game.action.domain.event.CardPlayed;
-import io.github.temporalrift.game.action.domain.event.ExposeBehaviorChanged;
-import io.github.temporalrift.game.action.domain.event.ExposeSignatureRevealed;
 import io.github.temporalrift.game.action.domain.event.PlayerSkipped;
-import io.github.temporalrift.game.action.domain.event.RoundSummaryPublished;
 import io.github.temporalrift.game.action.domain.event.SpecialActionPlayed;
-import io.github.temporalrift.game.action.infrastructure.adapter.out.kafka.model.ActionRoundClosedPayload;
-import io.github.temporalrift.game.action.infrastructure.adapter.out.kafka.producer.DefaultServiceEventsProducer;
 import io.github.temporalrift.game.shared.ActionRoundClosed;
-import io.github.temporalrift.game.shared.CardType;
 import io.github.temporalrift.game.shared.DomainEventEnvelope;
-import io.github.temporalrift.game.shared.Faction;
-import io.github.temporalrift.game.shared.ProbabilityBand;
-import io.github.temporalrift.game.shared.SpecialAction;
+import io.github.temporalrift.game.shared.OutboundIntegrationEventPublisher;
 
 @ExtendWith(MockitoExtension.class)
 class ActionEventPublisherAdapterTest {
@@ -42,120 +29,70 @@ class ActionEventPublisherAdapterTest {
     ApplicationEventPublisher applicationEventPublisher;
 
     @Mock
-    DefaultServiceEventsProducer producer;
-
-    @Mock
     ActionEventWireMapper mapper;
 
+    @Mock
+    OutboundIntegrationEventPublisher outboundEvents;
+
     @Test
-    @DisplayName("publish maps a known event and dispatches it through the generated producer")
-    void publish_dispatchesToGeneratedProducer() {
-        // given
-        var adapter = new ActionEventPublisherAdapter(applicationEventPublisher, producer, mapper);
-        var aggregateId = UUID.randomUUID();
+    void publishRoundClosed_usesStableMessageType() {
+        var adapter = new ActionEventPublisherAdapter(applicationEventPublisher, mapper, outboundEvents);
         var gameId = UUID.randomUUID();
         var payload = new ActionRoundClosed(gameId, 1, 2, "ALL_SUBMITTED", 3);
-        var envelope =
-                DomainEventEnvelope.create(aggregateId, "ActionRound", gameId, 1, payload, java.time.Clock.systemUTC());
-        var wirePayload = new ActionRoundClosedPayload();
-        given(mapper.toWire(payload)).willReturn(wirePayload);
+        var event = DomainEventEnvelope.create(
+                UUID.randomUUID(), "ActionRound", gameId, 1, payload, java.time.Clock.systemUTC());
 
-        // when
-        adapter.publishRoundClosed(envelope);
+        adapter.publishRoundClosed(event);
 
-        // then
-        then(producer)
-                .should()
-                .publishActionRoundClosed(
-                        eq(wirePayload), any(DefaultServiceEventsProducer.ActionRoundClosedPayloadHeaders.class));
-        then(applicationEventPublisher).shouldHaveNoInteractions();
+        then(outboundEvents).should().publish(eq("ActionRoundClosed"), any(), eq(event));
     }
 
     @Test
-    @DisplayName("publish dispatches every action event through its generated producer operation")
-    void publish_dispatchesEveryActionEventType() {
-        // given
-        var adapter = new ActionEventPublisherAdapter(applicationEventPublisher, producer, mapper);
+    void publish_usesAsyncApiMessageNamesRatherThanBindingNames() {
+        var adapter = new ActionEventPublisherAdapter(applicationEventPublisher, mapper, outboundEvents);
         var gameId = UUID.randomUUID();
         var playerId = UUID.randomUUID();
-        var targetId = UUID.randomUUID();
 
-        var actionRoundStarted = new ActionRoundStarted(gameId, 1, 2, 30, List.of(playerId));
-        var cardPlayed = new CardPlayed(
+        adapter.publish(envelope(gameId, new ActionRoundStarted(gameId, 1, 2, 30, List.of(playerId))));
+        adapter.publish(envelope(
                 gameId,
-                1,
-                2,
-                playerId,
-                UUID.randomUUID(),
-                CardType.PUSH,
-                targetId,
-                UUID.randomUUID(),
-                UUID.randomUUID());
-        var specialActionPlayed = new SpecialActionPlayed(
+                new CardPlayed(
+                        gameId,
+                        1,
+                        2,
+                        playerId,
+                        UUID.randomUUID(),
+                        io.github.temporalrift.game.shared.CardType.PUSH,
+                        UUID.randomUUID(),
+                        UUID.randomUUID(),
+                        UUID.randomUUID())));
+        adapter.publish(envelope(gameId, new PlayerSkipped(gameId, 1, 2, playerId, "NO_ACTION")));
+        adapter.publish(envelope(
                 gameId,
-                1,
-                2,
-                playerId,
-                Faction.ERASERS,
-                SpecialAction.ANNIHILATE,
-                targetId,
-                UUID.randomUUID(),
-                UUID.randomUUID());
-        var timerExpired = new ActionRoundTimerExpired(gameId, 1, 2, List.of(playerId));
-        var playerSkipped = new PlayerSkipped(gameId, 1, 2, playerId, "NO_ACTION");
-        var roundSummary = new RoundSummaryPublished(
-                gameId, 1, 2, List.of(new RoundSummaryPublished.ActionSummary(playerId, "CARD", "PUSH", false)));
-        var bandedProbability = new BandedProbabilityPublished(
-                gameId,
-                1,
-                List.of(new BandedProbabilityPublished.EventBandState(
-                        targetId,
-                        List.of(new BandedProbabilityPublished.OutcomeBandState(
-                                UUID.randomUUID(), ProbabilityBand.HIGH)))));
-        var exposeSignatureRevealed = new ExposeSignatureRevealed(
-                gameId,
-                1,
-                2,
-                playerId,
-                UUID.randomUUID(),
-                new ProbabilityInfluenceSignature(CardType.PUSH, targetId, UUID.randomUUID(), UUID.randomUUID()));
-        var exposeBehaviorChanged = new ExposeBehaviorChanged(gameId, 1, 3, playerId, UUID.randomUUID());
+                new SpecialActionPlayed(
+                        gameId,
+                        1,
+                        2,
+                        playerId,
+                        io.github.temporalrift.game.shared.Faction.ERASERS,
+                        io.github.temporalrift.game.shared.SpecialAction.ANNIHILATE,
+                        UUID.randomUUID(),
+                        UUID.randomUUID(),
+                        UUID.randomUUID())));
 
-        // when
-        adapter.publish(envelope(gameId, actionRoundStarted));
-        adapter.publish(envelope(gameId, cardPlayed));
-        adapter.publish(envelope(gameId, specialActionPlayed));
-        adapter.publish(envelope(gameId, timerExpired));
-        adapter.publish(envelope(gameId, playerSkipped));
-        adapter.publish(envelope(gameId, roundSummary));
-        adapter.publish(envelope(gameId, bandedProbability));
-        adapter.publish(envelope(gameId, exposeSignatureRevealed));
-        adapter.publish(envelope(gameId, exposeBehaviorChanged));
-
-        // then
-        then(producer).should().publishActionRoundStarted(any(), any());
-        then(producer).should().publishCardPlayed(any(), any());
-        then(producer).should().publishSpecialActionPlayed(any(), any());
-        then(producer).should().publishActionRoundTimerExpired(any(), any());
-        then(producer).should().publishPlayerSkipped(any(), any());
-        then(producer).should().publishRoundSummaryPublished(any(), any());
-        then(producer).should().publishBandedProbabilityPublished(any(), any());
-        then(producer).should().publishExposeSignatureRevealed(any(), any());
-        then(producer).should().publishExposeBehaviorChanged(any(), any());
-        then(applicationEventPublisher).shouldHaveNoInteractions();
+        then(outboundEvents).should().publish(eq("ActionRoundStarted"), any(), any());
+        then(outboundEvents).should().publish(eq("CardPlayed"), any(), any());
+        then(outboundEvents).should().publish(eq("PlayerSkipped"), any(), any());
+        then(outboundEvents).should().publish(eq("SpecialActionPlayed"), any(), any());
     }
 
     @Test
-    @DisplayName("publishInternally delegates the payload to Spring application events")
     void publishInternally_delegatesPayload() {
-        // given
-        var adapter = new ActionEventPublisherAdapter(applicationEventPublisher, producer, mapper);
+        var adapter = new ActionEventPublisherAdapter(applicationEventPublisher, mapper, outboundEvents);
         var payload = new ActionRoundClosed(UUID.randomUUID(), 1, 2, "ALL_SUBMITTED", 3);
 
-        // when
         adapter.publishInternally(payload);
 
-        // then
         then(applicationEventPublisher).should().publishEvent(payload);
     }
 

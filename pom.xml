@@ -12,7 +12,7 @@
 
     <artifactId>game-service</artifactId>
     <version>0.0.1-SNAPSHOT</version>
-    <name>Temporal Rift Game Orchestration Service</name>
+    <name>Temporal Rift Game Service</name>
     <description>Temporal Rift game orchestration service</description>
     <url/>
 
@@ -118,6 +118,10 @@
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-zipkin</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-data-jpa</artifactId>
         </dependency>
         <dependency>
@@ -199,17 +203,6 @@
         <dependency>
             <groupId>org.springframework.cloud</groupId>
             <artifactId>spring-cloud-stream-binder-kafka</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>io.zenwave360.sdk</groupId>
-            <artifactId>spring-modulith-events-scs</artifactId>
-        </dependency>
-        <!-- spring-modulith-events-scs serializes Message events to the outbox with a Jackson 2
-             (com.fasterxml) ObjectMapper; this app otherwise runs on Jackson 3 (tools.jackson), so the
-             Jackson 2 time module must be present for the Instant/OffsetDateTime fields. -->
-        <dependency>
-            <groupId>com.fasterxml.jackson.datatype</groupId>
-            <artifactId>jackson-datatype-jsr310</artifactId>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -311,7 +304,8 @@
                             <goal>generate</goal>
                         </goals>
                         <configuration>
-                            <inputSpec>${project.build.directory}/dependency-specs/session-api-${session-api.version}-jar/openapi/session.yml
+                            <inputSpec>
+                                ${project.build.directory}/dependency-specs/session-api-${session-api.version}-jar/openapi/session.yml
                             </inputSpec>
                             <output>${project.build.directory}/generated-sources/openapi/session</output>
                             <apiPackage>io.github.temporalrift.game.session.infrastructure.adapter.in.rest</apiPackage>
@@ -325,7 +319,8 @@
                             <goal>generate</goal>
                         </goals>
                         <configuration>
-                            <inputSpec>${project.build.directory}/dependency-specs/action-api-${action-api.version}-jar/openapi/action.yml
+                            <inputSpec>
+                                ${project.build.directory}/dependency-specs/action-api-${action-api.version}-jar/openapi/action.yml
                             </inputSpec>
                             <output>${project.build.directory}/generated-sources/openapi/action</output>
                             <apiPackage>io.github.temporalrift.game.action.infrastructure.adapter.in.rest</apiPackage>
@@ -339,7 +334,8 @@
                             <goal>generate</goal>
                         </goals>
                         <configuration>
-                            <inputSpec>${project.build.directory}/dependency-specs/scoring-api-${scoring-api.version}-jar/openapi/scoring.yml
+                            <inputSpec>
+                                ${project.build.directory}/dependency-specs/scoring-api-${scoring-api.version}-jar/openapi/scoring.yml
                             </inputSpec>
                             <output>${project.build.directory}/generated-sources/openapi/scoring</output>
                             <apiPackage>io.github.temporalrift.game.scoring.infrastructure.adapter.in.rest</apiPackage>
@@ -360,7 +356,8 @@
                             <goal>generate</goal>
                         </goals>
                         <configuration>
-                            <inputSpec>${project.build.directory}/dependency-specs/session-event-${session-event.version}-jar/asyncapi/asyncapi.yml
+                            <inputSpec>
+                                ${project.build.directory}/dependency-specs/session-event-${session-event.version}-jar/asyncapi/asyncapi.yml
                             </inputSpec>
                             <configOptions>
                                 <role>provider</role>
@@ -381,7 +378,8 @@
                             <goal>generate</goal>
                         </goals>
                         <configuration>
-                            <inputSpec>${project.build.directory}/dependency-specs/action-event-${action-event.version}-jar/asyncapi/asyncapi.yml
+                            <inputSpec>
+                                ${project.build.directory}/dependency-specs/action-event-${action-event.version}-jar/asyncapi/asyncapi.yml
                             </inputSpec>
                             <configOptions>
                                 <role>provider</role>
@@ -402,7 +400,8 @@
                             <goal>generate</goal>
                         </goals>
                         <configuration>
-                            <inputSpec>${project.build.directory}/dependency-specs/scoring-event-${scoring-event.version}-jar/asyncapi/asyncapi.yml
+                            <inputSpec>
+                                ${project.build.directory}/dependency-specs/scoring-event-${scoring-event.version}-jar/asyncapi/asyncapi.yml
                             </inputSpec>
                             <configOptions>
                                 <role>provider</role>
@@ -444,9 +443,12 @@
                         </goals>
                         <configuration>
                             <sources>
-                                <source>${project.build.directory}/generated-sources/openapi/session/src/main/java</source>
-                                <source>${project.build.directory}/generated-sources/openapi/action/src/main/java</source>
-                                <source>${project.build.directory}/generated-sources/openapi/scoring/src/main/java</source>
+                                <source>${project.build.directory}/generated-sources/openapi/session/src/main/java
+                                </source>
+                                <source>${project.build.directory}/generated-sources/openapi/action/src/main/java
+                                </source>
+                                <source>${project.build.directory}/generated-sources/openapi/scoring/src/main/java
+                                </source>
                             </sources>
                         </configuration>
                     </execution>

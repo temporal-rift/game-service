@@ -1,7 +1,9 @@
 package io.github.temporalrift.game.action.infrastructure.adapter.out.kafka;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
+import tools.jackson.databind.ObjectMapper;
 
 import io.github.temporalrift.game.action.domain.event.ActionEventPayload;
 import io.github.temporalrift.game.action.domain.event.ActionRoundStarted;
@@ -15,99 +17,64 @@ import io.github.temporalrift.game.action.domain.event.PlayerSkipped;
 import io.github.temporalrift.game.action.domain.event.RoundSummaryPublished;
 import io.github.temporalrift.game.action.domain.event.SpecialActionPlayed;
 import io.github.temporalrift.game.action.domain.port.out.ActionEventPublisher;
-import io.github.temporalrift.game.action.infrastructure.adapter.out.kafka.producer.DefaultServiceEventsProducer;
 import io.github.temporalrift.game.shared.ActionRoundClosed;
 import io.github.temporalrift.game.shared.DomainEventEnvelope;
-import io.github.temporalrift.game.shared.DomainEventHeaders;
+import io.github.temporalrift.game.shared.OutboundIntegrationEventPublisher;
 
-/**
- * Driven adapter that fulfils the {@link ActionEventPublisher} port.
- *
- * <p>Each event's local payload is mapped to its generated wire type and published through the
- * ZenWave-generated {@link DefaultServiceEventsProducer}, which itself calls {@link
- * ApplicationEventPublisher#publishEvent} internally (transactionalOutbox=modulith).
- *
- * <p>Every generated {@code XxxPayloadHeaders} class is a distinct static nested type but they all
- * extend plain {@code HashMap<String,Object>}, so {@link #headers} populates the six common fields
- * generically instead of repeating the same six lines per case.
- */
+/** Publishes action events through the single durable {@code gameEvents} AsyncAPI channel. */
 @Component
 class ActionEventPublisherAdapter implements ActionEventPublisher {
 
     private final ApplicationEventPublisher applicationEventPublisher;
-    private final DefaultServiceEventsProducer producer;
     private final ActionEventWireMapper mapper;
+    private final OutboundIntegrationEventPublisher outboundEvents;
+
+    @Autowired
+    ActionEventPublisherAdapter(
+            ApplicationEventPublisher applicationEventPublisher,
+            ActionEventWireMapper mapper,
+            ObjectMapper objectMapper) {
+        this.applicationEventPublisher = applicationEventPublisher;
+        this.mapper = mapper;
+        this.outboundEvents = new OutboundIntegrationEventPublisher(applicationEventPublisher, objectMapper);
+    }
 
     ActionEventPublisherAdapter(
             ApplicationEventPublisher applicationEventPublisher,
-            DefaultServiceEventsProducer producer,
-            ActionEventWireMapper mapper) {
+            ActionEventWireMapper mapper,
+            OutboundIntegrationEventPublisher outboundEvents) {
         this.applicationEventPublisher = applicationEventPublisher;
-        this.producer = producer;
         this.mapper = mapper;
+        this.outboundEvents = outboundEvents;
     }
 
     @Override
     public void publish(DomainEventEnvelope<ActionEventPayload> event) {
         switch (event.payload()) {
-            case ActivistDeclarationRecorded e ->
-                producer.publishActivistDeclarationRecorded(
-                        mapper.toWire(e),
-                        DomainEventHeaders.populate(
-                                new DefaultServiceEventsProducer.ActivistDeclarationRecordedPayloadHeaders(), event));
-            case ActionRoundStarted e ->
-                producer.publishActionRoundStarted(
-                        mapper.toWire(e),
-                        DomainEventHeaders.populate(
-                                new DefaultServiceEventsProducer.ActionRoundStartedPayloadHeaders(), event));
-            case CardPlayed e ->
-                producer.publishCardPlayed(
-                        mapper.toWire(e),
-                        DomainEventHeaders.populate(
-                                new DefaultServiceEventsProducer.CardPlayedPayloadHeaders(), event));
-            case ExposeSignatureRevealed e ->
-                producer.publishExposeSignatureRevealed(
-                        mapper.toWire(e),
-                        DomainEventHeaders.populate(
-                                new DefaultServiceEventsProducer.ExposeSignatureRevealedPayloadHeaders(), event));
-            case ExposeBehaviorChanged e ->
-                producer.publishExposeBehaviorChanged(
-                        mapper.toWire(e),
-                        DomainEventHeaders.populate(
-                                new DefaultServiceEventsProducer.ExposeBehaviorChangedPayloadHeaders(), event));
-            case SpecialActionPlayed e ->
-                producer.publishSpecialActionPlayed(
-                        mapper.toWire(e),
-                        DomainEventHeaders.populate(
-                                new DefaultServiceEventsProducer.SpecialActionPlayedPayloadHeaders(), event));
-            case ActionRoundTimerExpired e ->
-                producer.publishActionRoundTimerExpired(
-                        mapper.toWire(e),
-                        DomainEventHeaders.populate(
-                                new DefaultServiceEventsProducer.ActionRoundTimerExpiredPayloadHeaders(), event));
-            case PlayerSkipped e ->
-                producer.publishPlayerSkipped(
-                        mapper.toWire(e),
-                        DomainEventHeaders.populate(
-                                new DefaultServiceEventsProducer.PlayerSkippedPayloadHeaders(), event));
-            case RoundSummaryPublished e ->
-                producer.publishRoundSummaryPublished(
-                        mapper.toWire(e),
-                        DomainEventHeaders.populate(
-                                new DefaultServiceEventsProducer.RoundSummaryPublishedPayloadHeaders(), event));
-            case BandedProbabilityPublished e ->
-                producer.publishBandedProbabilityPublished(
-                        mapper.toWire(e),
-                        DomainEventHeaders.populate(
-                                new DefaultServiceEventsProducer.BandedProbabilityPublishedPayloadHeaders(), event));
+            case ActivistDeclarationRecorded payload ->
+                outboundEvents.publish("ActivistDeclarationRecorded", mapper.toWire(payload), event);
+            case ActionRoundStarted payload ->
+                outboundEvents.publish("ActionRoundStarted", mapper.toWire(payload), event);
+            case CardPlayed payload -> outboundEvents.publish("CardPlayed", mapper.toWire(payload), event);
+            case ExposeSignatureRevealed payload ->
+                outboundEvents.publish("ExposeSignatureRevealed", mapper.toWire(payload), event);
+            case ExposeBehaviorChanged payload ->
+                outboundEvents.publish("ExposeBehaviorChanged", mapper.toWire(payload), event);
+            case SpecialActionPlayed payload ->
+                outboundEvents.publish("SpecialActionPlayed", mapper.toWire(payload), event);
+            case ActionRoundTimerExpired payload ->
+                outboundEvents.publish("ActionRoundTimerExpired", mapper.toWire(payload), event);
+            case PlayerSkipped payload -> outboundEvents.publish("PlayerSkipped", mapper.toWire(payload), event);
+            case RoundSummaryPublished payload ->
+                outboundEvents.publish("RoundSummaryPublished", mapper.toWire(payload), event);
+            case BandedProbabilityPublished payload ->
+                outboundEvents.publish("BandedProbabilityPublished", mapper.toWire(payload), event);
         }
     }
 
     @Override
     public void publishRoundClosed(DomainEventEnvelope<ActionRoundClosed> event) {
-        producer.publishActionRoundClosed(
-                mapper.toWire(event.payload()),
-                DomainEventHeaders.populate(new DefaultServiceEventsProducer.ActionRoundClosedPayloadHeaders(), event));
+        outboundEvents.publish("ActionRoundClosed", mapper.toWire(event.payload()), event);
     }
 
     @Override

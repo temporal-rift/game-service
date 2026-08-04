@@ -10,11 +10,27 @@ Spring Modulith service that owns the full game lifecycle: lobby management, gam
 
 ## Local infrastructure
 
+From the workspace root, run:
+
 ```bash
-docker compose up -d
+docker compose -f infrastructure/compose.yml up --build
 ```
 
-Starts PostgreSQL and Kafka. Kafka UI available at `http://localhost:8080`.
+Each deployable owns its own repository-root Dockerfile. The sibling `infrastructure` repository owns the shared
+Compose topology that builds game-service and the sibling `timeline-service` and `read-service` repositories, then
+starts all three services, Kafka, Kafka UI, Zipkin, and one local PostgreSQL instance with an isolated database per
+service. It creates `game.events`, `timeline.events`, `game.commands`, and `game.dlq` with three partitions before
+applications start; service containers become healthy only after `/actuator/health` is healthy.
+
+- Game service: `http://localhost:8080`
+- Timeline service: `http://localhost:8081`
+- Read service: `http://localhost:8082`
+- Kafka UI: `http://localhost:8083`
+- Zipkin: `http://localhost:9411`
+
+Set `JWT_ISSUER_URI` to a reachable issuer before calling authenticated game-service or read-service endpoints. To
+discard local database data and reinitialize all service databases, run `docker compose -f infrastructure/compose.yml
+down -v` from the workspace root.
 
 ## Deployment configuration
 
@@ -28,7 +44,9 @@ The default runtime profile intentionally has no insecure fallbacks for external
 | `KAFKA_SECURITY_PROTOCOL` | Kafka transport protocol, such as `SASL_SSL` |
 | `JWT_ISSUER_URI` | Trusted OAuth2/OpenID Connect issuer URI |
 
-`docker-compose.yml` supplies local Docker values. Store credentials in the deployment platform's secret store rather than in application configuration. If a required variable is missing, startup fails with a diagnostic that identifies the variable and the required configuration contract.
+`infrastructure/compose.yml` supplies local Docker values. Store credentials in the deployment platform's secret store
+rather than in application configuration. If a required variable is missing, startup fails with a diagnostic that
+identifies the variable and the required configuration contract.
 
 ## Build and test
 
