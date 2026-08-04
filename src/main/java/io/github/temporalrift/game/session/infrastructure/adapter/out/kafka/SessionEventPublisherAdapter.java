@@ -1,12 +1,9 @@
 package io.github.temporalrift.game.session.infrastructure.adapter.out.kafka;
 
-import java.util.HashMap;
-
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.messaging.Message;
-import org.springframework.messaging.MessageHeaders;
-import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.stereotype.Component;
+import tools.jackson.databind.ObjectMapper;
 
 import io.github.temporalrift.game.session.domain.event.EraEnded;
 import io.github.temporalrift.game.session.domain.event.EraFailed;
@@ -27,175 +24,72 @@ import io.github.temporalrift.game.session.domain.event.TimelineCollapsed;
 import io.github.temporalrift.game.session.domain.event.TimelineStabilized;
 import io.github.temporalrift.game.session.domain.event.WinConditionMet;
 import io.github.temporalrift.game.session.domain.port.out.SessionEventPublisher;
-import io.github.temporalrift.game.session.infrastructure.adapter.out.kafka.producer.DefaultServiceEventsProducer;
 import io.github.temporalrift.game.shared.DomainEventEnvelope;
-import io.github.temporalrift.game.shared.DomainEventHeaders;
 import io.github.temporalrift.game.shared.EventsDrawn;
 import io.github.temporalrift.game.shared.FactionAssigned;
 import io.github.temporalrift.game.shared.FactionRevealed;
 import io.github.temporalrift.game.shared.GameEnded;
 import io.github.temporalrift.game.shared.HandDealt;
+import io.github.temporalrift.game.shared.OutboundIntegrationEventPublisher;
 import io.github.temporalrift.game.shared.PlayerJoinedLobby;
 
-/**
- * Driven adapter that fulfils the {@link SessionEventPublisher} port.
- *
- * <p>Each event's local payload is mapped to its generated wire type and published through the
- * ZenWave-generated {@link DefaultServiceEventsProducer}, which itself calls {@code
- * ApplicationEventPublisher.publishEvent} internally (transactionalOutbox=modulith) - Spring
- * Modulith's JPA event publication still intercepts it the same way it always has.
- *
- * <p>Every generated {@code XxxPayloadHeaders} class is a distinct static nested type but they all
- * extend plain {@code HashMap<String,Object>}, so {@link #headers} populates the six common fields
- * generically instead of repeating the same six lines per case.
- *
- * <p>{@code ResolutionStarted} has no apis spec entry yet (never modeled, unlike the other events
- * migrated in this PR) - {@link #publishResolutionStartedManually} hand-builds the exact {@link
- * Message} shape the generated producer would once its spec lands, so {@code
- * KafkaExternalizationConfig} routes it identically. Replace with a real {@code
- * producer.publishResolutionStarted(...)} call once the spec is published.
- */
+/** Publishes session events through the single durable {@code gameEvents} AsyncAPI channel. */
 @Component
 class SessionEventPublisherAdapter implements SessionEventPublisher {
 
-    private final DefaultServiceEventsProducer producer;
     private final SessionEventWireMapper mapper;
-    private final ApplicationEventPublisher applicationEventPublisher;
+    private final OutboundIntegrationEventPublisher outboundEvents;
 
+    @Autowired
     SessionEventPublisherAdapter(
-            DefaultServiceEventsProducer producer,
             SessionEventWireMapper mapper,
-            ApplicationEventPublisher applicationEventPublisher) {
-        this.producer = producer;
+            ApplicationEventPublisher applicationEventPublisher,
+            ObjectMapper objectMapper) {
         this.mapper = mapper;
-        this.applicationEventPublisher = applicationEventPublisher;
+        this.outboundEvents = new OutboundIntegrationEventPublisher(applicationEventPublisher, objectMapper);
+    }
+
+    SessionEventPublisherAdapter(SessionEventWireMapper mapper, OutboundIntegrationEventPublisher outboundEvents) {
+        this.mapper = mapper;
+        this.outboundEvents = outboundEvents;
     }
 
     @Override
     public void publish(DomainEventEnvelope<?> event) {
         switch (event.payload()) {
-            case LobbyCreated e ->
-                producer.publishLobbyCreated(
-                        mapper.toWire(e),
-                        DomainEventHeaders.populate(
-                                new DefaultServiceEventsProducer.LobbyCreatedPayloadHeaders(), event));
-            case PlayerJoinedLobby e ->
-                producer.publishPlayerJoinedLobby(
-                        mapper.toWire(e),
-                        DomainEventHeaders.populate(
-                                new DefaultServiceEventsProducer.PlayerJoinedLobbyPayloadHeaders(), event));
-            case PlayerLeftLobby e ->
-                producer.publishPlayerLeftLobby(
-                        mapper.toWire(e),
-                        DomainEventHeaders.populate(
-                                new DefaultServiceEventsProducer.PlayerLeftLobbyPayloadHeaders(), event));
-            case LobbyClosed e ->
-                producer.publishLobbyClosed(
-                        mapper.toWire(e),
-                        DomainEventHeaders.populate(
-                                new DefaultServiceEventsProducer.LobbyClosedPayloadHeaders(), event));
-            case HostTransferred e ->
-                producer.publishHostTransferred(
-                        mapper.toWire(e),
-                        DomainEventHeaders.populate(
-                                new DefaultServiceEventsProducer.HostTransferredPayloadHeaders(), event));
-            case EraStarted e ->
-                producer.publishEraStarted(
-                        mapper.toWire(e),
-                        DomainEventHeaders.populate(
-                                new DefaultServiceEventsProducer.EraStartedPayloadHeaders(), event));
-            case EraEnded e ->
-                producer.publishEraEnded(
-                        mapper.toWire(e),
-                        DomainEventHeaders.populate(new DefaultServiceEventsProducer.EraEndedPayloadHeaders(), event));
-            case EraFailed e ->
-                producer.publishEraFailed(
-                        mapper.toWire(e),
-                        DomainEventHeaders.populate(new DefaultServiceEventsProducer.EraFailedPayloadHeaders(), event));
-            case FactionAssigned e ->
-                producer.publishFactionAssigned(
-                        mapper.toWire(e),
-                        DomainEventHeaders.populate(
-                                new DefaultServiceEventsProducer.FactionAssignedPayloadHeaders(), event));
-            case FactionsDrawn e ->
-                producer.publishFactionsDrawn(
-                        mapper.toWire(e),
-                        DomainEventHeaders.populate(
-                                new DefaultServiceEventsProducer.FactionsDrawnPayloadHeaders(), event));
-            case GameStartCancelled e ->
-                producer.publishGameStartCancelled(
-                        mapper.toWire(e),
-                        DomainEventHeaders.populate(
-                                new DefaultServiceEventsProducer.GameStartCancelledPayloadHeaders(), event));
-            case GameStartFailed e ->
-                producer.publishGameStartFailed(
-                        mapper.toWire(e),
-                        DomainEventHeaders.populate(
-                                new DefaultServiceEventsProducer.GameStartFailedPayloadHeaders(), event));
-            case GameStarted e ->
-                producer.publishGameStarted(
-                        mapper.toWire(e),
-                        DomainEventHeaders.populate(
-                                new DefaultServiceEventsProducer.GameStartedPayloadHeaders(), event));
-            case PlayerAbandoned e ->
-                producer.publishPlayerAbandoned(
-                        mapper.toWire(e),
-                        DomainEventHeaders.populate(
-                                new DefaultServiceEventsProducer.PlayerAbandonedPayloadHeaders(), event));
-            case PlayerDisconnected e ->
-                producer.publishPlayerDisconnected(
-                        mapper.toWire(e),
-                        DomainEventHeaders.populate(
-                                new DefaultServiceEventsProducer.PlayerDisconnectedPayloadHeaders(), event));
-            case WinConditionMet e ->
-                producer.publishWinConditionMet(
-                        mapper.toWire(e),
-                        DomainEventHeaders.populate(
-                                new DefaultServiceEventsProducer.WinConditionMetPayloadHeaders(), event));
-            case GameEndedAbnormally e ->
-                producer.publishGameEndedAbnormally(
-                        mapper.toWire(e),
-                        DomainEventHeaders.populate(
-                                new DefaultServiceEventsProducer.GameEndedAbnormallyPayloadHeaders(), event));
-            case GameEnded e ->
-                producer.publishGameEnded(
-                        mapper.toWire(e),
-                        DomainEventHeaders.populate(new DefaultServiceEventsProducer.GameEndedPayloadHeaders(), event));
-            case TimelineCollapsed e ->
-                producer.publishTimelineCollapsed(
-                        mapper.toWire(e),
-                        DomainEventHeaders.populate(
-                                new DefaultServiceEventsProducer.TimelineCollapsedPayloadHeaders(), event));
-            case TimelineStabilized e ->
-                producer.publishTimelineStabilized(
-                        mapper.toWire(e),
-                        DomainEventHeaders.populate(
-                                new DefaultServiceEventsProducer.TimelineStabilizedPayloadHeaders(), event));
-            case FactionRevealed e ->
-                producer.publishFactionRevealed(
-                        mapper.toWire(e),
-                        DomainEventHeaders.populate(
-                                new DefaultServiceEventsProducer.FactionRevealedPayloadHeaders(), event));
-            case EventsDrawn e ->
-                producer.publishEventsDrawn(
-                        mapper.toWire(e),
-                        DomainEventHeaders.populate(
-                                new DefaultServiceEventsProducer.EventsDrawnPayloadHeaders(), event));
-            case HandDealt e ->
-                producer.publishHandDealt(
-                        mapper.toWire(e),
-                        DomainEventHeaders.populate(new DefaultServiceEventsProducer.HandDealtPayloadHeaders(), event));
-            case ResolutionStarted e -> publishResolutionStartedManually(event, e);
+            case LobbyCreated payload -> outboundEvents.publish("LobbyCreated", mapper.toWire(payload), event);
+            case PlayerJoinedLobby payload ->
+                outboundEvents.publish("PlayerJoinedLobby", mapper.toWire(payload), event);
+            case PlayerLeftLobby payload -> outboundEvents.publish("PlayerLeftLobby", mapper.toWire(payload), event);
+            case LobbyClosed payload -> outboundEvents.publish("LobbyClosed", mapper.toWire(payload), event);
+            case HostTransferred payload -> outboundEvents.publish("HostTransferred", mapper.toWire(payload), event);
+            case EraStarted payload -> outboundEvents.publish("EraStarted", mapper.toWire(payload), event);
+            case EraEnded payload -> outboundEvents.publish("EraEnded", mapper.toWire(payload), event);
+            case EraFailed payload -> outboundEvents.publish("EraFailed", mapper.toWire(payload), event);
+            case FactionAssigned payload -> outboundEvents.publish("FactionAssigned", mapper.toWire(payload), event);
+            case FactionsDrawn payload -> outboundEvents.publish("FactionsDrawn", mapper.toWire(payload), event);
+            case GameStartCancelled payload ->
+                outboundEvents.publish("GameStartCancelled", mapper.toWire(payload), event);
+            case GameStartFailed payload -> outboundEvents.publish("GameStartFailed", mapper.toWire(payload), event);
+            case GameStarted payload -> outboundEvents.publish("GameStarted", mapper.toWire(payload), event);
+            case PlayerAbandoned payload -> outboundEvents.publish("PlayerAbandoned", mapper.toWire(payload), event);
+            case PlayerDisconnected payload ->
+                outboundEvents.publish("PlayerDisconnected", mapper.toWire(payload), event);
+            case WinConditionMet payload -> outboundEvents.publish("WinConditionMet", mapper.toWire(payload), event);
+            case GameEndedAbnormally payload ->
+                outboundEvents.publish("GameEndedAbnormally", mapper.toWire(payload), event);
+            case GameEnded payload -> outboundEvents.publish("GameEnded", mapper.toWire(payload), event);
+            case TimelineCollapsed payload ->
+                outboundEvents.publish("TimelineCollapsed", mapper.toWire(payload), event);
+            case TimelineStabilized payload ->
+                outboundEvents.publish("TimelineStabilized", mapper.toWire(payload), event);
+            case FactionRevealed payload -> outboundEvents.publish("FactionRevealed", mapper.toWire(payload), event);
+            case EventsDrawn payload -> outboundEvents.publish("EventsDrawn", mapper.toWire(payload), event);
+            case HandDealt payload -> outboundEvents.publish("HandDealt", mapper.toWire(payload), event);
+            case ResolutionStarted payload -> outboundEvents.publish("ResolutionStarted", payload, event);
             default ->
                 throw new IllegalArgumentException(
                         "Unsupported session event payload: " + event.payload().getClass());
         }
-    }
-
-    private void publishResolutionStartedManually(DomainEventEnvelope<?> event, ResolutionStarted payload) {
-        var messageHeaders = DomainEventHeaders.populate(new HashMap<String, Object>(), event);
-        messageHeaders.put("spring.cloud.stream.sendto.destination", "Sessionpublish-resolution-started-out");
-        Message<ResolutionStarted> message = MessageBuilder.createMessage(payload, new MessageHeaders(messageHeaders));
-        applicationEventPublisher.publishEvent(message);
     }
 }

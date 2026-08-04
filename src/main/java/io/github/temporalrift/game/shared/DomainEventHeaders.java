@@ -10,6 +10,14 @@ public final class DomainEventHeaders {
     private DomainEventHeaders() {}
 
     public static <H extends Map<String, Object>> H populate(H headers, DomainEventEnvelope<?> event) {
+        return populate(headers, event, null);
+    }
+
+    public static <H extends Map<String, Object>> H populate(
+            H headers, DomainEventEnvelope<?> event, String eventType) {
+        if (eventType != null) {
+            headers.put("eventType", eventType);
+        }
         headers.put("eventId", event.eventId().toString());
         headers.put("aggregateId", event.aggregateId().toString());
         headers.put("aggregateType", event.aggregateType());

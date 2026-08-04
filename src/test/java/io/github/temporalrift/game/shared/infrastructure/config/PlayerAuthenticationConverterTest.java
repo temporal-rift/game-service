@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.BDDMockito.given;
 
+import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 
 import org.junit.jupiter.api.DisplayName;
@@ -37,10 +39,39 @@ class PlayerAuthenticationConverterTest {
     }
 
     @Test
-    @DisplayName("Given a JWT with a non-UUID sub claim, when converting, then InvalidBearerTokenException is thrown")
-    void givenNonUuidSubClaim_whenConverting_thenThrowsInvalidBearerTokenException() {
+    @DisplayName("Given an opaque OIDC subject, when converting, then derives a stable player ID")
+    void givenOpaqueOidcSubject_whenConverting_thenDerivesStablePlayerId() throws Exception {
         // given
-        given(jwt.getSubject()).willReturn("not-a-uuid");
+        var issuer = "https://kronen.eu.auth0.com/";
+        var subject = "auth0|test-user-123";
+        var expectedPlayerId = UUID.nameUUIDFromBytes((issuer + "\0" + subject).getBytes(StandardCharsets.UTF_8));
+        given(jwt.getSubject()).willReturn(subject);
+        given(jwt.getIssuer()).willReturn(URI.create(issuer).toURL());
+
+        // when
+        var result = converter.convert(jwt);
+
+        // then
+        assertThat(((PlayerPrincipal) result.getPrincipal()).playerId()).isEqualTo(expectedPlayerId);
+    }
+
+    @Test
+    @DisplayName(
+            "Given an opaque subject without an issuer, when converting, then InvalidBearerTokenException is thrown")
+    void givenOpaqueSubjectWithoutIssuer_whenConverting_thenThrowsInvalidBearerTokenException() {
+        // given
+        given(jwt.getSubject()).willReturn("auth0|test-user-123");
+        given(jwt.getIssuer()).willReturn(null);
+
+        // when / then
+        assertThatThrownBy(() -> converter.convert(jwt)).isInstanceOf(InvalidBearerTokenException.class);
+    }
+
+    @Test
+    @DisplayName("Given a blank sub claim, when converting, then InvalidBearerTokenException is thrown")
+    void givenBlankSubClaim_whenConverting_thenThrowsInvalidBearerTokenException() {
+        // given
+        given(jwt.getSubject()).willReturn("   ");
 
         // when / then
         assertThatThrownBy(() -> converter.convert(jwt)).isInstanceOf(InvalidBearerTokenException.class);
