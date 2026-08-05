@@ -19,10 +19,7 @@ public class OutboundIntegrationEventPublisher {
         this.objectMapper = objectMapper;
     }
 
-    /**
-     * Transitional adapter used while the owned generator replaces the existing ZenWave payload models. The event is
-     * still persisted and relayed through the same single channel-level path that generated producers will use.
-     */
+    /** Persists the event and relays it through the single channel-level outbound path. */
     public void publish(String eventType, Object payload, DomainEventEnvelope<?> envelope) {
         var headers = new LinkedHashMap<String, Object>();
         DomainEventHeaders.populate(headers, envelope, eventType);
