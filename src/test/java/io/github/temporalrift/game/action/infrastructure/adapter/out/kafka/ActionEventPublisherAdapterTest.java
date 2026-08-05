@@ -143,31 +143,74 @@ class ActionEventPublisherAdapterTest {
         var bandedProbabilityPublishedWire = mock(BandedProbabilityPublishedPayload.class);
         given(mapper.toWire(bandedProbabilityPublished)).willReturn(bandedProbabilityPublishedWire);
 
-        adapter.publish(envelope(gameId, activistDeclarationRecorded));
-        adapter.publish(envelope(gameId, actionRoundStarted));
-        adapter.publish(envelope(gameId, cardPlayed));
-        adapter.publish(envelope(gameId, exposeSignatureRevealed));
-        adapter.publish(envelope(gameId, exposeBehaviorChanged));
-        adapter.publish(envelope(gameId, specialActionPlayed));
-        adapter.publish(envelope(gameId, actionRoundTimerExpired));
-        adapter.publish(envelope(gameId, playerSkipped));
-        adapter.publish(envelope(gameId, roundSummaryPublished));
-        adapter.publish(envelope(gameId, bandedProbabilityPublished));
+        var activistDeclarationRecordedEnvelope = envelope(gameId, activistDeclarationRecorded);
+        var actionRoundStartedEnvelope = envelope(gameId, actionRoundStarted);
+        var cardPlayedEnvelope = envelope(gameId, cardPlayed);
+        var exposeSignatureRevealedEnvelope = envelope(gameId, exposeSignatureRevealed);
+        var exposeBehaviorChangedEnvelope = envelope(gameId, exposeBehaviorChanged);
+        var specialActionPlayedEnvelope = envelope(gameId, specialActionPlayed);
+        var actionRoundTimerExpiredEnvelope = envelope(gameId, actionRoundTimerExpired);
+        var playerSkippedEnvelope = envelope(gameId, playerSkipped);
+        var roundSummaryPublishedEnvelope = envelope(gameId, roundSummaryPublished);
+        var bandedProbabilityPublishedEnvelope = envelope(gameId, bandedProbabilityPublished);
+
+        adapter.publish(activistDeclarationRecordedEnvelope);
+        adapter.publish(actionRoundStartedEnvelope);
+        adapter.publish(cardPlayedEnvelope);
+        adapter.publish(exposeSignatureRevealedEnvelope);
+        adapter.publish(exposeBehaviorChangedEnvelope);
+        adapter.publish(specialActionPlayedEnvelope);
+        adapter.publish(actionRoundTimerExpiredEnvelope);
+        adapter.publish(playerSkippedEnvelope);
+        adapter.publish(roundSummaryPublishedEnvelope);
+        adapter.publish(bandedProbabilityPublishedEnvelope);
 
         then(outboundEvents)
                 .should()
-                .publish(eq("ActivistDeclarationRecorded"), same(activistDeclarationRecordedWire), any());
-        then(outboundEvents).should().publish(eq("ActionRoundStarted"), same(actionRoundStartedWire), any());
-        then(outboundEvents).should().publish(eq("CardPlayed"), same(cardPlayedWire), any());
-        then(outboundEvents).should().publish(eq("ExposeSignatureRevealed"), same(exposeSignatureRevealedWire), any());
-        then(outboundEvents).should().publish(eq("ExposeBehaviorChanged"), same(exposeBehaviorChangedWire), any());
-        then(outboundEvents).should().publish(eq("SpecialActionPlayed"), same(specialActionPlayedWire), any());
-        then(outboundEvents).should().publish(eq("ActionRoundTimerExpired"), same(actionRoundTimerExpiredWire), any());
-        then(outboundEvents).should().publish(eq("PlayerSkipped"), same(playerSkippedWire), any());
-        then(outboundEvents).should().publish(eq("RoundSummaryPublished"), same(roundSummaryPublishedWire), any());
+                .publish(
+                        eq("ActivistDeclarationRecorded"),
+                        same(activistDeclarationRecordedWire),
+                        same(activistDeclarationRecordedEnvelope));
         then(outboundEvents)
                 .should()
-                .publish(eq("BandedProbabilityPublished"), same(bandedProbabilityPublishedWire), any());
+                .publish(eq("ActionRoundStarted"), same(actionRoundStartedWire), same(actionRoundStartedEnvelope));
+        then(outboundEvents).should().publish(eq("CardPlayed"), same(cardPlayedWire), same(cardPlayedEnvelope));
+        then(outboundEvents)
+                .should()
+                .publish(
+                        eq("ExposeSignatureRevealed"),
+                        same(exposeSignatureRevealedWire),
+                        same(exposeSignatureRevealedEnvelope));
+        then(outboundEvents)
+                .should()
+                .publish(
+                        eq("ExposeBehaviorChanged"),
+                        same(exposeBehaviorChangedWire),
+                        same(exposeBehaviorChangedEnvelope));
+        then(outboundEvents)
+                .should()
+                .publish(eq("SpecialActionPlayed"), same(specialActionPlayedWire), same(specialActionPlayedEnvelope));
+        then(outboundEvents)
+                .should()
+                .publish(
+                        eq("ActionRoundTimerExpired"),
+                        same(actionRoundTimerExpiredWire),
+                        same(actionRoundTimerExpiredEnvelope));
+        then(outboundEvents)
+                .should()
+                .publish(eq("PlayerSkipped"), same(playerSkippedWire), same(playerSkippedEnvelope));
+        then(outboundEvents)
+                .should()
+                .publish(
+                        eq("RoundSummaryPublished"),
+                        same(roundSummaryPublishedWire),
+                        same(roundSummaryPublishedEnvelope));
+        then(outboundEvents)
+                .should()
+                .publish(
+                        eq("BandedProbabilityPublished"),
+                        same(bandedProbabilityPublishedWire),
+                        same(bandedProbabilityPublishedEnvelope));
     }
 
     @Test
