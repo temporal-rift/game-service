@@ -3,9 +3,11 @@ package io.github.temporalrift.game.shared;
 import java.util.LinkedHashMap;
 
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.stereotype.Component;
 import tools.jackson.databind.ObjectMapper;
 
 /** Publishes an outbound event for durable delivery by Spring Modulith. */
+@Component
 public class OutboundIntegrationEventPublisher {
 
     public static final String GAME_EVENTS_CHANNEL = "gameEvents";
