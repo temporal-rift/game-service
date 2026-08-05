@@ -73,6 +73,14 @@ spring:
             # StreamBridge converts the JsonNode payload to JSON bytes. Passing those bytes to the
             # JacksonJsonSerializer would encode them as a Base64 JSON string instead of the event object.
             value.serializer: org.apache.kafka.common.serialization.ByteArraySerializer
+        bindings:
+          game-events-out:
+            producer:
+              # Async sends (the binder default) return before the broker acks, so a send that fails
+              # after streamBridge.send() returns true would leave the outbox publication marked
+              # complete despite the event never reaching Kafka. Synchronous sends surface that
+              # failure as an exception GameEventsOutboxRelay's caller propagates instead.
+              sync: true
         default:
           producer:
             # gameId is present as a header on every generated event's headers — partitioning by it
