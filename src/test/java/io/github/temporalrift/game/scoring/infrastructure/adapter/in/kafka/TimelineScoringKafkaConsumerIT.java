@@ -239,8 +239,7 @@ class TimelineScoringKafkaConsumerIT {
 
     private Integer scoresUpdatedOutboxRows() {
         return jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM event_publication "
-                        + "WHERE serialized_event LIKE '%Scoringpublish-scores-updated-out%'",
+                "SELECT COUNT(*) FROM event_publication " + "WHERE serialized_event LIKE '%\"ScoresUpdated\"%'",
                 Integer.class);
     }
 }
