@@ -4,8 +4,8 @@ import java.time.Instant;
 import java.util.UUID;
 
 /**
- * Deserialization target for raw Kafka messages consumed from topics without a generated ZenWave
- * consumer (commands, and events from services - like timeline-service - that don't exist yet).
+ * Deserialization target for raw Kafka messages consumed from topics without a generated consumer
+ * (commands, and events from services - like timeline-service - that don't exist yet).
  */
 public record InboundEnvelope(
         UUID eventId,

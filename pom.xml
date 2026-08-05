@@ -66,9 +66,7 @@
     </properties>
 
     <dependencies>
-        <!-- Spec-only: bundles each bounded context's asyncapi.yml, no compiled code. Codegen for these is
-             driven by the zenwave-sdk-maven-plugin executions below (plugin identity + shared defaults are
-             managed in temporal-rift-bom). -->
+        <!-- Spec-only: bundles each bounded context's asyncapi.yml, no compiled code. -->
         <dependency>
             <groupId>io.github.temporal-rift</groupId>
             <artifactId>session-event</artifactId>
@@ -345,78 +343,6 @@
                     </execution>
                 </executions>
             </plugin>
-            <plugin>
-                <groupId>io.zenwave360.sdk</groupId>
-                <artifactId>zenwave-sdk-maven-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <id>generate-session-events</id>
-                        <phase>generate-sources</phase>
-                        <goals>
-                            <goal>generate</goal>
-                        </goals>
-                        <configuration>
-                            <inputSpec>
-                                ${project.build.directory}/dependency-specs/session-event-${session-event.version}-jar/asyncapi/asyncapi.yml
-                            </inputSpec>
-                            <configOptions>
-                                <role>provider</role>
-                                <componentPrefix>Session</componentPrefix>
-                                <modelPackage>
-                                    io.github.temporalrift.game.session.infrastructure.adapter.out.kafka.model
-                                </modelPackage>
-                                <producerApiPackage>
-                                    io.github.temporalrift.game.session.infrastructure.adapter.out.kafka.producer
-                                </producerApiPackage>
-                            </configOptions>
-                        </configuration>
-                    </execution>
-                    <execution>
-                        <id>generate-action-events</id>
-                        <phase>generate-sources</phase>
-                        <goals>
-                            <goal>generate</goal>
-                        </goals>
-                        <configuration>
-                            <inputSpec>
-                                ${project.build.directory}/dependency-specs/action-event-${action-event.version}-jar/asyncapi/asyncapi.yml
-                            </inputSpec>
-                            <configOptions>
-                                <role>provider</role>
-                                <componentPrefix>Action</componentPrefix>
-                                <modelPackage>
-                                    io.github.temporalrift.game.action.infrastructure.adapter.out.kafka.model
-                                </modelPackage>
-                                <producerApiPackage>
-                                    io.github.temporalrift.game.action.infrastructure.adapter.out.kafka.producer
-                                </producerApiPackage>
-                            </configOptions>
-                        </configuration>
-                    </execution>
-                    <execution>
-                        <id>generate-scoring-events</id>
-                        <phase>generate-sources</phase>
-                        <goals>
-                            <goal>generate</goal>
-                        </goals>
-                        <configuration>
-                            <inputSpec>
-                                ${project.build.directory}/dependency-specs/scoring-event-${scoring-event.version}-jar/asyncapi/asyncapi.yml
-                            </inputSpec>
-                            <configOptions>
-                                <role>provider</role>
-                                <componentPrefix>Scoring</componentPrefix>
-                                <modelPackage>
-                                    io.github.temporalrift.game.scoring.infrastructure.adapter.out.kafka.model
-                                </modelPackage>
-                                <producerApiPackage>
-                                    io.github.temporalrift.game.scoring.infrastructure.adapter.out.kafka.producer
-                                </producerApiPackage>
-                            </configOptions>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
             <!-- BOM 1.5.1 configures the compiler output directory globally. Keep test compilation
                  separate so its incremental cleanup cannot remove generated main classes. -->
             <plugin>
@@ -449,18 +375,6 @@
                                 </source>
                                 <source>${project.build.directory}/generated-sources/openapi/scoring/src/main/java
                                 </source>
-                            </sources>
-                        </configuration>
-                    </execution>
-                    <execution>
-                        <id>add-zenwave-generated-test-sources</id>
-                        <phase>generate-test-sources</phase>
-                        <goals>
-                            <goal>add-test-source</goal>
-                        </goals>
-                        <configuration>
-                            <sources>
-                                <source>${project.build.directory}/generated-sources/zenwave/src/main/java</source>
                             </sources>
                         </configuration>
                     </execution>
