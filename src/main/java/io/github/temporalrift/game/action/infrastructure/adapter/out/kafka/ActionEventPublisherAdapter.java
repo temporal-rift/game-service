@@ -1,7 +1,9 @@
 package io.github.temporalrift.game.action.infrastructure.adapter.out.kafka;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
+import tools.jackson.databind.ObjectMapper;
 
 import io.github.temporalrift.game.action.domain.event.ActionEventPayload;
 import io.github.temporalrift.game.action.domain.event.ActionRoundStarted;
@@ -26,6 +28,16 @@ class ActionEventPublisherAdapter implements ActionEventPublisher {
     private final ApplicationEventPublisher applicationEventPublisher;
     private final ActionEventWireMapper mapper;
     private final OutboundIntegrationEventPublisher outboundEvents;
+
+    @Autowired
+    ActionEventPublisherAdapter(
+            ApplicationEventPublisher applicationEventPublisher,
+            ActionEventWireMapper mapper,
+            ObjectMapper objectMapper) {
+        this.applicationEventPublisher = applicationEventPublisher;
+        this.mapper = mapper;
+        this.outboundEvents = new OutboundIntegrationEventPublisher(applicationEventPublisher, objectMapper);
+    }
 
     ActionEventPublisherAdapter(
             ApplicationEventPublisher applicationEventPublisher,
