@@ -10,7 +10,6 @@ import org.junit.jupiter.api.Test;
 import org.mapstruct.factory.Mappers;
 
 import io.github.temporalrift.game.action.domain.event.ExposeBehaviorChanged;
-import io.github.temporalrift.game.action.infrastructure.adapter.out.kafka.model.ExposeBehaviorChangedPayload;
 
 class ActionEventWireMapperTest {
 
@@ -21,8 +20,7 @@ class ActionEventWireMapperTest {
         var payload =
                 mapper.toWire(new ExposeBehaviorChanged(UUID.randomUUID(), 2, 3, UUID.randomUUID(), UUID.randomUUID()));
 
-        assertThat(payload.getAdditionalProperties()).isEmpty();
-        var fieldNames = Arrays.stream(ExposeBehaviorChangedPayload.class.getDeclaredFields())
+        var fieldNames = Arrays.stream(payload.getClass().getDeclaredFields())
                 .map(Field::getName)
                 .toList();
         assertThat(fieldNames)

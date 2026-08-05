@@ -1,12 +1,6 @@
 package io.github.temporalrift.game.session.infrastructure.adapter.out.kafka;
 
-import java.time.Instant;
-import java.time.OffsetDateTime;
-import java.time.ZoneOffset;
-
 import org.mapstruct.Mapper;
-import org.mapstruct.Mapping;
-import org.mapstruct.Named;
 
 import io.github.temporalrift.asyncapi.sessionevents.GeneratedChannelContract.EraEndedPayload;
 import io.github.temporalrift.asyncapi.sessionevents.GeneratedChannelContract.EraFailedPayload;
@@ -33,6 +27,7 @@ import io.github.temporalrift.asyncapi.sessionevents.GeneratedChannelContract.Pl
 import io.github.temporalrift.asyncapi.sessionevents.GeneratedChannelContract.PlayerDisconnectedPayload;
 import io.github.temporalrift.asyncapi.sessionevents.GeneratedChannelContract.PlayerJoinedLobbyPayload;
 import io.github.temporalrift.asyncapi.sessionevents.GeneratedChannelContract.PlayerLeftLobbyPayload;
+import io.github.temporalrift.asyncapi.sessionevents.GeneratedChannelContract.ResolutionStartedPayload;
 import io.github.temporalrift.asyncapi.sessionevents.GeneratedChannelContract.TimelineCollapsedPayload;
 import io.github.temporalrift.asyncapi.sessionevents.GeneratedChannelContract.TimelineCollapsedPlayerFactionResult;
 import io.github.temporalrift.asyncapi.sessionevents.GeneratedChannelContract.TimelineStabilizedPayload;
@@ -52,6 +47,7 @@ import io.github.temporalrift.game.session.domain.event.LobbyCreated;
 import io.github.temporalrift.game.session.domain.event.PlayerAbandoned;
 import io.github.temporalrift.game.session.domain.event.PlayerDisconnected;
 import io.github.temporalrift.game.session.domain.event.PlayerLeftLobby;
+import io.github.temporalrift.game.session.domain.event.ResolutionStarted;
 import io.github.temporalrift.game.session.domain.event.TimelineCollapsed;
 import io.github.temporalrift.game.session.domain.event.TimelineStabilized;
 import io.github.temporalrift.game.session.domain.event.WinConditionMet;
@@ -65,7 +61,6 @@ import io.github.temporalrift.game.shared.PlayerJoinedLobby;
 @Mapper(componentModel = "spring")
 interface SessionEventWireMapper {
 
-    @Mapping(target = "createdAt", source = "createdAt", qualifiedByName = "toOffsetDateTime")
     LobbyCreatedPayload toWire(LobbyCreated event);
 
     PlayerJoinedLobbyPayload toWire(PlayerJoinedLobby event);
@@ -81,6 +76,8 @@ interface SessionEventWireMapper {
     EraEndedPayload toWire(EraEnded event);
 
     EraFailedPayload toWire(EraFailed event);
+
+    ResolutionStartedPayload toWire(ResolutionStarted event);
 
     FactionAssignedPayload toWire(FactionAssigned event);
 
@@ -125,9 +122,4 @@ interface SessionEventWireMapper {
     HandDealtPayload toWire(HandDealt event);
 
     HandDealtCardInstance toWire(HandDealt.CardInstance cardInstance);
-
-    @Named("toOffsetDateTime")
-    default OffsetDateTime toOffsetDateTime(Instant instant) {
-        return instant == null ? null : instant.atOffset(ZoneOffset.UTC);
-    }
 }
