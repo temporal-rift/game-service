@@ -1,6 +1,9 @@
 package io.github.temporalrift.game.session.infrastructure.adapter.out.kafka;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
+import tools.jackson.databind.ObjectMapper;
 
 import io.github.temporalrift.game.session.domain.event.EraEnded;
 import io.github.temporalrift.game.session.domain.event.EraFailed;
@@ -36,6 +39,15 @@ class SessionEventPublisherAdapter implements SessionEventPublisher {
 
     private final SessionEventWireMapper mapper;
     private final OutboundIntegrationEventPublisher outboundEvents;
+
+    @Autowired
+    SessionEventPublisherAdapter(
+            SessionEventWireMapper mapper,
+            ApplicationEventPublisher applicationEventPublisher,
+            ObjectMapper objectMapper) {
+        this.mapper = mapper;
+        this.outboundEvents = new OutboundIntegrationEventPublisher(applicationEventPublisher, objectMapper);
+    }
 
     SessionEventPublisherAdapter(SessionEventWireMapper mapper, OutboundIntegrationEventPublisher outboundEvents) {
         this.mapper = mapper;
