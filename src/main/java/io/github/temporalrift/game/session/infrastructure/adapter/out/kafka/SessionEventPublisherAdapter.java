@@ -86,7 +86,8 @@ class SessionEventPublisherAdapter implements SessionEventPublisher {
             case FactionRevealed payload -> outboundEvents.publish("FactionRevealed", mapper.toWire(payload), event);
             case EventsDrawn payload -> outboundEvents.publish("EventsDrawn", mapper.toWire(payload), event);
             case HandDealt payload -> outboundEvents.publish("HandDealt", mapper.toWire(payload), event);
-            case ResolutionStarted payload -> outboundEvents.publish("ResolutionStarted", payload, event);
+            case ResolutionStarted payload ->
+                outboundEvents.publish("ResolutionStarted", mapper.toWire(payload), event);
             default ->
                 throw new IllegalArgumentException(
                         "Unsupported session event payload: " + event.payload().getClass());
