@@ -58,10 +58,11 @@ class GameEventsOutboxRelayTest {
         var messageCaptor = ArgumentCaptor.forClass(Message.class);
         then(streamBridge).should().send(eq("game-events-out"), messageCaptor.capture());
         var sentHeaders = messageCaptor.getValue().getHeaders();
-        assertThat(sentHeaders.get("eventType")).isEqualTo("GameStarted");
-        assertThat(sentHeaders.get("gameId")).isEqualTo(gameId);
-        assertThat(sentHeaders.get("eventId")).isEqualTo(eventId);
-        assertThat(sentHeaders.get("notAllowed")).isNull();
+        assertThat(sentHeaders)
+                .containsEntry("eventType", "GameStarted")
+                .containsEntry("gameId", gameId)
+                .containsEntry("eventId", eventId)
+                .doesNotContainKey("notAllowed");
     }
 
     @Test
