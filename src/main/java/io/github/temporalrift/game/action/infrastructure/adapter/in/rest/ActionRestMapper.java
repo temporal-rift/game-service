@@ -40,7 +40,8 @@ final class ActionRestMapper {
             io.github.temporalrift.game.action.domain.activisterastate.ActivistDeclarationMode mode) {
         return switch (mode) {
             case RALLY ->
-                io.github.temporalrift.game.action.infrastructure.adapter.in.rest.v1.model.ActivistDeclarationMode.RALLY;
+                io.github.temporalrift.game.action.infrastructure.adapter.in.rest.v1.model.ActivistDeclarationMode
+                        .RALLY;
             case MOMENTUM ->
                 io.github.temporalrift.game.action.infrastructure.adapter.in.rest.v1.model.ActivistDeclarationMode
                         .MOMENTUM;
