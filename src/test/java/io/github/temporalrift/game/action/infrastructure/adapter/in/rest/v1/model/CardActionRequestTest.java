@@ -1,4 +1,4 @@
-package io.github.temporalrift.game.action.infrastructure.adapter.in.rest.model;
+package io.github.temporalrift.game.action.infrastructure.adapter.in.rest.v1.model;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
