@@ -58,9 +58,9 @@
         <action-event.version>1.0.3</action-event.version>
         <timeline-event.version>1.0.2</timeline-event.version>
         <scoring-event.version>1.0.1</scoring-event.version>
-        <session-api.version>1.0.0</session-api.version>
-        <action-api.version>1.0.0</action-api.version>
-        <scoring-api.version>1.0.0</scoring-api.version>
+        <session-api.version>2.0.0</session-api.version>
+        <action-api.version>2.0.0</action-api.version>
+        <scoring-api.version>2.0.0</scoring-api.version>
         <spring-retry.version>2.0.13</spring-retry.version>
         <archunit-junit5.version>1.4.2</archunit-junit5.version>
     </properties>
@@ -303,11 +303,11 @@
                         </goals>
                         <configuration>
                             <inputSpec>
-                                ${project.build.directory}/dependency-specs/session-api-${session-api.version}-jar/openapi/session.yml
+                                ${project.build.directory}/dependency-specs/session-api-${session-api.version}-jar/openapi/v1/session.yml
                             </inputSpec>
                             <output>${project.build.directory}/generated-sources/openapi/session</output>
-                            <apiPackage>io.github.temporalrift.game.session.infrastructure.adapter.in.rest</apiPackage>
-                            <modelPackage>io.github.temporalrift.game.session.infrastructure.adapter.in.rest.model
+                            <apiPackage>io.github.temporalrift.game.session.infrastructure.adapter.in.rest.v1</apiPackage>
+                            <modelPackage>io.github.temporalrift.game.session.infrastructure.adapter.in.rest.v1.model
                             </modelPackage>
                         </configuration>
                     </execution>
@@ -318,11 +318,11 @@
                         </goals>
                         <configuration>
                             <inputSpec>
-                                ${project.build.directory}/dependency-specs/action-api-${action-api.version}-jar/openapi/action.yml
+                                ${project.build.directory}/dependency-specs/action-api-${action-api.version}-jar/openapi/v1/action.yml
                             </inputSpec>
                             <output>${project.build.directory}/generated-sources/openapi/action</output>
-                            <apiPackage>io.github.temporalrift.game.action.infrastructure.adapter.in.rest</apiPackage>
-                            <modelPackage>io.github.temporalrift.game.action.infrastructure.adapter.in.rest.model
+                            <apiPackage>io.github.temporalrift.game.action.infrastructure.adapter.in.rest.v1</apiPackage>
+                            <modelPackage>io.github.temporalrift.game.action.infrastructure.adapter.in.rest.v1.model
                             </modelPackage>
                         </configuration>
                     </execution>
@@ -333,11 +333,11 @@
                         </goals>
                         <configuration>
                             <inputSpec>
-                                ${project.build.directory}/dependency-specs/scoring-api-${scoring-api.version}-jar/openapi/scoring.yml
+                                ${project.build.directory}/dependency-specs/scoring-api-${scoring-api.version}-jar/openapi/v1/scoring.yml
                             </inputSpec>
                             <output>${project.build.directory}/generated-sources/openapi/scoring</output>
-                            <apiPackage>io.github.temporalrift.game.scoring.infrastructure.adapter.in.rest</apiPackage>
-                            <modelPackage>io.github.temporalrift.game.scoring.infrastructure.adapter.in.rest.model
+                            <apiPackage>io.github.temporalrift.game.scoring.infrastructure.adapter.in.rest.v1</apiPackage>
+                            <modelPackage>io.github.temporalrift.game.scoring.infrastructure.adapter.in.rest.v1.model
                             </modelPackage>
                         </configuration>
                     </execution>
