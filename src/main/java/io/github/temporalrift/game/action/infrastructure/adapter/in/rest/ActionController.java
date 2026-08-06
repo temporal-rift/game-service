@@ -9,15 +9,16 @@ import io.github.temporalrift.game.action.application.port.in.GetRoundStatusUseC
 import io.github.temporalrift.game.action.application.port.in.PlayCardUseCase;
 import io.github.temporalrift.game.action.application.port.in.PlaySpecialActionUseCase;
 import io.github.temporalrift.game.action.application.port.in.RecordActivistDeclarationUseCase;
-import io.github.temporalrift.game.action.infrastructure.adapter.in.rest.model.ActionSubmissionStatus;
-import io.github.temporalrift.game.action.infrastructure.adapter.in.rest.model.ActivistDeclarationRequest;
-import io.github.temporalrift.game.action.infrastructure.adapter.in.rest.model.ActivistDeclarationResponse;
-import io.github.temporalrift.game.action.infrastructure.adapter.in.rest.model.CardActionRequest;
-import io.github.temporalrift.game.action.infrastructure.adapter.in.rest.model.RoundStatus;
-import io.github.temporalrift.game.action.infrastructure.adapter.in.rest.model.RoundStatusResponse;
-import io.github.temporalrift.game.action.infrastructure.adapter.in.rest.model.SpecialActionRequest;
-import io.github.temporalrift.game.action.infrastructure.adapter.in.rest.model.SubmitActionRequest;
-import io.github.temporalrift.game.action.infrastructure.adapter.in.rest.model.SubmitActionResponse;
+import io.github.temporalrift.game.action.infrastructure.adapter.in.rest.v1.ActionApi;
+import io.github.temporalrift.game.action.infrastructure.adapter.in.rest.v1.model.ActionSubmissionStatus;
+import io.github.temporalrift.game.action.infrastructure.adapter.in.rest.v1.model.ActivistDeclarationRequest;
+import io.github.temporalrift.game.action.infrastructure.adapter.in.rest.v1.model.ActivistDeclarationResponse;
+import io.github.temporalrift.game.action.infrastructure.adapter.in.rest.v1.model.CardActionRequest;
+import io.github.temporalrift.game.action.infrastructure.adapter.in.rest.v1.model.RoundStatus;
+import io.github.temporalrift.game.action.infrastructure.adapter.in.rest.v1.model.RoundStatusResponse;
+import io.github.temporalrift.game.action.infrastructure.adapter.in.rest.v1.model.SpecialActionRequest;
+import io.github.temporalrift.game.action.infrastructure.adapter.in.rest.v1.model.SubmitActionRequest;
+import io.github.temporalrift.game.action.infrastructure.adapter.in.rest.v1.model.SubmitActionResponse;
 import io.github.temporalrift.game.shared.CurrentPlayer;
 
 @RestController

@@ -10,14 +10,15 @@ import io.github.temporalrift.game.session.application.port.in.GetGameStateUseCa
 import io.github.temporalrift.game.session.application.port.in.JoinLobbyUseCase;
 import io.github.temporalrift.game.session.application.port.in.LeaveLobbyUseCase;
 import io.github.temporalrift.game.session.application.port.in.StartGameUseCase;
-import io.github.temporalrift.game.session.infrastructure.adapter.in.rest.model.CreateLobbyRequest;
-import io.github.temporalrift.game.session.infrastructure.adapter.in.rest.model.CreateLobbyResponse;
-import io.github.temporalrift.game.session.infrastructure.adapter.in.rest.model.GameStatus;
-import io.github.temporalrift.game.session.infrastructure.adapter.in.rest.model.GameSummaryResponse;
-import io.github.temporalrift.game.session.infrastructure.adapter.in.rest.model.JoinLobbyRequest;
-import io.github.temporalrift.game.session.infrastructure.adapter.in.rest.model.JoinLobbyResponse;
-import io.github.temporalrift.game.session.infrastructure.adapter.in.rest.model.PlayerInLobby;
-import io.github.temporalrift.game.session.infrastructure.adapter.in.rest.model.StartGameResponse;
+import io.github.temporalrift.game.session.infrastructure.adapter.in.rest.v1.SessionApi;
+import io.github.temporalrift.game.session.infrastructure.adapter.in.rest.v1.model.CreateLobbyRequest;
+import io.github.temporalrift.game.session.infrastructure.adapter.in.rest.v1.model.CreateLobbyResponse;
+import io.github.temporalrift.game.session.infrastructure.adapter.in.rest.v1.model.GameStatus;
+import io.github.temporalrift.game.session.infrastructure.adapter.in.rest.v1.model.GameSummaryResponse;
+import io.github.temporalrift.game.session.infrastructure.adapter.in.rest.v1.model.JoinLobbyRequest;
+import io.github.temporalrift.game.session.infrastructure.adapter.in.rest.v1.model.JoinLobbyResponse;
+import io.github.temporalrift.game.session.infrastructure.adapter.in.rest.v1.model.PlayerInLobby;
+import io.github.temporalrift.game.session.infrastructure.adapter.in.rest.v1.model.StartGameResponse;
 import io.github.temporalrift.game.shared.CurrentPlayer;
 
 @RestController

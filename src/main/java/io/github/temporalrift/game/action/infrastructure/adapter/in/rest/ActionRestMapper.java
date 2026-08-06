@@ -1,6 +1,6 @@
 package io.github.temporalrift.game.action.infrastructure.adapter.in.rest;
 
-import io.github.temporalrift.game.action.infrastructure.adapter.in.rest.model.SpecialAction;
+import io.github.temporalrift.game.action.infrastructure.adapter.in.rest.v1.model.SpecialAction;
 
 /** Maps generated action API values to their domain representation. */
 final class ActionRestMapper {
@@ -28,7 +28,7 @@ final class ActionRestMapper {
     }
 
     static io.github.temporalrift.game.action.domain.activisterastate.ActivistDeclarationMode toDomain(
-            io.github.temporalrift.game.action.infrastructure.adapter.in.rest.model.ActivistDeclarationMode mode) {
+            io.github.temporalrift.game.action.infrastructure.adapter.in.rest.v1.model.ActivistDeclarationMode mode) {
         return switch (mode) {
             case RALLY -> io.github.temporalrift.game.action.domain.activisterastate.ActivistDeclarationMode.RALLY;
             case MOMENTUM ->
@@ -36,13 +36,13 @@ final class ActionRestMapper {
         };
     }
 
-    static io.github.temporalrift.game.action.infrastructure.adapter.in.rest.model.ActivistDeclarationMode toRest(
+    static io.github.temporalrift.game.action.infrastructure.adapter.in.rest.v1.model.ActivistDeclarationMode toRest(
             io.github.temporalrift.game.action.domain.activisterastate.ActivistDeclarationMode mode) {
         return switch (mode) {
             case RALLY ->
-                io.github.temporalrift.game.action.infrastructure.adapter.in.rest.model.ActivistDeclarationMode.RALLY;
+                io.github.temporalrift.game.action.infrastructure.adapter.in.rest.v1.model.ActivistDeclarationMode.RALLY;
             case MOMENTUM ->
-                io.github.temporalrift.game.action.infrastructure.adapter.in.rest.model.ActivistDeclarationMode
+                io.github.temporalrift.game.action.infrastructure.adapter.in.rest.v1.model.ActivistDeclarationMode
                         .MOMENTUM;
         };
     }

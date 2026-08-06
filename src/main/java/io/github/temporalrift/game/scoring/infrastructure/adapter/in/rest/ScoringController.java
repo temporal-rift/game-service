@@ -7,12 +7,13 @@ import org.springframework.web.bind.annotation.RestController;
 
 import io.github.temporalrift.game.scoring.application.port.in.GetScoresUseCase;
 import io.github.temporalrift.game.scoring.application.port.in.GetScoringHistoryUseCase;
-import io.github.temporalrift.game.scoring.infrastructure.adapter.in.rest.model.EraHistory;
-import io.github.temporalrift.game.scoring.infrastructure.adapter.in.rest.model.Faction;
-import io.github.temporalrift.game.scoring.infrastructure.adapter.in.rest.model.PlayerScore;
-import io.github.temporalrift.game.scoring.infrastructure.adapter.in.rest.model.ScoreDelta;
-import io.github.temporalrift.game.scoring.infrastructure.adapter.in.rest.model.ScoresHistoryResponse;
-import io.github.temporalrift.game.scoring.infrastructure.adapter.in.rest.model.ScoresResponse;
+import io.github.temporalrift.game.scoring.infrastructure.adapter.in.rest.v1.ScoringApi;
+import io.github.temporalrift.game.scoring.infrastructure.adapter.in.rest.v1.model.EraHistory;
+import io.github.temporalrift.game.scoring.infrastructure.adapter.in.rest.v1.model.Faction;
+import io.github.temporalrift.game.scoring.infrastructure.adapter.in.rest.v1.model.PlayerScore;
+import io.github.temporalrift.game.scoring.infrastructure.adapter.in.rest.v1.model.ScoreDelta;
+import io.github.temporalrift.game.scoring.infrastructure.adapter.in.rest.v1.model.ScoresHistoryResponse;
+import io.github.temporalrift.game.scoring.infrastructure.adapter.in.rest.v1.model.ScoresResponse;
 
 @RestController
 class ScoringController implements ScoringApi {
