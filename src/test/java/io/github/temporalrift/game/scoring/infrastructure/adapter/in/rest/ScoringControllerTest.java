@@ -50,7 +50,7 @@ class ScoringControllerTest {
     @Test
     @DisplayName("Given no JWT, when GET scores, then 401")
     void getScoresNoJwt() throws Exception {
-        mockMvc.perform(get("/games/{gameId}/scores", GAME_ID)).andExpect(status().isUnauthorized());
+        mockMvc.perform(get("/api/v1/games/{gameId}/scores", GAME_ID)).andExpect(status().isUnauthorized());
     }
 
     @Test
@@ -60,7 +60,7 @@ class ScoringControllerTest {
                 .willReturn(new GetScoresUseCase.Result(
                         GAME_ID, 2, List.of(new GetScoresUseCase.PlayerScoreRow(PLAYER_ID, "Ada", 12, null))));
 
-        mockMvc.perform(get("/games/{gameId}/scores", GAME_ID).with(auth()))
+        mockMvc.perform(get("/api/v1/games/{gameId}/scores", GAME_ID).with(auth()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.gameId").value(GAME_ID.toString()))
                 .andExpect(jsonPath("$.eraNumber").value(2))
@@ -81,7 +81,7 @@ class ScoringControllerTest {
                                 List.of(new GetScoringHistoryUseCase.ScoreDeltaRow(
                                         PLAYER_ID, 4, "EVENT_RESOLVED_AS_WRITTEN"))))));
 
-        mockMvc.perform(get("/games/{gameId}/scores/history", GAME_ID).with(auth()))
+        mockMvc.perform(get("/api/v1/games/{gameId}/scores/history", GAME_ID).with(auth()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.gameId").value(GAME_ID.toString()))
                 .andExpect(jsonPath("$.history[0].eraNumber").value(1))
@@ -95,7 +95,7 @@ class ScoringControllerTest {
     void getScoresNotFound() throws Exception {
         given(getScoresUseCase.handle(any())).willThrow(new ScoringGameNotFoundException(GAME_ID));
 
-        mockMvc.perform(get("/games/{gameId}/scores", GAME_ID).with(auth()))
+        mockMvc.perform(get("/api/v1/games/{gameId}/scores", GAME_ID).with(auth()))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("404-01"));
     }
