@@ -34,6 +34,32 @@ class ActionRoundTest {
         return new ActionRound(UUID.randomUUID(), GAME_ID, ERA, ROUND, players, TIMER_SECONDS);
     }
 
+    static SubmittedAction.CardAction card(UUID playerId, CardType cardType) {
+        return new SubmittedAction.CardAction(playerId, UUID.randomUUID(), cardType, null, null, null);
+    }
+
+    static SubmittedAction.CardAction card(
+            UUID playerId,
+            UUID cardInstanceId,
+            CardType cardType,
+            UUID targetEventId,
+            UUID sourceOutcomeId,
+            UUID targetOutcomeId) {
+        return new SubmittedAction.CardAction(
+                playerId, cardInstanceId, cardType, targetEventId, sourceOutcomeId, targetOutcomeId);
+    }
+
+    static SubmittedAction.SpecialActionSubmission special(
+            UUID playerId,
+            Faction faction,
+            SpecialAction specialAction,
+            UUID targetEventId,
+            UUID targetOutcomeId,
+            UUID targetPlayerId) {
+        return new SubmittedAction.SpecialActionSubmission(
+                playerId, faction, specialAction, targetEventId, targetOutcomeId, targetPlayerId);
+    }
+
     @Test
     @DisplayName("constructor registers ActionRoundStarted with correct fields")
     void constructorRegistersActionRoundStarted() {
@@ -73,8 +99,8 @@ class ActionRoundTest {
     }
 
     @Test
-    @DisplayName(
-            "submitCard — removes player from pending, registers CardPlayed, returns false when others still pending")
+    @DisplayName("submit — CardAction — removes player from pending, registers CardPlayed, returns false when "
+            + "others still pending")
     void submitCardRemovesPlayerAndRegistersEvent() {
         // given
         var round = openRound(List.of(PLAYER_A, PLAYER_B));
@@ -83,7 +109,7 @@ class ActionRoundTest {
 
         // when
         var allSubmitted =
-                round.submitCard(PLAYER_A, cardId, CardType.PUSH, UUID.randomUUID(), null, UUID.randomUUID());
+                round.submit(card(PLAYER_A, cardId, CardType.PUSH, UUID.randomUUID(), null, UUID.randomUUID()));
 
         // then
         assertThat(allSubmitted).isFalse();
@@ -96,7 +122,7 @@ class ActionRoundTest {
     }
 
     @Test
-    @DisplayName("submitCard — Swing preserves source and destination outcomes")
+    @DisplayName("submit — CardAction Swing preserves source and destination outcomes")
     void submitCardSwingPreservesSourceAndDestinationOutcomes() {
         // given
         var round = openRound(List.of(PLAYER_A, PLAYER_B));
@@ -107,14 +133,14 @@ class ActionRoundTest {
         var targetOutcomeId = UUID.randomUUID();
 
         // when
-        round.submitCard(PLAYER_A, cardId, CardType.SWING, eventId, sourceOutcomeId, targetOutcomeId);
+        round.submit(card(PLAYER_A, cardId, CardType.SWING, eventId, sourceOutcomeId, targetOutcomeId));
 
         // then
         assertThat(round.submittedActions())
                 .singleElement()
-                .isInstanceOfSatisfying(SubmittedAction.CardAction.class, card -> {
-                    assertThat(card.sourceOutcomeId()).isEqualTo(sourceOutcomeId);
-                    assertThat(card.targetOutcomeId()).isEqualTo(targetOutcomeId);
+                .isInstanceOfSatisfying(SubmittedAction.CardAction.class, c -> {
+                    assertThat(c.sourceOutcomeId()).isEqualTo(sourceOutcomeId);
+                    assertThat(c.targetOutcomeId()).isEqualTo(targetOutcomeId);
                 });
         assertThat(round.pullEvents()).singleElement().isInstanceOfSatisfying(CardPlayed.class, cardPlayed -> {
             assertThat(cardPlayed.targetEventId()).isEqualTo(eventId);
@@ -124,7 +150,7 @@ class ActionRoundTest {
     }
 
     @Test
-    @DisplayName("submitCard — Swing without source outcome — throws InvalidActionTargetException")
+    @DisplayName("submit — CardAction Swing without source outcome — throws InvalidActionTargetException")
     void submitCardSwingWithoutSourceOutcomeThrows() {
         var round = openRound(List.of(PLAYER_A, PLAYER_B));
         round.pullEvents();
@@ -133,12 +159,12 @@ class ActionRoundTest {
         var targetOutcomeId = UUID.randomUUID();
 
         assertThatExceptionOfType(InvalidActionTargetException.class)
-                .isThrownBy(
-                        () -> round.submitCard(PLAYER_A, cardId, CardType.SWING, targetEventId, null, targetOutcomeId));
+                .isThrownBy(() ->
+                        round.submit(card(PLAYER_A, cardId, CardType.SWING, targetEventId, null, targetOutcomeId)));
     }
 
     @Test
-    @DisplayName("submitCard — Swing without target outcome — throws InvalidActionTargetException")
+    @DisplayName("submit — CardAction Swing without target outcome — throws InvalidActionTargetException")
     void submitCardSwingWithoutTargetOutcomeThrows() {
         var round = openRound(List.of(PLAYER_A, PLAYER_B));
         round.pullEvents();
@@ -147,12 +173,12 @@ class ActionRoundTest {
         var sourceOutcomeId = UUID.randomUUID();
 
         assertThatExceptionOfType(InvalidActionTargetException.class)
-                .isThrownBy(
-                        () -> round.submitCard(PLAYER_A, cardId, CardType.SWING, targetEventId, sourceOutcomeId, null));
+                .isThrownBy(() ->
+                        round.submit(card(PLAYER_A, cardId, CardType.SWING, targetEventId, sourceOutcomeId, null)));
     }
 
     @Test
-    @DisplayName("submitCard — Swing with same source and target outcome — throws InvalidActionTargetException")
+    @DisplayName("submit — CardAction Swing with same source and target outcome — throws InvalidActionTargetException")
     void submitCardSwingWithSameSourceAndTargetOutcomeThrows() {
         var round = openRound(List.of(PLAYER_A, PLAYER_B));
         round.pullEvents();
@@ -161,41 +187,39 @@ class ActionRoundTest {
         var outcomeId = UUID.randomUUID();
 
         assertThatExceptionOfType(InvalidActionTargetException.class)
-                .isThrownBy(
-                        () -> round.submitCard(PLAYER_A, cardId, CardType.SWING, targetEventId, outcomeId, outcomeId));
+                .isThrownBy(() ->
+                        round.submit(card(PLAYER_A, cardId, CardType.SWING, targetEventId, outcomeId, outcomeId)));
     }
 
     @Test
-    @DisplayName("submitCard — last player submits — returns true")
+    @DisplayName("submit — CardAction — last player submits — returns true")
     void submitCardLastPlayerReturnsTrue() {
         // given
         var round = openRound(List.of(PLAYER_A));
         round.pullEvents();
-        var cardId = UUID.randomUUID();
 
         // when
-        var allSubmitted = round.submitCard(PLAYER_A, cardId, CardType.SUPPRESS, null, null, null);
+        var allSubmitted = round.submit(card(PLAYER_A, CardType.SUPPRESS));
 
         // then
         assertThat(allSubmitted).isTrue();
     }
 
     @Test
-    @DisplayName("submitCard — round is CLOSED — throws ActionRoundClosedException")
-    void submitCardOnClosedRoundThrows() {
+    @DisplayName("submit — round is CLOSED — throws ActionRoundClosedException")
+    void submitOnClosedRoundThrows() {
         // given
         var round = openRound(List.of(PLAYER_A));
         round.close("ALL_SUBMITTED");
-        var cardId = UUID.randomUUID();
 
         // when / then
         assertThatExceptionOfType(ActionRoundClosedException.class)
-                .isThrownBy(() -> round.submitCard(PLAYER_A, cardId, CardType.PUSH, null, null, null));
+                .isThrownBy(() -> round.submit(card(PLAYER_A, CardType.PUSH)));
     }
 
     @Test
-    @DisplayName("submitCard — round is CLOSING — throws ActionRoundClosedException")
-    void submitCardOnClosingRoundThrows() {
+    @DisplayName("submit — round is CLOSING — throws ActionRoundClosedException")
+    void submitOnClosingRoundThrows() {
         // given
         var round = ActionRound.reconstitute(
                 UUID.randomUUID(),
@@ -207,110 +231,48 @@ class ActionRoundTest {
                 "TIMER_EXPIRED",
                 List.of(PLAYER_A),
                 List.of());
-        var cardId = UUID.randomUUID();
 
         // when / then
         assertThatExceptionOfType(ActionRoundClosedException.class)
-                .isThrownBy(() -> round.submitCard(PLAYER_A, cardId, CardType.PUSH, null, null, null));
+                .isThrownBy(() -> round.submit(card(PLAYER_A, CardType.PUSH)));
     }
 
     @Test
-    @DisplayName("submitCard — player already submitted — throws DuplicateSubmissionException")
-    void submitCardDuplicateSubmissionThrows() {
+    @DisplayName("submit — player already submitted — throws DuplicateSubmissionException")
+    void submitDuplicateSubmissionThrows() {
         // given
         var round = openRound(List.of(PLAYER_A, PLAYER_B));
         round.pullEvents();
-        var cardId = UUID.randomUUID();
-        var cardId2 = UUID.randomUUID();
-        round.submitCard(PLAYER_A, cardId, CardType.PUSH, null, null, null);
+        round.submit(card(PLAYER_A, CardType.PUSH));
 
         // when / then
         assertThatExceptionOfType(DuplicateSubmissionException.class)
-                .isThrownBy(() -> round.submitCard(PLAYER_A, cardId2, CardType.SUPPRESS, null, null, null));
+                .isThrownBy(() -> round.submit(card(PLAYER_A, CardType.SUPPRESS)));
     }
 
     @Test
-    @DisplayName("submitSpecial — jammed player — throws JammedPlayerException")
-    void submitSpecialJammedPlayerThrows() {
+    @DisplayName("submit — player not pending in this round — throws DuplicateSubmissionException")
+    void submitUnknownPlayerThrows() {
         // given
         var round = openRound(List.of(PLAYER_A));
         round.pullEvents();
-
-        // when / then
-        assertThatExceptionOfType(JammedPlayerException.class)
-                .isThrownBy(() -> round.submitSpecial(
-                        PLAYER_A, Faction.ERASERS, SpecialAction.ANNIHILATE, null, null, null, true));
-    }
-
-    @Test
-    @DisplayName("submitSpecial — missing faction — throws FactionRequiredException")
-    void submitSpecialMissingFactionThrows() {
-        // given
-        var round = openRound(List.of(PLAYER_A));
-        round.pullEvents();
-
-        // when / then
-        assertThatExceptionOfType(FactionRequiredException.class)
-                .isThrownBy(
-                        () -> round.submitSpecial(PLAYER_A, null, SpecialAction.ANNIHILATE, null, null, null, false));
-        assertThat(round.pendingPlayerIds()).containsExactly(PLAYER_A);
-        assertThat(round.submittedActions()).isEmpty();
-        assertThat(round.pullEvents()).isEmpty();
-    }
-
-    @Test
-    @DisplayName("submitSpecial — faction does not own the special action — throws InvalidSpecialActionException")
-    void submitSpecialFactionDoesNotOwnActionThrows() {
-        // given
-        var round = openRound(List.of(PLAYER_A));
-        round.pullEvents();
-
-        // when / then
-        assertThatExceptionOfType(InvalidSpecialActionException.class)
-                .isThrownBy(() ->
-                        round.submitSpecial(PLAYER_A, Faction.ERASERS, SpecialAction.SEAL, null, null, null, false));
-        assertThat(round.pendingPlayerIds()).containsExactly(PLAYER_A);
-        assertThat(round.submittedActions()).isEmpty();
-        assertThat(round.pullEvents()).isEmpty();
-    }
-
-    @Test
-    @DisplayName("submitSpecial — round is CLOSED — throws ActionRoundClosedException")
-    void submitSpecialOnClosedRoundThrows() {
-        // given
-        var round = openRound(List.of(PLAYER_A));
-        round.close("ALL_SUBMITTED");
-
-        // when / then
-        assertThatExceptionOfType(ActionRoundClosedException.class)
-                .isThrownBy(() ->
-                        round.submitSpecial(PLAYER_A, Faction.PROPHETS, SpecialAction.SEAL, null, null, null, false));
-    }
-
-    @Test
-    @DisplayName("submitSpecial — player already submitted — throws DuplicateSubmissionException")
-    void submitSpecialDuplicateSubmissionThrows() {
-        // given
-        var round = openRound(List.of(PLAYER_A, PLAYER_B));
-        round.pullEvents();
-        round.submitSpecial(PLAYER_A, Faction.PROPHETS, SpecialAction.SEAL, null, null, null, false);
 
         // when / then
         assertThatExceptionOfType(DuplicateSubmissionException.class)
-                .isThrownBy(() -> round.submitSpecial(
-                        PLAYER_A, Faction.PROPHETS, SpecialAction.REWRITE, null, null, null, false));
+                .isThrownBy(() -> round.submit(card(PLAYER_B, CardType.PUSH)));
     }
 
     @Test
-    @DisplayName("submitSpecial — happy path — registers SpecialActionPlayed, returns false when others pending")
+    @DisplayName("submit — SpecialActionSubmission — happy path — registers SpecialActionPlayed, returns false "
+            + "when others pending")
     void submitSpecialHappyPath() {
         // given
         var round = openRound(List.of(PLAYER_A, PLAYER_B));
         round.pullEvents();
 
         // when
-        var allSubmitted = round.submitSpecial(
-                PLAYER_A, Faction.PROPHETS, SpecialAction.SEAL, UUID.randomUUID(), UUID.randomUUID(), null, false);
+        var allSubmitted = round.submit(
+                special(PLAYER_A, Faction.PROPHETS, SpecialAction.SEAL, UUID.randomUUID(), UUID.randomUUID(), null));
 
         // then
         assertThat(allSubmitted).isFalse();
@@ -320,7 +282,7 @@ class ActionRoundTest {
     }
 
     @Test
-    @DisplayName("submitSpecial — FORESIGHT without a target — throws InvalidActionTargetException")
+    @DisplayName("submit — FORESIGHT without a target — throws InvalidActionTargetException")
     void submitSpecialForesightWithoutTargetThrows() {
         // given
         var round = openRound(List.of(PLAYER_A));
@@ -328,35 +290,48 @@ class ActionRoundTest {
 
         // when / then
         assertThatExceptionOfType(InvalidActionTargetException.class)
-                .isThrownBy(() -> round.submitSpecial(
-                        PLAYER_A, Faction.PROPHETS, SpecialAction.FORESIGHT, null, null, null, false));
+                .isThrownBy(() ->
+                        round.submit(special(PLAYER_A, Faction.PROPHETS, SpecialAction.FORESIGHT, null, null, null)));
         assertThat(round.pendingPlayerIds()).containsExactly(PLAYER_A);
         assertThat(round.submittedActions()).isEmpty();
         assertThat(round.pullEvents()).isEmpty();
     }
 
     @Test
-    @DisplayName("submitSpecial — REWRITE without a target — throws InvalidActionTargetException")
+    @DisplayName("submit — REWRITE without a target — throws InvalidActionTargetException")
     void submitSpecialRewriteWithoutTargetThrows() {
         var round = openRound(List.of(PLAYER_A));
         round.pullEvents();
 
         assertThatExceptionOfType(InvalidActionTargetException.class)
-                .isThrownBy(() -> round.submitSpecial(
-                        PLAYER_A, Faction.REVISIONISTS, SpecialAction.REWRITE, null, null, null, false));
+                .isThrownBy(() ->
+                        round.submit(special(PLAYER_A, Faction.REVISIONISTS, SpecialAction.REWRITE, null, null, null)));
         assertThat(round.pendingPlayerIds()).containsExactly(PLAYER_A);
         assertThat(round.submittedActions()).isEmpty();
     }
 
     @Test
-    @DisplayName("submitSpecial — MIMIC with a target — registers private special action")
+    @DisplayName("submit — SEAL without a target — throws InvalidActionTargetException")
+    void submitSpecialSealWithoutTargetThrows() {
+        var round = openRound(List.of(PLAYER_A));
+        round.pullEvents();
+
+        assertThatExceptionOfType(InvalidActionTargetException.class)
+                .isThrownBy(
+                        () -> round.submit(special(PLAYER_A, Faction.PROPHETS, SpecialAction.SEAL, null, null, null)));
+        assertThat(round.pendingPlayerIds()).containsExactly(PLAYER_A);
+        assertThat(round.submittedActions()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("submit — MIMIC with a target — registers private special action")
     void submitSpecialMimicWithTargetRegistersSpecialAction() {
         var round = openRound(List.of(PLAYER_A));
         round.pullEvents();
         var eventId = UUID.randomUUID();
         var outcomeId = UUID.randomUUID();
 
-        round.submitSpecial(PLAYER_A, Faction.REVISIONISTS, SpecialAction.MIMIC, eventId, outcomeId, null, false);
+        round.submit(special(PLAYER_A, Faction.REVISIONISTS, SpecialAction.MIMIC, eventId, outcomeId, null));
 
         var events = round.pullEvents();
         assertThat(events).singleElement().isInstanceOfSatisfying(SpecialActionPlayed.class, played -> {
@@ -367,7 +342,7 @@ class ActionRoundTest {
     }
 
     @Test
-    @DisplayName("submitSpecial — ANNIHILATE without a targetOutcomeId — throws InvalidActionTargetException")
+    @DisplayName("submit — ANNIHILATE without a targetOutcomeId — throws InvalidActionTargetException")
     void submitSpecialAnnihilateWithoutTargetOutcomeThrows() {
         // given
         var round = openRound(List.of(PLAYER_A));
@@ -376,15 +351,15 @@ class ActionRoundTest {
 
         // when / then
         assertThatExceptionOfType(InvalidActionTargetException.class)
-                .isThrownBy(() -> round.submitSpecial(
-                        PLAYER_A, Faction.ERASERS, SpecialAction.ANNIHILATE, targetEventId, null, null, false));
+                .isThrownBy(() -> round.submit(
+                        special(PLAYER_A, Faction.ERASERS, SpecialAction.ANNIHILATE, targetEventId, null, null)));
         assertThat(round.pendingPlayerIds()).containsExactly(PLAYER_A);
         assertThat(round.submittedActions()).isEmpty();
         assertThat(round.pullEvents()).isEmpty();
     }
 
     @Test
-    @DisplayName("submitSpecial — FORESIGHT with a target — registers SpecialActionPlayed and ForesightDeclared")
+    @DisplayName("submit — FORESIGHT with a target — registers SpecialActionPlayed and ForesightDeclared")
     void submitSpecialForesightWithTargetRegistersForesightDeclared() {
         // given
         var round = openRound(List.of(PLAYER_A));
@@ -393,7 +368,7 @@ class ActionRoundTest {
         var outcomeId = UUID.randomUUID();
 
         // when
-        round.submitSpecial(PLAYER_A, Faction.PROPHETS, SpecialAction.FORESIGHT, eventId, outcomeId, null, false);
+        round.submit(special(PLAYER_A, Faction.PROPHETS, SpecialAction.FORESIGHT, eventId, outcomeId, null));
 
         // then
         var events = round.pullEvents();
@@ -409,7 +384,7 @@ class ActionRoundTest {
     }
 
     @Test
-    @DisplayName("submitSpecial — ANNIHILATE with a target — registers SpecialActionPlayed and OutcomeAnnihilated")
+    @DisplayName("submit — ANNIHILATE with a target — registers SpecialActionPlayed and OutcomeAnnihilated")
     void submitSpecialAnnihilateWithTargetRegistersOutcomeAnnihilated() {
         // given
         var round = openRound(List.of(PLAYER_A));
@@ -418,7 +393,7 @@ class ActionRoundTest {
         var outcomeId = UUID.randomUUID();
 
         // when
-        round.submitSpecial(PLAYER_A, Faction.ERASERS, SpecialAction.ANNIHILATE, eventId, outcomeId, null, false);
+        round.submit(special(PLAYER_A, Faction.ERASERS, SpecialAction.ANNIHILATE, eventId, outcomeId, null));
 
         // then
         var events = round.pullEvents();
@@ -434,7 +409,7 @@ class ActionRoundTest {
     }
 
     @Test
-    @DisplayName("submitSpecial — FULFILLMENT without a targetEventId — throws InvalidActionTargetException")
+    @DisplayName("submit — FULFILLMENT without a targetEventId — throws InvalidActionTargetException")
     void submitSpecialFulfillmentWithoutTargetThrows() {
         // given
         var round = openRound(List.of(PLAYER_A));
@@ -442,15 +417,15 @@ class ActionRoundTest {
 
         // when / then
         assertThatExceptionOfType(InvalidActionTargetException.class)
-                .isThrownBy(() -> round.submitSpecial(
-                        PLAYER_A, Faction.PROPHETS, SpecialAction.FULFILLMENT, null, null, null, false));
+                .isThrownBy(() ->
+                        round.submit(special(PLAYER_A, Faction.PROPHETS, SpecialAction.FULFILLMENT, null, null, null)));
         assertThat(round.pendingPlayerIds()).containsExactly(PLAYER_A);
         assertThat(round.submittedActions()).isEmpty();
         assertThat(round.pullEvents()).isEmpty();
     }
 
     @Test
-    @DisplayName("submitSpecial — FULFILLMENT with a targetEventId — registers SpecialActionPlayed only")
+    @DisplayName("submit — FULFILLMENT with a targetEventId — registers SpecialActionPlayed only")
     void submitSpecialFulfillmentWithTargetRegistersSpecialActionOnly() {
         // given
         var round = openRound(List.of(PLAYER_A));
@@ -458,7 +433,7 @@ class ActionRoundTest {
         var eventId = UUID.randomUUID();
 
         // when
-        round.submitSpecial(PLAYER_A, Faction.PROPHETS, SpecialAction.FULFILLMENT, eventId, null, null, false);
+        round.submit(special(PLAYER_A, Faction.PROPHETS, SpecialAction.FULFILLMENT, eventId, null, null));
 
         // then
         var events = round.pullEvents();
@@ -469,7 +444,7 @@ class ActionRoundTest {
     }
 
     @Test
-    @DisplayName("submitSpecial — CORRUPT without a targetPlayerId — throws InvalidActionTargetException")
+    @DisplayName("submit — CORRUPT without a targetPlayerId — throws InvalidActionTargetException")
     void submitSpecialCorruptWithoutTargetPlayerThrows() {
         // given
         var round = openRound(List.of(PLAYER_A, PLAYER_B));
@@ -478,14 +453,14 @@ class ActionRoundTest {
         // when / then
         assertThatExceptionOfType(InvalidActionTargetException.class)
                 .isThrownBy(() ->
-                        round.submitSpecial(PLAYER_A, Faction.ERASERS, SpecialAction.CORRUPT, null, null, null, false));
+                        round.submit(special(PLAYER_A, Faction.ERASERS, SpecialAction.CORRUPT, null, null, null)));
         assertThat(round.pendingPlayerIds()).containsExactly(PLAYER_A, PLAYER_B);
         assertThat(round.submittedActions()).isEmpty();
         assertThat(round.pullEvents()).isEmpty();
     }
 
     @Test
-    @DisplayName("submitSpecial — CORRUPT targeting self — throws InvalidActionTargetException")
+    @DisplayName("submit — CORRUPT targeting self — throws InvalidActionTargetException")
     void submitSpecialCorruptTargetingSelfThrows() {
         // given
         var round = openRound(List.of(PLAYER_A, PLAYER_B));
@@ -493,22 +468,22 @@ class ActionRoundTest {
 
         // when / then
         assertThatExceptionOfType(InvalidActionTargetException.class)
-                .isThrownBy(() -> round.submitSpecial(
-                        PLAYER_A, Faction.ERASERS, SpecialAction.CORRUPT, null, null, PLAYER_A, false));
+                .isThrownBy(() ->
+                        round.submit(special(PLAYER_A, Faction.ERASERS, SpecialAction.CORRUPT, null, null, PLAYER_A)));
         assertThat(round.pendingPlayerIds()).containsExactly(PLAYER_A, PLAYER_B);
         assertThat(round.submittedActions()).isEmpty();
         assertThat(round.pullEvents()).isEmpty();
     }
 
     @Test
-    @DisplayName("submitSpecial — CORRUPT targeting a valid opponent — registers SpecialActionPlayed only")
+    @DisplayName("submit — CORRUPT targeting a valid opponent — registers SpecialActionPlayed only")
     void submitSpecialCorruptWithValidTargetRegistersSpecialActionOnly() {
         // given
         var round = openRound(List.of(PLAYER_A, PLAYER_B));
         round.pullEvents();
 
         // when
-        round.submitSpecial(PLAYER_A, Faction.ERASERS, SpecialAction.CORRUPT, null, null, PLAYER_B, false);
+        round.submit(special(PLAYER_A, Faction.ERASERS, SpecialAction.CORRUPT, null, null, PLAYER_B));
 
         // then
         var events = round.pullEvents();
@@ -525,8 +500,7 @@ class ActionRoundTest {
         // given
         var round = openRound(List.of(PLAYER_A));
         round.pullEvents();
-        var cardId = UUID.randomUUID();
-        round.submitCard(PLAYER_A, cardId, CardType.PUSH, null, null, null);
+        round.submit(card(PLAYER_A, CardType.PUSH));
         round.pullEvents();
 
         // when
@@ -549,8 +523,7 @@ class ActionRoundTest {
         // given
         var round = openRound(List.of(PLAYER_A, PLAYER_B));
         round.pullEvents();
-        var cardId = UUID.randomUUID();
-        round.submitCard(PLAYER_A, cardId, CardType.PUSH, null, null, null);
+        round.submit(card(PLAYER_A, CardType.PUSH));
         round.pullEvents();
 
         // when
