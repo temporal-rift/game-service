@@ -86,11 +86,7 @@ class ActionRoundTest {
                 GAME_ID,
                 ERA,
                 ROUND,
-                RoundStatus.OPEN,
-                TIMER_SECONDS,
-                null,
-                List.of(PLAYER_A),
-                List.of());
+                new ActionRound.PersistedState(RoundStatus.OPEN, TIMER_SECONDS, null, List.of(PLAYER_A), List.of()));
 
         // then
         assertThat(round.pullEvents()).isEmpty();
@@ -226,11 +222,8 @@ class ActionRoundTest {
                 GAME_ID,
                 ERA,
                 ROUND,
-                RoundStatus.CLOSING,
-                TIMER_SECONDS,
-                "TIMER_EXPIRED",
-                List.of(PLAYER_A),
-                List.of());
+                new ActionRound.PersistedState(
+                        RoundStatus.CLOSING, TIMER_SECONDS, "TIMER_EXPIRED", List.of(PLAYER_A), List.of()));
 
         // when / then
         assertThatExceptionOfType(ActionRoundClosedException.class)
