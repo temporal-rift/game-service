@@ -76,7 +76,11 @@ class ActionControllerTest {
     @Test
     @DisplayName("Given no JWT, when POST action, then 401")
     void submitActionNoJwt() throws Exception {
-        mockMvc.perform(post("/games/{gameId}/eras/{eraNumber}/rounds/{roundNumber}/actions", GAME_ID, ERA, ROUND)
+        mockMvc.perform(post(
+                                "/api/v1/games/{gameId}/eras/{eraNumber}/rounds/{roundNumber}/actions",
+                                GAME_ID,
+                                ERA,
+                                ROUND)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(cardJson()))
                 .andExpect(status().isUnauthorized());
@@ -90,7 +94,11 @@ class ActionControllerTest {
                 .willReturn(new PlayCardUseCase.Result(GAME_ID, ERA, ROUND, PLAYER_ID, false));
 
         // when / then
-        mockMvc.perform(post("/games/{gameId}/eras/{eraNumber}/rounds/{roundNumber}/actions", GAME_ID, ERA, ROUND)
+        mockMvc.perform(post(
+                                "/api/v1/games/{gameId}/eras/{eraNumber}/rounds/{roundNumber}/actions",
+                                GAME_ID,
+                                ERA,
+                                ROUND)
                         .with(auth())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(cardJson()))
@@ -122,7 +130,11 @@ class ActionControllerTest {
                 .willReturn(new PlaySpecialActionUseCase.Result(GAME_ID, ERA, ROUND, PLAYER_ID, true));
 
         // when / then
-        mockMvc.perform(post("/games/{gameId}/eras/{eraNumber}/rounds/{roundNumber}/actions", GAME_ID, ERA, ROUND)
+        mockMvc.perform(post(
+                                "/api/v1/games/{gameId}/eras/{eraNumber}/rounds/{roundNumber}/actions",
+                                GAME_ID,
+                                ERA,
+                                ROUND)
                         .with(auth())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(specialJson()))
@@ -145,7 +157,7 @@ class ActionControllerTest {
     @Test
     @DisplayName("Given no JWT, when GET status, then 401")
     void getRoundStatusNoJwt() throws Exception {
-        mockMvc.perform(get("/games/{gameId}/eras/{eraNumber}/rounds/{roundNumber}/status", GAME_ID, ERA, ROUND))
+        mockMvc.perform(get("/api/v1/games/{gameId}/eras/{eraNumber}/rounds/{roundNumber}/status", GAME_ID, ERA, ROUND))
                 .andExpect(status().isUnauthorized());
     }
 
@@ -158,7 +170,7 @@ class ActionControllerTest {
                 .willReturn(new GetRoundStatusUseCase.Result(ERA, ROUND, "OPEN", 42, 2, 3, List.of(pendingPlayerId)));
 
         // when / then
-        mockMvc.perform(get("/games/{gameId}/eras/{eraNumber}/rounds/{roundNumber}/status", GAME_ID, ERA, ROUND)
+        mockMvc.perform(get("/api/v1/games/{gameId}/eras/{eraNumber}/rounds/{roundNumber}/status", GAME_ID, ERA, ROUND)
                         .with(auth()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.eraNumber").value(ERA))
@@ -177,7 +189,7 @@ class ActionControllerTest {
         given(getRoundStatusUseCase.handle(any())).willThrow(new RoundNotFoundException(GAME_ID, ERA, ROUND));
 
         // when / then
-        mockMvc.perform(get("/games/{gameId}/eras/{eraNumber}/rounds/{roundNumber}/status", GAME_ID, ERA, ROUND)
+        mockMvc.perform(get("/api/v1/games/{gameId}/eras/{eraNumber}/rounds/{roundNumber}/status", GAME_ID, ERA, ROUND)
                         .with(auth()))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("404-01"));
@@ -190,7 +202,11 @@ class ActionControllerTest {
         given(playCardUseCase.handle(any())).willThrow(new ActionRoundClosedException());
 
         // when / then
-        mockMvc.perform(post("/games/{gameId}/eras/{eraNumber}/rounds/{roundNumber}/actions", GAME_ID, ERA, ROUND)
+        mockMvc.perform(post(
+                                "/api/v1/games/{gameId}/eras/{eraNumber}/rounds/{roundNumber}/actions",
+                                GAME_ID,
+                                ERA,
+                                ROUND)
                         .with(auth())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(cardJson()))
@@ -205,7 +221,11 @@ class ActionControllerTest {
         given(playCardUseCase.handle(any())).willThrow(new DuplicateSubmissionException(PLAYER_ID));
 
         // when / then
-        mockMvc.perform(post("/games/{gameId}/eras/{eraNumber}/rounds/{roundNumber}/actions", GAME_ID, ERA, ROUND)
+        mockMvc.perform(post(
+                                "/api/v1/games/{gameId}/eras/{eraNumber}/rounds/{roundNumber}/actions",
+                                GAME_ID,
+                                ERA,
+                                ROUND)
                         .with(auth())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(cardJson()))
@@ -220,7 +240,11 @@ class ActionControllerTest {
         given(playCardUseCase.handle(any())).willThrow(new CardNotInHandException(CARD_INSTANCE_ID));
 
         // when / then
-        mockMvc.perform(post("/games/{gameId}/eras/{eraNumber}/rounds/{roundNumber}/actions", GAME_ID, ERA, ROUND)
+        mockMvc.perform(post(
+                                "/api/v1/games/{gameId}/eras/{eraNumber}/rounds/{roundNumber}/actions",
+                                GAME_ID,
+                                ERA,
+                                ROUND)
                         .with(auth())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(cardJson()))
@@ -235,7 +259,11 @@ class ActionControllerTest {
         given(playSpecialActionUseCase.handle(any())).willThrow(new JammedPlayerException(PLAYER_ID));
 
         // when / then
-        mockMvc.perform(post("/games/{gameId}/eras/{eraNumber}/rounds/{roundNumber}/actions", GAME_ID, ERA, ROUND)
+        mockMvc.perform(post(
+                                "/api/v1/games/{gameId}/eras/{eraNumber}/rounds/{roundNumber}/actions",
+                                GAME_ID,
+                                ERA,
+                                ROUND)
                         .with(auth())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(specialJson()))
@@ -250,7 +278,11 @@ class ActionControllerTest {
         given(playSpecialActionUseCase.handle(any())).willThrow(new FactionRequiredException(PLAYER_ID));
 
         // when / then
-        mockMvc.perform(post("/games/{gameId}/eras/{eraNumber}/rounds/{roundNumber}/actions", GAME_ID, ERA, ROUND)
+        mockMvc.perform(post(
+                                "/api/v1/games/{gameId}/eras/{eraNumber}/rounds/{roundNumber}/actions",
+                                GAME_ID,
+                                ERA,
+                                ROUND)
                         .with(auth())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(specialJson()))
@@ -265,7 +297,11 @@ class ActionControllerTest {
         given(playCardUseCase.handle(any())).willThrow(InvalidActionTargetException.swingRequiresDistinctOutcomes());
 
         // when / then
-        mockMvc.perform(post("/games/{gameId}/eras/{eraNumber}/rounds/{roundNumber}/actions", GAME_ID, ERA, ROUND)
+        mockMvc.perform(post(
+                                "/api/v1/games/{gameId}/eras/{eraNumber}/rounds/{roundNumber}/actions",
+                                GAME_ID,
+                                ERA,
+                                ROUND)
                         .with(auth())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(cardJson()))
@@ -278,7 +314,11 @@ class ActionControllerTest {
     void exposeAlreadyRecorded() throws Exception {
         given(playSpecialActionUseCase.handle(any())).willThrow(new ExposeAlreadyRecordedException());
 
-        mockMvc.perform(post("/games/{gameId}/eras/{eraNumber}/rounds/{roundNumber}/actions", GAME_ID, ERA, ROUND)
+        mockMvc.perform(post(
+                                "/api/v1/games/{gameId}/eras/{eraNumber}/rounds/{roundNumber}/actions",
+                                GAME_ID,
+                                ERA,
+                                ROUND)
                         .with(auth())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(specialJson()))
@@ -298,7 +338,7 @@ class ActionControllerTest {
                         TARGET_EVENT_ID,
                         TARGET_OUTCOME_ID));
 
-        mockMvc.perform(post("/games/{gameId}/eras/{eraNumber}/declarations", GAME_ID, ERA)
+        mockMvc.perform(post("/api/v1/games/{gameId}/eras/{eraNumber}/declarations", GAME_ID, ERA)
                         .with(auth())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(declarationJson()))

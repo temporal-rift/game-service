@@ -83,7 +83,7 @@ class SessionControllerTest {
                 .willReturn(new CreateLobbyUseCase.Result(LOBBY_ID, PLAYER_ID, JOIN_CODE));
 
         // when / then
-        mockMvc.perform(post("/lobbies")
+        mockMvc.perform(post("/api/v1/lobbies")
                         .with(auth())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -104,7 +104,7 @@ class SessionControllerTest {
                 .willReturn(new JoinLobbyUseCase.Result(LOBBY_ID, PLAYER_ID, List.of(summary)));
 
         // when / then
-        mockMvc.perform(post("/lobbies/{lobbyId}/join", LOBBY_ID)
+        mockMvc.perform(post("/api/v1/lobbies/{lobbyId}/join", LOBBY_ID)
                         .with(auth())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -123,7 +123,7 @@ class SessionControllerTest {
         given(leaveLobbyUseCase.handle(any())).willReturn(new LeaveLobbyUseCase.Result());
 
         // when / then
-        mockMvc.perform(delete("/lobbies/{lobbyId}/players/me", LOBBY_ID).with(auth()))
+        mockMvc.perform(delete("/api/v1/lobbies/{lobbyId}/players/me", LOBBY_ID).with(auth()))
                 .andExpect(status().isNoContent());
     }
 
@@ -134,7 +134,7 @@ class SessionControllerTest {
         given(startGameUseCase.handle(any())).willReturn(new StartGameUseCase.Result(GAME_ID));
 
         // when / then
-        mockMvc.perform(post("/lobbies/{lobbyId}/start", LOBBY_ID).with(auth()))
+        mockMvc.perform(post("/api/v1/lobbies/{lobbyId}/start", LOBBY_ID).with(auth()))
                 .andExpect(status().isAccepted())
                 .andExpect(jsonPath("$.gameId").value(GAME_ID.toString()));
     }
@@ -147,7 +147,7 @@ class SessionControllerTest {
                 .willReturn(new GetGameStateUseCase.Result(GAME_ID, GameStatus.IN_PROGRESS, 2, 3, 1));
 
         // when / then
-        mockMvc.perform(get("/games/{gameId}", GAME_ID).with(auth()))
+        mockMvc.perform(get("/api/v1/games/{gameId}", GAME_ID).with(auth()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.gameId").value(GAME_ID.toString()))
                 .andExpect(jsonPath("$.status").value("IN_PROGRESS"))
@@ -164,7 +164,7 @@ class SessionControllerTest {
         given(joinLobbyUseCase.handle(any())).willThrow(new LobbyNotFoundException(LOBBY_ID));
 
         // when / then
-        mockMvc.perform(post("/lobbies/{lobbyId}/join", LOBBY_ID)
+        mockMvc.perform(post("/api/v1/lobbies/{lobbyId}/join", LOBBY_ID)
                         .with(auth())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -181,7 +181,7 @@ class SessionControllerTest {
         given(leaveLobbyUseCase.handle(any())).willThrow(new PlayerNotInLobbyException(PLAYER_ID));
 
         // when / then
-        mockMvc.perform(delete("/lobbies/{lobbyId}/players/me", LOBBY_ID).with(auth()))
+        mockMvc.perform(delete("/api/v1/lobbies/{lobbyId}/players/me", LOBBY_ID).with(auth()))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("404-03"));
     }
@@ -193,7 +193,7 @@ class SessionControllerTest {
         given(joinLobbyUseCase.handle(any())).willThrow(new LobbyAlreadyStartedException());
 
         // when / then
-        mockMvc.perform(post("/lobbies/{lobbyId}/join", LOBBY_ID)
+        mockMvc.perform(post("/api/v1/lobbies/{lobbyId}/join", LOBBY_ID)
                         .with(auth())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -210,7 +210,7 @@ class SessionControllerTest {
         given(joinLobbyUseCase.handle(any())).willThrow(new PlayerAlreadyInLobbyException(PLAYER_ID));
 
         // when / then
-        mockMvc.perform(post("/lobbies/{lobbyId}/join", LOBBY_ID)
+        mockMvc.perform(post("/api/v1/lobbies/{lobbyId}/join", LOBBY_ID)
                         .with(auth())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -227,7 +227,7 @@ class SessionControllerTest {
         given(joinLobbyUseCase.handle(any())).willThrow(new LobbyFullException());
 
         // when / then
-        mockMvc.perform(post("/lobbies/{lobbyId}/join", LOBBY_ID)
+        mockMvc.perform(post("/api/v1/lobbies/{lobbyId}/join", LOBBY_ID)
                         .with(auth())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -244,7 +244,7 @@ class SessionControllerTest {
         given(startGameUseCase.handle(any())).willThrow(new NotEnoughPlayersException());
 
         // when / then
-        mockMvc.perform(post("/lobbies/{lobbyId}/start", LOBBY_ID).with(auth()))
+        mockMvc.perform(post("/api/v1/lobbies/{lobbyId}/start", LOBBY_ID).with(auth()))
                 .andExpect(status().is(422))
                 .andExpect(jsonPath("$.code").value("422-02"));
     }
@@ -256,7 +256,7 @@ class SessionControllerTest {
         given(startGameUseCase.handle(any())).willThrow(new NotLobbyHostException());
 
         // when / then
-        mockMvc.perform(post("/lobbies/{lobbyId}/start", LOBBY_ID).with(auth()))
+        mockMvc.perform(post("/api/v1/lobbies/{lobbyId}/start", LOBBY_ID).with(auth()))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.code").value("403-02"));
     }
@@ -269,7 +269,7 @@ class SessionControllerTest {
         given(startGameUseCase.handle(any())).willThrow(new DisconnectedPlayersException(List.of(disconnectedId)));
 
         // when / then
-        mockMvc.perform(post("/lobbies/{lobbyId}/start", LOBBY_ID).with(auth()))
+        mockMvc.perform(post("/api/v1/lobbies/{lobbyId}/start", LOBBY_ID).with(auth()))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("409-03"))
                 .andExpect(jsonPath("$.disconnectedPlayerIds[0]").value(disconnectedId.toString()));
@@ -282,7 +282,7 @@ class SessionControllerTest {
         given(getGameStateUseCase.handle(any())).willThrow(new GameNotFoundException(GAME_ID));
 
         // when / then
-        mockMvc.perform(get("/games/{gameId}", GAME_ID).with(auth()))
+        mockMvc.perform(get("/api/v1/games/{gameId}", GAME_ID).with(auth()))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("404-02"));
     }
@@ -294,7 +294,7 @@ class SessionControllerTest {
         given(leaveLobbyUseCase.handle(any())).willThrow(new IllegalStateException("internal connection string"));
 
         // when / then
-        mockMvc.perform(delete("/lobbies/{lobbyId}/players/me", LOBBY_ID).with(auth()))
+        mockMvc.perform(delete("/api/v1/lobbies/{lobbyId}/players/me", LOBBY_ID).with(auth()))
                 .andExpect(status().isInternalServerError())
                 .andExpect(jsonPath("$.detail").value("An unexpected error occurred"));
     }
