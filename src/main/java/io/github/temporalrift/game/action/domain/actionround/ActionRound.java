@@ -60,48 +60,29 @@ public class ActionRound extends AggregateRoot {
         initialSubmittedActions.forEach(action -> registerEvent(action.toPlayedEvent(gameId, eraNumber, roundNumber)));
     }
 
-    private ActionRound(
-            UUID id,
-            UUID gameId,
-            int eraNumber,
-            int roundNumber,
-            RoundStatus status,
-            int timerSeconds,
-            String closedReason,
-            List<UUID> pendingPlayerIds,
-            List<SubmittedAction> submittedActions) {
+    private ActionRound(UUID id, UUID gameId, int eraNumber, int roundNumber, PersistedState state) {
         this.id = id;
         this.gameId = gameId;
         this.eraNumber = eraNumber;
         this.roundNumber = roundNumber;
-        this.timerSeconds = timerSeconds;
-        this.status = status;
-        this.closedReason = closedReason;
-        this.pendingPlayerIds = new ArrayList<>(pendingPlayerIds);
-        this.submittedActions = new ArrayList<>(submittedActions);
+        this.timerSeconds = state.timerSeconds();
+        this.status = state.status();
+        this.closedReason = state.closedReason();
+        this.pendingPlayerIds = new ArrayList<>(state.pendingPlayerIds());
+        this.submittedActions = new ArrayList<>(state.submittedActions());
     }
 
-    public static ActionRound reconstitute(
-            UUID id,
-            UUID gameId,
-            int eraNumber,
-            int roundNumber,
+    public static ActionRound reconstitute(UUID id, UUID gameId, int eraNumber, int roundNumber, PersistedState state) {
+        return new ActionRound(id, gameId, eraNumber, roundNumber, state);
+    }
+
+    /** The mutable, persisted part of an {@code ActionRound}'s state, as loaded from storage. */
+    public record PersistedState(
             RoundStatus status,
             int timerSeconds,
             String closedReason,
             List<UUID> pendingPlayerIds,
-            List<SubmittedAction> submittedActions) {
-        return new ActionRound(
-                id,
-                gameId,
-                eraNumber,
-                roundNumber,
-                status,
-                timerSeconds,
-                closedReason,
-                pendingPlayerIds,
-                submittedActions);
-    }
+            List<SubmittedAction> submittedActions) {}
 
     /**
      * Accepts one player's submission for this round. {@code ActionRound} enforces only round-level

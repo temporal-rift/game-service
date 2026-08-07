@@ -349,11 +349,8 @@ class ActionRoundSagaImplTest {
                     GAME_ID,
                     ERA_NUMBER,
                     ROUND_NUMBER,
-                    RoundStatus.CLOSING,
-                    TIMER_SECONDS,
-                    "TIMER_EXPIRED",
-                    List.of(),
-                    List.of());
+                    new ActionRound.PersistedState(
+                            RoundStatus.CLOSING, TIMER_SECONDS, "TIMER_EXPIRED", List.of(), List.of()));
             given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(
                             GAME_ID, ERA_NUMBER, ROUND_NUMBER))
                     .willReturn(Optional.of(round));
