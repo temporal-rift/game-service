@@ -100,8 +100,8 @@ public sealed interface SubmittedAction permits SubmittedAction.CardAction, Subm
                 case FORESIGHT, ANNIHILATE, SEAL, REWRITE, MIMIC -> requireEventAndOutcome();
                 case FULFILLMENT -> requireEvent();
                 case CORRUPT -> requireOpponent();
-                default -> {
-                    // No additional target requirement enforced yet for this special action.
+                case CASCADE, OBSCURE, THREAD, TAPESTRY, UNRAVEL, EXPOSE -> {
+                    // No additional target requirement enforced yet for these special actions.
                 }
             }
         }
