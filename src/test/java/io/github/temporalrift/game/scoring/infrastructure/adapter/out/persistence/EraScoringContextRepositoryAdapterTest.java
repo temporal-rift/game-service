@@ -69,6 +69,12 @@ class EraScoringContextRepositoryAdapterTest {
     ScoringTimelineResolutionBarrierJpaRepository resolutionBarrierJpaRepository;
 
     @Mock
+    ScoringContextFulfillmentDeclarationJpaRepository fulfillmentDeclarationJpaRepository;
+
+    @Mock
+    ScoringContextCorruptCorrelationJpaRepository corruptCorrelationJpaRepository;
+
+    @Mock
     ObjectMapper objectMapper;
 
     @InjectMocks
@@ -574,6 +580,82 @@ class EraScoringContextRepositoryAdapterTest {
         adapter.markActionFactsReady(gameId, 2);
 
         then(actionFactsReadyJpaRepository).should().insertIfAbsent(gameId, 2);
+    }
+
+    @Test
+    void recordFulfillmentDeclaration_delegatesToIdempotentInsert() {
+        var gameId = UUID.randomUUID();
+        var playerId = UUID.randomUUID();
+        var targetEventId = UUID.randomUUID();
+
+        adapter.recordFulfillmentDeclaration(gameId, 2, playerId, targetEventId);
+
+        then(fulfillmentDeclarationJpaRepository)
+                .should()
+                .insertIfAbsent(any(UUID.class), eq(gameId), eq(2), eq(playerId), eq(targetEventId));
+    }
+
+    @Test
+    void recordCorruptCorrelation_delegatesToIdempotentInsert() {
+        var gameId = UUID.randomUUID();
+        var corruptingPlayerId = UUID.randomUUID();
+        var targetPlayerId = UUID.randomUUID();
+        var cardInstanceId = UUID.randomUUID();
+
+        adapter.recordCorruptCorrelation(gameId, 2, corruptingPlayerId, targetPlayerId, cardInstanceId);
+
+        then(corruptCorrelationJpaRepository)
+                .should()
+                .insertIfAbsent(
+                        any(UUID.class),
+                        eq(gameId),
+                        eq(2),
+                        eq(corruptingPlayerId),
+                        eq(targetPlayerId),
+                        eq(cardInstanceId));
+    }
+
+    @Test
+    void getRequired_assemblesAnnihilationFactsAndFulfillmentDeclarations() {
+        var gameId = UUID.randomUUID();
+        var playerId = UUID.randomUUID();
+        var eventId = UUID.randomUUID();
+        var outcomeId = UUID.randomUUID();
+
+        var playerEntity = new ScoringContextPlayerJpaEntity();
+        playerEntity.setId(UUID.randomUUID());
+        playerEntity.setGameId(gameId);
+        playerEntity.setPlayerId(playerId);
+        playerEntity.setFaction(Faction.ERASERS.name());
+        given(playerJpaRepository.findAllByGameId(gameId)).willReturn(List.of(playerEntity));
+
+        var annihilated = new ScoringContextAnnihilatedOutcomeJpaEntity();
+        annihilated.setId(UUID.randomUUID());
+        annihilated.setGameId(gameId);
+        annihilated.setEraNumber(2);
+        annihilated.setEventId(eventId);
+        annihilated.setOutcomeId(outcomeId);
+        annihilated.setPlayerId(playerId);
+        given(annihilatedOutcomeJpaRepository.findAllByGameIdAndEraNumber(gameId, 2))
+                .willReturn(List.of(annihilated));
+
+        var declaration = new ScoringContextFulfillmentDeclarationJpaEntity();
+        declaration.setId(UUID.randomUUID());
+        declaration.setGameId(gameId);
+        declaration.setEraNumber(2);
+        declaration.setPlayerId(playerId);
+        declaration.setTargetEventId(eventId);
+        given(fulfillmentDeclarationJpaRepository.findAllByGameIdAndEraNumber(gameId, 2))
+                .willReturn(List.of(declaration));
+
+        var context = adapter.getRequired(gameId, 2);
+
+        assertThat(context.annihilationFacts())
+                .containsExactly(new io.github.temporalrift.game.scoring.domain.context.AnnihilationFact(
+                        eventId, outcomeId, playerId));
+        assertThat(context.fulfillmentDeclarations())
+                .containsExactly(new io.github.temporalrift.game.scoring.domain.context.FulfillmentDeclarationFact(
+                        playerId, eventId));
     }
 
     private ScoringContextRevisionistActionJpaEntity revisionistAction(

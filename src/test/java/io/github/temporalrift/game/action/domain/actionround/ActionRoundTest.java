@@ -434,6 +434,91 @@ class ActionRoundTest {
     }
 
     @Test
+    @DisplayName("submitSpecial — FULFILLMENT without a targetEventId — throws InvalidActionTargetException")
+    void submitSpecialFulfillmentWithoutTargetThrows() {
+        // given
+        var round = openRound(List.of(PLAYER_A));
+        round.pullEvents();
+
+        // when / then
+        assertThatExceptionOfType(InvalidActionTargetException.class)
+                .isThrownBy(() -> round.submitSpecial(
+                        PLAYER_A, Faction.PROPHETS, SpecialAction.FULFILLMENT, null, null, null, false));
+        assertThat(round.pendingPlayerIds()).containsExactly(PLAYER_A);
+        assertThat(round.submittedActions()).isEmpty();
+        assertThat(round.pullEvents()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("submitSpecial — FULFILLMENT with a targetEventId — registers SpecialActionPlayed only")
+    void submitSpecialFulfillmentWithTargetRegistersSpecialActionOnly() {
+        // given
+        var round = openRound(List.of(PLAYER_A));
+        round.pullEvents();
+        var eventId = UUID.randomUUID();
+
+        // when
+        round.submitSpecial(PLAYER_A, Faction.PROPHETS, SpecialAction.FULFILLMENT, eventId, null, null, false);
+
+        // then
+        var events = round.pullEvents();
+        assertThat(events).singleElement().isInstanceOfSatisfying(SpecialActionPlayed.class, played -> {
+            assertThat(played.specialAction()).isEqualTo(SpecialAction.FULFILLMENT);
+            assertThat(played.targetEventId()).isEqualTo(eventId);
+        });
+    }
+
+    @Test
+    @DisplayName("submitSpecial — CORRUPT without a targetPlayerId — throws InvalidActionTargetException")
+    void submitSpecialCorruptWithoutTargetPlayerThrows() {
+        // given
+        var round = openRound(List.of(PLAYER_A, PLAYER_B));
+        round.pullEvents();
+
+        // when / then
+        assertThatExceptionOfType(InvalidActionTargetException.class)
+                .isThrownBy(() ->
+                        round.submitSpecial(PLAYER_A, Faction.ERASERS, SpecialAction.CORRUPT, null, null, null, false));
+        assertThat(round.pendingPlayerIds()).containsExactly(PLAYER_A, PLAYER_B);
+        assertThat(round.submittedActions()).isEmpty();
+        assertThat(round.pullEvents()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("submitSpecial — CORRUPT targeting self — throws InvalidActionTargetException")
+    void submitSpecialCorruptTargetingSelfThrows() {
+        // given
+        var round = openRound(List.of(PLAYER_A, PLAYER_B));
+        round.pullEvents();
+
+        // when / then
+        assertThatExceptionOfType(InvalidActionTargetException.class)
+                .isThrownBy(() -> round.submitSpecial(
+                        PLAYER_A, Faction.ERASERS, SpecialAction.CORRUPT, null, null, PLAYER_A, false));
+        assertThat(round.pendingPlayerIds()).containsExactly(PLAYER_A, PLAYER_B);
+        assertThat(round.submittedActions()).isEmpty();
+        assertThat(round.pullEvents()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("submitSpecial — CORRUPT targeting a valid opponent — registers SpecialActionPlayed only")
+    void submitSpecialCorruptWithValidTargetRegistersSpecialActionOnly() {
+        // given
+        var round = openRound(List.of(PLAYER_A, PLAYER_B));
+        round.pullEvents();
+
+        // when
+        round.submitSpecial(PLAYER_A, Faction.ERASERS, SpecialAction.CORRUPT, null, null, PLAYER_B, false);
+
+        // then
+        var events = round.pullEvents();
+        assertThat(events).singleElement().isInstanceOfSatisfying(SpecialActionPlayed.class, played -> {
+            assertThat(played.specialAction()).isEqualTo(SpecialAction.CORRUPT);
+            assertThat(played.targetPlayerId()).isEqualTo(PLAYER_B);
+        });
+    }
+
+    @Test
     @DisplayName(
             "close ALL_SUBMITTED — no pending players — registers ActionRoundClosed, returns Closed with empty skipped")
     void closeAllSubmittedRegistersClosedEvent() {

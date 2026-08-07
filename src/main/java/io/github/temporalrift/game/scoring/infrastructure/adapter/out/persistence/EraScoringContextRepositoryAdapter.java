@@ -11,10 +11,12 @@ import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.ObjectMapper;
 
 import io.github.temporalrift.game.scoring.domain.context.ActionScoringFact;
+import io.github.temporalrift.game.scoring.domain.context.AnnihilationFact;
 import io.github.temporalrift.game.scoring.domain.context.ChainScoringFact;
 import io.github.temporalrift.game.scoring.domain.context.EraScoringContext;
 import io.github.temporalrift.game.scoring.domain.context.EraScoringContextNotFoundException;
 import io.github.temporalrift.game.scoring.domain.context.EventOutcomeFact;
+import io.github.temporalrift.game.scoring.domain.context.FulfillmentDeclarationFact;
 import io.github.temporalrift.game.scoring.domain.context.PlayerFaction;
 import io.github.temporalrift.game.scoring.domain.event.EraResolutionCompleted;
 import io.github.temporalrift.game.scoring.domain.playerscore.ScoreReason;
@@ -38,6 +40,8 @@ class EraScoringContextRepositoryAdapter implements EraScoringContextRepository 
     private final ScoringContextActionFactJpaRepository actionFactJpaRepository;
     private final ScoringContextRevisionistActionJpaRepository revisionistActionJpaRepository;
     private final ScoringTimelineResolutionBarrierJpaRepository resolutionBarrierJpaRepository;
+    private final ScoringContextFulfillmentDeclarationJpaRepository fulfillmentDeclarationJpaRepository;
+    private final ScoringContextCorruptCorrelationJpaRepository corruptCorrelationJpaRepository;
     private final ObjectMapper objectMapper;
 
     EraScoringContextRepositoryAdapter(
@@ -52,6 +56,8 @@ class EraScoringContextRepositoryAdapter implements EraScoringContextRepository 
             ScoringContextActionFactJpaRepository actionFactJpaRepository,
             ScoringContextRevisionistActionJpaRepository revisionistActionJpaRepository,
             ScoringTimelineResolutionBarrierJpaRepository resolutionBarrierJpaRepository,
+            ScoringContextFulfillmentDeclarationJpaRepository fulfillmentDeclarationJpaRepository,
+            ScoringContextCorruptCorrelationJpaRepository corruptCorrelationJpaRepository,
             ObjectMapper objectMapper) {
         this.playerJpaRepository = playerJpaRepository;
         this.eraOutcomeExpectationJpaRepository = eraOutcomeExpectationJpaRepository;
@@ -64,6 +70,8 @@ class EraScoringContextRepositoryAdapter implements EraScoringContextRepository 
         this.actionFactJpaRepository = actionFactJpaRepository;
         this.revisionistActionJpaRepository = revisionistActionJpaRepository;
         this.resolutionBarrierJpaRepository = resolutionBarrierJpaRepository;
+        this.fulfillmentDeclarationJpaRepository = fulfillmentDeclarationJpaRepository;
+        this.corruptCorrelationJpaRepository = corruptCorrelationJpaRepository;
         this.objectMapper = objectMapper;
     }
 
@@ -100,7 +108,24 @@ class EraScoringContextRepositoryAdapter implements EraScoringContextRepository 
         unconsumedActionFacts.forEach(entity -> entity.setConsumed(true));
         actionFactJpaRepository.saveAll(unconsumedActionFacts);
 
-        return new EraScoringContext(gameId, eraNumber, players, eventOutcomes, actionFacts, chainFacts);
+        var annihilationFacts = annihilatedOutcomeJpaRepository.findAllByGameIdAndEraNumber(gameId, eraNumber).stream()
+                .map(entity -> new AnnihilationFact(entity.getEventId(), entity.getOutcomeId(), entity.getPlayerId()))
+                .toList();
+
+        var fulfillmentDeclarations =
+                fulfillmentDeclarationJpaRepository.findAllByGameIdAndEraNumber(gameId, eraNumber).stream()
+                        .map(entity -> new FulfillmentDeclarationFact(entity.getPlayerId(), entity.getTargetEventId()))
+                        .toList();
+
+        return new EraScoringContext(
+                gameId,
+                eraNumber,
+                players,
+                eventOutcomes,
+                actionFacts,
+                chainFacts,
+                annihilationFacts,
+                fulfillmentDeclarations);
     }
 
     private List<EventOutcomeFact> buildEventOutcomeFacts(UUID gameId, int eraNumber) {
@@ -367,5 +392,20 @@ class EraScoringContextRepositoryAdapter implements EraScoringContextRepository 
     @Override
     public boolean revisionistActionsResolved(UUID gameId, int eraNumber) {
         return !revisionistActionJpaRepository.existsByGameIdAndEraNumberAndResolvedIsNull(gameId, eraNumber);
+    }
+
+    @Override
+    @Transactional
+    public void recordFulfillmentDeclaration(UUID gameId, int eraNumber, UUID playerId, UUID targetEventId) {
+        fulfillmentDeclarationJpaRepository.insertIfAbsent(
+                UUID.randomUUID(), gameId, eraNumber, playerId, targetEventId);
+    }
+
+    @Override
+    @Transactional
+    public void recordCorruptCorrelation(
+            UUID gameId, int eraNumber, UUID corruptingPlayerId, UUID targetPlayerId, UUID cardInstanceId) {
+        corruptCorrelationJpaRepository.insertIfAbsent(
+                UUID.randomUUID(), gameId, eraNumber, corruptingPlayerId, targetPlayerId, cardInstanceId);
     }
 }

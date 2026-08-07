@@ -32,6 +32,8 @@ import io.github.temporalrift.game.action.domain.port.out.FutureEventDefinitionP
 import io.github.temporalrift.game.action.domain.port.out.PlayerStateRepository;
 import io.github.temporalrift.game.action.domain.saga.ActionRoundSagaState;
 import io.github.temporalrift.game.action.domain.saga.ActionRoundSagaStatus;
+import io.github.temporalrift.game.shared.CardType;
+import io.github.temporalrift.game.shared.CorruptCardCorrelated;
 import io.github.temporalrift.game.shared.DomainEventEnvelope;
 import io.github.temporalrift.game.shared.EraActionFactsFinalized;
 import io.github.temporalrift.game.shared.GameRulesPort;
@@ -186,6 +188,7 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
                 ActionRoundEventPublication.publish(round, actionEventPublisher, clock);
 
                 publishRoundSummary(round, gameId, eraNumber, roundNumber, skippedPlayerIds);
+                publishCorruptCorrelations(gameId, eraNumber, round);
 
                 if (roundNumber == SIGNATURE_REVEAL_ROUND_NUMBER) {
                     publishBandedProbabilities(gameId, eraNumber, round);
@@ -229,6 +232,37 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
                 DomainEventEnvelope.SCHEMA_VERSION_V1,
                 new RoundSummaryPublished(gameId, eraNumber, roundNumber, summaries),
                 clock));
+    }
+
+    // Corrupt blind-targets a player, not a card (submissions within a round are simultaneous), so the
+    // correlation to a specific card is only knowable once the round's own submittedActions are complete
+    // — this runs for every round, not just the era's final one. It only ever produces a candidate fact:
+    // whether the correlated inversion actually took effect is a timeline-service resolution-time
+    // question this event does not answer (see CorruptCardCorrelated javadoc).
+    private void publishCorruptCorrelations(UUID gameId, int eraNumber, ActionRound round) {
+        var shiftCardsByPlayer = round.submittedActions().stream()
+                .filter(SubmittedAction.CardAction.class::isInstance)
+                .map(SubmittedAction.CardAction.class::cast)
+                .filter(card -> card.cardType() == CardType.PUSH
+                        || card.cardType() == CardType.SUPPRESS
+                        || card.cardType() == CardType.SWING)
+                .collect(java.util.stream.Collectors.toMap(SubmittedAction.CardAction::playerId, card -> card));
+
+        round.submittedActions().stream()
+                .filter(SubmittedAction.SpecialActionSubmission.class::isInstance)
+                .map(SubmittedAction.SpecialActionSubmission.class::cast)
+                .filter(special -> special.specialAction() == io.github.temporalrift.game.shared.SpecialAction.CORRUPT)
+                .forEach(corrupt -> {
+                    var targetCard = shiftCardsByPlayer.get(corrupt.targetPlayerId());
+                    if (targetCard != null) {
+                        actionEventPublisher.publishInternally(new CorruptCardCorrelated(
+                                gameId,
+                                eraNumber,
+                                corrupt.playerId(),
+                                corrupt.targetPlayerId(),
+                                targetCard.cardInstanceId()));
+                    }
+                });
     }
 
     private void publishBandedProbabilities(UUID gameId, int eraNumber, ActionRound round2) {
@@ -305,6 +339,7 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
         var annihilationFacts = new ArrayList<EraActionFactsFinalized.AnnihilationFact>();
         var mimicFacts = new ArrayList<EraActionFactsFinalized.RevisionistFact>();
         var latestRewriteFacts = new LinkedHashMap<UUID, EraActionFactsFinalized.RevisionistFact>();
+        var fulfillmentFacts = new java.util.LinkedHashSet<EraActionFactsFinalized.FulfillmentFact>();
         var exposeFacts = activistEraStateRepository.findExposedByGameIdAndEraNumber(gameId, eraNumber).stream()
                 .filter(
                         io.github.temporalrift.game.action.domain.activisterastate.ActivistEraState
@@ -351,6 +386,9 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
                                 special.specialAction(),
                                 special.targetEventId(),
                                 special.targetOutcomeId()));
+                    case FULFILLMENT ->
+                        fulfillmentFacts.add(new EraActionFactsFinalized.FulfillmentFact(
+                                special.playerId(), special.targetEventId()));
                     default -> {
                         // Every other special action has no scoring-context fact to bundle.
                     }
@@ -365,6 +403,7 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
                 exposeFacts,
                 activistDeclarationFacts,
                 java.util.stream.Stream.concat(latestRewriteFacts.values().stream(), mimicFacts.stream())
-                        .toList()));
+                        .toList(),
+                List.copyOf(fulfillmentFacts)));
     }
 }
