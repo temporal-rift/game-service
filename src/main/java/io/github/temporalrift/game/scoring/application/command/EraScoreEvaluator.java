@@ -49,15 +49,18 @@ class EraScoreEvaluator {
                         boolean declaredFulfillment = context.fulfillmentDeclarations().stream()
                                 .anyMatch(declaration -> declaration.playerId().equals(playerId)
                                         && declaration.targetEventId().equals(outcome.eventId()));
-                        var reason = resolvedAsWritten
-                                ? (declaredFulfillment
-                                        ? ScoreReason.FULFILLMENT_SUCCEEDED
-                                        : ScoreReason.EVENT_RESOLVED_AS_WRITTEN)
-                                : ScoreReason.EVENT_RESOLVED_DIFFERENTLY_THAN_WRITTEN;
+                        var reason = prophetReason(resolvedAsWritten, declaredFulfillment);
                         decisions.add(new PlayerScoreDecision(playerId, reason, context.eraNumber()));
                     });
         }
         return decisions;
+    }
+
+    private static ScoreReason prophetReason(boolean resolvedAsWritten, boolean declaredFulfillment) {
+        if (!resolvedAsWritten) {
+            return ScoreReason.EVENT_RESOLVED_DIFFERENTLY_THAN_WRITTEN;
+        }
+        return declaredFulfillment ? ScoreReason.FULFILLMENT_SUCCEEDED : ScoreReason.EVENT_RESOLVED_AS_WRITTEN;
     }
 
     // CORRUPTED_OPPONENT_CARD is deliberately not emitted here: scoring_context_corrupt_correlation only

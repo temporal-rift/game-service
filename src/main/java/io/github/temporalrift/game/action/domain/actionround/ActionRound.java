@@ -201,24 +201,7 @@ public class ActionRound extends AggregateRoot {
         if (specialAction == SpecialAction.RALLY || specialAction == SpecialAction.MOMENTUM) {
             throw new DeclarationSpecialActionRequiredException(specialAction);
         }
-        if ((specialAction == SpecialAction.FORESIGHT
-                        || specialAction == SpecialAction.ANNIHILATE
-                        || specialAction == SpecialAction.REWRITE
-                        || specialAction == SpecialAction.MIMIC)
-                && (targetEventId == null || targetOutcomeId == null)) {
-            throw InvalidActionTargetException.specialActionRequiresTarget(specialAction);
-        }
-        if (specialAction == SpecialAction.FULFILLMENT && targetEventId == null) {
-            throw InvalidActionTargetException.specialActionRequiresTargetEvent(specialAction);
-        }
-        if (specialAction == SpecialAction.CORRUPT) {
-            if (targetPlayerId == null) {
-                throw InvalidActionTargetException.specialActionRequiresTargetPlayer(specialAction);
-            }
-            if (targetPlayerId.equals(playerId)) {
-                throw InvalidActionTargetException.corruptCannotTargetSelf();
-            }
-        }
+        validateSpecialActionTarget(specialAction, playerId, targetEventId, targetOutcomeId, targetPlayerId);
 
         pendingPlayerIds.remove(playerId);
         submittedActions.add(new SubmittedAction.SpecialActionSubmission(
@@ -245,6 +228,28 @@ public class ActionRound extends AggregateRoot {
         }
 
         return allSubmitted();
+    }
+
+    private static void validateSpecialActionTarget(
+            SpecialAction specialAction, UUID playerId, UUID targetEventId, UUID targetOutcomeId, UUID targetPlayerId) {
+        if ((specialAction == SpecialAction.FORESIGHT
+                        || specialAction == SpecialAction.ANNIHILATE
+                        || specialAction == SpecialAction.REWRITE
+                        || specialAction == SpecialAction.MIMIC)
+                && (targetEventId == null || targetOutcomeId == null)) {
+            throw InvalidActionTargetException.specialActionRequiresTarget(specialAction);
+        }
+        if (specialAction == SpecialAction.FULFILLMENT && targetEventId == null) {
+            throw InvalidActionTargetException.specialActionRequiresTargetEvent(specialAction);
+        }
+        if (specialAction == SpecialAction.CORRUPT) {
+            if (targetPlayerId == null) {
+                throw InvalidActionTargetException.specialActionRequiresTargetPlayer(specialAction);
+            }
+            if (targetPlayerId.equals(playerId)) {
+                throw InvalidActionTargetException.corruptCannotTargetSelf();
+            }
+        }
     }
 
     public CloseOutcome close(String closedReason) {
