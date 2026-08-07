@@ -393,8 +393,7 @@ class EraScoreEvaluatorTest {
 
         var decisions = evaluator.evaluate(context, outcomes);
 
-        assertThat(decisions).hasSize(2);
-        assertThat(decisions).allMatch(d -> d.reason() == ScoreReason.FULFILLMENT_SUCCEEDED);
+        assertThat(decisions).hasSize(2).allMatch(d -> d.reason() == ScoreReason.FULFILLMENT_SUCCEEDED);
     }
 
     @Test
@@ -423,9 +422,11 @@ class EraScoreEvaluatorTest {
 
         var decisions = evaluator.evaluate(context, List.of(outcome));
 
-        assertThat(decisions).hasSize(2);
-        assertThat(decisions).allMatch(d -> d.reason() == ScoreReason.FULFILLMENT_SUCCEEDED);
-        assertThat(decisions).extracting("playerId").containsExactlyInAnyOrder(prophetId1, prophetId2);
+        assertThat(decisions)
+                .hasSize(2)
+                .allMatch(d -> d.reason() == ScoreReason.FULFILLMENT_SUCCEEDED)
+                .extracting("playerId")
+                .containsExactlyInAnyOrder(prophetId1, prophetId2);
     }
 
     @Test
@@ -472,9 +473,10 @@ class EraScoreEvaluatorTest {
 
         var decisions = evaluator.evaluate(context, List.of());
 
-        assertThat(decisions).hasSize(2);
-        assertThat(decisions).anyMatch(d -> d.reason() == ScoreReason.ANNIHILATED_OUTCOME);
-        assertThat(decisions).anyMatch(d -> d.reason() == ScoreReason.ERA_ENDED_WITH_FEWER_OUTCOMES);
+        assertThat(decisions)
+                .hasSize(2)
+                .anyMatch(d -> d.reason() == ScoreReason.ANNIHILATED_OUTCOME)
+                .anyMatch(d -> d.reason() == ScoreReason.ERA_ENDED_WITH_FEWER_OUTCOMES);
     }
 
     @Test
