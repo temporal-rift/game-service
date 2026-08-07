@@ -52,4 +52,15 @@ public interface EraScoringContextRepository {
     void resolveRevisionistActions(UUID gameId, int eraNumber);
 
     boolean revisionistActionsResolved(UUID gameId, int eraNumber);
+
+    void recordFulfillmentDeclaration(UUID gameId, int eraNumber, UUID playerId, UUID targetEventId);
+
+    /**
+     * Persists a candidate Corrupt fact only — see {@code scoring_context_corrupt_correlation}'s
+     * migration and {@code EraScoreEvaluator.eraserDecisions}. Does not drive any score credit; the
+     * confirmation this needs from timeline-service does not exist yet (temporal-rift/timeline-service#12
+     * / #16).
+     */
+    void recordCorruptCorrelation(
+            UUID gameId, int eraNumber, UUID corruptingPlayerId, UUID targetPlayerId, UUID cardInstanceId);
 }

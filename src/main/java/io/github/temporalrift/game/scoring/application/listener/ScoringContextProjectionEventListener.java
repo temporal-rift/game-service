@@ -11,6 +11,7 @@ import org.springframework.stereotype.Component;
 import io.github.temporalrift.game.scoring.application.command.EraScoringCompletionChecker;
 import io.github.temporalrift.game.scoring.domain.port.out.EraScoringContextRepository;
 import io.github.temporalrift.game.shared.ActivistDeclarationRecorded;
+import io.github.temporalrift.game.shared.CorruptCardCorrelated;
 import io.github.temporalrift.game.shared.EraActionFactsFinalized;
 import io.github.temporalrift.game.shared.EventsDrawn;
 import io.github.temporalrift.game.shared.ExposeBehaviorChanged;
@@ -83,6 +84,16 @@ class ScoringContextProjectionEventListener {
     }
 
     @ApplicationModuleListener
+    void onCorruptCardCorrelated(CorruptCardCorrelated event) {
+        contextRepository.recordCorruptCorrelation(
+                event.gameId(),
+                event.eraNumber(),
+                event.corruptingPlayerId(),
+                event.targetPlayerId(),
+                event.cardInstanceId());
+    }
+
+    @ApplicationModuleListener
     void onExposeBehaviorChanged(ExposeBehaviorChanged event) {
         contextRepository.recordActionFact(
                 event.gameId(),
@@ -129,6 +140,9 @@ class ScoringContextProjectionEventListener {
                         fact.action(),
                         fact.targetEventId(),
                         fact.targetOutcomeId()));
+        event.fulfillmentFacts()
+                .forEach(fact -> contextRepository.recordFulfillmentDeclaration(
+                        event.gameId(), event.eraNumber(), fact.playerId(), fact.targetEventId()));
         contextRepository.resolveRevisionistActions(event.gameId(), event.eraNumber());
         contextRepository.markActionFactsReady(event.gameId(), event.eraNumber());
         publishResolutions(event.gameId(), event.eraNumber());

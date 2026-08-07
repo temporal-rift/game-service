@@ -20,6 +20,7 @@ import io.github.temporalrift.game.scoring.application.command.EraScoringComplet
 import io.github.temporalrift.game.scoring.domain.port.out.EraScoringContextRepository;
 import io.github.temporalrift.game.shared.ActivistDeclarationRecorded;
 import io.github.temporalrift.game.shared.ActivistDeclarationResolved;
+import io.github.temporalrift.game.shared.CorruptCardCorrelated;
 import io.github.temporalrift.game.shared.EraActionFactsFinalized;
 import io.github.temporalrift.game.shared.EventsDrawn;
 import io.github.temporalrift.game.shared.ExposeBehaviorChanged;
@@ -146,6 +147,21 @@ class ScoringContextProjectionEventListenerTest {
     }
 
     @Test
+    void onCorruptCardCorrelated_recordsCorruptCorrelation() {
+        var gameId = UUID.randomUUID();
+        var corruptingPlayerId = UUID.randomUUID();
+        var targetPlayerId = UUID.randomUUID();
+        var cardInstanceId = UUID.randomUUID();
+
+        listener.onCorruptCardCorrelated(
+                new CorruptCardCorrelated(gameId, 2, corruptingPlayerId, targetPlayerId, cardInstanceId));
+
+        then(contextRepository)
+                .should()
+                .recordCorruptCorrelation(gameId, 2, corruptingPlayerId, targetPlayerId, cardInstanceId);
+    }
+
+    @Test
     void onActivistDeclarationRecorded_projectsThenPublishesOnlyDurableResolution() {
         var gameId = UUID.randomUUID();
         var playerId = UUID.randomUUID();
@@ -230,6 +246,26 @@ class ScoringContextProjectionEventListenerTest {
         then(contextRepository).should().resolveRevisionistActions(gameId, 2);
         then(contextRepository).should().markActionFactsReady(gameId, 2);
         then(completionChecker).should().tryComplete(gameId, 2);
+    }
+
+    @Test
+    void onEraActionFactsFinalized_appliesFulfillmentFacts() {
+        var gameId = UUID.randomUUID();
+        var playerId = UUID.randomUUID();
+        var targetEventId = UUID.randomUUID();
+        var event = new EraActionFactsFinalized(
+                gameId,
+                2,
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(new EraActionFactsFinalized.FulfillmentFact(playerId, targetEventId)));
+
+        listener.onEraActionFactsFinalized(event);
+
+        then(contextRepository).should().recordFulfillmentDeclaration(gameId, 2, playerId, targetEventId);
     }
 
     @Test

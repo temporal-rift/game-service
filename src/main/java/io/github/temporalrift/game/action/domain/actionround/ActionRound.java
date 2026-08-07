@@ -208,6 +208,17 @@ public class ActionRound extends AggregateRoot {
                 && (targetEventId == null || targetOutcomeId == null)) {
             throw InvalidActionTargetException.specialActionRequiresTarget(specialAction);
         }
+        if (specialAction == SpecialAction.FULFILLMENT && targetEventId == null) {
+            throw InvalidActionTargetException.specialActionRequiresTargetEvent(specialAction);
+        }
+        if (specialAction == SpecialAction.CORRUPT) {
+            if (targetPlayerId == null) {
+                throw InvalidActionTargetException.specialActionRequiresTargetPlayer(specialAction);
+            }
+            if (targetPlayerId.equals(playerId)) {
+                throw InvalidActionTargetException.corruptCannotTargetSelf();
+            }
+        }
 
         pendingPlayerIds.remove(playerId);
         submittedActions.add(new SubmittedAction.SpecialActionSubmission(

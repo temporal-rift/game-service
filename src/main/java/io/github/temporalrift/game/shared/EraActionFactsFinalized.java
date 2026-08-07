@@ -24,7 +24,8 @@ public record EraActionFactsFinalized(
         List<AnnihilationFact> annihilationFacts,
         List<ExposeFact> exposeFacts,
         List<ActivistDeclarationFact> activistDeclarationFacts,
-        List<RevisionistFact> revisionistFacts) {
+        List<RevisionistFact> revisionistFacts,
+        List<FulfillmentFact> fulfillmentFacts) {
 
     public EraActionFactsFinalized(
             UUID gameId,
@@ -32,7 +33,7 @@ public record EraActionFactsFinalized(
             List<ForesightFact> foresightFacts,
             List<AnnihilationFact> annihilationFacts,
             List<ExposeFact> exposeFacts) {
-        this(gameId, eraNumber, foresightFacts, annihilationFacts, exposeFacts, List.of(), List.of());
+        this(gameId, eraNumber, foresightFacts, annihilationFacts, exposeFacts, List.of(), List.of(), List.of());
     }
 
     public EraActionFactsFinalized(
@@ -42,12 +43,39 @@ public record EraActionFactsFinalized(
             List<AnnihilationFact> annihilationFacts,
             List<ExposeFact> exposeFacts,
             List<ActivistDeclarationFact> activistDeclarationFacts) {
-        this(gameId, eraNumber, foresightFacts, annihilationFacts, exposeFacts, activistDeclarationFacts, List.of());
+        this(
+                gameId,
+                eraNumber,
+                foresightFacts,
+                annihilationFacts,
+                exposeFacts,
+                activistDeclarationFacts,
+                List.of(),
+                List.of());
+    }
+
+    public EraActionFactsFinalized(
+            UUID gameId,
+            int eraNumber,
+            List<ForesightFact> foresightFacts,
+            List<AnnihilationFact> annihilationFacts,
+            List<ExposeFact> exposeFacts,
+            List<ActivistDeclarationFact> activistDeclarationFacts,
+            List<RevisionistFact> revisionistFacts) {
+        this(
+                gameId,
+                eraNumber,
+                foresightFacts,
+                annihilationFacts,
+                exposeFacts,
+                activistDeclarationFacts,
+                revisionistFacts,
+                List.of());
     }
 
     public EraActionFactsFinalized(
             UUID gameId, int eraNumber, List<ForesightFact> foresightFacts, List<AnnihilationFact> annihilationFacts) {
-        this(gameId, eraNumber, foresightFacts, annihilationFacts, List.of(), List.of(), List.of());
+        this(gameId, eraNumber, foresightFacts, annihilationFacts, List.of(), List.of(), List.of(), List.of());
     }
 
     public record ForesightFact(UUID eventId, UUID outcomeId, UUID playerId) {}
@@ -61,4 +89,7 @@ public record EraActionFactsFinalized(
 
     /** Private action-to-scoring attribution; it is intentionally never sent through Kafka. */
     public record RevisionistFact(UUID playerId, SpecialAction action, UUID targetEventId, UUID targetOutcomeId) {}
+
+    /** Private action-to-scoring attribution; it is intentionally never sent through Kafka. */
+    public record FulfillmentFact(UUID playerId, UUID targetEventId) {}
 }

@@ -85,7 +85,9 @@ class UpdateScoresCommandHandlerTest {
                 List.of(new PlayerFaction(weaverId, Faction.WEAVERS), new PlayerFaction(eraserId, Faction.ERASERS)),
                 List.of(new EventOutcomeFact(UUID.randomUUID(), UUID.randomUUID(), null, 3, 3)),
                 List.of(),
-                List.of(new ChainScoringFact(weaverId, chainId, ScoreReason.CHAIN_COMPLETED, ERA)));
+                List.of(new ChainScoringFact(weaverId, chainId, ScoreReason.CHAIN_COMPLETED, ERA)),
+                List.of(),
+                List.of());
 
         var handler = handler(context, List.<PlayerScore>of());
         handler.handle(new UpdateEraScoresCommand(GAME_ID, ERA, List.of()));
@@ -121,7 +123,9 @@ class UpdateScoresCommandHandlerTest {
                 List.of(new PlayerFaction(weaverId, Faction.WEAVERS)),
                 List.of(),
                 List.of(),
-                List.of(new ChainScoringFact(weaverId, chainId, ScoreReason.CHAIN_BROKEN, ERA)));
+                List.of(new ChainScoringFact(weaverId, chainId, ScoreReason.CHAIN_BROKEN, ERA)),
+                List.of(),
+                List.of());
 
         var handler = handler(context, List.<PlayerScore>of());
         handler.handle(new UpdateEraScoresCommand(GAME_ID, ERA, List.of()));
@@ -145,6 +149,8 @@ class UpdateScoresCommandHandlerTest {
                 List.of(new PlayerFaction(activistId, Faction.ACTIVISTS)),
                 List.of(),
                 List.of(new ActionScoringFact(activistId, Faction.ACTIVISTS, ScoreReason.DECLARED_OUTCOME_WON)),
+                List.of(),
+                List.of(),
                 List.of());
 
         var savedScores = new ArrayList<PlayerScore>();
@@ -175,7 +181,9 @@ class UpdateScoresCommandHandlerTest {
                 List.of(new PlayerFaction(weaverId, Faction.WEAVERS)),
                 List.of(),
                 List.of(),
-                List.of(new ChainScoringFact(weaverId, chainId, ScoreReason.CHAIN_COMPLETED, factOwnEra)));
+                List.of(new ChainScoringFact(weaverId, chainId, ScoreReason.CHAIN_COMPLETED, factOwnEra)),
+                List.of(),
+                List.of());
 
         var savedScores = new ArrayList<PlayerScore>();
         PlayerScoreRepository repo = new FakePlayerScoreRepository(List.of(), savedScores);
@@ -196,6 +204,8 @@ class UpdateScoresCommandHandlerTest {
                 ERA,
                 List.of(new PlayerFaction(playerId, Faction.ERASERS)),
                 List.of(new EventOutcomeFact(UUID.randomUUID(), UUID.randomUUID(), null, 3, 3)),
+                List.of(),
+                List.of(),
                 List.of(),
                 List.of());
     }
@@ -346,6 +356,17 @@ class UpdateScoresCommandHandlerTest {
 
         @Override
         public boolean revisionistActionsResolved(UUID gameId, int eraNumber) {
+            throw new UnsupportedOperationException("not used by UpdateScoresCommandHandler");
+        }
+
+        @Override
+        public void recordFulfillmentDeclaration(UUID gameId, int eraNumber, UUID playerId, UUID targetEventId) {
+            throw new UnsupportedOperationException("not used by UpdateScoresCommandHandler");
+        }
+
+        @Override
+        public void recordCorruptCorrelation(
+                UUID gameId, int eraNumber, UUID corruptingPlayerId, UUID targetPlayerId, UUID cardInstanceId) {
             throw new UnsupportedOperationException("not used by UpdateScoresCommandHandler");
         }
     }

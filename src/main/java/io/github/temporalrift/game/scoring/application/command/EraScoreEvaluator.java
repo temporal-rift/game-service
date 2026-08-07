@@ -45,8 +45,14 @@ class EraScoreEvaluator {
             findEventFact(context, outcome.eventId())
                     .filter(fact -> fact.writtenOutcomeId() != null)
                     .ifPresent(fact -> {
-                        var reason = fact.writtenOutcomeId().equals(outcome.winningOutcomeId())
-                                ? ScoreReason.EVENT_RESOLVED_AS_WRITTEN
+                        boolean resolvedAsWritten = fact.writtenOutcomeId().equals(outcome.winningOutcomeId());
+                        boolean declaredFulfillment = context.fulfillmentDeclarations().stream()
+                                .anyMatch(declaration -> declaration.playerId().equals(playerId)
+                                        && declaration.targetEventId().equals(outcome.eventId()));
+                        var reason = resolvedAsWritten
+                                ? (declaredFulfillment
+                                        ? ScoreReason.FULFILLMENT_SUCCEEDED
+                                        : ScoreReason.EVENT_RESOLVED_AS_WRITTEN)
                                 : ScoreReason.EVENT_RESOLVED_DIFFERENTLY_THAN_WRITTEN;
                         decisions.add(new PlayerScoreDecision(playerId, reason, context.eraNumber()));
                     });
@@ -54,14 +60,26 @@ class EraScoreEvaluator {
         return decisions;
     }
 
+    // CORRUPTED_OPPONENT_CARD is deliberately not emitted here: scoring_context_corrupt_correlation only
+    // records that a Corrupt was blind-targeted and matched to a card at round close, not that its
+    // inversion actually took effect (a Seal can void it). That confirmation is a timeline-service
+    // resolution-time fact that does not exist yet — see temporal-rift/timeline-service#12 and #16.
     private List<PlayerScoreDecision> eraserDecisions(UUID playerId, EraScoringContext context) {
+        var decisions = new ArrayList<PlayerScoreDecision>();
+
+        context.annihilationFacts().stream()
+                .filter(fact -> fact.playerId().equals(playerId))
+                .forEach(fact -> decisions.add(
+                        new PlayerScoreDecision(playerId, ScoreReason.ANNIHILATED_OUTCOME, context.eraNumber())));
+
         boolean anyFewer = context.eventOutcomes().stream()
                 .anyMatch(fact -> fact.endingOutcomeCount() < fact.startingOutcomeCount());
         if (anyFewer) {
-            return List.of(
+            decisions.add(
                     new PlayerScoreDecision(playerId, ScoreReason.ERA_ENDED_WITH_FEWER_OUTCOMES, context.eraNumber()));
         }
-        return List.of();
+
+        return decisions;
     }
 
     private List<PlayerScoreDecision> weaverDecisions(UUID playerId, EraScoringContext context) {
