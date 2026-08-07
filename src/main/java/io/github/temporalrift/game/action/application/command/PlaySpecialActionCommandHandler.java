@@ -74,6 +74,9 @@ class PlaySpecialActionCommandHandler implements PlaySpecialActionUseCase {
         if (command.specialAction() == SpecialAction.EXPOSE && faction == Faction.ACTIVISTS) {
             recordExpose(command);
         }
+        if (command.specialAction() == SpecialAction.CORRUPT) {
+            requireGameOpponent(command);
+        }
         var allSubmitted = round.submitSpecial(
                 command.playerId(),
                 faction,
@@ -87,6 +90,21 @@ class PlaySpecialActionCommandHandler implements PlaySpecialActionUseCase {
 
         return new Result(
                 command.gameId(), command.eraNumber(), command.roundNumber(), command.playerId(), allSubmitted);
+    }
+
+    // ActionRound.submitSpecial only rejects a null or self targetPlayerId — it has no visibility into
+    // the game's full player roster (it only tracks pendingPlayerIds, which shrinks as the round
+    // progresses), so it cannot verify the target is an actual opponent in this game. Checked here,
+    // where PlayerStateRepository has that visibility, mirroring how recordExpose already validates
+    // its own targetPlayerId via round-1 submission membership.
+    private void requireGameOpponent(Command command) {
+        var targetPlayerId = command.targetPlayerId();
+        if (targetPlayerId == null) {
+            return;
+        }
+        playerStateRepository
+                .findByGameIdAndPlayerId(command.gameId(), targetPlayerId)
+                .orElseThrow(() -> new PlayerStateNotFoundException(command.gameId(), targetPlayerId));
     }
 
     private void recordExpose(Command command) {

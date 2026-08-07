@@ -247,11 +247,14 @@ class PlaySpecialActionCommandHandlerTest {
     @DisplayName("handle — passes isJammed value to submitSpecial")
     void handlePassesIsJammedToAggregate() {
         // given
+        var targetPlayerId = UUID.randomUUID();
         var command = new PlaySpecialActionUseCase.Command(
-                GAME_ID, ERA, ROUND, PLAYER_ID, SpecialAction.CORRUPT, null, null, UUID.randomUUID());
+                GAME_ID, ERA, ROUND, PLAYER_ID, SpecialAction.CORRUPT, null, null, targetPlayerId);
         given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA, ROUND))
                 .willReturn(Optional.of(round));
         given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(playerState));
+        given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, targetPlayerId))
+                .willReturn(Optional.of(mock(PlayerState.class)));
         given(playerState.faction()).willReturn(Faction.ERASERS);
         given(playerState.isJammed()).willReturn(false);
         given(round.submitSpecial(any(), any(), any(), any(), any(), any(), anyBoolean()))
@@ -274,6 +277,26 @@ class PlaySpecialActionCommandHandlerTest {
                         isNull(),
                         any(),
                         eq(false));
+    }
+
+    @Test
+    @DisplayName("handle — Corrupt targeting a player not in this game — throws PlayerStateNotFoundException before "
+            + "submitting")
+    void handleCorruptTargetingNonOpponentRejectsBeforeSubmitting() {
+        // given
+        var targetPlayerId = UUID.randomUUID();
+        var command = new PlaySpecialActionUseCase.Command(
+                GAME_ID, ERA, ROUND, PLAYER_ID, SpecialAction.CORRUPT, null, null, targetPlayerId);
+        given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA, ROUND))
+                .willReturn(Optional.of(round));
+        given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(playerState));
+        given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, targetPlayerId))
+                .willReturn(Optional.empty());
+        given(playerState.faction()).willReturn(Faction.ERASERS);
+
+        // when / then
+        assertThatExceptionOfType(PlayerStateNotFoundException.class).isThrownBy(() -> handler.handle(command));
+        then(round).should(never()).submitSpecial(any(), any(), any(), any(), any(), any(), anyBoolean());
     }
 
     @Test
