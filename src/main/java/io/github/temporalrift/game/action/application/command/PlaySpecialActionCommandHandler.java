@@ -10,7 +10,10 @@ import io.github.temporalrift.game.action.application.ActionRoundEventPublicatio
 import io.github.temporalrift.game.action.application.ActionTargetValidator;
 import io.github.temporalrift.game.action.application.port.in.PlaySpecialActionUseCase;
 import io.github.temporalrift.game.action.domain.actionround.FactionRequiredException;
+import io.github.temporalrift.game.action.domain.actionround.InvalidSpecialActionException;
+import io.github.temporalrift.game.action.domain.actionround.JammedPlayerException;
 import io.github.temporalrift.game.action.domain.actionround.RoundNotFoundException;
+import io.github.temporalrift.game.action.domain.actionround.SubmittedAction;
 import io.github.temporalrift.game.action.domain.activisterastate.ActivistEraState;
 import io.github.temporalrift.game.action.domain.activisterastate.ExposeTargetNotEligibleException;
 import io.github.temporalrift.game.action.domain.activisterastate.ExposeUnavailableException;
@@ -71,20 +74,28 @@ class PlaySpecialActionCommandHandler implements PlaySpecialActionUseCase {
         if (faction == null) {
             throw new FactionRequiredException(command.playerId());
         }
+        // Cross-aggregate eligibility: ActionRound has no visibility into PlayerState, so it cannot
+        // verify faction/jammed itself. Resolved here, in the same transaction as the round submission.
+        if (playerState.isJammed()) {
+            throw new JammedPlayerException(command.playerId());
+        }
+        if (!faction.hasSpecialAction(command.specialAction())) {
+            throw new InvalidSpecialActionException(faction, command.specialAction());
+        }
         if (command.specialAction() == SpecialAction.EXPOSE && faction == Faction.ACTIVISTS) {
             recordExpose(command);
         }
         if (command.specialAction() == SpecialAction.CORRUPT) {
             requireGameOpponent(command);
         }
-        var allSubmitted = round.submitSpecial(
+        var action = new SubmittedAction.SpecialActionSubmission(
                 command.playerId(),
                 faction,
                 command.specialAction(),
                 command.targetEventId(),
                 command.targetOutcomeId(),
-                command.targetPlayerId(),
-                playerState.isJammed());
+                command.targetPlayerId());
+        var allSubmitted = round.submit(action);
         actionRoundRepository.save(round);
         ActionRoundEventPublication.publish(round, actionEventPublisher, clock);
 
@@ -92,11 +103,10 @@ class PlaySpecialActionCommandHandler implements PlaySpecialActionUseCase {
                 command.gameId(), command.eraNumber(), command.roundNumber(), command.playerId(), allSubmitted);
     }
 
-    // ActionRound.submitSpecial only rejects a null or self targetPlayerId — it has no visibility into
-    // the game's full player roster (it only tracks pendingPlayerIds, which shrinks as the round
-    // progresses), so it cannot verify the target is an actual opponent in this game. Checked here,
-    // where PlayerStateRepository has that visibility, mirroring how recordExpose already validates
-    // its own targetPlayerId via round-1 submission membership.
+    // SubmittedAction.SpecialActionSubmission.validate() only rejects a null or self targetPlayerId —
+    // it has no visibility into the game's full player roster to verify the target is an actual
+    // opponent in this game. Checked here, where PlayerStateRepository has that visibility, mirroring
+    // how recordExpose already validates its own targetPlayerId via round-1 submission membership.
     private void requireGameOpponent(Command command) {
         var targetPlayerId = command.targetPlayerId();
         if (targetPlayerId == null) {
