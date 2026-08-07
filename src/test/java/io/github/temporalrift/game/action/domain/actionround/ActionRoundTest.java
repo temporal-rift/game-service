@@ -153,10 +153,9 @@ class ActionRoundTest {
         var cardId = UUID.randomUUID();
         var targetEventId = UUID.randomUUID();
         var targetOutcomeId = UUID.randomUUID();
+        var action = card(PLAYER_A, cardId, CardType.SWING, targetEventId, null, targetOutcomeId);
 
-        assertThatExceptionOfType(InvalidActionTargetException.class)
-                .isThrownBy(() ->
-                        round.submit(card(PLAYER_A, cardId, CardType.SWING, targetEventId, null, targetOutcomeId)));
+        assertThatExceptionOfType(InvalidActionTargetException.class).isThrownBy(() -> round.submit(action));
     }
 
     @Test
@@ -167,10 +166,9 @@ class ActionRoundTest {
         var cardId = UUID.randomUUID();
         var targetEventId = UUID.randomUUID();
         var sourceOutcomeId = UUID.randomUUID();
+        var action = card(PLAYER_A, cardId, CardType.SWING, targetEventId, sourceOutcomeId, null);
 
-        assertThatExceptionOfType(InvalidActionTargetException.class)
-                .isThrownBy(() ->
-                        round.submit(card(PLAYER_A, cardId, CardType.SWING, targetEventId, sourceOutcomeId, null)));
+        assertThatExceptionOfType(InvalidActionTargetException.class).isThrownBy(() -> round.submit(action));
     }
 
     @Test
@@ -181,10 +179,9 @@ class ActionRoundTest {
         var cardId = UUID.randomUUID();
         var targetEventId = UUID.randomUUID();
         var outcomeId = UUID.randomUUID();
+        var action = card(PLAYER_A, cardId, CardType.SWING, targetEventId, outcomeId, outcomeId);
 
-        assertThatExceptionOfType(InvalidActionTargetException.class)
-                .isThrownBy(() ->
-                        round.submit(card(PLAYER_A, cardId, CardType.SWING, targetEventId, outcomeId, outcomeId)));
+        assertThatExceptionOfType(InvalidActionTargetException.class).isThrownBy(() -> round.submit(action));
     }
 
     @Test
@@ -207,10 +204,10 @@ class ActionRoundTest {
         // given
         var round = openRound(List.of(PLAYER_A));
         round.close("ALL_SUBMITTED");
+        var action = card(PLAYER_A, CardType.PUSH);
 
         // when / then
-        assertThatExceptionOfType(ActionRoundClosedException.class)
-                .isThrownBy(() -> round.submit(card(PLAYER_A, CardType.PUSH)));
+        assertThatExceptionOfType(ActionRoundClosedException.class).isThrownBy(() -> round.submit(action));
     }
 
     @Test
@@ -224,10 +221,10 @@ class ActionRoundTest {
                 ROUND,
                 new ActionRound.PersistedState(
                         RoundStatus.CLOSING, TIMER_SECONDS, "TIMER_EXPIRED", List.of(PLAYER_A), List.of()));
+        var action = card(PLAYER_A, CardType.PUSH);
 
         // when / then
-        assertThatExceptionOfType(ActionRoundClosedException.class)
-                .isThrownBy(() -> round.submit(card(PLAYER_A, CardType.PUSH)));
+        assertThatExceptionOfType(ActionRoundClosedException.class).isThrownBy(() -> round.submit(action));
     }
 
     @Test
@@ -237,10 +234,10 @@ class ActionRoundTest {
         var round = openRound(List.of(PLAYER_A, PLAYER_B));
         round.pullEvents();
         round.submit(card(PLAYER_A, CardType.PUSH));
+        var action = card(PLAYER_A, CardType.SUPPRESS);
 
         // when / then
-        assertThatExceptionOfType(DuplicateSubmissionException.class)
-                .isThrownBy(() -> round.submit(card(PLAYER_A, CardType.SUPPRESS)));
+        assertThatExceptionOfType(DuplicateSubmissionException.class).isThrownBy(() -> round.submit(action));
     }
 
     @Test
@@ -249,10 +246,10 @@ class ActionRoundTest {
         // given
         var round = openRound(List.of(PLAYER_A));
         round.pullEvents();
+        var action = card(PLAYER_B, CardType.PUSH);
 
         // when / then
-        assertThatExceptionOfType(DuplicateSubmissionException.class)
-                .isThrownBy(() -> round.submit(card(PLAYER_B, CardType.PUSH)));
+        assertThatExceptionOfType(DuplicateSubmissionException.class).isThrownBy(() -> round.submit(action));
     }
 
     @Test
@@ -280,11 +277,10 @@ class ActionRoundTest {
         // given
         var round = openRound(List.of(PLAYER_A));
         round.pullEvents();
+        var action = special(PLAYER_A, Faction.PROPHETS, SpecialAction.FORESIGHT, null, null, null);
 
         // when / then
-        assertThatExceptionOfType(InvalidActionTargetException.class)
-                .isThrownBy(() ->
-                        round.submit(special(PLAYER_A, Faction.PROPHETS, SpecialAction.FORESIGHT, null, null, null)));
+        assertThatExceptionOfType(InvalidActionTargetException.class).isThrownBy(() -> round.submit(action));
         assertThat(round.pendingPlayerIds()).containsExactly(PLAYER_A);
         assertThat(round.submittedActions()).isEmpty();
         assertThat(round.pullEvents()).isEmpty();
@@ -295,10 +291,9 @@ class ActionRoundTest {
     void submitSpecialRewriteWithoutTargetThrows() {
         var round = openRound(List.of(PLAYER_A));
         round.pullEvents();
+        var action = special(PLAYER_A, Faction.REVISIONISTS, SpecialAction.REWRITE, null, null, null);
 
-        assertThatExceptionOfType(InvalidActionTargetException.class)
-                .isThrownBy(() ->
-                        round.submit(special(PLAYER_A, Faction.REVISIONISTS, SpecialAction.REWRITE, null, null, null)));
+        assertThatExceptionOfType(InvalidActionTargetException.class).isThrownBy(() -> round.submit(action));
         assertThat(round.pendingPlayerIds()).containsExactly(PLAYER_A);
         assertThat(round.submittedActions()).isEmpty();
     }
@@ -308,10 +303,9 @@ class ActionRoundTest {
     void submitSpecialSealWithoutTargetThrows() {
         var round = openRound(List.of(PLAYER_A));
         round.pullEvents();
+        var action = special(PLAYER_A, Faction.PROPHETS, SpecialAction.SEAL, null, null, null);
 
-        assertThatExceptionOfType(InvalidActionTargetException.class)
-                .isThrownBy(
-                        () -> round.submit(special(PLAYER_A, Faction.PROPHETS, SpecialAction.SEAL, null, null, null)));
+        assertThatExceptionOfType(InvalidActionTargetException.class).isThrownBy(() -> round.submit(action));
         assertThat(round.pendingPlayerIds()).containsExactly(PLAYER_A);
         assertThat(round.submittedActions()).isEmpty();
     }
@@ -341,11 +335,10 @@ class ActionRoundTest {
         var round = openRound(List.of(PLAYER_A));
         round.pullEvents();
         var targetEventId = UUID.randomUUID();
+        var action = special(PLAYER_A, Faction.ERASERS, SpecialAction.ANNIHILATE, targetEventId, null, null);
 
         // when / then
-        assertThatExceptionOfType(InvalidActionTargetException.class)
-                .isThrownBy(() -> round.submit(
-                        special(PLAYER_A, Faction.ERASERS, SpecialAction.ANNIHILATE, targetEventId, null, null)));
+        assertThatExceptionOfType(InvalidActionTargetException.class).isThrownBy(() -> round.submit(action));
         assertThat(round.pendingPlayerIds()).containsExactly(PLAYER_A);
         assertThat(round.submittedActions()).isEmpty();
         assertThat(round.pullEvents()).isEmpty();
@@ -407,11 +400,10 @@ class ActionRoundTest {
         // given
         var round = openRound(List.of(PLAYER_A));
         round.pullEvents();
+        var action = special(PLAYER_A, Faction.PROPHETS, SpecialAction.FULFILLMENT, null, null, null);
 
         // when / then
-        assertThatExceptionOfType(InvalidActionTargetException.class)
-                .isThrownBy(() ->
-                        round.submit(special(PLAYER_A, Faction.PROPHETS, SpecialAction.FULFILLMENT, null, null, null)));
+        assertThatExceptionOfType(InvalidActionTargetException.class).isThrownBy(() -> round.submit(action));
         assertThat(round.pendingPlayerIds()).containsExactly(PLAYER_A);
         assertThat(round.submittedActions()).isEmpty();
         assertThat(round.pullEvents()).isEmpty();
@@ -442,11 +434,10 @@ class ActionRoundTest {
         // given
         var round = openRound(List.of(PLAYER_A, PLAYER_B));
         round.pullEvents();
+        var action = special(PLAYER_A, Faction.ERASERS, SpecialAction.CORRUPT, null, null, null);
 
         // when / then
-        assertThatExceptionOfType(InvalidActionTargetException.class)
-                .isThrownBy(() ->
-                        round.submit(special(PLAYER_A, Faction.ERASERS, SpecialAction.CORRUPT, null, null, null)));
+        assertThatExceptionOfType(InvalidActionTargetException.class).isThrownBy(() -> round.submit(action));
         assertThat(round.pendingPlayerIds()).containsExactly(PLAYER_A, PLAYER_B);
         assertThat(round.submittedActions()).isEmpty();
         assertThat(round.pullEvents()).isEmpty();
@@ -458,11 +449,10 @@ class ActionRoundTest {
         // given
         var round = openRound(List.of(PLAYER_A, PLAYER_B));
         round.pullEvents();
+        var action = special(PLAYER_A, Faction.ERASERS, SpecialAction.CORRUPT, null, null, PLAYER_A);
 
         // when / then
-        assertThatExceptionOfType(InvalidActionTargetException.class)
-                .isThrownBy(() ->
-                        round.submit(special(PLAYER_A, Faction.ERASERS, SpecialAction.CORRUPT, null, null, PLAYER_A)));
+        assertThatExceptionOfType(InvalidActionTargetException.class).isThrownBy(() -> round.submit(action));
         assertThat(round.pendingPlayerIds()).containsExactly(PLAYER_A, PLAYER_B);
         assertThat(round.submittedActions()).isEmpty();
         assertThat(round.pullEvents()).isEmpty();
