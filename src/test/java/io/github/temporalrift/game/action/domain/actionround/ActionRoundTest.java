@@ -78,6 +78,36 @@ class ActionRoundTest {
     }
 
     @Test
+    @DisplayName("constructor with initialSubmittedActions — removes those players from pending, exposes the "
+            + "replayed action, and registers ActionRoundStarted then SpecialActionPlayed")
+    void constructorWithInitialSubmittedActionsReplaysDeclarations() {
+        // given
+        var declaration =
+                special(PLAYER_A, Faction.ACTIVISTS, SpecialAction.RALLY, UUID.randomUUID(), UUID.randomUUID(), null);
+
+        // when
+        var round = new ActionRound(
+                UUID.randomUUID(),
+                GAME_ID,
+                ERA,
+                ROUND,
+                List.of(PLAYER_A, PLAYER_B),
+                TIMER_SECONDS,
+                List.of(declaration));
+
+        // then
+        assertThat(round.pendingPlayerIds()).containsExactly(PLAYER_B);
+        assertThat(round.submittedActions()).containsExactly(declaration);
+        var events = round.pullEvents();
+        assertThat(events).hasSize(2);
+        assertThat(events.get(0)).isInstanceOf(ActionRoundStarted.class);
+        assertThat(events.get(1)).isInstanceOfSatisfying(SpecialActionPlayed.class, played -> {
+            assertThat(played.playerId()).isEqualTo(PLAYER_A);
+            assertThat(played.specialAction()).isEqualTo(SpecialAction.RALLY);
+        });
+    }
+
+    @Test
     @DisplayName("reconstitute does not register any events")
     void reconstituteRegistersNoEvents() {
         // when
@@ -269,6 +299,38 @@ class ActionRoundTest {
         var events = round.pullEvents();
         assertThat(events).singleElement().isInstanceOf(SpecialActionPlayed.class);
         assertThat(((SpecialActionPlayed) events.getFirst()).playerId()).isEqualTo(PLAYER_A);
+    }
+
+    @Test
+    @DisplayName("submit — RALLY — throws DeclarationSpecialActionRequiredException")
+    void submitSpecialRallyThrows() {
+        // given
+        var round = openRound(List.of(PLAYER_A));
+        round.pullEvents();
+        var action = special(PLAYER_A, Faction.ACTIVISTS, SpecialAction.RALLY, null, null, null);
+
+        // when / then
+        assertThatExceptionOfType(DeclarationSpecialActionRequiredException.class)
+                .isThrownBy(() -> round.submit(action));
+        assertThat(round.pendingPlayerIds()).containsExactly(PLAYER_A);
+        assertThat(round.submittedActions()).isEmpty();
+        assertThat(round.pullEvents()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("submit — MOMENTUM — throws DeclarationSpecialActionRequiredException")
+    void submitSpecialMomentumThrows() {
+        // given
+        var round = openRound(List.of(PLAYER_A));
+        round.pullEvents();
+        var action = special(PLAYER_A, Faction.ACTIVISTS, SpecialAction.MOMENTUM, null, null, null);
+
+        // when / then
+        assertThatExceptionOfType(DeclarationSpecialActionRequiredException.class)
+                .isThrownBy(() -> round.submit(action));
+        assertThat(round.pendingPlayerIds()).containsExactly(PLAYER_A);
+        assertThat(round.submittedActions()).isEmpty();
+        assertThat(round.pullEvents()).isEmpty();
     }
 
     @Test
