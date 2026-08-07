@@ -395,7 +395,11 @@ class EraScoringContextRepositoryAdapter implements EraScoringContextRepository 
     }
 
     @Override
-    @Transactional
+    // REQUIRES_NEW for the same reason as upsertWrittenOutcome/recordAnnihilatedOutcome above:
+    // onEraActionFactsFinalized calls this and then markActionFactsReady/tryComplete() in the same
+    // listener transaction. If tryComplete() throws, that must not roll back a declaration this
+    // method already wrote.
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void recordFulfillmentDeclaration(UUID gameId, int eraNumber, UUID playerId, UUID targetEventId) {
         fulfillmentDeclarationJpaRepository.insertIfAbsent(
                 UUID.randomUUID(), gameId, eraNumber, playerId, targetEventId);
