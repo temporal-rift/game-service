@@ -131,7 +131,7 @@ class EraSagaAdvancer {
                         },
                         () -> {
                             var game = gameRepository
-                                    .findById(gameId)
+                                    .findByIdWithLock(gameId)
                                     .orElseThrow(() -> new GameNotFoundException(gameId));
                             game.endEra(gameRules.maxEras());
                             gameRepository.save(game);

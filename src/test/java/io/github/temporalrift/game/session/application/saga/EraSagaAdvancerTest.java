@@ -235,7 +235,7 @@ class EraSagaAdvancerTest {
         given(gameRules.winScoreThreshold()).willReturn(WIN_THRESHOLD);
         given(gameRules.maxEras()).willReturn(MAX_ERAS);
         var game = Game.reconstitute(GAME_ID, LOBBY_ID, List.of(), 1, 0, GameStatus.IN_PROGRESS);
-        given(gameRepository.findById(GAME_ID)).willReturn(Optional.of(game));
+        given(gameRepository.findByIdWithLock(GAME_ID)).willReturn(Optional.of(game));
         var su = noWinnerScores();
 
         // when
@@ -266,7 +266,7 @@ class EraSagaAdvancerTest {
                 0,
                 List.of(firstCascadedEvent, secondCascadedEvent),
                 GameStatus.IN_PROGRESS);
-        given(gameRepository.findById(GAME_ID)).willReturn(Optional.of(game));
+        given(gameRepository.findByIdWithLock(GAME_ID)).willReturn(Optional.of(game));
         var captor = ArgumentCaptor.forClass(Object.class);
 
         // when
@@ -294,7 +294,7 @@ class EraSagaAdvancerTest {
         given(gameRules.stabilizationWinnerFactions()).willReturn(Set.of(Faction.PROPHETS, Faction.WEAVERS));
         // eraCounter == maxEras so endEra() sets ENDED_BY_STABILIZATION
         var game = Game.reconstitute(GAME_ID, LOBBY_ID, List.of(), MAX_ERAS, 0, GameStatus.IN_PROGRESS);
-        given(gameRepository.findById(GAME_ID)).willReturn(Optional.of(game));
+        given(gameRepository.findByIdWithLock(GAME_ID)).willReturn(Optional.of(game));
         var su = noWinnerScores();
 
         // when
@@ -340,7 +340,7 @@ class EraSagaAdvancerTest {
         given(gameRules.winScoreThreshold()).willReturn(WIN_THRESHOLD);
         given(gameRules.maxEras()).willReturn(MAX_ERAS);
         var game = Game.reconstitute(GAME_ID, LOBBY_ID, List.of(), MAX_ERAS, 0, GameStatus.IN_PROGRESS);
-        given(gameRepository.findById(GAME_ID)).willReturn(Optional.of(game));
+        given(gameRepository.findByIdWithLock(GAME_ID)).willReturn(Optional.of(game));
         given(gameRules.stabilizationWinnerFactions()).willReturn(Set.of(Faction.PROPHETS, Faction.WEAVERS));
         var captor = ArgumentCaptor.forClass(Object.class);
 
@@ -367,7 +367,7 @@ class EraSagaAdvancerTest {
         given(gameRules.winScoreThreshold()).willReturn(WIN_THRESHOLD);
         given(gameRules.maxEras()).willReturn(MAX_ERAS);
         var game = Game.reconstitute(GAME_ID, LOBBY_ID, List.of(), MAX_ERAS, 0, GameStatus.IN_PROGRESS);
-        given(gameRepository.findById(GAME_ID)).willReturn(Optional.of(game));
+        given(gameRepository.findByIdWithLock(GAME_ID)).willReturn(Optional.of(game));
         given(gameRules.stabilizationWinnerFactions()).willReturn(Set.of(Faction.PROPHETS, Faction.WEAVERS));
 
         var updates = List.of(
