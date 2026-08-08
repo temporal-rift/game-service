@@ -37,7 +37,8 @@ interface ScoringContextCorruptCorrelationJpaRepository
 
     // Not yet called by any production listener: no timeline-service event confirming inversion
     // outcome exists yet (temporal-rift/timeline-service#12 / #16). Ready for that future consumer —
-    // keyed on the same natural key as insertIfAbsent above.
+    // keyed on the same natural key as insertIfAbsent above. Returns the affected row count so the
+    // caller can detect (and log) a confirmation that arrived before its correlation row was written.
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query(value = """
                     UPDATE scoring_context_corrupt_correlation
@@ -45,7 +46,7 @@ interface ScoringContextCorruptCorrelationJpaRepository
                     WHERE game_id = :gameId AND era_number = :eraNumber
                         AND corrupting_player_id = :corruptingPlayerId AND card_instance_id = :cardInstanceId
                     """, nativeQuery = true)
-    void confirmInversion(
+    int confirmInversion(
             @Param("gameId") UUID gameId,
             @Param("eraNumber") int eraNumber,
             @Param("corruptingPlayerId") UUID corruptingPlayerId,
