@@ -5,16 +5,21 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.ObjectMapper;
 
 import io.github.temporalrift.game.scoring.domain.context.ActionScoringFact;
+import io.github.temporalrift.game.scoring.domain.context.AnnihilationFact;
 import io.github.temporalrift.game.scoring.domain.context.ChainScoringFact;
+import io.github.temporalrift.game.scoring.domain.context.CorruptCorrelationFact;
 import io.github.temporalrift.game.scoring.domain.context.EraScoringContext;
 import io.github.temporalrift.game.scoring.domain.context.EraScoringContextNotFoundException;
 import io.github.temporalrift.game.scoring.domain.context.EventOutcomeFact;
+import io.github.temporalrift.game.scoring.domain.context.FulfillmentDeclarationFact;
 import io.github.temporalrift.game.scoring.domain.context.PlayerFaction;
 import io.github.temporalrift.game.scoring.domain.event.EraResolutionCompleted;
 import io.github.temporalrift.game.scoring.domain.playerscore.ScoreReason;
@@ -27,6 +32,8 @@ import io.github.temporalrift.game.shared.SpecialAction;
 @Component
 class EraScoringContextRepositoryAdapter implements EraScoringContextRepository {
 
+    private static final Logger log = LoggerFactory.getLogger(EraScoringContextRepositoryAdapter.class);
+
     private final ScoringContextPlayerJpaRepository playerJpaRepository;
     private final ScoringContextEraOutcomeExpectationJpaRepository eraOutcomeExpectationJpaRepository;
     private final ScoringContextChainFactJpaRepository chainFactJpaRepository;
@@ -38,6 +45,8 @@ class EraScoringContextRepositoryAdapter implements EraScoringContextRepository 
     private final ScoringContextActionFactJpaRepository actionFactJpaRepository;
     private final ScoringContextRevisionistActionJpaRepository revisionistActionJpaRepository;
     private final ScoringTimelineResolutionBarrierJpaRepository resolutionBarrierJpaRepository;
+    private final ScoringContextFulfillmentDeclarationJpaRepository fulfillmentDeclarationJpaRepository;
+    private final ScoringContextCorruptCorrelationJpaRepository corruptCorrelationJpaRepository;
     private final ObjectMapper objectMapper;
 
     EraScoringContextRepositoryAdapter(
@@ -52,6 +61,8 @@ class EraScoringContextRepositoryAdapter implements EraScoringContextRepository 
             ScoringContextActionFactJpaRepository actionFactJpaRepository,
             ScoringContextRevisionistActionJpaRepository revisionistActionJpaRepository,
             ScoringTimelineResolutionBarrierJpaRepository resolutionBarrierJpaRepository,
+            ScoringContextFulfillmentDeclarationJpaRepository fulfillmentDeclarationJpaRepository,
+            ScoringContextCorruptCorrelationJpaRepository corruptCorrelationJpaRepository,
             ObjectMapper objectMapper) {
         this.playerJpaRepository = playerJpaRepository;
         this.eraOutcomeExpectationJpaRepository = eraOutcomeExpectationJpaRepository;
@@ -64,6 +75,8 @@ class EraScoringContextRepositoryAdapter implements EraScoringContextRepository 
         this.actionFactJpaRepository = actionFactJpaRepository;
         this.revisionistActionJpaRepository = revisionistActionJpaRepository;
         this.resolutionBarrierJpaRepository = resolutionBarrierJpaRepository;
+        this.fulfillmentDeclarationJpaRepository = fulfillmentDeclarationJpaRepository;
+        this.corruptCorrelationJpaRepository = corruptCorrelationJpaRepository;
         this.objectMapper = objectMapper;
     }
 
@@ -100,7 +113,37 @@ class EraScoringContextRepositoryAdapter implements EraScoringContextRepository 
         unconsumedActionFacts.forEach(entity -> entity.setConsumed(true));
         actionFactJpaRepository.saveAll(unconsumedActionFacts);
 
-        return new EraScoringContext(gameId, eraNumber, players, eventOutcomes, actionFacts, chainFacts);
+        var annihilationFacts = annihilatedOutcomeJpaRepository.findAllByGameIdAndEraNumber(gameId, eraNumber).stream()
+                .map(entity -> new AnnihilationFact(entity.getEventId(), entity.getOutcomeId(), entity.getPlayerId()))
+                .toList();
+
+        var fulfillmentDeclarations =
+                fulfillmentDeclarationJpaRepository.findAllByGameIdAndEraNumber(gameId, eraNumber).stream()
+                        .map(entity -> new FulfillmentDeclarationFact(entity.getPlayerId(), entity.getTargetEventId()))
+                        .toList();
+
+        var corruptCorrelations =
+                corruptCorrelationJpaRepository.findAllByGameIdAndEraNumber(gameId, eraNumber).stream()
+                        .map(entity -> new CorruptCorrelationFact(
+                                entity.getCorruptingPlayerId(),
+                                entity.getTargetPlayerId(),
+                                entity.getCardInstanceId(),
+                                entity.getTargetEventId(),
+                                entity.getSourceOutcomeId(),
+                                entity.getTargetOutcomeId(),
+                                entity.getTookEffect()))
+                        .toList();
+
+        return new EraScoringContext(
+                gameId,
+                eraNumber,
+                players,
+                eventOutcomes,
+                actionFacts,
+                chainFacts,
+                annihilationFacts,
+                fulfillmentDeclarations,
+                corruptCorrelations);
     }
 
     private List<EventOutcomeFact> buildEventOutcomeFacts(UUID gameId, int eraNumber) {
@@ -367,5 +410,60 @@ class EraScoringContextRepositoryAdapter implements EraScoringContextRepository 
     @Override
     public boolean revisionistActionsResolved(UUID gameId, int eraNumber) {
         return !revisionistActionJpaRepository.existsByGameIdAndEraNumberAndResolvedIsNull(gameId, eraNumber);
+    }
+
+    @Override
+    // REQUIRES_NEW for the same reason as upsertWrittenOutcome/recordAnnihilatedOutcome above:
+    // onEraActionFactsFinalized calls this and then markActionFactsReady/tryComplete() in the same
+    // listener transaction. If tryComplete() throws, that must not roll back a declaration this
+    // method already wrote.
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void recordFulfillmentDeclaration(UUID gameId, int eraNumber, UUID playerId, UUID targetEventId) {
+        fulfillmentDeclarationJpaRepository.insertIfAbsent(
+                UUID.randomUUID(), gameId, eraNumber, playerId, targetEventId);
+    }
+
+    @Override
+    @Transactional
+    public void recordCorruptCorrelation(
+            UUID gameId,
+            int eraNumber,
+            UUID corruptingPlayerId,
+            UUID targetPlayerId,
+            UUID cardInstanceId,
+            UUID targetEventId,
+            UUID sourceOutcomeId,
+            UUID targetOutcomeId) {
+        corruptCorrelationJpaRepository.insertIfAbsent(
+                UUID.randomUUID(),
+                gameId,
+                eraNumber,
+                corruptingPlayerId,
+                targetPlayerId,
+                cardInstanceId,
+                targetEventId,
+                sourceOutcomeId,
+                targetOutcomeId);
+    }
+
+    @Override
+    @Transactional
+    public void confirmCorruptInversion(
+            UUID gameId, int eraNumber, UUID corruptingPlayerId, UUID cardInstanceId, boolean tookEffect) {
+        var updated = corruptCorrelationJpaRepository.confirmInversion(
+                gameId, eraNumber, corruptingPlayerId, cardInstanceId, tookEffect);
+        if (updated == 0) {
+            // The confirmation arrived before its correlation row (recordCorruptCorrelation) was
+            // written — e.g. redelivered ahead of the era's own final-round close. Nothing to update
+            // yet; the correlation is not lost (recordCorruptCorrelation still inserts it), but this
+            // confirmation itself has no row to attach to and is silently dropped, so surface it.
+            log.warn(
+                    "confirmCorruptInversion found no matching correlation for game {} era {} corrupting player {}"
+                            + " card {} — confirmation dropped",
+                    gameId,
+                    eraNumber,
+                    corruptingPlayerId,
+                    cardInstanceId);
+        }
     }
 }

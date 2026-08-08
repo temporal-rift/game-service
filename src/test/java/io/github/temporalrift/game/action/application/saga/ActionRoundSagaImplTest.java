@@ -29,6 +29,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import io.github.temporalrift.game.action.domain.actionround.ActionRound;
 import io.github.temporalrift.game.action.domain.actionround.RoundStatus;
+import io.github.temporalrift.game.action.domain.actionround.SubmittedAction;
 import io.github.temporalrift.game.action.domain.activisterastate.ActivistDeclarationMode;
 import io.github.temporalrift.game.action.domain.activisterastate.ActivistEraState;
 import io.github.temporalrift.game.action.domain.event.ActionRoundStarted;
@@ -347,11 +348,8 @@ class ActionRoundSagaImplTest {
                     GAME_ID,
                     ERA_NUMBER,
                     ROUND_NUMBER,
-                    RoundStatus.CLOSING,
-                    TIMER_SECONDS,
-                    "TIMER_EXPIRED",
-                    List.of(),
-                    List.of());
+                    new ActionRound.PersistedState(
+                            RoundStatus.CLOSING, TIMER_SECONDS, "TIMER_EXPIRED", List.of(), List.of()));
             given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(
                             GAME_ID, ERA_NUMBER, ROUND_NUMBER))
                     .willReturn(Optional.of(round));
@@ -513,8 +511,8 @@ class ActionRoundSagaImplTest {
             var targetEventId = UUID.randomUUID();
             var targetOutcomeId = UUID.randomUUID();
             var round = new ActionRound(roundId, GAME_ID, ERA_NUMBER, 3, List.of(PLAYER_1), TIMER_SECONDS);
-            round.submitSpecial(
-                    PLAYER_1, Faction.PROPHETS, SpecialAction.FORESIGHT, targetEventId, targetOutcomeId, null, false);
+            round.submit(new SubmittedAction.SpecialActionSubmission(
+                    PLAYER_1, Faction.PROPHETS, SpecialAction.FORESIGHT, targetEventId, targetOutcomeId, null));
             given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA_NUMBER, 3))
                     .willReturn(Optional.of(round));
 
@@ -551,8 +549,8 @@ class ActionRoundSagaImplTest {
             var targetEventId = UUID.randomUUID();
             var targetOutcomeId = UUID.randomUUID();
             var round = new ActionRound(roundId, GAME_ID, ERA_NUMBER, 3, List.of(PLAYER_1), TIMER_SECONDS);
-            round.submitSpecial(
-                    PLAYER_1, Faction.ERASERS, SpecialAction.ANNIHILATE, targetEventId, targetOutcomeId, null, false);
+            round.submit(new SubmittedAction.SpecialActionSubmission(
+                    PLAYER_1, Faction.ERASERS, SpecialAction.ANNIHILATE, targetEventId, targetOutcomeId, null));
             given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA_NUMBER, 3))
                     .willReturn(Optional.of(round));
 
@@ -580,6 +578,39 @@ class ActionRoundSagaImplTest {
         }
 
         @Test
+        @DisplayName("Round 3 with a Fulfillment submission — bundles a FulfillmentFact")
+        void tryClose_round3WithFulfillment_bundlesFulfillmentFact() {
+            // given
+            var roundId = UUID.randomUUID();
+            var targetEventId = UUID.randomUUID();
+            var round = new ActionRound(roundId, GAME_ID, ERA_NUMBER, 3, List.of(PLAYER_1), TIMER_SECONDS);
+            round.submit(new SubmittedAction.SpecialActionSubmission(
+                    PLAYER_1, Faction.PROPHETS, SpecialAction.FULFILLMENT, targetEventId, null, null));
+            given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA_NUMBER, 3))
+                    .willReturn(Optional.of(round));
+
+            var updatedState = new ActionRoundSagaState(
+                    UUID.randomUUID(),
+                    GAME_ID,
+                    ERA_NUMBER,
+                    3,
+                    ActionRoundSagaStatus.WAITING,
+                    List.of(),
+                    TIMER_EXPIRES_AT);
+            given(stateManager.markSubmitted(GAME_ID, ERA_NUMBER, 3, PLAYER_1)).willReturn(Optional.of(updatedState));
+
+            // when
+            saga.handlePlayerSubmitted(GAME_ID, ERA_NUMBER, 3, PLAYER_1);
+
+            // then
+            var captor = ArgumentCaptor.<EraActionFactsFinalized>captor();
+            then(actionEventPublisher).should(times(1)).publishInternally(captor.capture());
+            var event = captor.getValue();
+            assertThat(event.fulfillmentFacts())
+                    .containsExactly(new EraActionFactsFinalized.FulfillmentFact(PLAYER_1, targetEventId));
+        }
+
+        @Test
         @DisplayName("Round 3 — retains the latest Rewrite and every Mimic from the era")
         void tryClose_round3_collectsRevisionistFactsAcrossTheEra() {
             var firstRewriteEventId = UUID.randomUUID();
@@ -589,26 +620,24 @@ class ActionRoundSagaImplTest {
             var mimicEventId = UUID.randomUUID();
             var mimicOutcomeId = UUID.randomUUID();
             var round1 = new ActionRound(UUID.randomUUID(), GAME_ID, ERA_NUMBER, 1, List.of(PLAYER_1), TIMER_SECONDS);
-            round1.submitSpecial(
+            round1.submit(new SubmittedAction.SpecialActionSubmission(
                     PLAYER_1,
                     Faction.REVISIONISTS,
                     SpecialAction.REWRITE,
                     firstRewriteEventId,
                     firstRewriteOutcomeId,
-                    null,
-                    false);
+                    null));
             var round2 = new ActionRound(UUID.randomUUID(), GAME_ID, ERA_NUMBER, 2, List.of(PLAYER_1), TIMER_SECONDS);
-            round2.submitSpecial(
+            round2.submit(new SubmittedAction.SpecialActionSubmission(
                     PLAYER_1,
                     Faction.REVISIONISTS,
                     SpecialAction.REWRITE,
                     latestRewriteEventId,
                     latestRewriteOutcomeId,
-                    null,
-                    false);
+                    null));
             var round3 = new ActionRound(UUID.randomUUID(), GAME_ID, ERA_NUMBER, 3, List.of(PLAYER_1), TIMER_SECONDS);
-            round3.submitSpecial(
-                    PLAYER_1, Faction.REVISIONISTS, SpecialAction.MIMIC, mimicEventId, mimicOutcomeId, null, false);
+            round3.submit(new SubmittedAction.SpecialActionSubmission(
+                    PLAYER_1, Faction.REVISIONISTS, SpecialAction.MIMIC, mimicEventId, mimicOutcomeId, null));
             given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA_NUMBER, 3))
                     .willReturn(Optional.of(round3));
             given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumber(GAME_ID, ERA_NUMBER, 1))
@@ -750,6 +779,177 @@ class ActionRoundSagaImplTest {
     }
 
     @Nested
+    @DisplayName("Corrupt correlation — bundled into the era's final round close")
+    class CorruptCorrelationTests {
+
+        @Test
+        @DisplayName("Round 3 — target played a PUSH card this round — bundles a CorruptCorrelationFact")
+        void tryClose_round3CorruptTargetPlayedPushCard_bundlesCorrelation() {
+            // given
+            var roundId = UUID.randomUUID();
+            var cardInstanceId = UUID.randomUUID();
+            var targetEventId = UUID.randomUUID();
+            var targetOutcomeId = UUID.randomUUID();
+            var round = new ActionRound(roundId, GAME_ID, ERA_NUMBER, 3, List.of(PLAYER_1, PLAYER_2), TIMER_SECONDS);
+            round.submit(new SubmittedAction.CardAction(
+                    PLAYER_2, cardInstanceId, CardType.PUSH, targetEventId, null, targetOutcomeId));
+            round.submit(new SubmittedAction.SpecialActionSubmission(
+                    PLAYER_1, Faction.ERASERS, SpecialAction.CORRUPT, null, null, PLAYER_2));
+            given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA_NUMBER, 3))
+                    .willReturn(Optional.of(round));
+
+            var updatedState = new ActionRoundSagaState(
+                    UUID.randomUUID(),
+                    GAME_ID,
+                    ERA_NUMBER,
+                    3,
+                    ActionRoundSagaStatus.WAITING,
+                    List.of(),
+                    TIMER_EXPIRES_AT);
+            given(stateManager.markSubmitted(GAME_ID, ERA_NUMBER, 3, PLAYER_1)).willReturn(Optional.of(updatedState));
+
+            // when
+            saga.handlePlayerSubmitted(GAME_ID, ERA_NUMBER, 3, PLAYER_1);
+
+            // then
+            var captor = ArgumentCaptor.<EraActionFactsFinalized>captor();
+            then(actionEventPublisher).should(times(1)).publishInternally(captor.capture());
+            assertThat(captor.getValue().corruptCorrelationFacts())
+                    .containsExactly(new EraActionFactsFinalized.CorruptCorrelationFact(
+                            PLAYER_1, PLAYER_2, cardInstanceId, targetEventId, null, targetOutcomeId));
+        }
+
+        @Test
+        @DisplayName("Round 1 Corrupt correlation is still bundled at Round 3 close")
+        void tryClose_round1CorruptCorrelation_bundledAtRound3Close() {
+            var cardInstanceId = UUID.randomUUID();
+            var targetEventId = UUID.randomUUID();
+            var targetOutcomeId = UUID.randomUUID();
+            var round1 = new ActionRound(
+                    UUID.randomUUID(), GAME_ID, ERA_NUMBER, 1, List.of(PLAYER_1, PLAYER_2), TIMER_SECONDS);
+            round1.submit(new SubmittedAction.CardAction(
+                    PLAYER_2, cardInstanceId, CardType.PUSH, targetEventId, null, targetOutcomeId));
+            round1.submit(new SubmittedAction.SpecialActionSubmission(
+                    PLAYER_1, Faction.ERASERS, SpecialAction.CORRUPT, null, null, PLAYER_2));
+            var round3 = new ActionRound(UUID.randomUUID(), GAME_ID, ERA_NUMBER, 3, List.of(PLAYER_1), TIMER_SECONDS);
+            given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA_NUMBER, 3))
+                    .willReturn(Optional.of(round3));
+            given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumber(GAME_ID, ERA_NUMBER, 1))
+                    .willReturn(Optional.of(round1));
+
+            var updatedState = new ActionRoundSagaState(
+                    UUID.randomUUID(),
+                    GAME_ID,
+                    ERA_NUMBER,
+                    3,
+                    ActionRoundSagaStatus.WAITING,
+                    List.of(),
+                    TIMER_EXPIRES_AT);
+            given(stateManager.markSubmitted(GAME_ID, ERA_NUMBER, 3, PLAYER_1)).willReturn(Optional.of(updatedState));
+
+            saga.handlePlayerSubmitted(GAME_ID, ERA_NUMBER, 3, PLAYER_1);
+
+            var captor = ArgumentCaptor.<EraActionFactsFinalized>captor();
+            then(actionEventPublisher).should().publishInternally(captor.capture());
+            assertThat(captor.getValue().corruptCorrelationFacts())
+                    .containsExactly(new EraActionFactsFinalized.CorruptCorrelationFact(
+                            PLAYER_1, PLAYER_2, cardInstanceId, targetEventId, null, targetOutcomeId));
+        }
+
+        @Test
+        @DisplayName("target played no card this round — bundles no CorruptCorrelationFact")
+        void tryClose_corruptTargetPlayedNoCard_bundlesNoCorrelation() {
+            // given
+            var roundId = UUID.randomUUID();
+            var round = new ActionRound(roundId, GAME_ID, ERA_NUMBER, 3, List.of(PLAYER_1, PLAYER_2), TIMER_SECONDS);
+            round.submit(new SubmittedAction.SpecialActionSubmission(
+                    PLAYER_1, Faction.ERASERS, SpecialAction.CORRUPT, null, null, PLAYER_2));
+            given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA_NUMBER, 3))
+                    .willReturn(Optional.of(round));
+
+            var updatedState = new ActionRoundSagaState(
+                    UUID.randomUUID(),
+                    GAME_ID,
+                    ERA_NUMBER,
+                    3,
+                    ActionRoundSagaStatus.WAITING,
+                    List.of(),
+                    TIMER_EXPIRES_AT);
+            given(stateManager.markSubmitted(GAME_ID, ERA_NUMBER, 3, PLAYER_1)).willReturn(Optional.of(updatedState));
+
+            // when
+            saga.handlePlayerSubmitted(GAME_ID, ERA_NUMBER, 3, PLAYER_1);
+
+            // then
+            var captor = ArgumentCaptor.<EraActionFactsFinalized>captor();
+            then(actionEventPublisher).should().publishInternally(captor.capture());
+            assertThat(captor.getValue().corruptCorrelationFacts()).isEmpty();
+        }
+
+        @Test
+        @DisplayName("target played a non-shift special this round — bundles no CorruptCorrelationFact")
+        void tryClose_corruptTargetPlayedNonShiftSpecial_bundlesNoCorrelation() {
+            // given
+            var roundId = UUID.randomUUID();
+            var round = new ActionRound(roundId, GAME_ID, ERA_NUMBER, 3, List.of(PLAYER_1, PLAYER_2), TIMER_SECONDS);
+            round.submit(new SubmittedAction.SpecialActionSubmission(
+                    PLAYER_2, Faction.PROPHETS, SpecialAction.FORESIGHT, UUID.randomUUID(), UUID.randomUUID(), null));
+            round.submit(new SubmittedAction.SpecialActionSubmission(
+                    PLAYER_1, Faction.ERASERS, SpecialAction.CORRUPT, null, null, PLAYER_2));
+            given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA_NUMBER, 3))
+                    .willReturn(Optional.of(round));
+
+            var updatedState = new ActionRoundSagaState(
+                    UUID.randomUUID(),
+                    GAME_ID,
+                    ERA_NUMBER,
+                    3,
+                    ActionRoundSagaStatus.WAITING,
+                    List.of(),
+                    TIMER_EXPIRES_AT);
+            given(stateManager.markSubmitted(GAME_ID, ERA_NUMBER, 3, PLAYER_1)).willReturn(Optional.of(updatedState));
+
+            // when
+            saga.handlePlayerSubmitted(GAME_ID, ERA_NUMBER, 3, PLAYER_1);
+
+            // then
+            var captor = ArgumentCaptor.<EraActionFactsFinalized>captor();
+            then(actionEventPublisher).should().publishInternally(captor.capture());
+            assertThat(captor.getValue().corruptCorrelationFacts()).isEmpty();
+        }
+
+        @Test
+        @DisplayName("no Corrupt submitted this round — bundles no CorruptCorrelationFact")
+        void tryClose_noCorrupt_bundlesNoCorrelation() {
+            // given
+            var roundId = UUID.randomUUID();
+            var round = new ActionRound(roundId, GAME_ID, ERA_NUMBER, 3, List.of(PLAYER_1, PLAYER_2), TIMER_SECONDS);
+            round.submit(new SubmittedAction.CardAction(
+                    PLAYER_2, UUID.randomUUID(), CardType.PUSH, UUID.randomUUID(), null, UUID.randomUUID()));
+            given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA_NUMBER, 3))
+                    .willReturn(Optional.of(round));
+
+            var updatedState = new ActionRoundSagaState(
+                    UUID.randomUUID(),
+                    GAME_ID,
+                    ERA_NUMBER,
+                    3,
+                    ActionRoundSagaStatus.WAITING,
+                    List.of(),
+                    TIMER_EXPIRES_AT);
+            given(stateManager.markSubmitted(GAME_ID, ERA_NUMBER, 3, PLAYER_1)).willReturn(Optional.of(updatedState));
+
+            // when
+            saga.handlePlayerSubmitted(GAME_ID, ERA_NUMBER, 3, PLAYER_1);
+
+            // then
+            var captor = ArgumentCaptor.<EraActionFactsFinalized>captor();
+            then(actionEventPublisher).should().publishInternally(captor.capture());
+            assertThat(captor.getValue().corruptCorrelationFacts()).isEmpty();
+        }
+    }
+
+    @Nested
     @DisplayName("RoundSummaryPublished content")
     class RoundSummaryContentTests {
 
@@ -765,7 +965,8 @@ class ActionRoundSagaImplTest {
             // Build a round with one card action submitted
             var round = new ActionRound(
                     roundId, GAME_ID, ERA_NUMBER, ROUND_NUMBER, List.of(PLAYER_1, PLAYER_2, PLAYER_3), TIMER_SECONDS);
-            round.submitCard(PLAYER_1, cardInstanceId, CardType.PUSH, targetEventId, null, targetOutcomeId);
+            round.submit(new SubmittedAction.CardAction(
+                    PLAYER_1, cardInstanceId, CardType.PUSH, targetEventId, null, targetOutcomeId));
 
             given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(
                             GAME_ID, ERA_NUMBER, ROUND_NUMBER))
@@ -817,8 +1018,8 @@ class ActionRoundSagaImplTest {
             // Build a round with one special action submitted
             var round = new ActionRound(
                     roundId, GAME_ID, ERA_NUMBER, ROUND_NUMBER, List.of(PLAYER_1, PLAYER_2, PLAYER_3), TIMER_SECONDS);
-            round.submitSpecial(
-                    PLAYER_1, Faction.ERASERS, SpecialAction.ANNIHILATE, targetEventId, targetOutcomeId, null, false);
+            round.submit(new SubmittedAction.SpecialActionSubmission(
+                    PLAYER_1, Faction.ERASERS, SpecialAction.ANNIHILATE, targetEventId, targetOutcomeId, null));
 
             given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(
                             GAME_ID, ERA_NUMBER, ROUND_NUMBER))

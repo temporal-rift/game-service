@@ -7,16 +7,9 @@ import java.util.Objects;
 import java.util.UUID;
 
 import io.github.temporalrift.game.action.domain.event.ActionRoundStarted;
-import io.github.temporalrift.game.action.domain.event.CardPlayed;
 import io.github.temporalrift.game.action.domain.event.PlayerSkipped;
-import io.github.temporalrift.game.action.domain.event.SpecialActionPlayed;
 import io.github.temporalrift.game.shared.ActionRoundClosed;
 import io.github.temporalrift.game.shared.AggregateRoot;
-import io.github.temporalrift.game.shared.CardType;
-import io.github.temporalrift.game.shared.Faction;
-import io.github.temporalrift.game.shared.ForesightDeclared;
-import io.github.temporalrift.game.shared.OutcomeAnnihilated;
-import io.github.temporalrift.game.shared.SpecialAction;
 
 public class ActionRound extends AggregateRoot {
 
@@ -59,179 +52,58 @@ public class ActionRound extends AggregateRoot {
         this.closedReason = null;
         registerEvent(new ActionRoundStarted(
                 gameId, eraNumber, roundNumber, timerSeconds, List.copyOf(this.pendingPlayerIds)));
-        initialSubmittedActions.forEach(this::registerInitialSubmission);
+        // initialSubmittedActions carry Activist RALLY/MOMENTUM declarations made and validated earlier,
+        // by RecordActivistDeclarationCommandHandler against ActivistEraStateRepository, before this
+        // round existed — round 1 replays them as already-submitted so the player isn't asked again.
+        // submit() is skipped deliberately: SpecialActionSubmission.validate() rejects RALLY/MOMENTUM
+        // unconditionally (see its switch), since a declaration is never made through submit().
+        initialSubmittedActions.forEach(action -> registerEvent(action.toPlayedEvent(gameId, eraNumber, roundNumber)));
     }
 
-    private void registerInitialSubmission(SubmittedAction action) {
-        if (action
-                instanceof
-                SubmittedAction.SpecialActionSubmission(
-                        UUID playerId,
-                        Faction faction,
-                        SpecialAction specialAction,
-                        UUID targetEventId,
-                        UUID targetOutcomeId,
-                        UUID targetPlayerId)) {
-            registerEvent(new SpecialActionPlayed(
-                    gameId,
-                    eraNumber,
-                    roundNumber,
-                    playerId,
-                    faction,
-                    specialAction,
-                    targetEventId,
-                    targetOutcomeId,
-                    targetPlayerId));
-        }
-    }
-
-    private ActionRound(
-            UUID id,
-            UUID gameId,
-            int eraNumber,
-            int roundNumber,
-            RoundStatus status,
-            int timerSeconds,
-            String closedReason,
-            List<UUID> pendingPlayerIds,
-            List<SubmittedAction> submittedActions) {
+    private ActionRound(UUID id, UUID gameId, int eraNumber, int roundNumber, PersistedState state) {
         this.id = id;
         this.gameId = gameId;
         this.eraNumber = eraNumber;
         this.roundNumber = roundNumber;
-        this.timerSeconds = timerSeconds;
-        this.status = status;
-        this.closedReason = closedReason;
-        this.pendingPlayerIds = new ArrayList<>(pendingPlayerIds);
-        this.submittedActions = new ArrayList<>(submittedActions);
+        this.timerSeconds = state.timerSeconds();
+        this.status = state.status();
+        this.closedReason = state.closedReason();
+        this.pendingPlayerIds = new ArrayList<>(state.pendingPlayerIds());
+        this.submittedActions = new ArrayList<>(state.submittedActions());
     }
 
-    public static ActionRound reconstitute(
-            UUID id,
-            UUID gameId,
-            int eraNumber,
-            int roundNumber,
+    public static ActionRound reconstitute(UUID id, UUID gameId, int eraNumber, int roundNumber, PersistedState state) {
+        return new ActionRound(id, gameId, eraNumber, roundNumber, state);
+    }
+
+    /** The mutable, persisted part of an {@code ActionRound}'s state, as loaded from storage. */
+    public record PersistedState(
             RoundStatus status,
             int timerSeconds,
             String closedReason,
             List<UUID> pendingPlayerIds,
-            List<SubmittedAction> submittedActions) {
-        return new ActionRound(
-                id,
-                gameId,
-                eraNumber,
-                roundNumber,
-                status,
-                timerSeconds,
-                closedReason,
-                pendingPlayerIds,
-                submittedActions);
-    }
+            List<SubmittedAction> submittedActions) {}
 
-    public boolean submitCard(
-            UUID playerId,
-            UUID cardInstanceId,
-            CardType cardType,
-            UUID targetEventId,
-            UUID sourceOutcomeId,
-            UUID targetOutcomeId) {
+    /**
+     * Accepts one player's submission for this round. {@code ActionRound} enforces only round-level
+     * invariants (open, not a duplicate submission); the submission validates its own fields via
+     * {@link SubmittedAction#validate()}. Cross-aggregate eligibility (faction allows this special,
+     * player is not jammed) is the caller's responsibility — {@code ActionRound} has no visibility into
+     * {@code PlayerState} to verify those itself.
+     */
+    public boolean submit(SubmittedAction action) {
         if (this.status != RoundStatus.OPEN) {
             throw new ActionRoundClosedException();
         }
-        if (!this.pendingPlayerIds.contains(playerId)) {
-            throw new DuplicateSubmissionException(playerId);
+        if (!this.pendingPlayerIds.contains(action.playerId())) {
+            throw new DuplicateSubmissionException(action.playerId());
         }
-        validateCardTargets(cardType, sourceOutcomeId, targetOutcomeId);
+        action.validate();
 
-        pendingPlayerIds.remove(playerId);
-        submittedActions.add(new SubmittedAction.CardAction(
-                playerId, cardInstanceId, cardType, targetEventId, sourceOutcomeId, targetOutcomeId));
-        registerEvent(new CardPlayed(
-                gameId,
-                eraNumber,
-                roundNumber,
-                playerId,
-                cardInstanceId,
-                cardType,
-                targetEventId,
-                sourceOutcomeId,
-                targetOutcomeId));
-
-        return allSubmitted();
-    }
-
-    private void validateCardTargets(CardType cardType, UUID sourceOutcomeId, UUID targetOutcomeId) {
-        if (cardType != CardType.SWING) {
-            return;
-        }
-        if (sourceOutcomeId == null) {
-            throw InvalidActionTargetException.swingRequiresSourceOutcome();
-        }
-        if (targetOutcomeId == null) {
-            throw InvalidActionTargetException.swingRequiresTargetOutcome();
-        }
-        if (sourceOutcomeId.equals(targetOutcomeId)) {
-            throw InvalidActionTargetException.swingRequiresDistinctOutcomes();
-        }
-    }
-
-    public boolean submitSpecial(
-            UUID playerId,
-            Faction faction,
-            SpecialAction specialAction,
-            UUID targetEventId,
-            UUID targetOutcomeId,
-            UUID targetPlayerId,
-            boolean isJammed) {
-        if (this.status != RoundStatus.OPEN) {
-            throw new ActionRoundClosedException();
-        }
-        if (!this.pendingPlayerIds.contains(playerId)) {
-            throw new DuplicateSubmissionException(playerId);
-        }
-        if (isJammed) {
-            throw new JammedPlayerException(playerId);
-        }
-        if (faction == null) {
-            throw new FactionRequiredException(playerId);
-        }
-        if (!faction.hasSpecialAction(specialAction)) {
-            throw new InvalidSpecialActionException(faction, specialAction);
-        }
-        if (specialAction == SpecialAction.RALLY || specialAction == SpecialAction.MOMENTUM) {
-            throw new DeclarationSpecialActionRequiredException(specialAction);
-        }
-        if ((specialAction == SpecialAction.FORESIGHT
-                        || specialAction == SpecialAction.ANNIHILATE
-                        || specialAction == SpecialAction.REWRITE
-                        || specialAction == SpecialAction.MIMIC)
-                && (targetEventId == null || targetOutcomeId == null)) {
-            throw InvalidActionTargetException.specialActionRequiresTarget(specialAction);
-        }
-
-        pendingPlayerIds.remove(playerId);
-        submittedActions.add(new SubmittedAction.SpecialActionSubmission(
-                playerId, faction, specialAction, targetEventId, targetOutcomeId, targetPlayerId));
-        registerEvent(new SpecialActionPlayed(
-                gameId,
-                eraNumber,
-                roundNumber,
-                playerId,
-                faction,
-                specialAction,
-                targetEventId,
-                targetOutcomeId,
-                targetPlayerId));
-        // Scoring-internal facts only (never published to Kafka) — see ActionRoundEventPublication.
-        switch (specialAction) {
-            case FORESIGHT ->
-                registerEvent(new ForesightDeclared(gameId, eraNumber, targetEventId, targetOutcomeId, playerId));
-            case ANNIHILATE ->
-                registerEvent(new OutcomeAnnihilated(gameId, eraNumber, targetEventId, targetOutcomeId, playerId));
-            default -> {
-                // Every other special action has no scoring-context fact to record.
-            }
-        }
+        pendingPlayerIds.remove(action.playerId());
+        submittedActions.add(action);
+        registerEvent(action.toPlayedEvent(gameId, eraNumber, roundNumber));
+        action.scoringFact(gameId, eraNumber).ifPresent(this::registerEvent);
 
         return allSubmitted();
     }

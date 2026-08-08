@@ -45,23 +45,48 @@ class EraScoreEvaluator {
             findEventFact(context, outcome.eventId())
                     .filter(fact -> fact.writtenOutcomeId() != null)
                     .ifPresent(fact -> {
-                        var reason = fact.writtenOutcomeId().equals(outcome.winningOutcomeId())
-                                ? ScoreReason.EVENT_RESOLVED_AS_WRITTEN
-                                : ScoreReason.EVENT_RESOLVED_DIFFERENTLY_THAN_WRITTEN;
+                        boolean resolvedAsWritten = fact.writtenOutcomeId().equals(outcome.winningOutcomeId());
+                        boolean declaredFulfillment = context.fulfillmentDeclarations().stream()
+                                .anyMatch(declaration -> declaration.playerId().equals(playerId)
+                                        && declaration.targetEventId().equals(outcome.eventId()));
+                        var reason = prophetReason(resolvedAsWritten, declaredFulfillment);
                         decisions.add(new PlayerScoreDecision(playerId, reason, context.eraNumber()));
                     });
         }
         return decisions;
     }
 
+    private static ScoreReason prophetReason(boolean resolvedAsWritten, boolean declaredFulfillment) {
+        if (!resolvedAsWritten) {
+            return ScoreReason.EVENT_RESOLVED_DIFFERENTLY_THAN_WRITTEN;
+        }
+        return declaredFulfillment ? ScoreReason.FULFILLMENT_SUCCEEDED : ScoreReason.EVENT_RESOLVED_AS_WRITTEN;
+    }
+
     private List<PlayerScoreDecision> eraserDecisions(UUID playerId, EraScoringContext context) {
+        var decisions = new ArrayList<PlayerScoreDecision>();
+
+        context.annihilationFacts().stream()
+                .filter(fact -> fact.playerId().equals(playerId))
+                .forEach(fact -> decisions.add(
+                        new PlayerScoreDecision(playerId, ScoreReason.ANNIHILATED_OUTCOME, context.eraNumber())));
+
+        // tookEffect is null until a resolution-time confirmation arrives that the correlated card's
+        // inversion actually applied rather than being voided by a Seal — see CorruptCorrelationFact.
+        context.corruptCorrelations().stream()
+                .filter(fact -> fact.corruptingPlayerId().equals(playerId))
+                .filter(fact -> Boolean.TRUE.equals(fact.tookEffect()))
+                .forEach(fact -> decisions.add(
+                        new PlayerScoreDecision(playerId, ScoreReason.CORRUPTED_OPPONENT_CARD, context.eraNumber())));
+
         boolean anyFewer = context.eventOutcomes().stream()
                 .anyMatch(fact -> fact.endingOutcomeCount() < fact.startingOutcomeCount());
         if (anyFewer) {
-            return List.of(
+            decisions.add(
                     new PlayerScoreDecision(playerId, ScoreReason.ERA_ENDED_WITH_FEWER_OUTCOMES, context.eraNumber()));
         }
-        return List.of();
+
+        return decisions;
     }
 
     private List<PlayerScoreDecision> weaverDecisions(UUID playerId, EraScoringContext context) {

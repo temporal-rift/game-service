@@ -23,4 +23,16 @@ public class InvalidActionTargetException extends RuntimeException {
     public static InvalidActionTargetException specialActionRequiresTarget(SpecialAction specialAction) {
         return new InvalidActionTargetException(specialAction + " requires a targetEventId and a targetOutcomeId");
     }
+
+    public static InvalidActionTargetException specialActionRequiresTargetEvent(SpecialAction specialAction) {
+        return new InvalidActionTargetException(specialAction + " requires a targetEventId");
+    }
+
+    public static InvalidActionTargetException specialActionRequiresTargetPlayer(SpecialAction specialAction) {
+        return new InvalidActionTargetException(specialAction + " requires a targetPlayerId");
+    }
+
+    public static InvalidActionTargetException corruptCannotTargetSelf() {
+        return new InvalidActionTargetException("Corrupt cannot target the submitting player");
+    }
 }

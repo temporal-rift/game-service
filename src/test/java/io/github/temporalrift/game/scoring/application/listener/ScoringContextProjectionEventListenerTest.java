@@ -233,6 +233,67 @@ class ScoringContextProjectionEventListenerTest {
     }
 
     @Test
+    void onEraActionFactsFinalized_appliesFulfillmentFacts() {
+        var gameId = UUID.randomUUID();
+        var playerId = UUID.randomUUID();
+        var targetEventId = UUID.randomUUID();
+        var event = new EraActionFactsFinalized(
+                gameId,
+                2,
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(new EraActionFactsFinalized.FulfillmentFact(playerId, targetEventId)));
+
+        listener.onEraActionFactsFinalized(event);
+
+        then(contextRepository).should().recordFulfillmentDeclaration(gameId, 2, playerId, targetEventId);
+    }
+
+    @Test
+    void onEraActionFactsFinalized_appliesCorruptCorrelationFacts() {
+        var gameId = UUID.randomUUID();
+        var corruptingPlayerId = UUID.randomUUID();
+        var targetPlayerId = UUID.randomUUID();
+        var cardInstanceId = UUID.randomUUID();
+        var targetEventId = UUID.randomUUID();
+        var sourceOutcomeId = UUID.randomUUID();
+        var targetOutcomeId = UUID.randomUUID();
+        var event = new EraActionFactsFinalized(
+                gameId,
+                2,
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(new EraActionFactsFinalized.CorruptCorrelationFact(
+                        corruptingPlayerId,
+                        targetPlayerId,
+                        cardInstanceId,
+                        targetEventId,
+                        sourceOutcomeId,
+                        targetOutcomeId)));
+
+        listener.onEraActionFactsFinalized(event);
+
+        then(contextRepository)
+                .should()
+                .recordCorruptCorrelation(
+                        gameId,
+                        2,
+                        corruptingPlayerId,
+                        targetPlayerId,
+                        cardInstanceId,
+                        targetEventId,
+                        sourceOutcomeId,
+                        targetOutcomeId);
+    }
+
+    @Test
     void onEraActionFactsFinalized_emptyFactLists_stillMarksReadyAndTriesCompletion() {
         var gameId = UUID.randomUUID();
 

@@ -47,6 +47,8 @@
     <include file="db/changelog/scoring/012-create-scoring-timeline-resolution-barrier.xml"/>
     <include file="db/changelog/scoring/013-create-scoring-context-revisionist-action.xml"/>
     <include file="db/changelog/scoring/014-create-scoring-end-game-ledgers.xml"/>
+    <include file="db/changelog/scoring/015-create-scoring-context-fulfillment-declaration.xml"/>
+    <include file="db/changelog/scoring/016-create-scoring-context-corrupt-correlation.xml"/>
 
 </databaseChangeLog>
 

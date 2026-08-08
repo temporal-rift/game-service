@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+            https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.29.xsd">
+
+    <!--
+        took_effect starts NULL (unconfirmed) at round-close correlation time and is set once a
+        resolution-time confirmation arrives that the correlated card's inversion actually applied
+        rather than being voided by a Seal — see EraScoreEvaluator.eraserDecisions and
+        temporal-rift/timeline-service#12 / #16 for the still-outstanding producer of that confirmation.
+    -->
+    <changeSet id="scoring-016-create-scoring-context-corrupt-correlation" author="game-service">
+        <createTable tableName="scoring_context_corrupt_correlation">
+            <column name="id" type="UUID"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="game_id" type="UUID"><constraints nullable="false"/></column>
+            <column name="era_number" type="INT"><constraints nullable="false"/></column>
+            <column name="corrupting_player_id" type="UUID"><constraints nullable="false"/></column>
+            <column name="target_player_id" type="UUID"><constraints nullable="false"/></column>
+            <column name="card_instance_id" type="UUID"><constraints nullable="false"/></column>
+            <column name="target_event_id" type="UUID"><constraints nullable="false"/></column>
+            <column name="source_outcome_id" type="UUID"/>
+            <column name="target_outcome_id" type="UUID"><constraints nullable="false"/></column>
+            <column name="took_effect" type="BOOLEAN"/>
+        </createTable>
+        <addUniqueConstraint
+                tableName="scoring_context_corrupt_correlation"
+                columnNames="game_id,era_number,corrupting_player_id,card_instance_id"
+                constraintName="uq_scoring_corrupt_correlation_game_era_player_card"/>
+    </changeSet>
+</databaseChangeLog>

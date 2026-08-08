@@ -63,11 +63,7 @@ class ActionRoundRepositoryAdapter implements ActionRoundRepository {
     }
 
     private ActionRound toDomain(ActionRoundJpaEntity entity) {
-        return ActionRound.reconstitute(
-                entity.getId(),
-                entity.getGameId(),
-                entity.getEraNumber(),
-                entity.getRoundNumber(),
+        var state = new ActionRound.PersistedState(
                 RoundStatus.valueOf(entity.getStatus()),
                 entity.getTimerSeconds(),
                 entity.getClosedReason(),
@@ -75,5 +71,7 @@ class ActionRoundRepositoryAdapter implements ActionRoundRepository {
                 entity.getSubmittedActions().stream()
                         .map(StoredSubmittedAction::toDomain)
                         .collect(ArrayList::new, ArrayList::add, ArrayList::addAll));
+        return ActionRound.reconstitute(
+                entity.getId(), entity.getGameId(), entity.getEraNumber(), entity.getRoundNumber(), state);
     }
 }
