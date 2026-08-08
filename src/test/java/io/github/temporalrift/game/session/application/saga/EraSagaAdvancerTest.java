@@ -256,7 +256,16 @@ class EraSagaAdvancerTest {
         given(eraSagaRepository.findByGameIdWithLock(GAME_ID)).willReturn(Optional.of(state));
         given(gameRules.winScoreThreshold()).willReturn(WIN_THRESHOLD);
         given(gameRules.maxEras()).willReturn(MAX_ERAS);
-        var game = Game.reconstitute(GAME_ID, LOBBY_ID, List.of(), 1, 0, GameStatus.IN_PROGRESS);
+        var firstCascadedEvent = UUID.randomUUID();
+        var secondCascadedEvent = UUID.randomUUID();
+        var game = Game.reconstitute(
+                GAME_ID,
+                LOBBY_ID,
+                List.of(),
+                1,
+                0,
+                List.of(firstCascadedEvent, secondCascadedEvent),
+                GameStatus.IN_PROGRESS);
         given(gameRepository.findById(GAME_ID)).willReturn(Optional.of(game));
         var captor = ArgumentCaptor.forClass(Object.class);
 
@@ -269,7 +278,9 @@ class EraSagaAdvancerTest {
         var eraStarted = (EraStarted) captor.getValue();
         assertThat(eraStarted.gameId()).isEqualTo(GAME_ID);
         assertThat(eraStarted.eraNumber()).isEqualTo(2);
+        assertThat(eraStarted.cascadedEventIds()).containsExactly(firstCascadedEvent, secondCascadedEvent);
         assertThat(eraStarted.playerIds()).isEqualTo(PLAYER_IDS);
+        assertThat(game.pendingCascadedEventIds()).isEmpty();
     }
 
     @Test

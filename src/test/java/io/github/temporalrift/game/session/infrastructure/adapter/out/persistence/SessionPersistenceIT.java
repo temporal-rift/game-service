@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -152,6 +153,20 @@ class SessionPersistenceIT {
         assertThat(loaded.eraCounter()).isEqualTo(1);
         assertThat(loaded.eventDeck()).hasSize(EVENT_COUNT - EVENTS_PER_ERA);
         assertThat(loaded.eventDeck()).containsExactlyElementsOf(game.eventDeck());
+    }
+
+    @Test
+    void game_save_and_findById_preservesPendingCascadesInOrder() {
+        var id = UUID.randomUUID();
+        var firstCascadedEvent = UUID.randomUUID();
+        var secondCascadedEvent = UUID.randomUUID();
+        var game = new Game(id, UUID.randomUUID(), new ArrayList<>());
+        game.recordPendingCascadedEventIds(List.of(firstCascadedEvent, secondCascadedEvent));
+        gameRepository.save(game);
+
+        var loaded = gameRepository.findById(id).orElseThrow();
+
+        assertThat(loaded.pendingCascadedEventIds()).containsExactly(firstCascadedEvent, secondCascadedEvent);
     }
 
     @TestConfiguration(proxyBeanMethods = false)

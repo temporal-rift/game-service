@@ -137,6 +137,18 @@ class GameTest {
     }
 
     @Test
+    void pendingCascades_areDrainedOnceInRecordedOrder() {
+        var game = newGame();
+        var first = UUID.randomUUID();
+        var second = UUID.randomUUID();
+
+        game.recordPendingCascadedEventIds(List.of(first, second));
+
+        assertThat(game.drainPendingCascadedEventIds()).containsExactly(first, second);
+        assertThat(game.pendingCascadedEventIds()).isEmpty();
+    }
+
+    @Test
     void startEra_incrementsEraCounter() {
         var game = newGame();
         game.startEra(0, EVENTS_PER_ERA);
