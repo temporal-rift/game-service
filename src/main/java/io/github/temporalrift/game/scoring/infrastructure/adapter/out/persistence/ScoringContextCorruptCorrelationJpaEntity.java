@@ -23,6 +23,18 @@ class ScoringContextCorruptCorrelationJpaEntity extends GameEraScopedJpaEntity {
     @Column(name = "card_instance_id", nullable = false)
     private UUID cardInstanceId;
 
+    @Column(name = "target_event_id", nullable = false)
+    private UUID targetEventId;
+
+    @Column(name = "source_outcome_id")
+    private UUID sourceOutcomeId;
+
+    @Column(name = "target_outcome_id", nullable = false)
+    private UUID targetOutcomeId;
+
+    @Column(name = "took_effect")
+    private Boolean tookEffect;
+
     protected ScoringContextCorruptCorrelationJpaEntity() {}
 
     UUID getCorruptingPlayerId() {
@@ -47,5 +59,37 @@ class ScoringContextCorruptCorrelationJpaEntity extends GameEraScopedJpaEntity {
 
     void setCardInstanceId(UUID cardInstanceId) {
         this.cardInstanceId = cardInstanceId;
+    }
+
+    UUID getTargetEventId() {
+        return targetEventId;
+    }
+
+    void setTargetEventId(UUID targetEventId) {
+        this.targetEventId = targetEventId;
+    }
+
+    UUID getSourceOutcomeId() {
+        return sourceOutcomeId;
+    }
+
+    void setSourceOutcomeId(UUID sourceOutcomeId) {
+        this.sourceOutcomeId = sourceOutcomeId;
+    }
+
+    UUID getTargetOutcomeId() {
+        return targetOutcomeId;
+    }
+
+    void setTargetOutcomeId(UUID targetOutcomeId) {
+        this.targetOutcomeId = targetOutcomeId;
+    }
+
+    Boolean getTookEffect() {
+        return tookEffect;
+    }
+
+    void setTookEffect(Boolean tookEffect) {
+        this.tookEffect = tookEffect;
     }
 }

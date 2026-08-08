@@ -12,7 +12,8 @@ public record EraScoringContext(
         List<ActionScoringFact> actionFacts,
         List<ChainScoringFact> chainFacts,
         List<AnnihilationFact> annihilationFacts,
-        List<FulfillmentDeclarationFact> fulfillmentDeclarations) {
+        List<FulfillmentDeclarationFact> fulfillmentDeclarations,
+        List<CorruptCorrelationFact> corruptCorrelations) {
 
     public EraScoringContext {
         Objects.requireNonNull(gameId, "gameId must not be null");
@@ -22,11 +23,13 @@ public record EraScoringContext(
         Objects.requireNonNull(chainFacts, "chainFacts must not be null");
         Objects.requireNonNull(annihilationFacts, "annihilationFacts must not be null");
         Objects.requireNonNull(fulfillmentDeclarations, "fulfillmentDeclarations must not be null");
+        Objects.requireNonNull(corruptCorrelations, "corruptCorrelations must not be null");
         players = List.copyOf(players);
         eventOutcomes = List.copyOf(eventOutcomes);
         actionFacts = List.copyOf(actionFacts);
         chainFacts = List.copyOf(chainFacts);
         annihilationFacts = List.copyOf(annihilationFacts);
         fulfillmentDeclarations = List.copyOf(fulfillmentDeclarations);
+        corruptCorrelations = List.copyOf(corruptCorrelations);
     }
 }

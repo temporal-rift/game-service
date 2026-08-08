@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Test;
 import io.github.temporalrift.game.scoring.domain.context.ActionScoringFact;
 import io.github.temporalrift.game.scoring.domain.context.AnnihilationFact;
 import io.github.temporalrift.game.scoring.domain.context.ChainScoringFact;
+import io.github.temporalrift.game.scoring.domain.context.CorruptCorrelationFact;
 import io.github.temporalrift.game.scoring.domain.context.EraScoringContext;
 import io.github.temporalrift.game.scoring.domain.context.EventOutcomeFact;
 import io.github.temporalrift.game.scoring.domain.context.FulfillmentDeclarationFact;
@@ -42,6 +43,7 @@ class EraScoreEvaluatorTest {
                 List.of(),
                 List.of(),
                 List.of(),
+                List.of(),
                 List.of());
 
         var outcome = new OutcomeApplied(GAME_ID, ERA, eventId, writtenOutcomeId, List.of());
@@ -70,6 +72,7 @@ class EraScoreEvaluatorTest {
                 List.of(),
                 List.of(),
                 List.of(),
+                List.of(),
                 List.of());
 
         var outcome = new OutcomeApplied(GAME_ID, ERA, eventId, otherOutcomeId, List.of());
@@ -92,6 +95,7 @@ class EraScoreEvaluatorTest {
                 ERA,
                 List.of(new PlayerFaction(prophetId, Faction.PROPHETS)),
                 List.of(new EventOutcomeFact(eventId, winningOutcomeId, null, 3, 3)),
+                List.of(),
                 List.of(),
                 List.of(),
                 List.of(),
@@ -118,6 +122,7 @@ class EraScoreEvaluatorTest {
                 List.of(),
                 List.of(),
                 List.of(),
+                List.of(),
                 List.of());
 
         var decisions = evaluator.evaluate(context, List.of());
@@ -137,6 +142,7 @@ class EraScoreEvaluatorTest {
                 ERA,
                 List.of(new PlayerFaction(eraserId, Faction.ERASERS)),
                 List.of(new EventOutcomeFact(UUID.randomUUID(), UUID.randomUUID(), null, 3, 3)),
+                List.of(),
                 List.of(),
                 List.of(),
                 List.of(),
@@ -161,6 +167,7 @@ class EraScoreEvaluatorTest {
                 List.of(),
                 List.of(new ChainScoringFact(weaverId, chainId, ScoreReason.CHAIN_COMPLETED, ERA)),
                 List.of(),
+                List.of(),
                 List.of());
 
         var decisions = evaluator.evaluate(context, List.of());
@@ -182,6 +189,7 @@ class EraScoreEvaluatorTest {
                 List.of(),
                 List.of(),
                 List.of(new ChainScoringFact(weaverId, chainId, ScoreReason.CHAIN_BROKEN, ERA)),
+                List.of(),
                 List.of(),
                 List.of());
 
@@ -207,6 +215,7 @@ class EraScoreEvaluatorTest {
                 List.of(),
                 List.of(new ChainScoringFact(weaverId, chainId, ScoreReason.CHAIN_COMPLETED, factOwnEra)),
                 List.of(),
+                List.of(),
                 List.of());
 
         var decisions = evaluator.evaluate(context, List.of());
@@ -226,6 +235,7 @@ class EraScoreEvaluatorTest {
                 List.of(new PlayerFaction(activistId, Faction.ACTIVISTS)),
                 List.of(),
                 List.of(new ActionScoringFact(activistId, Faction.ACTIVISTS, ScoreReason.DECLARED_OUTCOME_WON)),
+                List.of(),
                 List.of(),
                 List.of(),
                 List.of());
@@ -254,6 +264,7 @@ class EraScoreEvaluatorTest {
                         new ChainScoringFact(id2, chainId, ScoreReason.CHAIN_COMPLETED, ERA),
                         new ChainScoringFact(id1, chainId, ScoreReason.CHAIN_LINK_ADDED, ERA)),
                 List.of(),
+                List.of(),
                 List.of());
 
         var decisions = evaluator.evaluate(context, List.of());
@@ -279,7 +290,8 @@ class EraScoreEvaluatorTest {
                 List.of(),
                 List.of(),
                 List.of(),
-                List.of(new FulfillmentDeclarationFact(prophetId, eventId)));
+                List.of(new FulfillmentDeclarationFact(prophetId, eventId)),
+                List.of());
 
         var outcome = new OutcomeApplied(GAME_ID, ERA, eventId, writtenOutcomeId, List.of());
 
@@ -307,7 +319,8 @@ class EraScoreEvaluatorTest {
                 List.of(),
                 List.of(),
                 List.of(),
-                List.of(new FulfillmentDeclarationFact(prophetId, eventId)));
+                List.of(new FulfillmentDeclarationFact(prophetId, eventId)),
+                List.of());
 
         var outcome = new OutcomeApplied(GAME_ID, ERA, eventId, otherOutcomeId, List.of());
 
@@ -332,7 +345,8 @@ class EraScoreEvaluatorTest {
                 List.of(),
                 List.of(),
                 List.of(),
-                List.of(new FulfillmentDeclarationFact(prophetId, eventId)));
+                List.of(new FulfillmentDeclarationFact(prophetId, eventId)),
+                List.of());
 
         var outcome = new OutcomeApplied(GAME_ID, ERA, eventId, winningOutcomeId, List.of());
 
@@ -356,7 +370,8 @@ class EraScoreEvaluatorTest {
                 List.of(),
                 List.of(),
                 List.of(),
-                List.of(new FulfillmentDeclarationFact(prophetId, eventId)));
+                List.of(new FulfillmentDeclarationFact(prophetId, eventId)),
+                List.of());
 
         var decisions = evaluator.evaluate(context, List.of());
 
@@ -385,7 +400,8 @@ class EraScoreEvaluatorTest {
                 List.of(),
                 List.of(
                         new FulfillmentDeclarationFact(prophetId, eventId1),
-                        new FulfillmentDeclarationFact(prophetId, eventId2)));
+                        new FulfillmentDeclarationFact(prophetId, eventId2)),
+                List.of());
 
         var outcomes = List.of(
                 new OutcomeApplied(GAME_ID, ERA, eventId1, outcomeId1, List.of()),
@@ -416,7 +432,8 @@ class EraScoreEvaluatorTest {
                 List.of(),
                 List.of(
                         new FulfillmentDeclarationFact(prophetId1, eventId),
-                        new FulfillmentDeclarationFact(prophetId2, eventId)));
+                        new FulfillmentDeclarationFact(prophetId2, eventId)),
+                List.of());
 
         var outcome = new OutcomeApplied(GAME_ID, ERA, eventId, writtenOutcomeId, List.of());
 
@@ -444,7 +461,8 @@ class EraScoreEvaluatorTest {
                 List.of(),
                 List.of(),
                 List.of(),
-                List.of(new FulfillmentDeclarationFact(declaringProphetId, eventId)));
+                List.of(new FulfillmentDeclarationFact(declaringProphetId, eventId)),
+                List.of());
 
         var outcome = new OutcomeApplied(GAME_ID, ERA, eventId, writtenOutcomeId, List.of());
 
@@ -469,6 +487,7 @@ class EraScoreEvaluatorTest {
                 List.of(),
                 List.of(),
                 List.of(new AnnihilationFact(eventId, outcomeId, eraserId)),
+                List.of(),
                 List.of());
 
         var decisions = evaluator.evaluate(context, List.of());
@@ -498,6 +517,7 @@ class EraScoreEvaluatorTest {
                 List.of(
                         new AnnihilationFact(eventId1, UUID.randomUUID(), eraserId),
                         new AnnihilationFact(eventId2, UUID.randomUUID(), eraserId)),
+                List.of(),
                 List.of());
 
         var decisions = evaluator.evaluate(context, List.of());
@@ -525,6 +545,7 @@ class EraScoreEvaluatorTest {
                 List.of(
                         new AnnihilationFact(eventId, UUID.randomUUID(), eraserId1),
                         new AnnihilationFact(eventId, UUID.randomUUID(), eraserId2)),
+                List.of(),
                 List.of());
 
         var decisions = evaluator.evaluate(context, List.of());
@@ -533,5 +554,82 @@ class EraScoreEvaluatorTest {
                         .filter(d -> d.reason() == ScoreReason.ANNIHILATED_OUTCOME)
                         .map(PlayerScoreDecision::playerId))
                 .containsExactlyInAnyOrder(eraserId1, eraserId2);
+    }
+
+    @Test
+    @DisplayName("eraser receives CORRUPTED_OPPONENT_CARD when a correlated Corrupt is confirmed to have taken effect")
+    void eraserReceivesCorruptedOpponentCardWhenConfirmed() {
+        var corruptingPlayerId = UUID.randomUUID();
+        var targetPlayerId = UUID.randomUUID();
+        var eventId = UUID.randomUUID();
+        var outcomeId = UUID.randomUUID();
+
+        var context = new EraScoringContext(
+                GAME_ID,
+                ERA,
+                List.of(new PlayerFaction(corruptingPlayerId, Faction.ERASERS)),
+                List.of(new EventOutcomeFact(eventId, UUID.randomUUID(), null, 3, 3)),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(new CorruptCorrelationFact(
+                        corruptingPlayerId, targetPlayerId, UUID.randomUUID(), eventId, null, outcomeId, true)));
+
+        var decisions = evaluator.evaluate(context, List.of());
+
+        assertThat(decisions).hasSize(1);
+        assertThat(decisions.get(0).playerId()).isEqualTo(corruptingPlayerId);
+        assertThat(decisions.get(0).reason()).isEqualTo(ScoreReason.CORRUPTED_OPPONENT_CARD);
+    }
+
+    @Test
+    @DisplayName("eraser receives no credit when a correlated Corrupt is confirmed to have been voided")
+    void eraserReceivesNoCreditWhenCorruptVoided() {
+        var corruptingPlayerId = UUID.randomUUID();
+        var targetPlayerId = UUID.randomUUID();
+        var eventId = UUID.randomUUID();
+        var outcomeId = UUID.randomUUID();
+
+        var context = new EraScoringContext(
+                GAME_ID,
+                ERA,
+                List.of(new PlayerFaction(corruptingPlayerId, Faction.ERASERS)),
+                List.of(new EventOutcomeFact(eventId, UUID.randomUUID(), null, 3, 3)),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(new CorruptCorrelationFact(
+                        corruptingPlayerId, targetPlayerId, UUID.randomUUID(), eventId, null, outcomeId, false)));
+
+        var decisions = evaluator.evaluate(context, List.of());
+
+        assertThat(decisions).isEmpty();
+    }
+
+    @Test
+    @DisplayName("eraser receives no credit while a correlated Corrupt's inversion outcome is still unconfirmed")
+    void eraserReceivesNoCreditWhenCorruptUnconfirmed() {
+        var corruptingPlayerId = UUID.randomUUID();
+        var targetPlayerId = UUID.randomUUID();
+        var eventId = UUID.randomUUID();
+        var outcomeId = UUID.randomUUID();
+
+        var context = new EraScoringContext(
+                GAME_ID,
+                ERA,
+                List.of(new PlayerFaction(corruptingPlayerId, Faction.ERASERS)),
+                List.of(new EventOutcomeFact(eventId, UUID.randomUUID(), null, 3, 3)),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(new CorruptCorrelationFact(
+                        corruptingPlayerId, targetPlayerId, UUID.randomUUID(), eventId, null, outcomeId, null)));
+
+        var decisions = evaluator.evaluate(context, List.of());
+
+        assertThat(decisions).isEmpty();
     }
 }
