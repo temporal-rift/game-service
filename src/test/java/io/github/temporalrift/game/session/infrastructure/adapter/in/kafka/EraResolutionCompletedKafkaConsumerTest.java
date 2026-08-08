@@ -86,7 +86,8 @@ class EraResolutionCompletedKafkaConsumerTest {
     @DisplayName("cascades below threshold update the game without publishing TimelineCollapsed")
     void handle_belowThreshold_noTimelineCollapsed() {
         var game = Game.reconstitute(GAME_ID, LOBBY_ID, List.of(), 1, 1, GameStatus.IN_PROGRESS);
-        var resolution = resolution(1, cascaded(UUID.randomUUID(), 0));
+        var cascadedEventId = UUID.randomUUID();
+        var resolution = resolution(1, cascaded(cascadedEventId, 0));
         givenProcessedResolution(resolution);
         given(gameRepository.findByIdWithLock(GAME_ID)).willReturn(Optional.of(game));
         given(gameRules.maxCascadedParadoxes()).willReturn(MAX_CASCADED);
@@ -94,6 +95,7 @@ class EraResolutionCompletedKafkaConsumerTest {
         consumer.handle(envelopeFor(resolution));
 
         then(gameRepository).should().save(game);
+        assertThat(game.pendingCascadedEventIds()).containsExactly(cascadedEventId);
         then(eventPublisher).should(never()).publish(any());
         then(applicationEventPublisher).should(never()).publishEvent(any());
     }

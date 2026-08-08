@@ -15,6 +15,7 @@ public class Game extends AggregateRoot {
     private final UUID id;
     private final UUID lobbyId;
     private final List<UUID> eventDeck;
+    private final List<UUID> pendingCascadedEventIds;
     private int eraCounter;
     private int cascadedParadoxCounter;
     private GameStatus status;
@@ -23,6 +24,7 @@ public class Game extends AggregateRoot {
         this.id = Objects.requireNonNull(id, "id must not be null");
         this.lobbyId = Objects.requireNonNull(lobbyId, "lobbyId must not be null");
         this.eventDeck = new ArrayList<>(Objects.requireNonNull(eventDeck, "eventDeck must not be null"));
+        this.pendingCascadedEventIds = new ArrayList<>();
         this.eraCounter = 0;
         this.cascadedParadoxCounter = 0;
         this.status = GameStatus.IN_PROGRESS;
@@ -34,10 +36,12 @@ public class Game extends AggregateRoot {
             List<UUID> eventDeck,
             int eraCounter,
             int cascadedParadoxCounter,
+            List<UUID> pendingCascadedEventIds,
             GameStatus status) {
         this.id = id;
         this.lobbyId = lobbyId;
         this.eventDeck = new ArrayList<>(eventDeck);
+        this.pendingCascadedEventIds = new ArrayList<>(pendingCascadedEventIds);
         this.eraCounter = eraCounter;
         this.cascadedParadoxCounter = cascadedParadoxCounter;
         this.status = status;
@@ -50,12 +54,24 @@ public class Game extends AggregateRoot {
             int eraCounter,
             int cascadedParadoxCounter,
             GameStatus status) {
+        return reconstitute(id, lobbyId, eventDeck, eraCounter, cascadedParadoxCounter, List.of(), status);
+    }
+
+    public static Game reconstitute(
+            UUID id,
+            UUID lobbyId,
+            List<UUID> eventDeck,
+            int eraCounter,
+            int cascadedParadoxCounter,
+            List<UUID> pendingCascadedEventIds,
+            GameStatus status) {
         return new Game(
                 Objects.requireNonNull(id, "id must not be null"),
                 Objects.requireNonNull(lobbyId, "lobbyId must not be null"),
                 Objects.requireNonNull(eventDeck, "eventDeck must not be null"),
                 eraCounter,
                 cascadedParadoxCounter,
+                Objects.requireNonNull(pendingCascadedEventIds, "pendingCascadedEventIds must not be null"),
                 Objects.requireNonNull(status, "status must not be null"));
     }
 
@@ -94,6 +110,19 @@ public class Game extends AggregateRoot {
             }
         }
         return collapsingEventId;
+    }
+
+    public void recordPendingCascadedEventIds(List<UUID> cascadedEventIds) {
+        requireInProgress();
+        pendingCascadedEventIds.clear();
+        pendingCascadedEventIds.addAll(Objects.requireNonNull(cascadedEventIds, "cascadedEventIds must not be null"));
+    }
+
+    public List<UUID> drainPendingCascadedEventIds() {
+        requireInProgress();
+        var cascadedEventIds = List.copyOf(pendingCascadedEventIds);
+        pendingCascadedEventIds.clear();
+        return cascadedEventIds;
     }
 
     public void endEra(int maxEras) {
@@ -142,5 +171,9 @@ public class Game extends AggregateRoot {
 
     public List<UUID> eventDeck() {
         return Collections.unmodifiableList(eventDeck);
+    }
+
+    public List<UUID> pendingCascadedEventIds() {
+        return Collections.unmodifiableList(pendingCascadedEventIds);
     }
 }

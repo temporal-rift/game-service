@@ -21,6 +21,7 @@ import io.github.temporalrift.game.session.domain.event.TimelineCollapsed;
 import io.github.temporalrift.game.session.domain.game.Game;
 import io.github.temporalrift.game.session.domain.game.GameAlreadyOverException;
 import io.github.temporalrift.game.session.domain.game.GameNotFoundException;
+import io.github.temporalrift.game.session.domain.game.GameStatus;
 import io.github.temporalrift.game.session.domain.lobby.LobbyNotFoundException;
 import io.github.temporalrift.game.session.domain.lobby.LobbyPlayer;
 import io.github.temporalrift.game.session.domain.port.out.GameRepository;
@@ -113,6 +114,9 @@ class EraResolutionCompletedKafkaConsumer {
         } catch (GameAlreadyOverException _) {
             log.info("EraResolutionCompleted ignored for game {} — already over", resolution.gameId());
             return;
+        }
+        if (game.status() == GameStatus.IN_PROGRESS) {
+            game.recordPendingCascadedEventIds(cascadedEventIds);
         }
         gameRepository.save(game);
 

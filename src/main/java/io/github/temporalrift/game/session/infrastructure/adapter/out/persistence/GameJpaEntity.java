@@ -39,6 +39,12 @@ class GameJpaEntity {
     @OrderColumn(name = "list_order")
     private List<UUID> eventDeck = new ArrayList<>();
 
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "game_pending_cascade_entry", joinColumns = @JoinColumn(name = "game_id"))
+    @Column(name = "event_id", nullable = false)
+    @OrderColumn(name = "list_order")
+    private List<UUID> pendingCascadedEventIds = new ArrayList<>();
+
     protected GameJpaEntity() {}
 
     UUID getId() {
@@ -87,5 +93,13 @@ class GameJpaEntity {
 
     void setEventDeck(List<UUID> eventDeck) {
         this.eventDeck = new ArrayList<>(eventDeck);
+    }
+
+    List<UUID> getPendingCascadedEventIds() {
+        return pendingCascadedEventIds;
+    }
+
+    void setPendingCascadedEventIds(List<UUID> pendingCascadedEventIds) {
+        this.pendingCascadedEventIds = new ArrayList<>(pendingCascadedEventIds);
     }
 }

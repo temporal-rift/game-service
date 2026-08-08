@@ -5,7 +5,6 @@ import static org.springframework.transaction.annotation.Propagation.REQUIRES_NE
 import java.time.Clock;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -143,12 +142,14 @@ class EraSagaAdvancer {
                                 publishEvent(gameId, stabilized);
                                 applicationEventPublisher.publishEvent(stabilized);
                             } else {
+                                var cascadedEventIds = game.drainPendingCascadedEventIds();
+                                gameRepository.save(game);
                                 var nextEra = state.eraNumber() + 1;
                                 publishEvent(
                                         gameId,
                                         new EraEnded(
                                                 gameId, state.eraNumber(), game.cascadedParadoxCounter(), nextEra));
-                                var eraStarted = new EraStarted(gameId, nextEra, List.of(), state.playerIds());
+                                var eraStarted = new EraStarted(gameId, nextEra, cascadedEventIds, state.playerIds());
                                 publishEvent(gameId, eraStarted);
                                 applicationEventPublisher.publishEvent(eraStarted);
                             }
