@@ -33,7 +33,6 @@ import io.github.temporalrift.game.action.domain.port.out.PlayerStateRepository;
 import io.github.temporalrift.game.action.domain.saga.ActionRoundSagaState;
 import io.github.temporalrift.game.action.domain.saga.ActionRoundSagaStatus;
 import io.github.temporalrift.game.shared.CardType;
-import io.github.temporalrift.game.shared.CorruptCardCorrelated;
 import io.github.temporalrift.game.shared.DomainEventEnvelope;
 import io.github.temporalrift.game.shared.EraActionFactsFinalized;
 import io.github.temporalrift.game.shared.GameRulesPort;
@@ -188,7 +187,6 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
                 ActionRoundEventPublication.publish(round, actionEventPublisher, clock);
 
                 publishRoundSummary(round, gameId, eraNumber, roundNumber, skippedPlayerIds);
-                publishCorruptCorrelations(gameId, eraNumber, round);
 
                 if (roundNumber == SIGNATURE_REVEAL_ROUND_NUMBER) {
                     publishBandedProbabilities(gameId, eraNumber, round);
@@ -235,11 +233,12 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
     }
 
     // Corrupt blind-targets a player, not a card (submissions within a round are simultaneous), so the
-    // correlation to a specific card is only knowable once the round's own submittedActions are complete
-    // — this runs for every round, not just the era's final one. It only ever produces a candidate fact:
-    // whether the correlated inversion actually took effect is a timeline-service resolution-time
-    // question this event does not answer (see CorruptCardCorrelated javadoc).
-    private void publishCorruptCorrelations(UUID gameId, int eraNumber, ActionRound round) {
+    // correlation to a specific card is only knowable once that round's own submittedActions are
+    // complete. Computed per round (a Corrupt in round N only correlates to a card ALSO played in round
+    // N) but bundled into the final round's EraActionFactsFinalized rather than published immediately —
+    // see publishFinalRoundActionFacts, which applies this same round-scoped correlation across every
+    // round of the era in one synchronous, non-racing pass.
+    private List<EraActionFactsFinalized.CorruptCorrelationFact> correlateCorruptCardsForRound(ActionRound round) {
         var shiftCardsByPlayer = round.submittedActions().stream()
                 .filter(SubmittedAction.CardAction.class::isInstance)
                 .map(SubmittedAction.CardAction.class::cast)
@@ -248,6 +247,7 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
                         || card.cardType() == CardType.SWING)
                 .collect(java.util.stream.Collectors.toMap(SubmittedAction.CardAction::playerId, card -> card));
 
+        var correlations = new ArrayList<EraActionFactsFinalized.CorruptCorrelationFact>();
         round.submittedActions().stream()
                 .filter(SubmittedAction.SpecialActionSubmission.class::isInstance)
                 .map(SubmittedAction.SpecialActionSubmission.class::cast)
@@ -255,9 +255,7 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
                 .forEach(corrupt -> {
                     var targetCard = shiftCardsByPlayer.get(corrupt.targetPlayerId());
                     if (targetCard != null) {
-                        actionEventPublisher.publishInternally(new CorruptCardCorrelated(
-                                gameId,
-                                eraNumber,
+                        correlations.add(new EraActionFactsFinalized.CorruptCorrelationFact(
                                 corrupt.playerId(),
                                 corrupt.targetPlayerId(),
                                 targetCard.cardInstanceId(),
@@ -266,6 +264,7 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
                                 targetCard.targetOutcomeId()));
                     }
                 });
+        return correlations;
     }
 
     private void publishBandedProbabilities(UUID gameId, int eraNumber, ActionRound round2) {
@@ -364,6 +363,9 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
                     .ifPresent(eraRounds::add);
         }
         eraRounds.add(round);
+        var corruptCorrelationFacts = eraRounds.stream()
+                .flatMap(actionRound -> correlateCorruptCardsForRound(actionRound).stream())
+                .toList();
         for (var action : eraRounds.stream()
                 .flatMap(actionRound -> actionRound.submittedActions().stream())
                 .toList()) {
@@ -407,6 +409,7 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
                 activistDeclarationFacts,
                 java.util.stream.Stream.concat(latestRewriteFacts.values().stream(), mimicFacts.stream())
                         .toList(),
-                List.copyOf(fulfillmentFacts)));
+                List.copyOf(fulfillmentFacts),
+                corruptCorrelationFacts));
     }
 }
