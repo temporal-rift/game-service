@@ -11,6 +11,7 @@ public record EraResolutionCompleted(UUID gameId, int eraNumber, List<TerminalRe
 
     public enum TerminalState {
         OUTCOME_APPLIED,
-        CASCADED
+        CASCADED,
+        STALLED
     }
 }
