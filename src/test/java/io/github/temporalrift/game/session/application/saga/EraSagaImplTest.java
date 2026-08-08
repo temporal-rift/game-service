@@ -31,6 +31,7 @@ import org.springframework.context.ApplicationEventPublisher;
 import io.github.temporalrift.game.session.domain.event.GameEndedAbnormally;
 import io.github.temporalrift.game.session.domain.futureevent.FutureEventDefinition;
 import io.github.temporalrift.game.session.domain.game.Game;
+import io.github.temporalrift.game.session.domain.game.GameStatus;
 import io.github.temporalrift.game.session.domain.port.out.FutureEventCatalogPort;
 import io.github.temporalrift.game.session.domain.port.out.GameRepository;
 import io.github.temporalrift.game.session.domain.port.out.SessionEventPublisher;
@@ -153,11 +154,11 @@ class EraSagaImplTest {
     }
 
     @Test
-    @DisplayName("cascaded events are flagged isCascaded=true in EventsDrawn")
-    void start_withCascadedEvents_cascadedFlagSetCorrectly() {
+    @DisplayName("carry-over replaces a fresh draw without changing the cascade count")
+    void start_withCascadedEvents_drawsFewerFreshEventsWithoutChangingCascadeCount() {
         // given
         var cascadedId = UUID.randomUUID();
-        var game = new Game(GAME_ID, LOBBY_ID, buildDeck(DECK_SIZE));
+        var game = Game.reconstitute(GAME_ID, LOBBY_ID, buildDeck(DECK_SIZE), 1, 1, GameStatus.IN_PROGRESS);
         given(gameRepository.findById(GAME_ID)).willReturn(Optional.of(game));
         given(gameRules.eventsPerEra()).willReturn(3);
         given(gameRules.cardsPerHand()).willReturn(CARDS_PER_HAND);
@@ -184,6 +185,8 @@ class EraSagaImplTest {
         assertThat(eventsDrawn.events().get(0).isCascaded()).isFalse();
         assertThat(eventsDrawn.events().get(1).isCascaded()).isFalse();
         assertThat(eventsDrawn.events().get(2).isCascaded()).isTrue();
+        assertThat(game.eventDeck()).hasSize(DECK_SIZE - 2);
+        assertThat(game.cascadedParadoxCounter()).isEqualTo(1);
     }
 
     @Test
