@@ -87,6 +87,7 @@ class UpdateScoresCommandHandlerTest {
                 List.of(),
                 List.of(new ChainScoringFact(weaverId, chainId, ScoreReason.CHAIN_COMPLETED, ERA)),
                 List.of(),
+                List.of(),
                 List.of());
 
         var handler = handler(context, List.<PlayerScore>of());
@@ -125,6 +126,7 @@ class UpdateScoresCommandHandlerTest {
                 List.of(),
                 List.of(new ChainScoringFact(weaverId, chainId, ScoreReason.CHAIN_BROKEN, ERA)),
                 List.of(),
+                List.of(),
                 List.of());
 
         var handler = handler(context, List.<PlayerScore>of());
@@ -149,6 +151,7 @@ class UpdateScoresCommandHandlerTest {
                 List.of(new PlayerFaction(activistId, Faction.ACTIVISTS)),
                 List.of(),
                 List.of(new ActionScoringFact(activistId, Faction.ACTIVISTS, ScoreReason.DECLARED_OUTCOME_WON)),
+                List.of(),
                 List.of(),
                 List.of(),
                 List.of());
@@ -183,6 +186,7 @@ class UpdateScoresCommandHandlerTest {
                 List.of(),
                 List.of(new ChainScoringFact(weaverId, chainId, ScoreReason.CHAIN_COMPLETED, factOwnEra)),
                 List.of(),
+                List.of(),
                 List.of());
 
         var savedScores = new ArrayList<PlayerScore>();
@@ -204,6 +208,7 @@ class UpdateScoresCommandHandlerTest {
                 ERA,
                 List.of(new PlayerFaction(playerId, Faction.ERASERS)),
                 List.of(new EventOutcomeFact(UUID.randomUUID(), UUID.randomUUID(), null, 3, 3)),
+                List.of(),
                 List.of(),
                 List.of(),
                 List.of(),
@@ -366,7 +371,20 @@ class UpdateScoresCommandHandlerTest {
 
         @Override
         public void recordCorruptCorrelation(
-                UUID gameId, int eraNumber, UUID corruptingPlayerId, UUID targetPlayerId, UUID cardInstanceId) {
+                UUID gameId,
+                int eraNumber,
+                UUID corruptingPlayerId,
+                UUID targetPlayerId,
+                UUID cardInstanceId,
+                UUID targetEventId,
+                UUID sourceOutcomeId,
+                UUID targetOutcomeId) {
+            throw new UnsupportedOperationException("not used by UpdateScoresCommandHandler");
+        }
+
+        @Override
+        public void confirmCorruptInversion(
+                UUID gameId, int eraNumber, UUID corruptingPlayerId, UUID cardInstanceId, boolean tookEffect) {
             throw new UnsupportedOperationException("not used by UpdateScoresCommandHandler");
         }
     }

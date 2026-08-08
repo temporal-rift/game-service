@@ -6,10 +6,10 @@
             https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.29.xsd">
 
     <!--
-        Deliberately has no scoring credit derived from it yet: awarding CORRUPTED_OPPONENT_CARD needs a
-        confirmation from timeline-service that the correlated card's inversion actually took effect (a
-        Seal can void it) — see EraScoreEvaluator.eraserDecisions and
-        temporal-rift/timeline-service#12 / #16.
+        took_effect starts NULL (unconfirmed) at round-close correlation time and is set once a
+        resolution-time confirmation arrives that the correlated card's inversion actually applied
+        rather than being voided by a Seal — see EraScoreEvaluator.eraserDecisions and
+        temporal-rift/timeline-service#12 / #16 for the still-outstanding producer of that confirmation.
     -->
     <changeSet id="scoring-016-create-scoring-context-corrupt-correlation" author="game-service">
         <createTable tableName="scoring_context_corrupt_correlation">
@@ -19,6 +19,10 @@
             <column name="corrupting_player_id" type="UUID"><constraints nullable="false"/></column>
             <column name="target_player_id" type="UUID"><constraints nullable="false"/></column>
             <column name="card_instance_id" type="UUID"><constraints nullable="false"/></column>
+            <column name="target_event_id" type="UUID"><constraints nullable="false"/></column>
+            <column name="source_outcome_id" type="UUID"/>
+            <column name="target_outcome_id" type="UUID"><constraints nullable="false"/></column>
+            <column name="took_effect" type="BOOLEAN"/>
         </createTable>
         <addUniqueConstraint
                 tableName="scoring_context_corrupt_correlation"

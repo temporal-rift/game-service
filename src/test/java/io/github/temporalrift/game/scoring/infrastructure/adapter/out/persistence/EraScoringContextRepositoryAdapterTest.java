@@ -601,8 +601,19 @@ class EraScoringContextRepositoryAdapterTest {
         var corruptingPlayerId = UUID.randomUUID();
         var targetPlayerId = UUID.randomUUID();
         var cardInstanceId = UUID.randomUUID();
+        var targetEventId = UUID.randomUUID();
+        var sourceOutcomeId = UUID.randomUUID();
+        var targetOutcomeId = UUID.randomUUID();
 
-        adapter.recordCorruptCorrelation(gameId, 2, corruptingPlayerId, targetPlayerId, cardInstanceId);
+        adapter.recordCorruptCorrelation(
+                gameId,
+                2,
+                corruptingPlayerId,
+                targetPlayerId,
+                cardInstanceId,
+                targetEventId,
+                sourceOutcomeId,
+                targetOutcomeId);
 
         then(corruptCorrelationJpaRepository)
                 .should()
@@ -612,15 +623,34 @@ class EraScoringContextRepositoryAdapterTest {
                         eq(2),
                         eq(corruptingPlayerId),
                         eq(targetPlayerId),
-                        eq(cardInstanceId));
+                        eq(cardInstanceId),
+                        eq(targetEventId),
+                        eq(sourceOutcomeId),
+                        eq(targetOutcomeId));
+    }
+
+    @Test
+    void confirmCorruptInversion_delegatesToUpdate() {
+        var gameId = UUID.randomUUID();
+        var corruptingPlayerId = UUID.randomUUID();
+        var cardInstanceId = UUID.randomUUID();
+
+        adapter.confirmCorruptInversion(gameId, 2, corruptingPlayerId, cardInstanceId, true);
+
+        then(corruptCorrelationJpaRepository)
+                .should()
+                .confirmInversion(eq(gameId), eq(2), eq(corruptingPlayerId), eq(cardInstanceId), eq(true));
     }
 
     @Test
     void getRequired_assemblesAnnihilationFactsAndFulfillmentDeclarations() {
         var gameId = UUID.randomUUID();
         var playerId = UUID.randomUUID();
+        var targetPlayerId = UUID.randomUUID();
         var eventId = UUID.randomUUID();
         var outcomeId = UUID.randomUUID();
+        var cardInstanceId = UUID.randomUUID();
+        var sourceOutcomeId = UUID.randomUUID();
 
         var playerEntity = new ScoringContextPlayerJpaEntity();
         playerEntity.setId(UUID.randomUUID());
@@ -648,6 +678,20 @@ class EraScoringContextRepositoryAdapterTest {
         given(fulfillmentDeclarationJpaRepository.findAllByGameIdAndEraNumber(gameId, 2))
                 .willReturn(List.of(declaration));
 
+        var correlation = new ScoringContextCorruptCorrelationJpaEntity();
+        correlation.setId(UUID.randomUUID());
+        correlation.setGameId(gameId);
+        correlation.setEraNumber(2);
+        correlation.setCorruptingPlayerId(playerId);
+        correlation.setTargetPlayerId(targetPlayerId);
+        correlation.setCardInstanceId(cardInstanceId);
+        correlation.setTargetEventId(eventId);
+        correlation.setSourceOutcomeId(sourceOutcomeId);
+        correlation.setTargetOutcomeId(outcomeId);
+        correlation.setTookEffect(true);
+        given(corruptCorrelationJpaRepository.findAllByGameIdAndEraNumber(gameId, 2))
+                .willReturn(List.of(correlation));
+
         var context = adapter.getRequired(gameId, 2);
 
         assertThat(context.annihilationFacts())
@@ -656,6 +700,9 @@ class EraScoringContextRepositoryAdapterTest {
         assertThat(context.fulfillmentDeclarations())
                 .containsExactly(new io.github.temporalrift.game.scoring.domain.context.FulfillmentDeclarationFact(
                         playerId, eventId));
+        assertThat(context.corruptCorrelations())
+                .containsExactly(new io.github.temporalrift.game.scoring.domain.context.CorruptCorrelationFact(
+                        playerId, targetPlayerId, cardInstanceId, eventId, sourceOutcomeId, outcomeId, true));
     }
 
     private ScoringContextRevisionistActionJpaEntity revisionistAction(

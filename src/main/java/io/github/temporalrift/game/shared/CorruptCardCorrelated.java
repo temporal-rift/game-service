@@ -12,4 +12,11 @@ import java.util.UUID;
  * only — never published to Kafka, since no other service needs the raw correlation.
  */
 public record CorruptCardCorrelated(
-        UUID gameId, int eraNumber, UUID corruptingPlayerId, UUID targetPlayerId, UUID cardInstanceId) {}
+        UUID gameId,
+        int eraNumber,
+        UUID corruptingPlayerId,
+        UUID targetPlayerId,
+        UUID cardInstanceId,
+        UUID targetEventId,
+        UUID sourceOutcomeId,
+        UUID targetOutcomeId) {}

@@ -63,10 +63,6 @@ class EraScoreEvaluator {
         return declaredFulfillment ? ScoreReason.FULFILLMENT_SUCCEEDED : ScoreReason.EVENT_RESOLVED_AS_WRITTEN;
     }
 
-    // CORRUPTED_OPPONENT_CARD is deliberately not emitted here: scoring_context_corrupt_correlation only
-    // records that a Corrupt was blind-targeted and matched to a card at round close, not that its
-    // inversion actually took effect (a Seal can void it). That confirmation is a timeline-service
-    // resolution-time fact that does not exist yet — see temporal-rift/timeline-service#12 and #16.
     private List<PlayerScoreDecision> eraserDecisions(UUID playerId, EraScoringContext context) {
         var decisions = new ArrayList<PlayerScoreDecision>();
 
@@ -74,6 +70,14 @@ class EraScoreEvaluator {
                 .filter(fact -> fact.playerId().equals(playerId))
                 .forEach(fact -> decisions.add(
                         new PlayerScoreDecision(playerId, ScoreReason.ANNIHILATED_OUTCOME, context.eraNumber())));
+
+        // tookEffect is null until a resolution-time confirmation arrives that the correlated card's
+        // inversion actually applied rather than being voided by a Seal — see CorruptCorrelationFact.
+        context.corruptCorrelations().stream()
+                .filter(fact -> fact.corruptingPlayerId().equals(playerId))
+                .filter(fact -> Boolean.TRUE.equals(fact.tookEffect()))
+                .forEach(fact -> decisions.add(
+                        new PlayerScoreDecision(playerId, ScoreReason.CORRUPTED_OPPONENT_CARD, context.eraNumber())));
 
         boolean anyFewer = context.eventOutcomes().stream()
                 .anyMatch(fact -> fact.endingOutcomeCount() < fact.startingOutcomeCount());

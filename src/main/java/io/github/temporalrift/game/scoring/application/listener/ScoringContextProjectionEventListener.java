@@ -90,7 +90,10 @@ class ScoringContextProjectionEventListener {
                 event.eraNumber(),
                 event.corruptingPlayerId(),
                 event.targetPlayerId(),
-                event.cardInstanceId());
+                event.cardInstanceId(),
+                event.targetEventId(),
+                event.sourceOutcomeId(),
+                event.targetOutcomeId());
     }
 
     @ApplicationModuleListener

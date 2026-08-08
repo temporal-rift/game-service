@@ -260,7 +260,10 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
                                 eraNumber,
                                 corrupt.playerId(),
                                 corrupt.targetPlayerId(),
-                                targetCard.cardInstanceId()));
+                                targetCard.cardInstanceId(),
+                                targetCard.targetEventId(),
+                                targetCard.sourceOutcomeId(),
+                                targetCard.targetOutcomeId()));
                     }
                 });
     }

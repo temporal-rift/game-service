@@ -13,6 +13,7 @@ import tools.jackson.databind.ObjectMapper;
 import io.github.temporalrift.game.scoring.domain.context.ActionScoringFact;
 import io.github.temporalrift.game.scoring.domain.context.AnnihilationFact;
 import io.github.temporalrift.game.scoring.domain.context.ChainScoringFact;
+import io.github.temporalrift.game.scoring.domain.context.CorruptCorrelationFact;
 import io.github.temporalrift.game.scoring.domain.context.EraScoringContext;
 import io.github.temporalrift.game.scoring.domain.context.EraScoringContextNotFoundException;
 import io.github.temporalrift.game.scoring.domain.context.EventOutcomeFact;
@@ -117,6 +118,18 @@ class EraScoringContextRepositoryAdapter implements EraScoringContextRepository 
                         .map(entity -> new FulfillmentDeclarationFact(entity.getPlayerId(), entity.getTargetEventId()))
                         .toList();
 
+        var corruptCorrelations =
+                corruptCorrelationJpaRepository.findAllByGameIdAndEraNumber(gameId, eraNumber).stream()
+                        .map(entity -> new CorruptCorrelationFact(
+                                entity.getCorruptingPlayerId(),
+                                entity.getTargetPlayerId(),
+                                entity.getCardInstanceId(),
+                                entity.getTargetEventId(),
+                                entity.getSourceOutcomeId(),
+                                entity.getTargetOutcomeId(),
+                                entity.getTookEffect()))
+                        .toList();
+
         return new EraScoringContext(
                 gameId,
                 eraNumber,
@@ -125,7 +138,8 @@ class EraScoringContextRepositoryAdapter implements EraScoringContextRepository 
                 actionFacts,
                 chainFacts,
                 annihilationFacts,
-                fulfillmentDeclarations);
+                fulfillmentDeclarations,
+                corruptCorrelations);
     }
 
     private List<EventOutcomeFact> buildEventOutcomeFacts(UUID gameId, int eraNumber) {
@@ -408,8 +422,31 @@ class EraScoringContextRepositoryAdapter implements EraScoringContextRepository 
     @Override
     @Transactional
     public void recordCorruptCorrelation(
-            UUID gameId, int eraNumber, UUID corruptingPlayerId, UUID targetPlayerId, UUID cardInstanceId) {
+            UUID gameId,
+            int eraNumber,
+            UUID corruptingPlayerId,
+            UUID targetPlayerId,
+            UUID cardInstanceId,
+            UUID targetEventId,
+            UUID sourceOutcomeId,
+            UUID targetOutcomeId) {
         corruptCorrelationJpaRepository.insertIfAbsent(
-                UUID.randomUUID(), gameId, eraNumber, corruptingPlayerId, targetPlayerId, cardInstanceId);
+                UUID.randomUUID(),
+                gameId,
+                eraNumber,
+                corruptingPlayerId,
+                targetPlayerId,
+                cardInstanceId,
+                targetEventId,
+                sourceOutcomeId,
+                targetOutcomeId);
+    }
+
+    @Override
+    @Transactional
+    public void confirmCorruptInversion(
+            UUID gameId, int eraNumber, UUID corruptingPlayerId, UUID cardInstanceId, boolean tookEffect) {
+        corruptCorrelationJpaRepository.confirmInversion(
+                gameId, eraNumber, corruptingPlayerId, cardInstanceId, tookEffect);
     }
 }

@@ -789,9 +789,11 @@ class ActionRoundSagaImplTest {
             // given
             var roundId = UUID.randomUUID();
             var cardInstanceId = UUID.randomUUID();
+            var targetEventId = UUID.randomUUID();
+            var targetOutcomeId = UUID.randomUUID();
             var round = new ActionRound(roundId, GAME_ID, ERA_NUMBER, 1, List.of(PLAYER_1, PLAYER_2), TIMER_SECONDS);
             round.submit(new SubmittedAction.CardAction(
-                    PLAYER_2, cardInstanceId, CardType.PUSH, UUID.randomUUID(), null, UUID.randomUUID()));
+                    PLAYER_2, cardInstanceId, CardType.PUSH, targetEventId, null, targetOutcomeId));
             round.submit(new SubmittedAction.SpecialActionSubmission(
                     PLAYER_1, Faction.ERASERS, SpecialAction.CORRUPT, null, null, PLAYER_2));
             given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA_NUMBER, 1))
@@ -819,6 +821,9 @@ class ActionRoundSagaImplTest {
             assertThat(event.corruptingPlayerId()).isEqualTo(PLAYER_1);
             assertThat(event.targetPlayerId()).isEqualTo(PLAYER_2);
             assertThat(event.cardInstanceId()).isEqualTo(cardInstanceId);
+            assertThat(event.targetEventId()).isEqualTo(targetEventId);
+            assertThat(event.sourceOutcomeId()).isNull();
+            assertThat(event.targetOutcomeId()).isEqualTo(targetOutcomeId);
         }
 
         @Test

@@ -56,11 +56,26 @@ public interface EraScoringContextRepository {
     void recordFulfillmentDeclaration(UUID gameId, int eraNumber, UUID playerId, UUID targetEventId);
 
     /**
-     * Persists a candidate Corrupt fact only — see {@code scoring_context_corrupt_correlation}'s
-     * migration and {@code EraScoreEvaluator.eraserDecisions}. Does not drive any score credit; the
-     * confirmation this needs from timeline-service does not exist yet (temporal-rift/timeline-service#12
-     * / #16).
+     * Persists a candidate Corrupt fact with {@code tookEffect} unset — see
+     * {@code scoring_context_corrupt_correlation}'s migration and {@code EraScoreEvaluator.eraserDecisions}.
+     * Does not by itself drive a score credit until {@link #confirmCorruptInversion} is called.
      */
     void recordCorruptCorrelation(
-            UUID gameId, int eraNumber, UUID corruptingPlayerId, UUID targetPlayerId, UUID cardInstanceId);
+            UUID gameId,
+            int eraNumber,
+            UUID corruptingPlayerId,
+            UUID targetPlayerId,
+            UUID cardInstanceId,
+            UUID targetEventId,
+            UUID sourceOutcomeId,
+            UUID targetOutcomeId);
+
+    /**
+     * Confirms whether a previously recorded Corrupt correlation's inversion actually took effect (a
+     * Seal can void it), unlocking {@code CORRUPTED_OPPONENT_CARD} for the corrupting player. Not yet
+     * called by any listener: the timeline-service resolution-time fact this needs does not exist yet
+     * (temporal-rift/timeline-service#12 / #16). Ready for that future consumer.
+     */
+    void confirmCorruptInversion(
+            UUID gameId, int eraNumber, UUID corruptingPlayerId, UUID cardInstanceId, boolean tookEffect);
 }
