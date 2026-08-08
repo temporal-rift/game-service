@@ -399,6 +399,39 @@ class EraScoringContextRepositoryAdapterTest {
     }
 
     @Test
+    void resolveActivistDeclarations_stalledTargetResolvesFalseWithoutWaitingForOutcome() {
+        var gameId = UUID.randomUUID();
+        var playerId = UUID.randomUUID();
+        var eventId = UUID.randomUUID();
+        var declaration = new ScoringContextActivistDeclarationJpaEntity();
+        declaration.setId(UUID.randomUUID());
+        declaration.setGameId(gameId);
+        declaration.setEraNumber(2);
+        declaration.setPlayerId(playerId);
+        declaration.setMode("RALLY");
+        declaration.setTargetEventId(eventId);
+        declaration.setTargetOutcomeId(UUID.randomUUID());
+        given(activistDeclarationJpaRepository.findAllUnresolvedWithLock(gameId, 2))
+                .willReturn(List.of(declaration));
+        var barrier = new EraResolutionCompleted(
+                gameId,
+                2,
+                List.of(new EraResolutionCompleted.TerminalResolution(
+                        eventId, 0, EraResolutionCompleted.TerminalState.STALLED, null)));
+        given(resolutionBarrierJpaRepository.findByGameIdAndEraNumber(gameId, 2))
+                .willReturn(Optional.of(ScoringTimelineResolutionBarrierJpaEntity.fromDomain(barrier)));
+
+        var resolutions = adapter.resolveActivistDeclarations(gameId, 2);
+
+        assertThat(resolutions)
+                .containsExactly(
+                        new io.github.temporalrift.game.shared.ActivistDeclarationResolved(gameId, 2, playerId, false));
+        assertThat(declaration.getResolutionSucceeded()).isFalse();
+        then(outcomeInboxJpaRepository).should(never()).findByGameIdAndEraNumberAndEventId(any(), anyInt(), any());
+        then(actionFactJpaRepository).shouldHaveNoInteractions();
+    }
+
+    @Test
     void resolveActivistDeclarations_appliedWinningRallyRecordsSuccessAndItsScoringFact() {
         var gameId = UUID.randomUUID();
         var playerId = UUID.randomUUID();
@@ -555,6 +588,28 @@ class EraScoringContextRepositoryAdapterTest {
                 2,
                 List.of(new EraResolutionCompleted.TerminalResolution(
                         action.getTargetEventId(), 0, EraResolutionCompleted.TerminalState.CASCADED, null)));
+        given(resolutionBarrierJpaRepository.findByGameIdAndEraNumber(gameId, 2))
+                .willReturn(Optional.of(ScoringTimelineResolutionBarrierJpaEntity.fromDomain(barrier)));
+
+        adapter.resolveRevisionistActions(gameId, 2);
+
+        assertThat(action.getResolved()).isFalse();
+        then(outcomeInboxJpaRepository).shouldHaveNoInteractions();
+        then(actionFactJpaRepository).shouldHaveNoInteractions();
+    }
+
+    @Test
+    void resolveRevisionistActions_stalledTargetResolvesFalseWithoutWaitingForOutcome() {
+        var gameId = UUID.randomUUID();
+        var action =
+                revisionistAction(gameId, UUID.randomUUID(), SpecialAction.MIMIC, UUID.randomUUID(), UUID.randomUUID());
+        given(revisionistActionJpaRepository.findAllUnresolvedWithLock(gameId, 2))
+                .willReturn(List.of(action));
+        var barrier = new EraResolutionCompleted(
+                gameId,
+                2,
+                List.of(new EraResolutionCompleted.TerminalResolution(
+                        action.getTargetEventId(), 0, EraResolutionCompleted.TerminalState.STALLED, null)));
         given(resolutionBarrierJpaRepository.findByGameIdAndEraNumber(gameId, 2))
                 .willReturn(Optional.of(ScoringTimelineResolutionBarrierJpaEntity.fromDomain(barrier)));
 
