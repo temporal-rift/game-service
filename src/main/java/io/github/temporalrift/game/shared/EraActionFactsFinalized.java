@@ -25,7 +25,29 @@ public record EraActionFactsFinalized(
         List<ExposeFact> exposeFacts,
         List<ActivistDeclarationFact> activistDeclarationFacts,
         List<RevisionistFact> revisionistFacts,
-        List<FulfillmentFact> fulfillmentFacts) {
+        List<FulfillmentFact> fulfillmentFacts,
+        List<CorruptCorrelationFact> corruptCorrelationFacts) {
+
+    public EraActionFactsFinalized(
+            UUID gameId,
+            int eraNumber,
+            List<ForesightFact> foresightFacts,
+            List<AnnihilationFact> annihilationFacts,
+            List<ExposeFact> exposeFacts,
+            List<ActivistDeclarationFact> activistDeclarationFacts,
+            List<RevisionistFact> revisionistFacts,
+            List<FulfillmentFact> fulfillmentFacts) {
+        this(
+                gameId,
+                eraNumber,
+                foresightFacts,
+                annihilationFacts,
+                exposeFacts,
+                activistDeclarationFacts,
+                revisionistFacts,
+                fulfillmentFacts,
+                List.of());
+    }
 
     public EraActionFactsFinalized(
             UUID gameId,
@@ -92,4 +114,17 @@ public record EraActionFactsFinalized(
 
     /** Private action-to-scoring attribution; it is intentionally never sent through Kafka. */
     public record FulfillmentFact(UUID playerId, UUID targetEventId) {}
+
+    /**
+     * A candidate Eraser Corrupt correlated to the target's probability-shift card, within the same round
+     * as both submissions. {@code tookEffect} is resolved later, outside this bundle — see
+     * {@code CorruptCorrelationFact} in the scoring module and {@code EraScoreEvaluator.eraserDecisions}.
+     */
+    public record CorruptCorrelationFact(
+            UUID corruptingPlayerId,
+            UUID targetPlayerId,
+            UUID cardInstanceId,
+            UUID targetEventId,
+            UUID sourceOutcomeId,
+            UUID targetOutcomeId) {}
 }
