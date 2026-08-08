@@ -146,14 +146,14 @@ class EraSagaAdvancer {
                                 publishEvent(gameId, stabilized);
                                 applicationEventPublisher.publishEvent(stabilized);
                             } else {
-                                var cascadedEventIds = game.drainPendingCascadedEventIds();
+                                var carryOverEvents = game.drainPendingCarryOverEvents();
                                 gameRepository.save(game);
                                 var nextEra = state.eraNumber() + 1;
                                 publishEvent(
                                         gameId,
                                         new EraEnded(
                                                 gameId, state.eraNumber(), game.cascadedParadoxCounter(), nextEra));
-                                var eraStarted = new EraStarted(gameId, nextEra, cascadedEventIds, state.playerIds());
+                                var eraStarted = new EraStarted(gameId, nextEra, carryOverEvents, state.playerIds());
                                 publishEvent(gameId, eraStarted);
                                 applicationEventPublisher.publishEvent(eraStarted);
                             }

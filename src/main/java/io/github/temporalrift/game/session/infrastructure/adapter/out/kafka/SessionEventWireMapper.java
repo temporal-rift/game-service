@@ -1,6 +1,9 @@
 package io.github.temporalrift.game.session.infrastructure.adapter.out.kafka;
 
+import java.util.UUID;
+
 import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
 
 import io.github.temporalrift.asyncapi.sessionevents.GeneratedChannelContract.EraEndedPayload;
 import io.github.temporalrift.asyncapi.sessionevents.GeneratedChannelContract.EraFailedPayload;
@@ -51,6 +54,7 @@ import io.github.temporalrift.game.session.domain.event.ResolutionStarted;
 import io.github.temporalrift.game.session.domain.event.TimelineCollapsed;
 import io.github.temporalrift.game.session.domain.event.TimelineStabilized;
 import io.github.temporalrift.game.session.domain.event.WinConditionMet;
+import io.github.temporalrift.game.session.domain.game.PendingCarryOverEvent;
 import io.github.temporalrift.game.shared.EventsDrawn;
 import io.github.temporalrift.game.shared.FactionAssigned;
 import io.github.temporalrift.game.shared.FactionRevealed;
@@ -71,7 +75,12 @@ interface SessionEventWireMapper {
 
     HostTransferredPayload toWire(HostTransferred event);
 
+    @Mapping(target = "carryOverEventIds", source = "carryOverEvents")
     EraStartedPayload toWire(EraStarted event);
+
+    default UUID toWire(PendingCarryOverEvent event) {
+        return event.eventId();
+    }
 
     EraEndedPayload toWire(EraEnded event);
 

@@ -20,6 +20,7 @@ import io.github.temporalrift.game.scoring.application.command.EraScoringComplet
 import io.github.temporalrift.game.scoring.domain.port.out.EraScoringContextRepository;
 import io.github.temporalrift.game.shared.ActivistDeclarationRecorded;
 import io.github.temporalrift.game.shared.ActivistDeclarationResolved;
+import io.github.temporalrift.game.shared.CarryOverState;
 import io.github.temporalrift.game.shared.EraActionFactsFinalized;
 import io.github.temporalrift.game.shared.EventsDrawn;
 import io.github.temporalrift.game.shared.ExposeBehaviorChanged;
@@ -81,9 +82,9 @@ class ScoringContextProjectionEventListenerTest {
                 gameId,
                 2,
                 List.of(
-                        new EventsDrawn.FutureEvent(UUID.randomUUID(), "Title 1", List.of(), false),
-                        new EventsDrawn.FutureEvent(UUID.randomUUID(), "Title 2", List.of(), false),
-                        new EventsDrawn.FutureEvent(UUID.randomUUID(), "Title 3", List.of(), false)));
+                        new EventsDrawn.FutureEvent(UUID.randomUUID(), "Title 1", List.of(), CarryOverState.FRESH),
+                        new EventsDrawn.FutureEvent(UUID.randomUUID(), "Title 2", List.of(), CarryOverState.FRESH),
+                        new EventsDrawn.FutureEvent(UUID.randomUUID(), "Title 3", List.of(), CarryOverState.FRESH)));
 
         listener.onEventsDrawn(event);
 
@@ -106,14 +107,14 @@ class ScoringContextProjectionEventListenerTest {
                                         new EventsDrawn.Outcome(UUID.randomUUID(), "A", 33),
                                         new EventsDrawn.Outcome(UUID.randomUUID(), "B", 33),
                                         new EventsDrawn.Outcome(UUID.randomUUID(), "C", 34)),
-                                false),
+                                CarryOverState.FRESH),
                         new EventsDrawn.FutureEvent(
                                 eventId2,
                                 "Title 2",
                                 List.of(
                                         new EventsDrawn.Outcome(UUID.randomUUID(), "A", 50),
                                         new EventsDrawn.Outcome(UUID.randomUUID(), "B", 50)),
-                                false)));
+                                CarryOverState.FRESH)));
 
         listener.onEventsDrawn(event);
 

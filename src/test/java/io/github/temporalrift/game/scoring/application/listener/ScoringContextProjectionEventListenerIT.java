@@ -21,6 +21,7 @@ import io.github.temporalrift.game.scoring.domain.context.EraScoringContextNotFo
 import io.github.temporalrift.game.scoring.domain.context.EventOutcomeFact;
 import io.github.temporalrift.game.scoring.domain.context.PlayerFaction;
 import io.github.temporalrift.game.scoring.domain.port.out.EraScoringContextRepository;
+import io.github.temporalrift.game.shared.CarryOverState;
 import io.github.temporalrift.game.shared.EraActionFactsFinalized;
 import io.github.temporalrift.game.shared.EventsDrawn;
 import io.github.temporalrift.game.shared.Faction;
@@ -65,9 +66,9 @@ class ScoringContextProjectionEventListenerIT {
                 gameId,
                 eraNumber,
                 List.of(
-                        new EventsDrawn.FutureEvent(UUID.randomUUID(), "A", List.of(), false),
-                        new EventsDrawn.FutureEvent(UUID.randomUUID(), "B", List.of(), false),
-                        new EventsDrawn.FutureEvent(UUID.randomUUID(), "C", List.of(), false)));
+                        new EventsDrawn.FutureEvent(UUID.randomUUID(), "A", List.of(), CarryOverState.FRESH),
+                        new EventsDrawn.FutureEvent(UUID.randomUUID(), "B", List.of(), CarryOverState.FRESH),
+                        new EventsDrawn.FutureEvent(UUID.randomUUID(), "C", List.of(), CarryOverState.FRESH)));
 
         transactionTemplate.executeWithoutResult(_ -> applicationEventPublisher.publishEvent(event));
 
@@ -101,7 +102,7 @@ class ScoringContextProjectionEventListenerIT {
                                 new EventsDrawn.Outcome(UUID.randomUUID(), "1", 33),
                                 new EventsDrawn.Outcome(UUID.randomUUID(), "2", 33),
                                 new EventsDrawn.Outcome(UUID.randomUUID(), "3", 34)),
-                        false)));
+                        CarryOverState.FRESH)));
 
         transactionTemplate.executeWithoutResult(_ -> {
             applicationEventPublisher.publishEvent(new FactionAssigned(gameId, playerId, Faction.PROPHETS.name()));
@@ -123,7 +124,7 @@ class ScoringContextProjectionEventListenerIT {
         var eventId = UUID.randomUUID();
         var outcomeId = UUID.randomUUID();
         var event = new EventsDrawn(
-                gameId, eraNumber, List.of(new EventsDrawn.FutureEvent(eventId, "A", List.of(), false)));
+                gameId, eraNumber, List.of(new EventsDrawn.FutureEvent(eventId, "A", List.of(), CarryOverState.FRESH)));
 
         transactionTemplate.executeWithoutResult(_ -> {
             applicationEventPublisher.publishEvent(new FactionAssigned(gameId, playerId, Faction.PROPHETS.name()));
@@ -157,7 +158,7 @@ class ScoringContextProjectionEventListenerIT {
                                 new EventsDrawn.Outcome(outcomeId, "1", 33),
                                 new EventsDrawn.Outcome(UUID.randomUUID(), "2", 33),
                                 new EventsDrawn.Outcome(UUID.randomUUID(), "3", 34)),
-                        false)));
+                        CarryOverState.FRESH)));
 
         transactionTemplate.executeWithoutResult(_ -> {
             applicationEventPublisher.publishEvent(new FactionAssigned(gameId, playerId, Faction.ERASERS.name()));
@@ -199,7 +200,7 @@ class ScoringContextProjectionEventListenerIT {
         var eventId = UUID.randomUUID();
         var outcomeId = UUID.randomUUID();
         var event = new EventsDrawn(
-                gameId, eraNumber, List.of(new EventsDrawn.FutureEvent(eventId, "A", List.of(), false)));
+                gameId, eraNumber, List.of(new EventsDrawn.FutureEvent(eventId, "A", List.of(), CarryOverState.FRESH)));
 
         transactionTemplate.executeWithoutResult(_ -> {
             applicationEventPublisher.publishEvent(new FactionAssigned(gameId, playerId, Faction.PROPHETS.name()));
@@ -242,7 +243,7 @@ class ScoringContextProjectionEventListenerIT {
                                 new EventsDrawn.Outcome(annihilatedOutcomeId, "1", 33),
                                 new EventsDrawn.Outcome(UUID.randomUUID(), "2", 33),
                                 new EventsDrawn.Outcome(UUID.randomUUID(), "3", 34)),
-                        false)));
+                        CarryOverState.FRESH)));
 
         transactionTemplate.executeWithoutResult(_ -> {
             applicationEventPublisher.publishEvent(new FactionAssigned(gameId, playerId, Faction.PROPHETS.name()));

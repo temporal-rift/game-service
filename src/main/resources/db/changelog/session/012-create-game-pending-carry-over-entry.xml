@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.29.xsd">
+    <changeSet id="session-012-create-game-pending-carry-over-entry" author="game-service">
+        <createTable tableName="game_pending_carry_over_entry">
+            <column name="game_id" type="UUID"><constraints nullable="false"/></column>
+            <column name="event_id" type="UUID"><constraints nullable="false"/></column>
+            <column name="carry_over_state" type="VARCHAR(16)"><constraints nullable="false"/></column>
+            <column name="list_order" type="INT"><constraints nullable="false"/></column>
+        </createTable>
+        <addPrimaryKey tableName="game_pending_carry_over_entry" columnNames="game_id,list_order"
+                constraintName="pk_game_pending_carry_over_entry"/>
+        <addForeignKeyConstraint baseTableName="game_pending_carry_over_entry" baseColumnNames="game_id"
+                constraintName="fk_game_pending_carry_over_entry_game" referencedTableName="game" referencedColumnNames="id"/>
+    </changeSet>
+</databaseChangeLog>

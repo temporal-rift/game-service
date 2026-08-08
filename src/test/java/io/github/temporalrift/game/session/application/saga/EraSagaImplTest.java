@@ -32,11 +32,13 @@ import io.github.temporalrift.game.session.domain.event.GameEndedAbnormally;
 import io.github.temporalrift.game.session.domain.futureevent.FutureEventDefinition;
 import io.github.temporalrift.game.session.domain.game.Game;
 import io.github.temporalrift.game.session.domain.game.GameStatus;
+import io.github.temporalrift.game.session.domain.game.PendingCarryOverEvent;
 import io.github.temporalrift.game.session.domain.port.out.FutureEventCatalogPort;
 import io.github.temporalrift.game.session.domain.port.out.GameRepository;
 import io.github.temporalrift.game.session.domain.port.out.SessionEventPublisher;
 import io.github.temporalrift.game.session.domain.port.out.SessionGameRulesPort;
 import io.github.temporalrift.game.session.domain.saga.EraSagaStatus;
+import io.github.temporalrift.game.shared.CarryOverState;
 import io.github.temporalrift.game.shared.DomainEventEnvelope;
 import io.github.temporalrift.game.shared.EventsDrawn;
 import io.github.temporalrift.game.shared.HandDealt;
@@ -82,8 +84,12 @@ class EraSagaImplTest {
     }
 
     private static FutureEventDefinition buildEventDef() {
+        return buildEventDef(UUID.randomUUID());
+    }
+
+    private static FutureEventDefinition buildEventDef(UUID eventId) {
         return new FutureEventDefinition(
-                UUID.randomUUID(),
+                eventId,
                 "Test Event",
                 List.of(
                         new FutureEventDefinition.OutcomeDefinition(UUID.randomUUID(), "Good", 40),
@@ -155,23 +161,30 @@ class EraSagaImplTest {
 
     @Test
     @DisplayName("carry-over replaces a fresh draw without changing the cascade count")
-    void start_withCascadedEvents_drawsFewerFreshEventsWithoutChangingCascadeCount() {
+    void start_withCarryOvers_drawsFewerFreshEventsAndPreservesTheirState() {
         // given
         var cascadedId = UUID.randomUUID();
+        var stalledId = UUID.randomUUID();
         var game = Game.reconstitute(GAME_ID, LOBBY_ID, buildDeck(DECK_SIZE), 1, 1, GameStatus.IN_PROGRESS);
         given(gameRepository.findById(GAME_ID)).willReturn(Optional.of(game));
         given(gameRules.eventsPerEra()).willReturn(3);
         given(gameRules.cardsPerHand()).willReturn(CARDS_PER_HAND);
         // drawn IDs come from the deck; cascaded ID is known — stub each call separately
         given(futureEventCatalog.findByEventIds(argThat(ids -> ids != null && !ids.contains(cascadedId))))
-                .willReturn(List.of(buildEventDef(), buildEventDef()));
-        given(futureEventCatalog.findByEventIds(argThat(ids -> ids != null && ids.contains(cascadedId))))
                 .willReturn(List.of(buildEventDef()));
+        given(futureEventCatalog.findByEventIds(argThat(ids -> ids != null && ids.contains(cascadedId))))
+                .willReturn(List.of(buildEventDef(cascadedId), buildEventDef(stalledId)));
 
         var captor = ArgumentCaptor.<DomainEventEnvelope>captor();
 
         // when
-        eraSaga.start(GAME_ID, ERA_NUMBER, PLAYER_IDS, List.of(cascadedId));
+        eraSaga.start(
+                GAME_ID,
+                ERA_NUMBER,
+                PLAYER_IDS,
+                List.of(
+                        new PendingCarryOverEvent(cascadedId, CarryOverState.CASCADED),
+                        new PendingCarryOverEvent(stalledId, CarryOverState.STALLED)));
 
         // then
         then(eventPublisher).should(atLeastOnce()).publish(captor.capture());
@@ -182,10 +195,10 @@ class EraSagaImplTest {
                 .orElseThrow();
 
         assertThat(eventsDrawn.events()).hasSize(3);
-        assertThat(eventsDrawn.events().get(0).isCascaded()).isFalse();
-        assertThat(eventsDrawn.events().get(1).isCascaded()).isFalse();
-        assertThat(eventsDrawn.events().get(2).isCascaded()).isTrue();
-        assertThat(game.eventDeck()).hasSize(DECK_SIZE - 2);
+        assertThat(eventsDrawn.events())
+                .extracting(EventsDrawn.FutureEvent::carryOverState)
+                .containsExactly(CarryOverState.FRESH, CarryOverState.CASCADED, CarryOverState.STALLED);
+        assertThat(game.eventDeck()).hasSize(DECK_SIZE - 1);
         assertThat(game.cascadedParadoxCounter()).isEqualTo(1);
     }
 

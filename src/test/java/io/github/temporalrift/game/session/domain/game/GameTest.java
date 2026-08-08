@@ -137,15 +137,18 @@ class GameTest {
     }
 
     @Test
-    void pendingCascades_areDrainedOnceInRecordedOrder() {
+    void pendingCarryOvers_areDrainedOnceInRecordedOrderWithTheirState() {
         var game = newGame();
         var first = UUID.randomUUID();
         var second = UUID.randomUUID();
 
-        game.recordPendingCascadedEventIds(List.of(first, second));
+        var carryOvers = List.of(
+                new PendingCarryOverEvent(first, io.github.temporalrift.game.shared.CarryOverState.STALLED),
+                new PendingCarryOverEvent(second, io.github.temporalrift.game.shared.CarryOverState.CASCADED));
+        game.recordPendingCarryOverEvents(carryOvers);
 
-        assertThat(game.drainPendingCascadedEventIds()).containsExactly(first, second);
-        assertThat(game.pendingCascadedEventIds()).isEmpty();
+        assertThat(game.drainPendingCarryOverEvents()).containsExactlyElementsOf(carryOvers);
+        assertThat(game.pendingCarryOverEvents()).isEmpty();
     }
 
     @Test

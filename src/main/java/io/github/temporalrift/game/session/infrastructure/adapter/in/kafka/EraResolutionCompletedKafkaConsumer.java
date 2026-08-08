@@ -22,6 +22,7 @@ import io.github.temporalrift.game.session.domain.game.Game;
 import io.github.temporalrift.game.session.domain.game.GameAlreadyOverException;
 import io.github.temporalrift.game.session.domain.game.GameNotFoundException;
 import io.github.temporalrift.game.session.domain.game.GameStatus;
+import io.github.temporalrift.game.session.domain.game.PendingCarryOverEvent;
 import io.github.temporalrift.game.session.domain.lobby.LobbyNotFoundException;
 import io.github.temporalrift.game.session.domain.lobby.LobbyPlayer;
 import io.github.temporalrift.game.session.domain.port.out.GameRepository;
@@ -29,6 +30,7 @@ import io.github.temporalrift.game.session.domain.port.out.LobbyRepository;
 import io.github.temporalrift.game.session.domain.port.out.SessionActivistDeclarationRepository;
 import io.github.temporalrift.game.session.domain.port.out.SessionEventPublisher;
 import io.github.temporalrift.game.session.domain.port.out.SessionGameRulesPort;
+import io.github.temporalrift.game.shared.CarryOverState;
 import io.github.temporalrift.game.shared.DomainEventEnvelope;
 import io.github.temporalrift.game.shared.InboundEnvelope;
 import io.github.temporalrift.game.shared.ProcessedEventRepository;
@@ -95,13 +97,15 @@ class EraResolutionCompletedKafkaConsumer {
         }
 
         var resolution = objectMapper.convertValue(envelope.payload(), EraResolutionCompleted.class);
-        var carryForwardEventIds = resolution.terminalResolutions().stream()
+        var carryOverEvents = resolution.terminalResolutions().stream()
                 .filter(entry -> entry.terminalState() == EraResolutionCompleted.TerminalState.CASCADED
                         || entry.terminalState() == EraResolutionCompleted.TerminalState.STALLED)
                 .sorted(Comparator.comparingInt(EraResolutionCompleted.TerminalResolution::revealIndex))
-                .map(EraResolutionCompleted.TerminalResolution::eventId)
+                .map(entry -> new PendingCarryOverEvent(
+                        entry.eventId(),
+                        CarryOverState.valueOf(entry.terminalState().name())))
                 .toList();
-        if (carryForwardEventIds.isEmpty()) {
+        if (carryOverEvents.isEmpty()) {
             return;
         }
         var cascadedEventIds = resolution.terminalResolutions().stream()
@@ -126,7 +130,7 @@ class EraResolutionCompletedKafkaConsumer {
             }
         }
         if (game.status() == GameStatus.IN_PROGRESS) {
-            game.recordPendingCascadedEventIds(carryForwardEventIds);
+            game.recordPendingCarryOverEvents(carryOverEvents);
         }
         gameRepository.save(game);
 

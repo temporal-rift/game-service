@@ -11,7 +11,7 @@ import java.util.UUID;
  */
 public record EventsDrawn(UUID gameId, int eraNumber, List<FutureEvent> events) {
 
-    public record FutureEvent(UUID eventId, String title, List<Outcome> outcomes, boolean isCascaded) {}
+    public record FutureEvent(UUID eventId, String title, List<Outcome> outcomes, CarryOverState carryOverState) {}
 
     public record Outcome(UUID outcomeId, String description, int initialProbability) {}
 }

@@ -20,6 +20,7 @@ import io.github.temporalrift.game.TestcontainersConfiguration;
 import io.github.temporalrift.game.action.domain.playerstate.PlayerState;
 import io.github.temporalrift.game.action.domain.port.out.FutureEventDefinitionPort;
 import io.github.temporalrift.game.action.domain.port.out.PlayerStateRepository;
+import io.github.temporalrift.game.shared.CarryOverState;
 import io.github.temporalrift.game.shared.EventsDrawn;
 import io.github.temporalrift.game.shared.Faction;
 import io.github.temporalrift.game.shared.FactionAssigned;
@@ -66,7 +67,10 @@ class ActionStateProjectionEventListenerIT {
         var eventId = UUID.randomUUID();
         var outcomeId = UUID.randomUUID();
         var event = new EventsDrawn.FutureEvent(
-                eventId, "Test Event", List.of(new EventsDrawn.Outcome(outcomeId, "Outcome", 100)), false);
+                eventId,
+                "Test Event",
+                List.of(new EventsDrawn.Outcome(outcomeId, "Outcome", 100)),
+                CarryOverState.FRESH);
 
         transactionTemplate.executeWithoutResult(
                 _ -> applicationEventPublisher.publishEvent(new EventsDrawn(gameId, eraNumber, List.of(event))));

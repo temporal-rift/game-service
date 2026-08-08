@@ -95,7 +95,9 @@ class EraResolutionCompletedKafkaConsumerTest {
         consumer.handle(envelopeFor(resolution));
 
         then(gameRepository).should().save(game);
-        assertThat(game.pendingCascadedEventIds()).containsExactly(cascadedEventId);
+        assertThat(game.pendingCarryOverEvents())
+                .containsExactly(new io.github.temporalrift.game.session.domain.game.PendingCarryOverEvent(
+                        cascadedEventId, io.github.temporalrift.game.shared.CarryOverState.CASCADED));
         then(eventPublisher).should(never()).publish(any());
         then(applicationEventPublisher).should(never()).publishEvent(any());
     }
@@ -115,7 +117,14 @@ class EraResolutionCompletedKafkaConsumerTest {
 
         consumer.handle(envelopeFor(resolution));
 
-        assertThat(game.pendingCascadedEventIds()).containsExactly(firstStalledId, cascadedId, secondStalledId);
+        assertThat(game.pendingCarryOverEvents())
+                .containsExactly(
+                        new io.github.temporalrift.game.session.domain.game.PendingCarryOverEvent(
+                                firstStalledId, io.github.temporalrift.game.shared.CarryOverState.STALLED),
+                        new io.github.temporalrift.game.session.domain.game.PendingCarryOverEvent(
+                                cascadedId, io.github.temporalrift.game.shared.CarryOverState.CASCADED),
+                        new io.github.temporalrift.game.session.domain.game.PendingCarryOverEvent(
+                                secondStalledId, io.github.temporalrift.game.shared.CarryOverState.STALLED));
         assertThat(game.cascadedParadoxCounter()).isEqualTo(2);
         then(eventPublisher).should(never()).publish(any());
     }
@@ -132,7 +141,9 @@ class EraResolutionCompletedKafkaConsumerTest {
 
         consumer.handle(envelopeFor(resolution));
 
-        assertThat(game.pendingCascadedEventIds()).containsExactly(stalledId);
+        assertThat(game.pendingCarryOverEvents())
+                .containsExactly(new io.github.temporalrift.game.session.domain.game.PendingCarryOverEvent(
+                        stalledId, io.github.temporalrift.game.shared.CarryOverState.STALLED));
         assertThat(game.cascadedParadoxCounter()).isEqualTo(initialCascadeCount);
         then(eventPublisher).should(never()).publish(any());
         then(applicationEventPublisher).should(never()).publishEvent(any());

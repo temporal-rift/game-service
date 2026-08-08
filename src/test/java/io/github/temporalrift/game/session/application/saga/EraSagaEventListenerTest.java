@@ -13,7 +13,9 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import io.github.temporalrift.game.session.domain.event.EraStarted;
+import io.github.temporalrift.game.session.domain.game.PendingCarryOverEvent;
 import io.github.temporalrift.game.shared.ActionRoundClosed;
+import io.github.temporalrift.game.shared.CarryOverState;
 import io.github.temporalrift.game.shared.Faction;
 import io.github.temporalrift.game.shared.ScoresUpdated;
 
@@ -38,14 +40,14 @@ class EraSagaEventListenerTest {
     @DisplayName("EraStarted — delegates to eraSaga.start with all fields from the event")
     void onEraStarted_delegatesToEraSagaStart() {
         // given
-        var cascadedId = UUID.randomUUID();
-        var event = new EraStarted(GAME_ID, 2, List.of(cascadedId), PLAYER_IDS);
+        var carryOver = new PendingCarryOverEvent(UUID.randomUUID(), CarryOverState.CASCADED);
+        var event = new EraStarted(GAME_ID, 2, List.of(carryOver), PLAYER_IDS);
 
         // when
         listener.onEraStarted(event);
 
         // then
-        then(eraSaga).should().start(GAME_ID, 2, PLAYER_IDS, List.of(cascadedId));
+        then(eraSaga).should().start(GAME_ID, 2, PLAYER_IDS, List.of(carryOver));
     }
 
     @Test

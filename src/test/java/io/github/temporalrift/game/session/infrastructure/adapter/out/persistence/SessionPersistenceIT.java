@@ -158,15 +158,24 @@ class SessionPersistenceIT {
     @Test
     void game_save_and_findById_preservesPendingCascadesInOrder() {
         var id = UUID.randomUUID();
-        var firstCascadedEvent = UUID.randomUUID();
-        var secondCascadedEvent = UUID.randomUUID();
+        var firstCarryOverEvent = UUID.randomUUID();
+        var secondCarryOverEvent = UUID.randomUUID();
         var game = new Game(id, UUID.randomUUID(), new ArrayList<>());
-        game.recordPendingCascadedEventIds(List.of(firstCascadedEvent, secondCascadedEvent));
+        game.recordPendingCarryOverEvents(List.of(
+                new io.github.temporalrift.game.session.domain.game.PendingCarryOverEvent(
+                        firstCarryOverEvent, io.github.temporalrift.game.shared.CarryOverState.STALLED),
+                new io.github.temporalrift.game.session.domain.game.PendingCarryOverEvent(
+                        secondCarryOverEvent, io.github.temporalrift.game.shared.CarryOverState.CASCADED)));
         gameRepository.save(game);
 
         var loaded = gameRepository.findById(id).orElseThrow();
 
-        assertThat(loaded.pendingCascadedEventIds()).containsExactly(firstCascadedEvent, secondCascadedEvent);
+        assertThat(loaded.pendingCarryOverEvents())
+                .containsExactly(
+                        new io.github.temporalrift.game.session.domain.game.PendingCarryOverEvent(
+                                firstCarryOverEvent, io.github.temporalrift.game.shared.CarryOverState.STALLED),
+                        new io.github.temporalrift.game.session.domain.game.PendingCarryOverEvent(
+                                secondCarryOverEvent, io.github.temporalrift.game.shared.CarryOverState.CASCADED));
     }
 
     @TestConfiguration(proxyBeanMethods = false)
