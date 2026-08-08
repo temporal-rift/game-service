@@ -5,6 +5,8 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,6 +31,8 @@ import io.github.temporalrift.game.shared.SpecialAction;
 
 @Component
 class EraScoringContextRepositoryAdapter implements EraScoringContextRepository {
+
+    private static final Logger log = LoggerFactory.getLogger(EraScoringContextRepositoryAdapter.class);
 
     private final ScoringContextPlayerJpaRepository playerJpaRepository;
     private final ScoringContextEraOutcomeExpectationJpaRepository eraOutcomeExpectationJpaRepository;
@@ -446,7 +450,20 @@ class EraScoringContextRepositoryAdapter implements EraScoringContextRepository 
     @Transactional
     public void confirmCorruptInversion(
             UUID gameId, int eraNumber, UUID corruptingPlayerId, UUID cardInstanceId, boolean tookEffect) {
-        corruptCorrelationJpaRepository.confirmInversion(
+        var updated = corruptCorrelationJpaRepository.confirmInversion(
                 gameId, eraNumber, corruptingPlayerId, cardInstanceId, tookEffect);
+        if (updated == 0) {
+            // The confirmation arrived before its correlation row (recordCorruptCorrelation) was
+            // written — e.g. redelivered ahead of the era's own final-round close. Nothing to update
+            // yet; the correlation is not lost (recordCorruptCorrelation still inserts it), but this
+            // confirmation itself has no row to attach to and is silently dropped, so surface it.
+            log.warn(
+                    "confirmCorruptInversion found no matching correlation for game {} era {} corrupting player {}"
+                            + " card {} — confirmation dropped",
+                    gameId,
+                    eraNumber,
+                    corruptingPlayerId,
+                    cardInstanceId);
+        }
     }
 }

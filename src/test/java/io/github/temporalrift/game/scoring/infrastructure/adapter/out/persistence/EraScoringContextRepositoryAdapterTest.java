@@ -1,6 +1,7 @@
 package io.github.temporalrift.game.scoring.infrastructure.adapter.out.persistence;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -634,12 +635,26 @@ class EraScoringContextRepositoryAdapterTest {
         var gameId = UUID.randomUUID();
         var corruptingPlayerId = UUID.randomUUID();
         var cardInstanceId = UUID.randomUUID();
+        given(corruptCorrelationJpaRepository.confirmInversion(gameId, 2, corruptingPlayerId, cardInstanceId, true))
+                .willReturn(1);
 
         adapter.confirmCorruptInversion(gameId, 2, corruptingPlayerId, cardInstanceId, true);
 
         then(corruptCorrelationJpaRepository)
                 .should()
                 .confirmInversion(eq(gameId), eq(2), eq(corruptingPlayerId), eq(cardInstanceId), eq(true));
+    }
+
+    @Test
+    void confirmCorruptInversion_noMatchingRow_doesNotThrow() {
+        var gameId = UUID.randomUUID();
+        var corruptingPlayerId = UUID.randomUUID();
+        var cardInstanceId = UUID.randomUUID();
+        given(corruptCorrelationJpaRepository.confirmInversion(gameId, 2, corruptingPlayerId, cardInstanceId, true))
+                .willReturn(0);
+
+        assertThatCode(() -> adapter.confirmCorruptInversion(gameId, 2, corruptingPlayerId, cardInstanceId, true))
+                .doesNotThrowAnyException();
     }
 
     @Test
