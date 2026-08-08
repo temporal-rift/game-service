@@ -15,7 +15,7 @@ public class Game extends AggregateRoot {
     private final UUID id;
     private final UUID lobbyId;
     private final List<UUID> eventDeck;
-    private final List<UUID> pendingCascadedEventIds;
+    private final List<PendingCarryOverEvent> pendingCarryOverEvents;
     private int eraCounter;
     private int cascadedParadoxCounter;
     private GameStatus status;
@@ -24,7 +24,7 @@ public class Game extends AggregateRoot {
         this.id = Objects.requireNonNull(id, "id must not be null");
         this.lobbyId = Objects.requireNonNull(lobbyId, "lobbyId must not be null");
         this.eventDeck = new ArrayList<>(Objects.requireNonNull(eventDeck, "eventDeck must not be null"));
-        this.pendingCascadedEventIds = new ArrayList<>();
+        this.pendingCarryOverEvents = new ArrayList<>();
         this.eraCounter = 0;
         this.cascadedParadoxCounter = 0;
         this.status = GameStatus.IN_PROGRESS;
@@ -36,12 +36,12 @@ public class Game extends AggregateRoot {
             List<UUID> eventDeck,
             int eraCounter,
             int cascadedParadoxCounter,
-            List<UUID> pendingCascadedEventIds,
+            List<PendingCarryOverEvent> pendingCarryOverEvents,
             GameStatus status) {
         this.id = id;
         this.lobbyId = lobbyId;
         this.eventDeck = new ArrayList<>(eventDeck);
-        this.pendingCascadedEventIds = new ArrayList<>(pendingCascadedEventIds);
+        this.pendingCarryOverEvents = new ArrayList<>(pendingCarryOverEvents);
         this.eraCounter = eraCounter;
         this.cascadedParadoxCounter = cascadedParadoxCounter;
         this.status = status;
@@ -63,7 +63,7 @@ public class Game extends AggregateRoot {
             List<UUID> eventDeck,
             int eraCounter,
             int cascadedParadoxCounter,
-            List<UUID> pendingCascadedEventIds,
+            List<PendingCarryOverEvent> pendingCarryOverEvents,
             GameStatus status) {
         return new Game(
                 Objects.requireNonNull(id, "id must not be null"),
@@ -71,7 +71,7 @@ public class Game extends AggregateRoot {
                 Objects.requireNonNull(eventDeck, "eventDeck must not be null"),
                 eraCounter,
                 cascadedParadoxCounter,
-                Objects.requireNonNull(pendingCascadedEventIds, "pendingCascadedEventIds must not be null"),
+                Objects.requireNonNull(pendingCarryOverEvents, "pendingCarryOverEvents must not be null"),
                 Objects.requireNonNull(status, "status must not be null"));
     }
 
@@ -112,17 +112,17 @@ public class Game extends AggregateRoot {
         return collapsingEventId;
     }
 
-    public void recordPendingCascadedEventIds(List<UUID> cascadedEventIds) {
+    public void recordPendingCarryOverEvents(List<PendingCarryOverEvent> carryOverEvents) {
         requireInProgress();
-        pendingCascadedEventIds.clear();
-        pendingCascadedEventIds.addAll(Objects.requireNonNull(cascadedEventIds, "cascadedEventIds must not be null"));
+        pendingCarryOverEvents.clear();
+        pendingCarryOverEvents.addAll(Objects.requireNonNull(carryOverEvents, "carryOverEvents must not be null"));
     }
 
-    public List<UUID> drainPendingCascadedEventIds() {
+    public List<PendingCarryOverEvent> drainPendingCarryOverEvents() {
         requireInProgress();
-        var cascadedEventIds = List.copyOf(pendingCascadedEventIds);
-        pendingCascadedEventIds.clear();
-        return cascadedEventIds;
+        var carryOverEvents = List.copyOf(pendingCarryOverEvents);
+        pendingCarryOverEvents.clear();
+        return carryOverEvents;
     }
 
     public void endEra(int maxEras) {
@@ -173,7 +173,7 @@ public class Game extends AggregateRoot {
         return Collections.unmodifiableList(eventDeck);
     }
 
-    public List<UUID> pendingCascadedEventIds() {
-        return Collections.unmodifiableList(pendingCascadedEventIds);
+    public List<PendingCarryOverEvent> pendingCarryOverEvents() {
+        return Collections.unmodifiableList(pendingCarryOverEvents);
     }
 }

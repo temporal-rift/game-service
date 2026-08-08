@@ -20,7 +20,7 @@ class EraSagaEventListener {
 
     @ApplicationModuleListener
     void onEraStarted(EraStarted event) {
-        eraSaga.start(event.gameId(), event.eraNumber(), event.playerIds(), event.cascadedEventIds());
+        eraSaga.start(event.gameId(), event.eraNumber(), event.playerIds(), event.carryOverEvents());
     }
 
     @ApplicationModuleListener

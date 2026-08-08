@@ -33,6 +33,7 @@ import io.github.temporalrift.game.session.domain.event.TimelineStabilized;
 import io.github.temporalrift.game.session.domain.event.WinConditionMet;
 import io.github.temporalrift.game.session.domain.game.Game;
 import io.github.temporalrift.game.session.domain.game.GameStatus;
+import io.github.temporalrift.game.session.domain.game.PendingCarryOverEvent;
 import io.github.temporalrift.game.session.domain.port.out.EraSagaRepository;
 import io.github.temporalrift.game.session.domain.port.out.GameRepository;
 import io.github.temporalrift.game.session.domain.port.out.SessionEventPublisher;
@@ -40,6 +41,7 @@ import io.github.temporalrift.game.session.domain.port.out.SessionGameRulesPort;
 import io.github.temporalrift.game.session.domain.saga.EraSagaState;
 import io.github.temporalrift.game.session.domain.saga.EraSagaStatus;
 import io.github.temporalrift.game.shared.ActionRoundClosed;
+import io.github.temporalrift.game.shared.CarryOverState;
 import io.github.temporalrift.game.shared.DomainEventEnvelope;
 import io.github.temporalrift.game.shared.Faction;
 import io.github.temporalrift.game.shared.ScoresUpdated;
@@ -283,7 +285,9 @@ class EraSagaAdvancerTest {
                 List.of(),
                 1,
                 0,
-                List.of(firstCascadedEvent, secondCascadedEvent),
+                List.of(
+                        new PendingCarryOverEvent(firstCascadedEvent, CarryOverState.CASCADED),
+                        new PendingCarryOverEvent(secondCascadedEvent, CarryOverState.CASCADED)),
                 GameStatus.IN_PROGRESS);
         given(gameRepository.findByIdWithLock(GAME_ID)).willReturn(Optional.of(game));
         var captor = ArgumentCaptor.forClass(Object.class);
@@ -297,9 +301,12 @@ class EraSagaAdvancerTest {
         var eraStarted = (EraStarted) captor.getValue();
         assertThat(eraStarted.gameId()).isEqualTo(GAME_ID);
         assertThat(eraStarted.eraNumber()).isEqualTo(2);
-        assertThat(eraStarted.cascadedEventIds()).containsExactly(firstCascadedEvent, secondCascadedEvent);
+        assertThat(eraStarted.carryOverEvents())
+                .containsExactly(
+                        new PendingCarryOverEvent(firstCascadedEvent, CarryOverState.CASCADED),
+                        new PendingCarryOverEvent(secondCascadedEvent, CarryOverState.CASCADED));
         assertThat(eraStarted.playerIds()).isEqualTo(PLAYER_IDS);
-        assertThat(game.pendingCascadedEventIds()).isEmpty();
+        assertThat(game.pendingCarryOverEvents()).isEmpty();
     }
 
     @Test

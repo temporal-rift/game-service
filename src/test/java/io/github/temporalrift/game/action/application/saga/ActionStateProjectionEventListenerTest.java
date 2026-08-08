@@ -24,6 +24,7 @@ import io.github.temporalrift.game.action.domain.playerstate.PlayerState;
 import io.github.temporalrift.game.action.domain.port.out.FutureEventDefinitionPort;
 import io.github.temporalrift.game.action.domain.port.out.PlayerStateRepository;
 import io.github.temporalrift.game.shared.CardType;
+import io.github.temporalrift.game.shared.CarryOverState;
 import io.github.temporalrift.game.shared.EventsDrawn;
 import io.github.temporalrift.game.shared.Faction;
 import io.github.temporalrift.game.shared.FactionAssigned;
@@ -50,7 +51,7 @@ class ActionStateProjectionEventListenerTest {
                         UUID.randomUUID(),
                         "Title",
                         List.of(new EventsDrawn.Outcome(UUID.randomUUID(), "Outcome", 33)),
-                        false)));
+                        CarryOverState.FRESH)));
 
         listener.onEventsDrawn(event);
 

@@ -5,7 +5,10 @@ import static org.springframework.transaction.annotation.Propagation.REQUIRES_NE
 import java.security.SecureRandom;
 import java.time.Clock;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
@@ -19,12 +22,14 @@ import io.github.temporalrift.game.session.domain.event.GameEndedAbnormally;
 import io.github.temporalrift.game.session.domain.game.Game;
 import io.github.temporalrift.game.session.domain.game.GameNotFoundException;
 import io.github.temporalrift.game.session.domain.game.InsufficientDeckException;
+import io.github.temporalrift.game.session.domain.game.PendingCarryOverEvent;
 import io.github.temporalrift.game.session.domain.port.out.FutureEventCatalogPort;
 import io.github.temporalrift.game.session.domain.port.out.GameRepository;
 import io.github.temporalrift.game.session.domain.port.out.SessionEventPublisher;
 import io.github.temporalrift.game.session.domain.port.out.SessionGameRulesPort;
 import io.github.temporalrift.game.session.domain.saga.EraSagaStatus;
 import io.github.temporalrift.game.shared.CardType;
+import io.github.temporalrift.game.shared.CarryOverState;
 import io.github.temporalrift.game.shared.DomainEventEnvelope;
 import io.github.temporalrift.game.shared.EventsDrawn;
 import io.github.temporalrift.game.shared.HandDealt;
@@ -65,16 +70,16 @@ class EraSagaImpl implements EraSaga {
 
     @Override
     @Transactional(propagation = REQUIRES_NEW)
-    public void start(UUID gameId, int eraNumber, List<UUID> playerIds, List<UUID> cascadedEventIds) {
+    public void start(UUID gameId, int eraNumber, List<UUID> playerIds, List<PendingCarryOverEvent> carryOverEvents) {
         stateManager.initRunning(gameId, eraNumber, playerIds);
 
         var game = gameRepository.findById(gameId).orElseThrow(() -> new GameNotFoundException(gameId));
 
         try {
-            var drawnIds = game.startEra(cascadedEventIds.size(), gameRules.eventsPerEra());
+            var drawnIds = game.startEra(carryOverEvents.size(), gameRules.eventsPerEra());
             gameRepository.save(game);
 
-            publishEventsDrawn(game, gameId, eraNumber, drawnIds, cascadedEventIds);
+            publishEventsDrawn(game, gameId, eraNumber, drawnIds, carryOverEvents);
             playerIds.forEach(playerId -> publishHandDealt(game, gameId, eraNumber, playerId));
 
             stateManager.advanceTo(gameId, EraSagaStatus.WAITING_ROUND_1);
@@ -93,8 +98,9 @@ class EraSagaImpl implements EraSaga {
     }
 
     private void publishEventsDrawn(
-            Game game, UUID gameId, int eraNumber, List<UUID> drawnIds, List<UUID> cascadedIds) {
-        var events = Stream.concat(toFutureEvents(drawnIds, false).stream(), toFutureEvents(cascadedIds, true).stream())
+            Game game, UUID gameId, int eraNumber, List<UUID> drawnIds, List<PendingCarryOverEvent> carryOverEvents) {
+        var events = Stream.concat(
+                        toFreshFutureEvents(drawnIds).stream(), toCarryOverFutureEvents(carryOverEvents).stream())
                 .toList();
         var eventsDrawn = new EventsDrawn(gameId, eraNumber, events);
         eventPublisher.publish(DomainEventEnvelope.create(
@@ -102,7 +108,7 @@ class EraSagaImpl implements EraSaga {
         applicationEventPublisher.publishEvent(eventsDrawn);
     }
 
-    private List<EventsDrawn.FutureEvent> toFutureEvents(List<UUID> ids, boolean isCascaded) {
+    private List<EventsDrawn.FutureEvent> toFreshFutureEvents(List<UUID> ids) {
         return futureEventCatalog.findByEventIds(ids).stream()
                 .map(def -> new EventsDrawn.FutureEvent(
                         def.eventId(),
@@ -110,8 +116,39 @@ class EraSagaImpl implements EraSaga {
                         def.outcomes().stream()
                                 .map(o -> new EventsDrawn.Outcome(o.outcomeId(), o.description(), o.probability()))
                                 .toList(),
-                        isCascaded))
+                        CarryOverState.FRESH))
                 .toList();
+    }
+
+    private List<EventsDrawn.FutureEvent> toCarryOverFutureEvents(List<PendingCarryOverEvent> carryOverEvents) {
+        Map<UUID, io.github.temporalrift.game.session.domain.futureevent.FutureEventDefinition> definitionsById =
+                futureEventCatalog
+                        .findByEventIds(carryOverEvents.stream()
+                                .map(PendingCarryOverEvent::eventId)
+                                .toList())
+                        .stream()
+                        .collect(Collectors.toMap(
+                                io.github.temporalrift.game.session.domain.futureevent.FutureEventDefinition::eventId,
+                                Function.identity()));
+        return carryOverEvents.stream()
+                .map(carryOverEvent ->
+                        toFutureEvent(definitionsById.get(carryOverEvent.eventId()), carryOverEvent.carryOverState()))
+                .toList();
+    }
+
+    private EventsDrawn.FutureEvent toFutureEvent(
+            io.github.temporalrift.game.session.domain.futureevent.FutureEventDefinition definition,
+            CarryOverState carryOverState) {
+        if (definition == null) {
+            throw new IllegalStateException("Missing future event definition for carry-over event");
+        }
+        return new EventsDrawn.FutureEvent(
+                definition.eventId(),
+                definition.title(),
+                definition.outcomes().stream()
+                        .map(o -> new EventsDrawn.Outcome(o.outcomeId(), o.description(), o.probability()))
+                        .toList(),
+                carryOverState);
     }
 
     private void publishHandDealt(Game game, UUID gameId, int eraNumber, UUID playerId) {

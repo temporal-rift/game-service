@@ -54,7 +54,7 @@
         <sonar.exclusions>**/generated-sources/**/*</sonar.exclusions>
         <sonar.coverage.exclusions>**/generated-sources/**/*</sonar.coverage.exclusions>
 
-        <session-event.version>1.0.3</session-event.version>
+        <session-event.version>1.0.5</session-event.version>
         <action-event.version>1.0.3</action-event.version>
         <timeline-event.version>1.0.4</timeline-event.version>
         <scoring-event.version>1.0.1</scoring-event.version>

@@ -40,10 +40,9 @@ class GameJpaEntity {
     private List<UUID> eventDeck = new ArrayList<>();
 
     @ElementCollection(fetch = FetchType.EAGER)
-    @CollectionTable(name = "game_pending_cascade_entry", joinColumns = @JoinColumn(name = "game_id"))
-    @Column(name = "event_id", nullable = false)
+    @CollectionTable(name = "game_pending_carry_over_entry", joinColumns = @JoinColumn(name = "game_id"))
     @OrderColumn(name = "list_order")
-    private List<UUID> pendingCascadedEventIds = new ArrayList<>();
+    private List<PendingCarryOverEventEmbeddable> pendingCarryOverEvents = new ArrayList<>();
 
     protected GameJpaEntity() {}
 
@@ -95,11 +94,11 @@ class GameJpaEntity {
         this.eventDeck = new ArrayList<>(eventDeck);
     }
 
-    List<UUID> getPendingCascadedEventIds() {
-        return pendingCascadedEventIds;
+    List<PendingCarryOverEventEmbeddable> getPendingCarryOverEvents() {
+        return pendingCarryOverEvents;
     }
 
-    void setPendingCascadedEventIds(List<UUID> pendingCascadedEventIds) {
-        this.pendingCascadedEventIds = new ArrayList<>(pendingCascadedEventIds);
+    void setPendingCarryOverEvents(List<PendingCarryOverEventEmbeddable> pendingCarryOverEvents) {
+        this.pendingCarryOverEvents = new ArrayList<>(pendingCarryOverEvents);
     }
 }
