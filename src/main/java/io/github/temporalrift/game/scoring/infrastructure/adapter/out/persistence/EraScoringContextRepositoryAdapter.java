@@ -307,7 +307,7 @@ class EraScoringContextRepositoryAdapter implements EraScoringContextRepository 
                         .filter(resolution -> resolution.eventId().equals(declaration.getTargetEventId()))
                         .findFirst()
                         .flatMap(resolution ->
-                                resolution.terminalState() == EraResolutionCompleted.TerminalState.CASCADED
+                                resolution.terminalState() != EraResolutionCompleted.TerminalState.OUTCOME_APPLIED
                                         ? java.util.Optional.of(resolveDeclaration(declaration, null))
                                         : outcomeInboxJpaRepository
                                                 .findByGameIdAndEraNumberAndEventId(
@@ -384,7 +384,7 @@ class EraScoringContextRepositoryAdapter implements EraScoringContextRepository 
 
     private void resolveRevisionistAction(
             ScoringContextRevisionistActionJpaEntity action, EraResolutionCompleted.TerminalResolution resolution) {
-        if (resolution.terminalState() == EraResolutionCompleted.TerminalState.CASCADED) {
+        if (resolution.terminalState() != EraResolutionCompleted.TerminalState.OUTCOME_APPLIED) {
             action.setResolved(false);
             return;
         }

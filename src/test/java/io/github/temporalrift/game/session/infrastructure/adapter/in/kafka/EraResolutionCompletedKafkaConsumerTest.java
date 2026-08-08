@@ -101,6 +101,43 @@ class EraResolutionCompletedKafkaConsumerTest {
     }
 
     @Test
+    @DisplayName("mixed terminal barrier carries cascaded and stalled IDs in reveal order")
+    void handle_mixedCarryForward_preservesRevealOrderAndCountsOnlyCascades() {
+        var cascadedId = UUID.randomUUID();
+        var firstStalledId = UUID.randomUUID();
+        var secondStalledId = UUID.randomUUID();
+        var game = Game.reconstitute(GAME_ID, LOBBY_ID, List.of(), 1, 1, GameStatus.IN_PROGRESS);
+        var resolution =
+                resolution(1, stalled(secondStalledId, 2), cascaded(cascadedId, 1), stalled(firstStalledId, 0));
+        givenProcessedResolution(resolution);
+        given(gameRepository.findByIdWithLock(GAME_ID)).willReturn(Optional.of(game));
+        given(gameRules.maxCascadedParadoxes()).willReturn(MAX_CASCADED);
+
+        consumer.handle(envelopeFor(resolution));
+
+        assertThat(game.pendingCascadedEventIds()).containsExactly(firstStalledId, cascadedId, secondStalledId);
+        assertThat(game.cascadedParadoxCounter()).isEqualTo(2);
+        then(eventPublisher).should(never()).publish(any());
+    }
+
+    @Test
+    @DisplayName("stalled-only barrier carries forward without affecting collapse")
+    void handle_stalledOnly_carriesForwardWithoutChangingCascadeCount() {
+        var stalledId = UUID.randomUUID();
+        var game = Game.reconstitute(GAME_ID, LOBBY_ID, List.of(), 1, 1, GameStatus.IN_PROGRESS);
+        var resolution = resolution(1, stalled(stalledId, 0));
+        givenProcessedResolution(resolution);
+        given(gameRepository.findByIdWithLock(GAME_ID)).willReturn(Optional.of(game));
+
+        consumer.handle(envelopeFor(resolution));
+
+        assertThat(game.pendingCascadedEventIds()).containsExactly(stalledId);
+        assertThat(game.cascadedParadoxCounter()).isEqualTo(1);
+        then(eventPublisher).should(never()).publish(any());
+        then(applicationEventPublisher).should(never()).publishEvent(any());
+    }
+
+    @Test
     @DisplayName("reveal-ordered cascades choose the entry that crosses the global threshold")
     void handle_thresholdCrossed_usesRevealOrderedCollapsingEventForActivistWinners() {
         var firstCascadedEvent = UUID.randomUUID();
@@ -198,6 +235,11 @@ class EraResolutionCompletedKafkaConsumerTest {
     private static EraResolutionCompleted.TerminalResolution applied(UUID eventId, int revealIndex) {
         return new EraResolutionCompleted.TerminalResolution(
                 eventId, revealIndex, EraResolutionCompleted.TerminalState.OUTCOME_APPLIED, UUID.randomUUID());
+    }
+
+    private static EraResolutionCompleted.TerminalResolution stalled(UUID eventId, int revealIndex) {
+        return new EraResolutionCompleted.TerminalResolution(
+                eventId, revealIndex, EraResolutionCompleted.TerminalState.STALLED, null);
     }
 
     private static InboundEnvelope envelopeFor(EraResolutionCompleted resolution) {

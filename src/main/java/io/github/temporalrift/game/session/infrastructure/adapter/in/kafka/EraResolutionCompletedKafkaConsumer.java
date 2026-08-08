@@ -95,28 +95,38 @@ class EraResolutionCompletedKafkaConsumer {
         }
 
         var resolution = objectMapper.convertValue(envelope.payload(), EraResolutionCompleted.class);
+        var carryForwardEventIds = resolution.terminalResolutions().stream()
+                .filter(entry -> entry.terminalState() == EraResolutionCompleted.TerminalState.CASCADED
+                        || entry.terminalState() == EraResolutionCompleted.TerminalState.STALLED)
+                .sorted(Comparator.comparingInt(EraResolutionCompleted.TerminalResolution::revealIndex))
+                .map(EraResolutionCompleted.TerminalResolution::eventId)
+                .toList();
+        if (carryForwardEventIds.isEmpty()) {
+            return;
+        }
         var cascadedEventIds = resolution.terminalResolutions().stream()
                 .filter(entry -> entry.terminalState() == EraResolutionCompleted.TerminalState.CASCADED)
                 .sorted(Comparator.comparingInt(EraResolutionCompleted.TerminalResolution::revealIndex))
                 .map(EraResolutionCompleted.TerminalResolution::eventId)
                 .toList();
-        if (cascadedEventIds.isEmpty()) {
-            return;
-        }
 
         var game = gameRepository
                 .findByIdWithLock(resolution.gameId())
                 .orElseThrow(() -> new GameNotFoundException(resolution.gameId()));
         final UUID collapsingEventId;
-        try {
-            collapsingEventId =
-                    game.recordCascadedParadoxesInRevealOrder(cascadedEventIds, gameRules.maxCascadedParadoxes());
-        } catch (GameAlreadyOverException _) {
-            log.info("EraResolutionCompleted ignored for game {} — already over", resolution.gameId());
-            return;
+        if (cascadedEventIds.isEmpty()) {
+            collapsingEventId = null;
+        } else {
+            try {
+                collapsingEventId =
+                        game.recordCascadedParadoxesInRevealOrder(cascadedEventIds, gameRules.maxCascadedParadoxes());
+            } catch (GameAlreadyOverException _) {
+                log.info("EraResolutionCompleted ignored for game {} — already over", resolution.gameId());
+                return;
+            }
         }
         if (game.status() == GameStatus.IN_PROGRESS) {
-            game.recordPendingCascadedEventIds(cascadedEventIds);
+            game.recordPendingCascadedEventIds(carryForwardEventIds);
         }
         gameRepository.save(game);
 
