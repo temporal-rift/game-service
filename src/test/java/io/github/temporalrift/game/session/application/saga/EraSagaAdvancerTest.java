@@ -248,6 +248,25 @@ class EraSagaAdvancerTest {
     }
 
     @Test
+    @DisplayName("collapsed timeline — scores complete the saga without starting another era")
+    void handleScoresUpdated_collapsedTimeline_completesWithoutPublishingEraEvents() {
+        // given
+        var state = new EraSagaState(GAME_ID, 1, EraSagaStatus.WAITING_SCORES, PLAYER_IDS);
+        given(eraSagaRepository.findByGameIdWithLock(GAME_ID)).willReturn(Optional.of(state));
+        given(gameRules.winScoreThreshold()).willReturn(WIN_THRESHOLD);
+        var game = Game.reconstitute(GAME_ID, LOBBY_ID, List.of(), 1, 3, GameStatus.ENDED_BY_COLLAPSE);
+        given(gameRepository.findByIdWithLock(GAME_ID)).willReturn(Optional.of(game));
+
+        // when
+        advancer.handleScoresUpdated(GAME_ID, noWinnerScores());
+
+        // then
+        then(eraSagaRepository).should().save(state.withStatus(EraSagaStatus.COMPLETED));
+        then(eventPublisher).should(never()).publish(any());
+        then(applicationEventPublisher).should(never()).publishEvent(any());
+    }
+
+    @Test
     @DisplayName(
             "no winner and not final era — EraStarted also published as typed Spring event for internal saga trigger")
     void handleScoresUpdated_noWinnerNotFinalEra_publishesTypedEraStartedForInternalRouting() {
