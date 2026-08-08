@@ -125,6 +125,7 @@ class EraResolutionCompletedKafkaConsumerTest {
     void handle_stalledOnly_carriesForwardWithoutChangingCascadeCount() {
         var stalledId = UUID.randomUUID();
         var game = Game.reconstitute(GAME_ID, LOBBY_ID, List.of(), 1, 1, GameStatus.IN_PROGRESS);
+        var initialCascadeCount = game.cascadedParadoxCounter();
         var resolution = resolution(1, stalled(stalledId, 0));
         givenProcessedResolution(resolution);
         given(gameRepository.findByIdWithLock(GAME_ID)).willReturn(Optional.of(game));
@@ -132,7 +133,7 @@ class EraResolutionCompletedKafkaConsumerTest {
         consumer.handle(envelopeFor(resolution));
 
         assertThat(game.pendingCascadedEventIds()).containsExactly(stalledId);
-        assertThat(game.cascadedParadoxCounter()).isEqualTo(1);
+        assertThat(game.cascadedParadoxCounter()).isEqualTo(initialCascadeCount);
         then(eventPublisher).should(never()).publish(any());
         then(applicationEventPublisher).should(never()).publishEvent(any());
     }
