@@ -2,6 +2,7 @@ package io.github.temporalrift.game.action.infrastructure.adapter.in.kafka;
 
 import static org.springframework.transaction.annotation.Propagation.REQUIRES_NEW;
 
+import java.util.Objects;
 import java.util.UUID;
 
 import org.slf4j.Logger;
@@ -72,12 +73,16 @@ class ParadoxResolutionPhaseKafkaConsumer {
         return envelope == null
                 || envelope.eventId() == null
                 || envelope.aggregateId() == null
+                || envelope.gameId() == null
                 || envelope.occurredAt() == null
                 || envelope.payload() == null;
     }
 
     private void openPhase(InboundEnvelope envelope) {
         var started = objectMapper.convertValue(envelope.payload(), PhaseStartedPayload.class);
+        if (hasMismatchedGameId(envelope, started.gameId())) {
+            return;
+        }
         if (phaseRepository
                 .findByGameIdAndEraNumber(started.gameId(), started.eraNumber())
                 .isPresent()) {
@@ -92,12 +97,28 @@ class ParadoxResolutionPhaseKafkaConsumer {
 
     private void closePhase(InboundEnvelope envelope) {
         var completed = objectMapper.convertValue(envelope.payload(), EraCompletedPayload.class);
+        if (hasMismatchedGameId(envelope, completed.gameId())) {
+            return;
+        }
         phaseRepository
                 .findByGameIdAndEraNumberWithLock(completed.gameId(), completed.eraNumber())
                 .ifPresent(phase -> {
                     phase.close();
                     phaseRepository.save(phase);
                 });
+    }
+
+    private boolean hasMismatchedGameId(InboundEnvelope envelope, UUID payloadGameId) {
+        if (Objects.equals(envelope.gameId(), payloadGameId)) {
+            return false;
+        }
+        log.warn(
+                "{} event {} has payload gameId {} but envelope gameId {} — discarding",
+                envelope.eventType(),
+                envelope.eventId(),
+                payloadGameId,
+                envelope.gameId());
+        return true;
     }
 
     record PhaseStartedPayload(UUID gameId, int eraNumber, int timerSeconds) {}
