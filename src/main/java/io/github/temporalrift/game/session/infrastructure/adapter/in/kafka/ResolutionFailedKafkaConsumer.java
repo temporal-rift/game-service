@@ -45,8 +45,18 @@ class ResolutionFailedKafkaConsumer {
         }
 
         var payload = objectMapper.convertValue(envelope.payload(), ResolutionFailedPayload.class);
+        validate(payload);
         applicationEventPublisher.publishEvent(new ResolutionFailedApplicationEvent(
                 payload.gameId(), payload.eraNumber(), payload.affectedEventId(), payload.reason()));
+    }
+
+    private void validate(ResolutionFailedPayload payload) {
+        if (payload.gameId() == null) {
+            throw new IllegalArgumentException("ResolutionFailed payload is missing gameId");
+        }
+        if (payload.eraNumber() < 1) {
+            throw new IllegalArgumentException("ResolutionFailed payload has an invalid eraNumber");
+        }
     }
 
     private boolean shouldProcess(InboundEnvelope envelope) {
