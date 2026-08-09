@@ -19,8 +19,8 @@ class ScoringContextParadoxCascadeFactJpaEntity extends GameEraScopedJpaEntity {
     @Column(name = "affected_event_id", nullable = false)
     private UUID affectedEventId;
 
-    @Column(name = "detonated_by_player_ids", columnDefinition = "jsonb", nullable = false)
-    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "detonated_by_player_ids", columnDefinition = "uuid[]", nullable = false)
+    @JdbcTypeCode(SqlTypes.ARRAY)
     private List<UUID> detonatedByPlayerIds;
 
     @Column(name = "consumed", nullable = false)

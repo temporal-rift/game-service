@@ -22,7 +22,7 @@
             <column name="affected_event_id" type="UUID">
                 <constraints nullable="false"/>
             </column>
-            <column name="detonated_by_player_ids" type="JSONB">
+            <column name="detonated_by_player_ids" type="UUID[]">
                 <constraints nullable="false"/>
             </column>
             <column name="consumed" type="BOOLEAN">
