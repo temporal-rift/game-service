@@ -6,6 +6,7 @@ import static org.awaitility.Awaitility.await;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
@@ -27,7 +28,7 @@ import io.github.temporalrift.game.shared.InboundEnvelope;
  * Regression coverage for the consumer-group collision (issue #70): both {@code timeline.events}
  * listeners used to inherit the default {@code game-service} group, so Kafka split the topic's
  * partitions between them and each listener silently missed the records assigned to the other.
- * With distinct groups, one record published once must be processed by both consumers.
+ * Every logical timeline-event consumer now has its own group and receives the same partition.
  */
 @SpringBootTest
 @ActiveProfiles("test")
@@ -49,7 +50,7 @@ class TimelineEventsConsumerGroupsIT {
     JdbcTemplate jdbcTemplate;
 
     @Test
-    void bothTimelineListeners_consumeFromTheSamePartition() {
+    void allTimelineListeners_consumeFromTheSamePartition() {
         var gameId = UUID.randomUUID();
         transactionTemplate.executeWithoutResult(
                 _ -> gameRepository.save(new Game(gameId, UUID.randomUUID(), List.of())));
@@ -77,14 +78,33 @@ class TimelineEventsConsumerGroupsIT {
                 Instant.now(),
                 1,
                 new ChainCompleted(gameId, 1, UUID.randomUUID(), UUID.randomUUID(), List.of()));
+        var resolutionFailedEnvelope = new InboundEnvelope(
+                UUID.randomUUID(),
+                "timeline.ResolutionFailed",
+                UUID.randomUUID(),
+                "FutureEvent",
+                gameId,
+                Instant.now(),
+                1,
+                Map.of(
+                        "gameId",
+                        gameId,
+                        "eraNumber",
+                        1,
+                        "affectedEventId",
+                        UUID.randomUUID(),
+                        "reason",
+                        "PROBABILITY_SUM_INVALID"));
 
-        // Same key — both records land in the same partition, which is exactly the case the shared
-        // consumer group could not deliver to both listeners.
+        // Same key — all records land in the same partition, which is exactly the case a shared
+        // consumer group could not deliver to every listener.
         kafkaTemplate.send(TOPIC, gameId.toString(), resolutionEnvelope);
         kafkaTemplate.send(TOPIC, gameId.toString(), chainEnvelope);
+        kafkaTemplate.send(TOPIC, gameId.toString(), resolutionFailedEnvelope);
 
         awaitProcessed(resolutionEnvelope.eventId(), "session.era-resolution-completed");
         awaitProcessed(chainEnvelope.eventId(), "scoring.timeline-events");
+        awaitProcessed(resolutionFailedEnvelope.eventId(), "session.resolution-failed");
     }
 
     private void awaitProcessed(UUID eventId, String consumer) {

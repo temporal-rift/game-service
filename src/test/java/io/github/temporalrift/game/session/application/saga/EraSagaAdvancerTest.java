@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 import java.time.Clock;
@@ -443,12 +444,47 @@ class EraSagaAdvancerTest {
         given(eraSagaRepository.findByGameIdWithLock(GAME_ID)).willReturn(Optional.of(state));
 
         // when
-        advancer.handleResolutionFailed(GAME_ID, "timeline-error");
+        advancer.handleResolutionFailed(GAME_ID, 1);
 
         // then
         then(eraSagaRepository).should().save(argThat(s -> s.status() == EraSagaStatus.FAILED));
-        then(eventPublisher).should().publish(envelopeWithPayload(EraFailed.class));
-        then(eventPublisher).should().publish(envelopeWithPayload(GameEndedAbnormally.class));
+        var captor = ArgumentCaptor.<DomainEventEnvelope>captor();
+        then(eventPublisher).should(times(2)).publish(captor.capture());
+        assertThat(captor.getAllValues())
+                .extracting(DomainEventEnvelope::payload)
+                .containsExactly(
+                        new EraFailed(GAME_ID, 1, "resolution-failed"),
+                        new GameEndedAbnormally(GAME_ID, "resolution-failed"));
+    }
+
+    @Test
+    @DisplayName("resolution failure for a stale era does not change the current saga")
+    void handleResolutionFailed_staleEra_ignored() {
+        // given
+        var state = new EraSagaState(GAME_ID, 2, EraSagaStatus.WAITING_SCORES, PLAYER_IDS);
+        given(eraSagaRepository.findByGameIdWithLock(GAME_ID)).willReturn(Optional.of(state));
+
+        // when
+        advancer.handleResolutionFailed(GAME_ID, 1);
+
+        // then
+        then(eraSagaRepository).should(never()).save(any());
+        then(eventPublisher).should(never()).publish(any());
+    }
+
+    @Test
+    @DisplayName("resolution failure outside WAITING_SCORES does not change the saga")
+    void handleResolutionFailed_wrongStatus_ignored() {
+        // given
+        var state = new EraSagaState(GAME_ID, 1, EraSagaStatus.WAITING_ROUND_3, PLAYER_IDS);
+        given(eraSagaRepository.findByGameIdWithLock(GAME_ID)).willReturn(Optional.of(state));
+
+        // when
+        advancer.handleResolutionFailed(GAME_ID, 1);
+
+        // then
+        then(eraSagaRepository).should(never()).save(any());
+        then(eventPublisher).should(never()).publish(any());
     }
 
     private ScoresUpdated noWinnerScores() {
