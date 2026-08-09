@@ -97,6 +97,32 @@ class ParadoxResolutionPhaseKafkaConsumerTest {
     }
 
     @Test
+    void phaseStartedWithMismatchedPayloadGameIsIgnoredBeforeMutation() {
+        var envelope = envelope("timeline.ParadoxResolutionPhaseStarted", new Object());
+        given(processedEventRepository.tryMarkProcessed(envelope.eventId(), "action.paradox-resolution-phase"))
+                .willReturn(true);
+        given(objectMapper.convertValue(any(), eq(ParadoxResolutionPhaseKafkaConsumer.PhaseStartedPayload.class)))
+                .willReturn(new ParadoxResolutionPhaseKafkaConsumer.PhaseStartedPayload(UUID.randomUUID(), ERA, 30));
+
+        consumer.handle(envelope);
+
+        then(phaseRepository).shouldHaveNoInteractions();
+    }
+
+    @Test
+    void eraCompletionWithMismatchedPayloadGameIsIgnoredBeforeMutation() {
+        var envelope = envelope("timeline.EraResolutionCompleted", new Object());
+        given(processedEventRepository.tryMarkProcessed(envelope.eventId(), "action.paradox-resolution-phase"))
+                .willReturn(true);
+        given(objectMapper.convertValue(any(), eq(ParadoxResolutionPhaseKafkaConsumer.EraCompletedPayload.class)))
+                .willReturn(new ParadoxResolutionPhaseKafkaConsumer.EraCompletedPayload(UUID.randomUUID(), ERA));
+
+        consumer.handle(envelope);
+
+        then(phaseRepository).shouldHaveNoInteractions();
+    }
+
+    @Test
     void unsupportedVersionIsSkippedBeforeClaim() {
         var valid = envelope("timeline.ParadoxResolutionPhaseStarted", new Object());
         var envelope = new InboundEnvelope(
