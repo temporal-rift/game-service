@@ -50,9 +50,10 @@ class ParadoxResolutionPhaseTest {
     @Test
     void rejectsSubmissionAtOrAfterExpiry() {
         var phase = openPhase();
+        var expiredAt = NOW.plusSeconds(60);
 
         assertThatExceptionOfType(ParadoxResolutionPhaseNotOpenException.class)
-                .isThrownBy(() -> phase.submit(PLAYER_ID, CardType.STABILIZE, NOW.plusSeconds(60)));
+                .isThrownBy(() -> phase.submit(PLAYER_ID, CardType.STABILIZE, expiredAt));
     }
 
     @Test

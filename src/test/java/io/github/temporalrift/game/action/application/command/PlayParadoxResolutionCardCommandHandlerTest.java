@@ -99,9 +99,10 @@ class PlayParadoxResolutionCardCommandHandlerTest {
     @Test
     void rejectsWhenNoMatchingPhaseExists() {
         given(phaseRepository.findByGameIdAndEraNumberWithLock(GAME_ID, ERA)).willReturn(Optional.empty());
+        var command = command();
 
         assertThatExceptionOfType(ParadoxResolutionPhaseNotOpenException.class)
-                .isThrownBy(() -> handler.handle(command()));
+                .isThrownBy(() -> handler.handle(command));
         then(playerStateRepository).shouldHaveNoInteractions();
         then(actionEventPublisher).shouldHaveNoInteractions();
     }
@@ -111,9 +112,10 @@ class PlayParadoxResolutionCardCommandHandlerTest {
         var phase = openPhase();
         phase.submit(PLAYER_ID, CardType.PUSH, NOW);
         given(phaseRepository.findByGameIdAndEraNumberWithLock(GAME_ID, ERA)).willReturn(Optional.of(phase));
+        var command = command();
 
         assertThatExceptionOfType(DuplicateParadoxResolutionSubmissionException.class)
-                .isThrownBy(() -> handler.handle(command()));
+                .isThrownBy(() -> handler.handle(command));
         then(playerStateRepository).shouldHaveNoInteractions();
         then(actionEventPublisher).shouldHaveNoInteractions();
     }
@@ -125,9 +127,10 @@ class PlayParadoxResolutionCardCommandHandlerTest {
         given(phaseRepository.findByGameIdAndEraNumberWithLock(GAME_ID, ERA)).willReturn(Optional.of(phase));
         given(playerStateRepository.findByGameIdAndPlayerIdWithLock(GAME_ID, PLAYER_ID))
                 .willReturn(Optional.of(playerState));
+        var command = command();
 
         assertThatExceptionOfType(CardNotEligibleForParadoxResolutionException.class)
-                .isThrownBy(() -> handler.handle(command()));
+                .isThrownBy(() -> handler.handle(command));
         assertThat(playerState.hand()).hasSize(1);
         then(phaseRepository).should(never()).save(any());
         then(playerStateRepository).should(never()).save(any());
@@ -139,8 +142,9 @@ class PlayParadoxResolutionCardCommandHandlerTest {
         willThrow(new UnknownActionTargetException(TARGET_EVENT_ID))
                 .given(actionTargetValidator)
                 .validate(GAME_ID, ERA, TARGET_EVENT_ID, TARGET_OUTCOME_ID);
+        var command = command();
 
-        assertThatExceptionOfType(UnknownActionTargetException.class).isThrownBy(() -> handler.handle(command()));
+        assertThatExceptionOfType(UnknownActionTargetException.class).isThrownBy(() -> handler.handle(command));
         then(phaseRepository).shouldHaveNoInteractions();
     }
 
