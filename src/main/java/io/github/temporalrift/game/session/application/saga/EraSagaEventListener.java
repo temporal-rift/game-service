@@ -32,4 +32,9 @@ class EraSagaEventListener {
     void onScoresUpdated(ScoresUpdated event) {
         eraSagaAdvancer.handleScoresUpdated(event.gameId(), event);
     }
+
+    @ApplicationModuleListener
+    void onResolutionFailed(ResolutionFailedApplicationEvent event) {
+        eraSagaAdvancer.handleResolutionFailed(event.gameId(), event.eraNumber());
+    }
 }

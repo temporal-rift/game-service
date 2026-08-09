@@ -37,6 +37,7 @@ import io.github.temporalrift.game.shared.StartActionRoundRequested;
 class EraSagaAdvancer {
 
     private static final int FINAL_ROUND = 3;
+    private static final String RESOLUTION_FAILED_REASON = "resolution-failed";
 
     private final EraSagaRepository eraSagaRepository;
     private final GameRepository gameRepository;
@@ -86,19 +87,15 @@ class EraSagaAdvancer {
                 .ifPresent(state -> processScoresUpdated(gameId, state, su));
     }
 
-    /**
-     * Called when ResolutionSaga (timeline-service) reports failure.
-     * Wired to an incoming Kafka consumer once ResolutionSaga is implemented.
-     */
     @Transactional(propagation = REQUIRES_NEW)
-    void handleResolutionFailed(UUID gameId, String reason) {
+    void handleResolutionFailed(UUID gameId, int eraNumber) {
         eraSagaRepository
                 .findByGameIdWithLock(gameId)
-                .filter(s -> s.status() == EraSagaStatus.WAITING_SCORES)
+                .filter(s -> s.status() == EraSagaStatus.WAITING_SCORES && s.eraNumber() == eraNumber)
                 .ifPresent(state -> {
                     eraSagaRepository.save(state.withStatus(EraSagaStatus.FAILED));
-                    publishEvent(gameId, new EraFailed(gameId, state.eraNumber(), reason));
-                    publishEvent(gameId, new GameEndedAbnormally(gameId, "resolution-failed"));
+                    publishEvent(gameId, new EraFailed(gameId, state.eraNumber(), RESOLUTION_FAILED_REASON));
+                    publishEvent(gameId, new GameEndedAbnormally(gameId, RESOLUTION_FAILED_REASON));
                 });
     }
 

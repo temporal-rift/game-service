@@ -76,4 +76,17 @@ class EraSagaEventListenerTest {
         // then
         then(eraSagaAdvancer).should().handleScoresUpdated(GAME_ID, event);
     }
+
+    @Test
+    @DisplayName("ResolutionFailed — delegates matching game and era to the advancer")
+    void onResolutionFailed_delegatesToAdvancerHandleResolutionFailed() {
+        // given
+        var event = new ResolutionFailedApplicationEvent(GAME_ID, 2, UUID.randomUUID(), "PROBABILITY_SUM_INVALID");
+
+        // when
+        listener.onResolutionFailed(event);
+
+        // then
+        then(eraSagaAdvancer).should().handleResolutionFailed(GAME_ID, 2);
+    }
 }
