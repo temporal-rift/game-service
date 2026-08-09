@@ -40,29 +40,45 @@ class ResolutionFailedKafkaConsumer {
     @KafkaListener(topics = "timeline.events", groupId = "game-service.session.resolution-failed")
     @Transactional(propagation = REQUIRES_NEW)
     public void handle(InboundEnvelope envelope) {
-        if (envelope.eventId() == null || envelope.payload() == null) {
-            log.warn("Malformed envelope on timeline.events (missing eventId or payload) — discarding");
-            return;
-        }
-        if (!EVENT_TYPE.equals(envelope.eventType())) {
-            return;
-        }
-        if (envelope.version() != DomainEventEnvelope.SCHEMA_VERSION_V1) {
-            log.warn(
-                    "Unsupported {} envelope version {} for event {} — skipping",
-                    EVENT_TYPE,
-                    envelope.version(),
-                    envelope.eventId());
-            return;
-        }
-        if (!processedEventRepository.tryMarkProcessed(envelope.eventId(), CONSUMER)) {
-            log.debug("Duplicate {} event {} ignored", EVENT_TYPE, envelope.eventId());
+        if (!shouldProcess(envelope)) {
             return;
         }
 
         var payload = objectMapper.convertValue(envelope.payload(), ResolutionFailedPayload.class);
         applicationEventPublisher.publishEvent(new ResolutionFailedApplicationEvent(
                 payload.gameId(), payload.eraNumber(), payload.affectedEventId(), payload.reason()));
+    }
+
+    private boolean shouldProcess(InboundEnvelope envelope) {
+        if (isMalformed(envelope)) {
+            log.warn("Malformed envelope on timeline.events (missing eventId or payload) — discarding");
+            return false;
+        }
+        return EVENT_TYPE.equals(envelope.eventType()) && hasSupportedVersion(envelope) && claim(envelope);
+    }
+
+    private boolean isMalformed(InboundEnvelope envelope) {
+        return envelope.eventId() == null || envelope.payload() == null;
+    }
+
+    private boolean hasSupportedVersion(InboundEnvelope envelope) {
+        if (envelope.version() != DomainEventEnvelope.SCHEMA_VERSION_V1) {
+            log.warn(
+                    "Unsupported {} envelope version {} for event {} — skipping",
+                    EVENT_TYPE,
+                    envelope.version(),
+                    envelope.eventId());
+            return false;
+        }
+        return true;
+    }
+
+    private boolean claim(InboundEnvelope envelope) {
+        var claimed = processedEventRepository.tryMarkProcessed(envelope.eventId(), CONSUMER);
+        if (!claimed) {
+            log.debug("Duplicate {} event {} ignored", EVENT_TYPE, envelope.eventId());
+        }
+        return claimed;
     }
 
     record ResolutionFailedPayload(UUID gameId, int eraNumber, UUID affectedEventId, String reason) {}
