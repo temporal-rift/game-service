@@ -3,6 +3,7 @@ package io.github.temporalrift.game.action.infrastructure.adapter.in.rest;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.willThrow;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -26,6 +27,7 @@ import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import io.github.temporalrift.game.TestSecurityConfig;
 import io.github.temporalrift.game.action.application.port.in.GetRoundStatusUseCase;
 import io.github.temporalrift.game.action.application.port.in.PlayCardUseCase;
+import io.github.temporalrift.game.action.application.port.in.PlayParadoxResolutionCardUseCase;
 import io.github.temporalrift.game.action.application.port.in.PlaySpecialActionUseCase;
 import io.github.temporalrift.game.action.application.port.in.RecordActivistDeclarationUseCase;
 import io.github.temporalrift.game.action.domain.CardNotInHandException;
@@ -36,6 +38,9 @@ import io.github.temporalrift.game.action.domain.actionround.InvalidActionTarget
 import io.github.temporalrift.game.action.domain.actionround.JammedPlayerException;
 import io.github.temporalrift.game.action.domain.actionround.RoundNotFoundException;
 import io.github.temporalrift.game.action.domain.activisterastate.ExposeAlreadyRecordedException;
+import io.github.temporalrift.game.action.domain.paradoxresolutionphase.CardNotEligibleForParadoxResolutionException;
+import io.github.temporalrift.game.action.domain.paradoxresolutionphase.DuplicateParadoxResolutionSubmissionException;
+import io.github.temporalrift.game.action.domain.paradoxresolutionphase.ParadoxResolutionPhaseNotOpenException;
 import io.github.temporalrift.game.shared.PlayerPrincipal;
 import io.github.temporalrift.game.shared.infrastructure.config.PlayerAuthenticationToken;
 import io.github.temporalrift.game.shared.infrastructure.config.SecurityConfig;
@@ -64,6 +69,9 @@ class ActionControllerTest {
     PlaySpecialActionUseCase playSpecialActionUseCase;
 
     @MockitoBean
+    PlayParadoxResolutionCardUseCase playParadoxResolutionCardUseCase;
+
+    @MockitoBean
     RecordActivistDeclarationUseCase recordActivistDeclarationUseCase;
 
     @MockitoBean
@@ -71,6 +79,70 @@ class ActionControllerTest {
 
     private RequestPostProcessor auth() {
         return authentication(new PlayerAuthenticationToken(new PlayerPrincipal(PLAYER_ID)));
+    }
+
+    @Test
+    void submitParadoxResolutionCardRequiresAuthentication() throws Exception {
+        mockMvc.perform(post("/api/v1/games/{gameId}/eras/{eraNumber}/paradox-resolution/actions", GAME_ID, ERA)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(paradoxResolutionJson()))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void submitParadoxResolutionCardDispatchesAuthenticatedCommand() throws Exception {
+        given(playParadoxResolutionCardUseCase.handle(any()))
+                .willReturn(new PlayParadoxResolutionCardUseCase.Result(GAME_ID, ERA, PLAYER_ID));
+
+        mockMvc.perform(post("/api/v1/games/{gameId}/eras/{eraNumber}/paradox-resolution/actions", GAME_ID, ERA)
+                        .with(auth())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(paradoxResolutionJson()))
+                .andExpect(status().isAccepted())
+                .andExpect(jsonPath("$.gameId").value(GAME_ID.toString()))
+                .andExpect(jsonPath("$.eraNumber").value(ERA))
+                .andExpect(jsonPath("$.playerId").value(PLAYER_ID.toString()))
+                .andExpect(jsonPath("$.status").value("SUBMITTED"));
+
+        var captor = ArgumentCaptor.forClass(PlayParadoxResolutionCardUseCase.Command.class);
+        org.mockito.BDDMockito.then(playParadoxResolutionCardUseCase).should().handle(captor.capture());
+        assertThat(captor.getValue())
+                .isEqualTo(new PlayParadoxResolutionCardUseCase.Command(
+                        GAME_ID, ERA, PLAYER_ID, CARD_INSTANCE_ID, TARGET_EVENT_ID, TARGET_OUTCOME_ID));
+    }
+
+    @Test
+    void paradoxResolutionErrorsUsePublishedStableCodes() throws Exception {
+        var endpoint = post("/api/v1/games/{gameId}/eras/{eraNumber}/paradox-resolution/actions", GAME_ID, ERA)
+                .with(auth())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(paradoxResolutionJson());
+        willThrow(new ParadoxResolutionPhaseNotOpenException(GAME_ID, ERA))
+                .given(playParadoxResolutionCardUseCase)
+                .handle(any());
+        mockMvc.perform(endpoint)
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("409-06"));
+
+        willThrow(new DuplicateParadoxResolutionSubmissionException(PLAYER_ID))
+                .given(playParadoxResolutionCardUseCase)
+                .handle(any());
+        mockMvc.perform(post("/api/v1/games/{gameId}/eras/{eraNumber}/paradox-resolution/actions", GAME_ID, ERA)
+                        .with(auth())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(paradoxResolutionJson()))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("409-07"));
+
+        willThrow(new CardNotEligibleForParadoxResolutionException(io.github.temporalrift.game.shared.CardType.COLLIDE))
+                .given(playParadoxResolutionCardUseCase)
+                .handle(any());
+        mockMvc.perform(post("/api/v1/games/{gameId}/eras/{eraNumber}/paradox-resolution/actions", GAME_ID, ERA)
+                        .with(auth())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(paradoxResolutionJson()))
+                .andExpect(status().is(422))
+                .andExpect(jsonPath("$.code").value("422-10"));
     }
 
     @Test
@@ -388,5 +460,15 @@ class ActionControllerTest {
                   "targetOutcomeId": "%s"
                 }
                 """.formatted(TARGET_EVENT_ID, TARGET_OUTCOME_ID);
+    }
+
+    private static String paradoxResolutionJson() {
+        return """
+                {
+                  "cardInstanceId": "%s",
+                  "targetEventId": "%s",
+                  "targetOutcomeId": "%s"
+                }
+                """.formatted(CARD_INSTANCE_ID, TARGET_EVENT_ID, TARGET_OUTCOME_ID);
     }
 }

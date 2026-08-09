@@ -8,6 +8,8 @@ import org.junit.jupiter.api.Test;
 import org.mapstruct.factory.Mappers;
 
 import io.github.temporalrift.game.action.domain.event.ExposeBehaviorChanged;
+import io.github.temporalrift.game.action.domain.event.ParadoxResolutionCardPlayed;
+import io.github.temporalrift.game.shared.CardType;
 
 class ActionEventWireMapperTest {
 
@@ -27,5 +29,27 @@ class ActionEventWireMapperTest {
         assertThat(wire.roundNumber()).isEqualTo(3);
         assertThat(wire.activistPlayerId()).isEqualTo(activistPlayerId);
         assertThat(wire.targetPlayerId()).isEqualTo(targetPlayerId);
+    }
+
+    @Test
+    void paradoxResolutionCardPlayed_mapsWithoutRoundCoordinates() {
+        var domain = new ParadoxResolutionCardPlayed(
+                UUID.randomUUID(),
+                2,
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                CardType.DETONATE,
+                UUID.randomUUID(),
+                UUID.randomUUID());
+
+        var wire = mapper.toWire(domain);
+
+        assertThat(wire.gameId()).isEqualTo(domain.gameId());
+        assertThat(wire.eraNumber()).isEqualTo(domain.eraNumber());
+        assertThat(wire.playerId()).isEqualTo(domain.playerId());
+        assertThat(wire.cardInstanceId()).isEqualTo(domain.cardInstanceId());
+        assertThat(wire.cardType().name()).isEqualTo("DETONATE");
+        assertThat(wire.targetEventId()).isEqualTo(domain.targetEventId());
+        assertThat(wire.targetOutcomeId()).isEqualTo(domain.targetOutcomeId());
     }
 }

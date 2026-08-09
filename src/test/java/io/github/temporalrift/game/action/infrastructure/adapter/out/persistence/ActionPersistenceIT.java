@@ -19,6 +19,8 @@ import io.github.temporalrift.game.action.domain.actionround.SubmittedAction;
 import io.github.temporalrift.game.action.domain.activisterastate.ActivistDeclarationMode;
 import io.github.temporalrift.game.action.domain.activisterastate.ActivistEraState;
 import io.github.temporalrift.game.action.domain.activisterastate.ProbabilityInfluenceSignature;
+import io.github.temporalrift.game.action.domain.paradoxresolutionphase.ParadoxResolutionPhase;
+import io.github.temporalrift.game.action.domain.paradoxresolutionphase.ParadoxResolutionPhaseStatus;
 import io.github.temporalrift.game.action.domain.playerstate.PlayerState;
 import io.github.temporalrift.game.action.domain.port.out.ActionRoundRepository;
 import io.github.temporalrift.game.action.domain.port.out.ActionRoundSagaRepository;
@@ -26,6 +28,7 @@ import io.github.temporalrift.game.action.domain.port.out.ActivistEraStateReposi
 import io.github.temporalrift.game.action.domain.port.out.FutureEventDefinitionPort;
 import io.github.temporalrift.game.action.domain.port.out.FutureEventDefinitionPort.EventDefinition;
 import io.github.temporalrift.game.action.domain.port.out.FutureEventDefinitionPort.OutcomeDefinition;
+import io.github.temporalrift.game.action.domain.port.out.ParadoxResolutionPhaseRepository;
 import io.github.temporalrift.game.action.domain.port.out.PlayerStateRepository;
 import io.github.temporalrift.game.action.domain.saga.ActionRoundSagaState;
 import io.github.temporalrift.game.action.domain.saga.ActionRoundSagaStatus;
@@ -41,7 +44,8 @@ import io.github.temporalrift.game.shared.SpecialAction;
     PlayerStateRepositoryAdapter.class,
     ActivistEraStateRepositoryAdapter.class,
     ActionRoundSagaAdapter.class,
-    CurrentEraFutureEventAdapter.class
+    CurrentEraFutureEventAdapter.class,
+    ParadoxResolutionPhaseRepositoryAdapter.class
 })
 class ActionPersistenceIT {
 
@@ -59,6 +63,28 @@ class ActionPersistenceIT {
 
     @Autowired
     FutureEventDefinitionPort futureEventDefinitionPort;
+
+    @Autowired
+    ParadoxResolutionPhaseRepository paradoxResolutionPhaseRepository;
+
+    @Test
+    void paradoxResolutionPhase_saveAndLockedLookup_roundTripsState() {
+        var phaseId = UUID.randomUUID();
+        var gameId = UUID.randomUUID();
+        var playerId = UUID.randomUUID();
+        var now = Instant.parse("2099-01-01T00:00:00Z");
+        var phase = new ParadoxResolutionPhase(phaseId, gameId, 2, now.plusSeconds(30));
+        phase.submit(playerId, CardType.DETONATE, now);
+        paradoxResolutionPhaseRepository.save(phase);
+
+        var loaded = paradoxResolutionPhaseRepository.findByGameIdAndEraNumberWithLock(gameId, 2);
+
+        assertThat(loaded).isPresent();
+        assertThat(loaded.get().id()).isEqualTo(phaseId);
+        assertThat(loaded.get().expiresAt()).isEqualTo(now.plusSeconds(30));
+        assertThat(loaded.get().status()).isEqualTo(ParadoxResolutionPhaseStatus.OPEN);
+        assertThat(loaded.get().submittedPlayerIds()).containsExactly(playerId);
+    }
 
     @Test
     void actionRound_save_and_findById_roundTripsAllFields() {

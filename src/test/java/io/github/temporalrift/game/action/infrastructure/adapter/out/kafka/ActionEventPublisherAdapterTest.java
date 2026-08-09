@@ -23,6 +23,7 @@ import io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract.Ban
 import io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract.CardPlayedPayload;
 import io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract.ExposeBehaviorChangedPayload;
 import io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract.ExposeSignatureRevealedPayload;
+import io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract.ParadoxResolutionCardPlayedPayload;
 import io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract.PlayerSkippedPayload;
 import io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract.RoundSummaryPublishedPayload;
 import io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract.SpecialActionPlayedPayload;
@@ -36,6 +37,7 @@ import io.github.temporalrift.game.action.domain.event.BandedProbabilityPublishe
 import io.github.temporalrift.game.action.domain.event.CardPlayed;
 import io.github.temporalrift.game.action.domain.event.ExposeBehaviorChanged;
 import io.github.temporalrift.game.action.domain.event.ExposeSignatureRevealed;
+import io.github.temporalrift.game.action.domain.event.ParadoxResolutionCardPlayed;
 import io.github.temporalrift.game.action.domain.event.PlayerSkipped;
 import io.github.temporalrift.game.action.domain.event.RoundSummaryPublished;
 import io.github.temporalrift.game.action.domain.event.SpecialActionPlayed;
@@ -143,6 +145,11 @@ class ActionEventPublisherAdapterTest {
         var bandedProbabilityPublishedWire = mock(BandedProbabilityPublishedPayload.class);
         given(mapper.toWire(bandedProbabilityPublished)).willReturn(bandedProbabilityPublishedWire);
 
+        var paradoxResolutionCardPlayed = new ParadoxResolutionCardPlayed(
+                gameId, 1, playerId, UUID.randomUUID(), CardType.STABILIZE, UUID.randomUUID(), UUID.randomUUID());
+        var paradoxResolutionCardPlayedWire = mock(ParadoxResolutionCardPlayedPayload.class);
+        given(mapper.toWire(paradoxResolutionCardPlayed)).willReturn(paradoxResolutionCardPlayedWire);
+
         var activistDeclarationRecordedEnvelope = envelope(gameId, activistDeclarationRecorded);
         var actionRoundStartedEnvelope = envelope(gameId, actionRoundStarted);
         var cardPlayedEnvelope = envelope(gameId, cardPlayed);
@@ -153,6 +160,7 @@ class ActionEventPublisherAdapterTest {
         var playerSkippedEnvelope = envelope(gameId, playerSkipped);
         var roundSummaryPublishedEnvelope = envelope(gameId, roundSummaryPublished);
         var bandedProbabilityPublishedEnvelope = envelope(gameId, bandedProbabilityPublished);
+        var paradoxResolutionCardPlayedEnvelope = envelope(gameId, paradoxResolutionCardPlayed);
 
         adapter.publish(activistDeclarationRecordedEnvelope);
         adapter.publish(actionRoundStartedEnvelope);
@@ -164,6 +172,7 @@ class ActionEventPublisherAdapterTest {
         adapter.publish(playerSkippedEnvelope);
         adapter.publish(roundSummaryPublishedEnvelope);
         adapter.publish(bandedProbabilityPublishedEnvelope);
+        adapter.publish(paradoxResolutionCardPlayedEnvelope);
 
         then(outboundEvents)
                 .should()
@@ -211,6 +220,12 @@ class ActionEventPublisherAdapterTest {
                         eq("BandedProbabilityPublished"),
                         same(bandedProbabilityPublishedWire),
                         same(bandedProbabilityPublishedEnvelope));
+        then(outboundEvents)
+                .should()
+                .publish(
+                        eq("ParadoxResolutionCardPlayed"),
+                        same(paradoxResolutionCardPlayedWire),
+                        same(paradoxResolutionCardPlayedEnvelope));
     }
 
     @Test
