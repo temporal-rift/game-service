@@ -50,6 +50,9 @@ public sealed interface SubmittedAction permits SubmittedAction.CardAction, Subm
 
         @Override
         public void validate() {
+            if (cardType == CardType.STABILIZE || cardType == CardType.DETONATE) {
+                throw new CardNotEligibleForActionRoundException(cardType);
+            }
             if (cardType != CardType.SWING) {
                 return;
             }

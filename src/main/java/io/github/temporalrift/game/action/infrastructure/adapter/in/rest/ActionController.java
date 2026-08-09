@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import io.github.temporalrift.game.action.application.port.in.GetRoundStatusUseCase;
 import io.github.temporalrift.game.action.application.port.in.PlayCardUseCase;
+import io.github.temporalrift.game.action.application.port.in.PlayParadoxResolutionCardUseCase;
 import io.github.temporalrift.game.action.application.port.in.PlaySpecialActionUseCase;
 import io.github.temporalrift.game.action.application.port.in.RecordActivistDeclarationUseCase;
 import io.github.temporalrift.game.action.infrastructure.adapter.in.rest.v1.ActionApi;
@@ -14,6 +15,8 @@ import io.github.temporalrift.game.action.infrastructure.adapter.in.rest.v1.mode
 import io.github.temporalrift.game.action.infrastructure.adapter.in.rest.v1.model.ActivistDeclarationRequest;
 import io.github.temporalrift.game.action.infrastructure.adapter.in.rest.v1.model.ActivistDeclarationResponse;
 import io.github.temporalrift.game.action.infrastructure.adapter.in.rest.v1.model.CardActionRequest;
+import io.github.temporalrift.game.action.infrastructure.adapter.in.rest.v1.model.ParadoxResolutionCardRequest;
+import io.github.temporalrift.game.action.infrastructure.adapter.in.rest.v1.model.ParadoxResolutionCardResponse;
 import io.github.temporalrift.game.action.infrastructure.adapter.in.rest.v1.model.RoundStatus;
 import io.github.temporalrift.game.action.infrastructure.adapter.in.rest.v1.model.RoundStatusResponse;
 import io.github.temporalrift.game.action.infrastructure.adapter.in.rest.v1.model.SpecialActionRequest;
@@ -28,6 +31,8 @@ class ActionController implements ActionApi {
 
     private final PlaySpecialActionUseCase playSpecialActionUseCase;
 
+    private final PlayParadoxResolutionCardUseCase playParadoxResolutionCardUseCase;
+
     private final RecordActivistDeclarationUseCase recordActivistDeclarationUseCase;
 
     private final GetRoundStatusUseCase getRoundStatusUseCase;
@@ -35,12 +40,29 @@ class ActionController implements ActionApi {
     ActionController(
             PlayCardUseCase playCardUseCase,
             PlaySpecialActionUseCase playSpecialActionUseCase,
+            PlayParadoxResolutionCardUseCase playParadoxResolutionCardUseCase,
             RecordActivistDeclarationUseCase recordActivistDeclarationUseCase,
             GetRoundStatusUseCase getRoundStatusUseCase) {
         this.playCardUseCase = playCardUseCase;
         this.playSpecialActionUseCase = playSpecialActionUseCase;
+        this.playParadoxResolutionCardUseCase = playParadoxResolutionCardUseCase;
         this.recordActivistDeclarationUseCase = recordActivistDeclarationUseCase;
         this.getRoundStatusUseCase = getRoundStatusUseCase;
+    }
+
+    @Override
+    public ResponseEntity<ParadoxResolutionCardResponse> submitParadoxResolutionCard(
+            UUID gameId, Integer eraNumber, ParadoxResolutionCardRequest request) {
+        var result = playParadoxResolutionCardUseCase.handle(new PlayParadoxResolutionCardUseCase.Command(
+                gameId,
+                eraNumber,
+                CurrentPlayer.id(),
+                request.getCardInstanceId(),
+                request.getTargetEventId(),
+                request.getTargetOutcomeId()));
+        return ResponseEntity.accepted()
+                .body(new ParadoxResolutionCardResponse(
+                        result.gameId(), result.eraNumber(), result.playerId(), ActionSubmissionStatus.SUBMITTED));
     }
 
     @Override

@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import io.github.temporalrift.game.action.domain.CardNotInHandException;
 import io.github.temporalrift.game.action.domain.actionround.ActionRoundClosedException;
+import io.github.temporalrift.game.action.domain.actionround.CardNotEligibleForActionRoundException;
 import io.github.temporalrift.game.action.domain.actionround.DeclarationSpecialActionRequiredException;
 import io.github.temporalrift.game.action.domain.actionround.DuplicateSubmissionException;
 import io.github.temporalrift.game.action.domain.actionround.FactionRequiredException;
@@ -22,6 +23,9 @@ import io.github.temporalrift.game.action.domain.activisterastate.ExposeAlreadyR
 import io.github.temporalrift.game.action.domain.activisterastate.ExposeTargetNotEligibleException;
 import io.github.temporalrift.game.action.domain.activisterastate.ExposeUnavailableException;
 import io.github.temporalrift.game.action.domain.activisterastate.MomentumNotEligibleException;
+import io.github.temporalrift.game.action.domain.paradoxresolutionphase.CardNotEligibleForParadoxResolutionException;
+import io.github.temporalrift.game.action.domain.paradoxresolutionphase.DuplicateParadoxResolutionSubmissionException;
+import io.github.temporalrift.game.action.domain.paradoxresolutionphase.ParadoxResolutionPhaseNotOpenException;
 import io.github.temporalrift.game.action.domain.playerstate.PlayerStateNotFoundException;
 import io.github.temporalrift.game.shared.ProblemDetails;
 import io.github.temporalrift.game.shared.RestAdviceOrder;
@@ -43,6 +47,16 @@ class ActionExceptionHandler {
     @ExceptionHandler(DuplicateSubmissionException.class)
     ProblemDetail handleDuplicateSubmission(DuplicateSubmissionException ex) {
         return ProblemDetails.of(HttpStatus.CONFLICT, ex.getMessage(), "409-02");
+    }
+
+    @ExceptionHandler(ParadoxResolutionPhaseNotOpenException.class)
+    ProblemDetail handleParadoxResolutionPhaseNotOpen(ParadoxResolutionPhaseNotOpenException ex) {
+        return ProblemDetails.of(HttpStatus.CONFLICT, ex.getMessage(), "409-06");
+    }
+
+    @ExceptionHandler(DuplicateParadoxResolutionSubmissionException.class)
+    ProblemDetail handleDuplicateParadoxResolutionSubmission(DuplicateParadoxResolutionSubmissionException ex) {
+        return ProblemDetails.of(HttpStatus.CONFLICT, ex.getMessage(), "409-07");
     }
 
     @ExceptionHandler(DeclarationWindowClosedException.class)
@@ -103,5 +117,11 @@ class ActionExceptionHandler {
     @ExceptionHandler(UnknownActionTargetException.class)
     ProblemDetail handleUnknownActionTarget(UnknownActionTargetException ex) {
         return ProblemDetails.of(HttpStatus.UNPROCESSABLE_CONTENT, ex.getMessage(), "422-06");
+    }
+
+    @ExceptionHandler({CardNotEligibleForActionRoundException.class, CardNotEligibleForParadoxResolutionException.class
+    })
+    ProblemDetail handleCardNotEligibleForPlayWindow(RuntimeException ex) {
+        return ProblemDetails.of(HttpStatus.UNPROCESSABLE_CONTENT, ex.getMessage(), "422-10");
     }
 }
