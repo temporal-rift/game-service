@@ -89,7 +89,7 @@ class ParadoxResolutionPhaseKafkaConsumer {
             return;
         }
         phaseRepository.save(new ParadoxResolutionPhase(
-                envelope.aggregateId(),
+                envelope.eventId(),
                 started.gameId(),
                 started.eraNumber(),
                 envelope.occurredAt().plusSeconds(started.timerSeconds())));

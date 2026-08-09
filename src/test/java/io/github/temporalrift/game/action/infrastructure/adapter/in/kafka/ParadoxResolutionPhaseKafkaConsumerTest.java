@@ -62,7 +62,7 @@ class ParadoxResolutionPhaseKafkaConsumerTest {
 
         var captor = ArgumentCaptor.forClass(ParadoxResolutionPhase.class);
         then(phaseRepository).should().save(captor.capture());
-        assertThat(captor.getValue().id()).isEqualTo(PHASE_ID);
+        assertThat(captor.getValue().id()).isEqualTo(envelope.eventId());
         assertThat(captor.getValue().gameId()).isEqualTo(GAME_ID);
         assertThat(captor.getValue().eraNumber()).isEqualTo(ERA);
         assertThat(captor.getValue().expiresAt()).isEqualTo(OCCURRED_AT.plusSeconds(30));
