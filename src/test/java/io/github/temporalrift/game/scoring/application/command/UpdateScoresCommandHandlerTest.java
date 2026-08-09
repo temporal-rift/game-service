@@ -88,6 +88,7 @@ class UpdateScoresCommandHandlerTest {
                 List.of(new ChainScoringFact(weaverId, chainId, ScoreReason.CHAIN_COMPLETED, ERA)),
                 List.of(),
                 List.of(),
+                List.of(),
                 List.of());
 
         var handler = handler(context, List.<PlayerScore>of());
@@ -127,6 +128,7 @@ class UpdateScoresCommandHandlerTest {
                 List.of(new ChainScoringFact(weaverId, chainId, ScoreReason.CHAIN_BROKEN, ERA)),
                 List.of(),
                 List.of(),
+                List.of(),
                 List.of());
 
         var handler = handler(context, List.<PlayerScore>of());
@@ -151,6 +153,7 @@ class UpdateScoresCommandHandlerTest {
                 List.of(new PlayerFaction(activistId, Faction.ACTIVISTS)),
                 List.of(),
                 List.of(new ActionScoringFact(activistId, Faction.ACTIVISTS, ScoreReason.DECLARED_OUTCOME_WON)),
+                List.of(),
                 List.of(),
                 List.of(),
                 List.of(),
@@ -187,6 +190,7 @@ class UpdateScoresCommandHandlerTest {
                 List.of(new ChainScoringFact(weaverId, chainId, ScoreReason.CHAIN_COMPLETED, factOwnEra)),
                 List.of(),
                 List.of(),
+                List.of(),
                 List.of());
 
         var savedScores = new ArrayList<PlayerScore>();
@@ -208,6 +212,7 @@ class UpdateScoresCommandHandlerTest {
                 ERA,
                 List.of(new PlayerFaction(playerId, Faction.ERASERS)),
                 List.of(new EventOutcomeFact(UUID.randomUUID(), UUID.randomUUID(), null, 3, 3)),
+                List.of(),
                 List.of(),
                 List.of(),
                 List.of(),
@@ -279,6 +284,12 @@ class UpdateScoresCommandHandlerTest {
 
         @Override
         public void recordChainFact(UUID gameId, UUID playerId, UUID chainId, ScoreReason reason, int eraNumber) {
+            throw new UnsupportedOperationException("not used by UpdateScoresCommandHandler");
+        }
+
+        @Override
+        public void recordParadoxCascadeFact(
+                UUID gameId, int eraNumber, UUID paradoxId, UUID affectedEventId, List<UUID> detonatedByPlayerIds) {
             throw new UnsupportedOperationException("not used by UpdateScoresCommandHandler");
         }
 

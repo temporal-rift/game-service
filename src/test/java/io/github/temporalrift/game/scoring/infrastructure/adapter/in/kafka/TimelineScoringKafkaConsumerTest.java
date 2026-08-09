@@ -25,6 +25,7 @@ import io.github.temporalrift.game.scoring.domain.event.ChainBroken;
 import io.github.temporalrift.game.scoring.domain.event.ChainCompleted;
 import io.github.temporalrift.game.scoring.domain.event.EraResolutionCompleted;
 import io.github.temporalrift.game.scoring.domain.event.OutcomeApplied;
+import io.github.temporalrift.game.scoring.domain.event.ParadoxCascaded;
 import io.github.temporalrift.game.scoring.domain.playerscore.ScoreReason;
 import io.github.temporalrift.game.scoring.domain.port.out.EraScoringContextRepository;
 import io.github.temporalrift.game.scoring.domain.port.out.TimelineOutcomeInboxRepository;
@@ -207,6 +208,56 @@ class TimelineScoringKafkaConsumerTest {
         consumer.handle(envelope);
 
         then(contextRepository).should().recordChainFact(GAME_ID, targetPlayerId, chainId, ScoreReason.CHAIN_BROKEN, 3);
+    }
+
+    @Test
+    @DisplayName("ParadoxCascaded — records a paradox cascade fact stamped with the event's own era")
+    void handle_paradoxCascaded_recordsParadoxCascadeFact() {
+        var paradoxId = UUID.randomUUID();
+        var affectedEventId = UUID.randomUUID();
+        var detonatedByPlayerIds = List.of(UUID.randomUUID());
+        var paradoxCascaded = new ParadoxCascaded(GAME_ID, 2, paradoxId, affectedEventId, detonatedByPlayerIds);
+        var envelope = new InboundEnvelope(
+                UUID.randomUUID(),
+                "timeline.ParadoxCascaded",
+                GAME_ID,
+                "FutureEvent",
+                GAME_ID,
+                Instant.now(),
+                1,
+                paradoxCascaded);
+        given(processedEventRepository.tryMarkProcessed(envelope.eventId(), "scoring.timeline-events"))
+                .willReturn(true);
+        given(objectMapper.convertValue(envelope.payload(), ParadoxCascaded.class))
+                .willReturn(paradoxCascaded);
+
+        consumer.handle(envelope);
+
+        then(contextRepository)
+                .should()
+                .recordParadoxCascadeFact(GAME_ID, 2, paradoxId, affectedEventId, detonatedByPlayerIds);
+    }
+
+    @Test
+    @DisplayName("duplicate ParadoxCascaded eventId — claimed as duplicate, no fact recorded")
+    void handle_duplicateParadoxCascadedEventId_ignored() {
+        var paradoxCascaded = new ParadoxCascaded(GAME_ID, 2, UUID.randomUUID(), UUID.randomUUID(), List.of());
+        var envelope = new InboundEnvelope(
+                UUID.randomUUID(),
+                "timeline.ParadoxCascaded",
+                GAME_ID,
+                "FutureEvent",
+                GAME_ID,
+                Instant.now(),
+                1,
+                paradoxCascaded);
+        given(processedEventRepository.tryMarkProcessed(envelope.eventId(), "scoring.timeline-events"))
+                .willReturn(false);
+
+        consumer.handle(envelope);
+
+        then(objectMapper).should(never()).convertValue(any(), eq(ParadoxCascaded.class));
+        then(contextRepository).should(never()).recordParadoxCascadeFact(any(), anyInt(), any(), any(), any());
     }
 
     private InboundEnvelope claimedEnvelope(OutcomeApplied outcome) {

@@ -25,6 +25,7 @@ import tools.jackson.databind.ObjectMapper;
 import io.github.temporalrift.game.scoring.domain.context.ChainScoringFact;
 import io.github.temporalrift.game.scoring.domain.context.EraScoringContextNotFoundException;
 import io.github.temporalrift.game.scoring.domain.context.EventOutcomeFact;
+import io.github.temporalrift.game.scoring.domain.context.ParadoxCascadeScoringFact;
 import io.github.temporalrift.game.scoring.domain.context.PlayerFaction;
 import io.github.temporalrift.game.scoring.domain.event.EraResolutionCompleted;
 import io.github.temporalrift.game.scoring.domain.event.OutcomeApplied;
@@ -74,6 +75,9 @@ class EraScoringContextRepositoryAdapterTest {
 
     @Mock
     ScoringContextCorruptCorrelationJpaRepository corruptCorrelationJpaRepository;
+
+    @Mock
+    ScoringContextParadoxCascadeFactJpaRepository paradoxCascadeFactJpaRepository;
 
     @Mock
     ObjectMapper objectMapper;
@@ -773,6 +777,62 @@ class EraScoringContextRepositoryAdapterTest {
         assertThat(context.corruptCorrelations())
                 .containsExactly(new io.github.temporalrift.game.scoring.domain.context.CorruptCorrelationFact(
                         playerId, targetPlayerId, cardInstanceId, eventId, sourceOutcomeId, outcomeId, true));
+    }
+
+    @Test
+    void getRequired_assemblesAndConsumesParadoxCascadeFacts() {
+        var gameId = UUID.randomUUID();
+        var playerId = UUID.randomUUID();
+        var playerEntity = new ScoringContextPlayerJpaEntity();
+        playerEntity.setId(UUID.randomUUID());
+        playerEntity.setGameId(gameId);
+        playerEntity.setPlayerId(playerId);
+        playerEntity.setFaction(Faction.PROPHETS.name());
+        given(playerJpaRepository.findAllByGameId(gameId)).willReturn(List.of(playerEntity));
+
+        var paradoxId = UUID.randomUUID();
+        var affectedEventId = UUID.randomUUID();
+        var detonatedByPlayerIds = List.of(UUID.randomUUID());
+        var factEntity = new ScoringContextParadoxCascadeFactJpaEntity();
+        factEntity.setId(UUID.randomUUID());
+        factEntity.setGameId(gameId);
+        factEntity.setEraNumber(1);
+        factEntity.setParadoxId(paradoxId);
+        factEntity.setAffectedEventId(affectedEventId);
+        factEntity.setDetonatedByPlayerIds(detonatedByPlayerIds);
+        factEntity.setConsumed(false);
+        given(paradoxCascadeFactJpaRepository.findAllByGameIdAndConsumedFalseWithLock(gameId))
+                .willReturn(List.of(factEntity));
+
+        var context = adapter.getRequired(gameId, 2);
+
+        assertThat(context.paradoxCascadeFacts())
+                .containsExactly(new ParadoxCascadeScoringFact(paradoxId, affectedEventId, detonatedByPlayerIds, 1));
+        assertThat(factEntity.isConsumed()).isTrue();
+        var captor = ArgumentCaptor.forClass(List.class);
+        then(paradoxCascadeFactJpaRepository).should().saveAll(captor.capture());
+        assertThat(captor.getValue()).containsExactly(factEntity);
+    }
+
+    @Test
+    void recordParadoxCascadeFact_persistsUnconsumedFact() {
+        var gameId = UUID.randomUUID();
+        var paradoxId = UUID.randomUUID();
+        var affectedEventId = UUID.randomUUID();
+        var detonatedByPlayerIds = List.of(UUID.randomUUID(), UUID.randomUUID());
+
+        adapter.recordParadoxCascadeFact(gameId, 3, paradoxId, affectedEventId, detonatedByPlayerIds);
+
+        var captor = ArgumentCaptor.forClass(ScoringContextParadoxCascadeFactJpaEntity.class);
+        then(paradoxCascadeFactJpaRepository).should().save(captor.capture());
+        var saved = captor.getValue();
+        assertThat(saved.getId()).isNotNull();
+        assertThat(saved.getGameId()).isEqualTo(gameId);
+        assertThat(saved.getEraNumber()).isEqualTo(3);
+        assertThat(saved.getParadoxId()).isEqualTo(paradoxId);
+        assertThat(saved.getAffectedEventId()).isEqualTo(affectedEventId);
+        assertThat(saved.getDetonatedByPlayerIds()).isEqualTo(detonatedByPlayerIds);
+        assertThat(saved.isConsumed()).isFalse();
     }
 
     private ScoringContextRevisionistActionJpaEntity revisionistAction(

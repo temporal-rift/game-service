@@ -16,6 +16,7 @@ import io.github.temporalrift.game.scoring.domain.event.ChainBroken;
 import io.github.temporalrift.game.scoring.domain.event.ChainCompleted;
 import io.github.temporalrift.game.scoring.domain.event.EraResolutionCompleted;
 import io.github.temporalrift.game.scoring.domain.event.OutcomeApplied;
+import io.github.temporalrift.game.scoring.domain.event.ParadoxCascaded;
 import io.github.temporalrift.game.scoring.domain.playerscore.ScoreReason;
 import io.github.temporalrift.game.scoring.domain.port.out.EraScoringContextRepository;
 import io.github.temporalrift.game.scoring.domain.port.out.TimelineOutcomeInboxRepository;
@@ -32,8 +33,9 @@ class TimelineScoringKafkaConsumer {
     private static final String CHAIN_COMPLETED = "timeline.ChainCompleted";
     private static final String CHAIN_BROKEN = "timeline.ChainBroken";
     private static final String ERA_RESOLUTION_COMPLETED = "timeline.EraResolutionCompleted";
+    private static final String PARADOX_CASCADED = "timeline.ParadoxCascaded";
     private static final Set<String> SUPPORTED_EVENT_TYPES =
-            Set.of(OUTCOME_APPLIED, CHAIN_COMPLETED, CHAIN_BROKEN, ERA_RESOLUTION_COMPLETED);
+            Set.of(OUTCOME_APPLIED, CHAIN_COMPLETED, CHAIN_BROKEN, ERA_RESOLUTION_COMPLETED, PARADOX_CASCADED);
 
     private final ProcessedEventRepository processedEventRepository;
     private final TimelineOutcomeInboxRepository outcomeInboxRepository;
@@ -87,6 +89,7 @@ class TimelineScoringKafkaConsumer {
             case CHAIN_COMPLETED -> handleChainCompleted(envelope);
             case CHAIN_BROKEN -> handleChainBroken(envelope);
             case ERA_RESOLUTION_COMPLETED -> handleEraResolutionCompleted(envelope);
+            case PARADOX_CASCADED -> handleParadoxCascaded(envelope);
             default -> throw new IllegalStateException("Unreachable event type: " + envelope.eventType());
         }
     }
@@ -111,6 +114,16 @@ class TimelineScoringKafkaConsumer {
         var event = objectMapper.convertValue(envelope.payload(), ChainBroken.class);
         contextRepository.recordChainFact(
                 event.gameId(), event.targetPlayerId(), event.chainId(), ScoreReason.CHAIN_BROKEN, event.eraNumber());
+    }
+
+    private void handleParadoxCascaded(InboundEnvelope envelope) {
+        var event = objectMapper.convertValue(envelope.payload(), ParadoxCascaded.class);
+        contextRepository.recordParadoxCascadeFact(
+                event.gameId(),
+                event.eraNumber(),
+                event.paradoxId(),
+                event.affectedEventId(),
+                event.detonatedByPlayerIds());
     }
 
     private void handleEraResolutionCompleted(InboundEnvelope envelope) {

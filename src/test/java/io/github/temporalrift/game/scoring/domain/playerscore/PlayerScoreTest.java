@@ -135,6 +135,43 @@ class PlayerScoreTest {
         assertThat(score.history()).containsExactly(first, second);
     }
 
+    @ParameterizedTest
+    @DisplayName("apply accepts a faction-agnostic reason for a player of any faction")
+    @MethodSource("io.github.temporalrift.game.shared.Faction#values")
+    void applyAcceptsFactionAgnosticReasonForAnyFaction(Faction faction) {
+        var score = new PlayerScore(UUID.randomUUID(), GAME_ID, PLAYER_ID, faction);
+
+        var entry = score.apply(ERA, ScoreReason.PARADOX_CASCADE_PENALTY);
+
+        assertThat(entry.pointsDelta()).isEqualTo(-2);
+        assertThat(score.totalScore()).isEqualTo(-2);
+    }
+
+    @Test
+    @DisplayName("apply with a multiplier scales the reason's base points delta")
+    void applyWithMultiplierScalesPointsDelta() {
+        var score = new PlayerScore(UUID.randomUUID(), GAME_ID, PLAYER_ID, Faction.ERASERS);
+
+        var entry = score.apply(ERA, ScoreReason.PARADOX_CASCADE_PENALTY, 2);
+
+        assertThat(entry.pointsDelta()).isEqualTo(-4);
+        assertThat(entry.newTotal()).isEqualTo(-4);
+        assertThat(score.totalScore()).isEqualTo(-4);
+    }
+
+    @Test
+    @DisplayName("apply without an explicit multiplier defaults to 1")
+    void applyDefaultsToMultiplierOne() {
+        var score = new PlayerScore(UUID.randomUUID(), GAME_ID, PLAYER_ID, Faction.ERASERS);
+
+        var entry = score.apply(ERA, ScoreReason.PARADOX_CASCADE_PENALTY);
+
+        assertThat(entry.pointsDelta())
+                .isEqualTo(
+                        score.apply(ERA, ScoreReason.PARADOX_CASCADE_PENALTY, 1).pointsDelta());
+        assertThat(entry.pointsDelta()).isEqualTo(-2);
+    }
+
     @Test
     @DisplayName("apply rejects non-positive era numbers")
     void applyRejectsNonPositiveEra() {

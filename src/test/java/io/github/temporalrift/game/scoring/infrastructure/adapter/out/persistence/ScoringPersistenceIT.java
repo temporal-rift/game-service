@@ -3,6 +3,7 @@ package io.github.temporalrift.game.scoring.infrastructure.adapter.out.persisten
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.util.List;
 import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
@@ -19,6 +20,7 @@ import tools.jackson.databind.ObjectMapper;
 import io.github.temporalrift.game.PostgresTestcontainersConfiguration;
 import io.github.temporalrift.game.scoring.domain.context.ChainScoringFact;
 import io.github.temporalrift.game.scoring.domain.context.EraScoringContextNotFoundException;
+import io.github.temporalrift.game.scoring.domain.context.ParadoxCascadeScoringFact;
 import io.github.temporalrift.game.scoring.domain.context.PlayerFaction;
 import io.github.temporalrift.game.scoring.domain.playerscore.ScoreReason;
 import io.github.temporalrift.game.scoring.domain.port.out.EraScoringContextRepository;
@@ -120,6 +122,27 @@ class ScoringPersistenceIT {
 
         var secondContext = contextRepository.getRequired(gameId, 2);
         assertThat(secondContext.chainFacts()).isEmpty();
+    }
+
+    @Test
+    void getRequired_returnsParadoxCascadeFactsAndMarksThemConsumedExactlyOnce() {
+        var gameId = UUID.randomUUID();
+        var playerId = UUID.randomUUID();
+        contextRepository.upsertPlayerFaction(gameId, playerId, Faction.PROPHETS);
+
+        var paradoxId = UUID.randomUUID();
+        var affectedEventId = UUID.randomUUID();
+        var detonatedByPlayerIds = List.of(UUID.randomUUID());
+        contextRepository.recordParadoxCascadeFact(gameId, 5, paradoxId, affectedEventId, detonatedByPlayerIds);
+
+        // getRequired is called for era 1, but the fact keeps its own era (5) — proves consuming a
+        // fact during a later scoring pass doesn't misattribute it to that pass's era.
+        var firstContext = contextRepository.getRequired(gameId, 1);
+        assertThat(firstContext.paradoxCascadeFacts())
+                .containsExactly(new ParadoxCascadeScoringFact(paradoxId, affectedEventId, detonatedByPlayerIds, 5));
+
+        var secondContext = contextRepository.getRequired(gameId, 2);
+        assertThat(secondContext.paradoxCascadeFacts()).isEmpty();
     }
 
     @TestConfiguration(proxyBeanMethods = false)

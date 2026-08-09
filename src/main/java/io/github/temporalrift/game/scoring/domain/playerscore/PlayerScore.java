@@ -39,8 +39,17 @@ public class PlayerScore {
     }
 
     public ScoreEntry apply(int eraNumber, ScoreReason reason) {
+        return apply(eraNumber, reason, 1);
+    }
+
+    /**
+     * Applies {@code reason} at {@code multiplier} times its base {@link ScoreReason#pointsDelta()}.
+     * Used by DETONATE's "double the negative score effect" rule (GDD §3 Group 4); every other caller
+     * passes multiplier 1 via {@link #apply(int, ScoreReason)}.
+     */
+    public ScoreEntry apply(int eraNumber, ScoreReason reason, int multiplier) {
         validateEra(eraNumber);
-        return applyScore(eraNumber, reason);
+        return applyScore(eraNumber, reason, multiplier);
     }
 
     /**
@@ -54,17 +63,18 @@ public class PlayerScore {
         if (reason != ScoreReason.FACTION_UNIDENTIFIED) {
             throw new IllegalArgumentException("only FACTION_UNIDENTIFIED may be applied at game end");
         }
-        return applyScore(0, reason);
+        return applyScore(0, reason, 1);
     }
 
-    private ScoreEntry applyScore(int eraNumber, ScoreReason reason) {
+    private ScoreEntry applyScore(int eraNumber, ScoreReason reason, int multiplier) {
         Objects.requireNonNull(reason, "reason must not be null");
         if (!reason.belongsTo(faction)) {
             throw new InvalidScoreReasonException(faction, reason);
         }
 
-        totalScore += reason.pointsDelta();
-        var entry = new ScoreEntry(eraNumber, reason, reason.pointsDelta(), totalScore);
+        int delta = reason.pointsDelta() * multiplier;
+        totalScore += delta;
+        var entry = new ScoreEntry(eraNumber, reason, delta, totalScore);
         history.add(entry);
         return entry;
     }
