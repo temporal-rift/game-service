@@ -51,6 +51,7 @@
     <include file="db/changelog/scoring/014-create-scoring-end-game-ledgers.xml"/>
     <include file="db/changelog/scoring/015-create-scoring-context-fulfillment-declaration.xml"/>
     <include file="db/changelog/scoring/016-create-scoring-context-corrupt-correlation.xml"/>
+    <include file="db/changelog/scoring/017-create-scoring-context-paradox-cascade-fact.xml"/>
 
 </databaseChangeLog>
 

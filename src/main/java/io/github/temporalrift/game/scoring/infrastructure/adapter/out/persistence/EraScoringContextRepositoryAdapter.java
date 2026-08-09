@@ -20,6 +20,7 @@ import io.github.temporalrift.game.scoring.domain.context.EraScoringContext;
 import io.github.temporalrift.game.scoring.domain.context.EraScoringContextNotFoundException;
 import io.github.temporalrift.game.scoring.domain.context.EventOutcomeFact;
 import io.github.temporalrift.game.scoring.domain.context.FulfillmentDeclarationFact;
+import io.github.temporalrift.game.scoring.domain.context.ParadoxCascadeScoringFact;
 import io.github.temporalrift.game.scoring.domain.context.PlayerFaction;
 import io.github.temporalrift.game.scoring.domain.event.EraResolutionCompleted;
 import io.github.temporalrift.game.scoring.domain.playerscore.ScoreReason;
@@ -47,6 +48,7 @@ class EraScoringContextRepositoryAdapter implements EraScoringContextRepository 
     private final ScoringTimelineResolutionBarrierJpaRepository resolutionBarrierJpaRepository;
     private final ScoringContextFulfillmentDeclarationJpaRepository fulfillmentDeclarationJpaRepository;
     private final ScoringContextCorruptCorrelationJpaRepository corruptCorrelationJpaRepository;
+    private final ScoringContextParadoxCascadeFactJpaRepository paradoxCascadeFactJpaRepository;
     private final ObjectMapper objectMapper;
 
     EraScoringContextRepositoryAdapter(
@@ -63,6 +65,7 @@ class EraScoringContextRepositoryAdapter implements EraScoringContextRepository 
             ScoringTimelineResolutionBarrierJpaRepository resolutionBarrierJpaRepository,
             ScoringContextFulfillmentDeclarationJpaRepository fulfillmentDeclarationJpaRepository,
             ScoringContextCorruptCorrelationJpaRepository corruptCorrelationJpaRepository,
+            ScoringContextParadoxCascadeFactJpaRepository paradoxCascadeFactJpaRepository,
             ObjectMapper objectMapper) {
         this.playerJpaRepository = playerJpaRepository;
         this.eraOutcomeExpectationJpaRepository = eraOutcomeExpectationJpaRepository;
@@ -77,6 +80,7 @@ class EraScoringContextRepositoryAdapter implements EraScoringContextRepository 
         this.resolutionBarrierJpaRepository = resolutionBarrierJpaRepository;
         this.fulfillmentDeclarationJpaRepository = fulfillmentDeclarationJpaRepository;
         this.corruptCorrelationJpaRepository = corruptCorrelationJpaRepository;
+        this.paradoxCascadeFactJpaRepository = paradoxCascadeFactJpaRepository;
         this.objectMapper = objectMapper;
     }
 
@@ -134,6 +138,18 @@ class EraScoringContextRepositoryAdapter implements EraScoringContextRepository 
                                 entity.getTookEffect()))
                         .toList();
 
+        var unconsumedParadoxCascadeFacts =
+                paradoxCascadeFactJpaRepository.findAllByGameIdAndConsumedFalseWithLock(gameId);
+        var paradoxCascadeFacts = unconsumedParadoxCascadeFacts.stream()
+                .map(entity -> new ParadoxCascadeScoringFact(
+                        entity.getParadoxId(),
+                        entity.getAffectedEventId(),
+                        entity.getDetonatedByPlayerIds(),
+                        entity.getEraNumber()))
+                .toList();
+        unconsumedParadoxCascadeFacts.forEach(entity -> entity.setConsumed(true));
+        paradoxCascadeFactJpaRepository.saveAll(unconsumedParadoxCascadeFacts);
+
         return new EraScoringContext(
                 gameId,
                 eraNumber,
@@ -143,7 +159,8 @@ class EraScoringContextRepositoryAdapter implements EraScoringContextRepository 
                 chainFacts,
                 annihilationFacts,
                 fulfillmentDeclarations,
-                corruptCorrelations);
+                corruptCorrelations,
+                paradoxCascadeFacts);
     }
 
     private List<EventOutcomeFact> buildEventOutcomeFacts(UUID gameId, int eraNumber) {
@@ -213,6 +230,20 @@ class EraScoringContextRepositoryAdapter implements EraScoringContextRepository 
         entity.setEraNumber(eraNumber);
         entity.setConsumed(false);
         chainFactJpaRepository.save(entity);
+    }
+
+    @Override
+    public void recordParadoxCascadeFact(
+            UUID gameId, int eraNumber, UUID paradoxId, UUID affectedEventId, List<UUID> detonatedByPlayerIds) {
+        var entity = new ScoringContextParadoxCascadeFactJpaEntity();
+        entity.setId(UUID.randomUUID());
+        entity.setGameId(gameId);
+        entity.setEraNumber(eraNumber);
+        entity.setParadoxId(paradoxId);
+        entity.setAffectedEventId(affectedEventId);
+        entity.setDetonatedByPlayerIds(detonatedByPlayerIds);
+        entity.setConsumed(false);
+        paradoxCascadeFactJpaRepository.save(entity);
     }
 
     @Override

@@ -32,9 +32,28 @@ class EraScoreEvaluator {
             }
         }
 
+        // Cross-faction: PARADOX_CASCADE_PENALTY applies to every player regardless of faction, so it
+        // runs once per player per fact rather than inside the per-faction switch above.
+        for (var player : context.players()) {
+            decisions.addAll(paradoxCascadeDecisions(player.playerId(), context));
+        }
+
         decisions.sort(Comparator.comparing(PlayerScoreDecision::playerId)
                 .thenComparing(d -> d.reason().name()));
 
+        return decisions;
+    }
+
+    private List<PlayerScoreDecision> paradoxCascadeDecisions(UUID playerId, EraScoringContext context) {
+        var decisions = new ArrayList<PlayerScoreDecision>();
+        for (var fact : context.paradoxCascadeFacts()) {
+            if (fact.detonatedByPlayerIds().contains(playerId)) {
+                continue;
+            }
+            int multiplier = fact.detonatedByPlayerIds().isEmpty() ? 1 : 2;
+            decisions.add(new PlayerScoreDecision(
+                    playerId, ScoreReason.PARADOX_CASCADE_PENALTY, fact.eraNumber(), multiplier));
+        }
         return decisions;
     }
 

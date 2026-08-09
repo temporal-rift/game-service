@@ -1,5 +1,6 @@
 package io.github.temporalrift.game.scoring.domain.port.out;
 
+import java.util.List;
 import java.util.UUID;
 
 import io.github.temporalrift.game.scoring.domain.context.EraScoringContext;
@@ -21,6 +22,9 @@ public interface EraScoringContextRepository {
     void upsertExpectedOutcomeCount(UUID gameId, int eraNumber, int expectedOutcomeCount);
 
     void recordChainFact(UUID gameId, UUID playerId, UUID chainId, ScoreReason reason, int eraNumber);
+
+    void recordParadoxCascadeFact(
+            UUID gameId, int eraNumber, UUID paradoxId, UUID affectedEventId, List<UUID> detonatedByPlayerIds);
 
     void upsertEventOutcomeBaseline(UUID gameId, int eraNumber, UUID eventId, int startingOutcomeCount);
 
