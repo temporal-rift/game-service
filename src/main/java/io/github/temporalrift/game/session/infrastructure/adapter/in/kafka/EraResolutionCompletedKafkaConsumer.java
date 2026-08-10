@@ -84,7 +84,7 @@ class EraResolutionCompletedKafkaConsumer {
     @Transactional(propagation = REQUIRES_NEW)
     public void handle(Message<Object> message) {
         var envelope = TimelineEventEnvelope.from(message);
-        if (envelope.eventId() == null || message.getPayload() == null) {
+        if (envelope.eventId() == null || MessagePayloads.isEmpty(message)) {
             log.warn("Malformed record on timeline.events (missing eventId header or payload) — discarding");
             return;
         }

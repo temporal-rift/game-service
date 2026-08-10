@@ -109,7 +109,7 @@ public record TimelineEventEnvelope(
 
     private static boolean isExactInt(Number number) {
         var asLong = number.longValue();
-        return asLong == (int) asLong && number.doubleValue() == (double) asLong;
+        return asLong == (int) asLong && number.doubleValue() == asLong;
     }
 
     private static Integer parseInt(String text) {

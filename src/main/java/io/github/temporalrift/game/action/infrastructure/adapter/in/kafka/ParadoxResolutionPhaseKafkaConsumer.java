@@ -77,7 +77,7 @@ class ParadoxResolutionPhaseKafkaConsumer {
                 || envelope.aggregateId() == null
                 || envelope.gameId() == null
                 || envelope.occurredAt() == null
-                || message.getPayload() == null;
+                || MessagePayloads.isEmpty(message);
     }
 
     private void openPhase(TimelineEventEnvelope envelope, Message<Object> message) {

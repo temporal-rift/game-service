@@ -1,5 +1,6 @@
 package io.github.temporalrift.game.shared;
 
+import org.springframework.kafka.support.KafkaNull;
 import org.springframework.messaging.Message;
 import tools.jackson.databind.ObjectMapper;
 
@@ -15,6 +16,14 @@ import tools.jackson.databind.ObjectMapper;
 public final class MessagePayloads {
 
     private MessagePayloads() {}
+
+    /**
+     * A record published with a null value converts to {@link KafkaNull}, never to a null payload — Spring's
+     * {@code Message} forbids one — so {@code getPayload() == null} is dead code, not an empty-body guard.
+     */
+    public static boolean isEmpty(Message<?> message) {
+        return message.getPayload() instanceof KafkaNull;
+    }
 
     public static <T> T read(ObjectMapper objectMapper, Message<?> message, Class<T> type) {
         var payload = message.getPayload();
