@@ -8,24 +8,27 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.never;
 
+import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
-import tools.jackson.databind.ObjectMapper;
+import org.springframework.messaging.Message;
+import org.springframework.messaging.support.MessageBuilder;
+import tools.jackson.databind.json.JsonMapper;
 
-import io.github.temporalrift.game.session.domain.event.EraResolutionCompleted;
+import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.EraResolutionCompletedPayload;
+import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.EraTerminalResolution;
 import io.github.temporalrift.game.session.domain.event.TimelineCollapsed;
 import io.github.temporalrift.game.session.domain.game.Game;
 import io.github.temporalrift.game.session.domain.game.GameStatus;
@@ -39,7 +42,6 @@ import io.github.temporalrift.game.session.domain.port.out.SessionActivistDeclar
 import io.github.temporalrift.game.session.domain.port.out.SessionEventPublisher;
 import io.github.temporalrift.game.session.domain.port.out.SessionGameRulesPort;
 import io.github.temporalrift.game.shared.Faction;
-import io.github.temporalrift.game.shared.InboundEnvelope;
 import io.github.temporalrift.game.shared.ProcessedEventRepository;
 
 @ExtendWith(MockitoExtension.class)
@@ -51,6 +53,8 @@ class EraResolutionCompletedKafkaConsumerTest {
     static final UUID PLAYER_2 = UUID.randomUUID();
     static final UUID PLAYER_3 = UUID.randomUUID();
     static final int MAX_CASCADED = 3;
+
+    private static final JsonMapper JSON_MAPPER = JsonMapper.builder().build();
 
     @Mock
     ProcessedEventRepository processedEventRepository;
@@ -73,14 +77,22 @@ class EraResolutionCompletedKafkaConsumerTest {
     @Mock
     SessionGameRulesPort gameRules;
 
-    @Mock
-    ObjectMapper objectMapper;
-
-    @Spy
-    Clock clock = Clock.systemUTC();
-
-    @InjectMocks
     EraResolutionCompletedKafkaConsumer consumer;
+
+    @BeforeEach
+    void setUp() {
+        consumer = new EraResolutionCompletedKafkaConsumer(
+                processedEventRepository,
+                gameRepository,
+                lobbyRepository,
+                declarationRepository,
+                eventPublisher,
+                applicationEventPublisher,
+                gameRules,
+                new TimelineSessionWireMapperImpl(),
+                JSON_MAPPER,
+                Clock.systemUTC());
+    }
 
     @Test
     @DisplayName("cascades below threshold update the game without publishing TimelineCollapsed")
@@ -88,11 +100,11 @@ class EraResolutionCompletedKafkaConsumerTest {
         var game = Game.reconstitute(GAME_ID, LOBBY_ID, List.of(), 1, 1, GameStatus.IN_PROGRESS);
         var cascadedEventId = UUID.randomUUID();
         var resolution = resolution(1, cascaded(cascadedEventId, 0));
-        givenProcessedResolution(resolution);
+        givenClaimedBarrier();
         given(gameRepository.findByIdWithLock(GAME_ID)).willReturn(Optional.of(game));
         given(gameRules.maxCascadedParadoxes()).willReturn(MAX_CASCADED);
 
-        consumer.handle(envelopeFor(resolution));
+        consumer.handle(messageFor(resolution));
 
         then(gameRepository).should().save(game);
         assertThat(game.pendingCarryOverEvents())
@@ -111,11 +123,11 @@ class EraResolutionCompletedKafkaConsumerTest {
         var game = Game.reconstitute(GAME_ID, LOBBY_ID, List.of(), 1, 1, GameStatus.IN_PROGRESS);
         var resolution =
                 resolution(1, stalled(secondStalledId, 2), cascaded(cascadedId, 1), stalled(firstStalledId, 0));
-        givenProcessedResolution(resolution);
+        givenClaimedBarrier();
         given(gameRepository.findByIdWithLock(GAME_ID)).willReturn(Optional.of(game));
         given(gameRules.maxCascadedParadoxes()).willReturn(MAX_CASCADED);
 
-        consumer.handle(envelopeFor(resolution));
+        consumer.handle(messageFor(resolution));
 
         assertThat(game.pendingCarryOverEvents())
                 .containsExactly(
@@ -136,10 +148,10 @@ class EraResolutionCompletedKafkaConsumerTest {
         var game = Game.reconstitute(GAME_ID, LOBBY_ID, List.of(), 1, 1, GameStatus.IN_PROGRESS);
         var initialCascadeCount = game.cascadedParadoxCounter();
         var resolution = resolution(1, stalled(stalledId, 0));
-        givenProcessedResolution(resolution);
+        givenClaimedBarrier();
         given(gameRepository.findByIdWithLock(GAME_ID)).willReturn(Optional.of(game));
 
-        consumer.handle(envelopeFor(resolution));
+        consumer.handle(messageFor(resolution));
 
         assertThat(game.pendingCarryOverEvents())
                 .containsExactly(new io.github.temporalrift.game.session.domain.game.PendingCarryOverEvent(
@@ -158,7 +170,7 @@ class EraResolutionCompletedKafkaConsumerTest {
         // a malformed/reordered transport list cannot award collapse winners for the wrong event.
         var resolution = resolution(2, cascaded(collapsingEvent, 1), cascaded(firstCascadedEvent, 0));
         var game = Game.reconstitute(GAME_ID, LOBBY_ID, List.of(), 2, 1, GameStatus.IN_PROGRESS);
-        givenProcessedResolution(resolution);
+        givenClaimedBarrier();
         given(gameRepository.findByIdWithLock(GAME_ID)).willReturn(Optional.of(game));
         given(gameRules.maxCascadedParadoxes()).willReturn(MAX_CASCADED);
         given(declarationRepository.findPlayerIdsTargeting(GAME_ID, 2, collapsingEvent))
@@ -166,7 +178,7 @@ class EraResolutionCompletedKafkaConsumerTest {
         given(lobbyRepository.findById(LOBBY_ID)).willReturn(Optional.of(startedLobby()));
         var captor = ArgumentCaptor.forClass(Object.class);
 
-        consumer.handle(envelopeFor(resolution));
+        consumer.handle(messageFor(resolution));
 
         then(declarationRepository).should().findPlayerIdsTargeting(GAME_ID, 2, collapsingEvent);
         then(applicationEventPublisher).should().publishEvent(captor.capture());
@@ -184,9 +196,9 @@ class EraResolutionCompletedKafkaConsumerTest {
     @DisplayName("a barrier without cascades does not lock or mutate the game")
     void handle_withoutCascades_noGameMutation() {
         var resolution = resolution(1, applied(UUID.randomUUID(), 0));
-        givenProcessedResolution(resolution);
+        givenClaimedBarrier();
 
-        consumer.handle(envelopeFor(resolution));
+        consumer.handle(messageFor(resolution));
 
         then(gameRepository).should(never()).findByIdWithLock(any());
         then(gameRepository).should(never()).save(any());
@@ -196,14 +208,12 @@ class EraResolutionCompletedKafkaConsumerTest {
     @Test
     @DisplayName("duplicate barrier event is ignored without changing the cascade count")
     void handle_duplicateEventId_ignored() {
-        var resolution = resolution(1, cascaded(UUID.randomUUID(), 0));
-        var envelope = envelopeFor(resolution);
-        given(processedEventRepository.tryMarkProcessed(envelope.eventId(), "session.era-resolution-completed"))
+        var message = messageFor(resolution(1, cascaded(UUID.randomUUID(), 0)));
+        given(processedEventRepository.tryMarkProcessed(eventIdOf(message), "session.era-resolution-completed"))
                 .willReturn(false);
 
-        consumer.handle(envelope);
+        consumer.handle(message);
 
-        then(objectMapper).should(never()).convertValue(any(), eq(EraResolutionCompleted.class));
         then(gameRepository).should(never()).findByIdWithLock(any());
         then(eventPublisher).should(never()).publish(any());
     }
@@ -211,59 +221,63 @@ class EraResolutionCompletedKafkaConsumerTest {
     @Test
     @DisplayName("unsupported barrier version is skipped before claiming the event")
     void handle_unsupportedVersion_skippedWithoutClaim() {
-        var envelope = new InboundEnvelope(
-                UUID.randomUUID(),
-                "timeline.EraResolutionCompleted",
-                GAME_ID,
-                "Game",
-                GAME_ID,
-                Instant.now(),
-                2,
-                resolution(1, cascaded(UUID.randomUUID(), 0)));
-
-        consumer.handle(envelope);
+        consumer.handle(message("EraResolutionCompleted", 2, resolution(1, cascaded(UUID.randomUUID(), 0))));
 
         then(processedEventRepository).should(never()).tryMarkProcessed(any(), any());
         then(gameRepository).should(never()).findByIdWithLock(any());
     }
 
-    private void givenProcessedResolution(EraResolutionCompleted resolution) {
-        given(objectMapper.convertValue(any(), eq(EraResolutionCompleted.class)))
-                .willReturn(resolution);
+    @Test
+    @DisplayName("the retired namespaced event type is skipped before claiming the event")
+    void handle_namespacedEventType_skippedWithoutClaim() {
+        consumer.handle(message("timeline.EraResolutionCompleted", 1, resolution(1, cascaded(UUID.randomUUID(), 0))));
+
+        then(processedEventRepository).should(never()).tryMarkProcessed(any(), any());
+        then(gameRepository).should(never()).findByIdWithLock(any());
+    }
+
+    private void givenClaimedBarrier() {
         given(processedEventRepository.tryMarkProcessed(any(), eq("session.era-resolution-completed")))
                 .willReturn(true);
     }
 
-    private static EraResolutionCompleted resolution(
-            int eraNumber, EraResolutionCompleted.TerminalResolution... terminalResolutions) {
-        return new EraResolutionCompleted(GAME_ID, eraNumber, List.of(terminalResolutions));
+    private static EraResolutionCompletedPayload resolution(
+            int eraNumber, EraTerminalResolution... terminalResolutions) {
+        return new EraResolutionCompletedPayload(GAME_ID, eraNumber, List.of(terminalResolutions));
     }
 
-    private static EraResolutionCompleted.TerminalResolution cascaded(UUID eventId, int revealIndex) {
-        return new EraResolutionCompleted.TerminalResolution(
-                eventId, revealIndex, EraResolutionCompleted.TerminalState.CASCADED, null);
+    private static EraTerminalResolution cascaded(UUID eventId, int revealIndex) {
+        return new EraTerminalResolution(eventId, revealIndex, "CASCADED", null);
     }
 
-    private static EraResolutionCompleted.TerminalResolution applied(UUID eventId, int revealIndex) {
-        return new EraResolutionCompleted.TerminalResolution(
-                eventId, revealIndex, EraResolutionCompleted.TerminalState.OUTCOME_APPLIED, UUID.randomUUID());
+    private static EraTerminalResolution applied(UUID eventId, int revealIndex) {
+        return new EraTerminalResolution(eventId, revealIndex, "OUTCOME_APPLIED", UUID.randomUUID());
     }
 
-    private static EraResolutionCompleted.TerminalResolution stalled(UUID eventId, int revealIndex) {
-        return new EraResolutionCompleted.TerminalResolution(
-                eventId, revealIndex, EraResolutionCompleted.TerminalState.STALLED, null);
+    private static EraTerminalResolution stalled(UUID eventId, int revealIndex) {
+        return new EraTerminalResolution(eventId, revealIndex, "STALLED", null);
     }
 
-    private static InboundEnvelope envelopeFor(EraResolutionCompleted resolution) {
-        return new InboundEnvelope(
-                UUID.randomUUID(),
-                "timeline.EraResolutionCompleted",
-                GAME_ID,
-                "Game",
-                GAME_ID,
-                Instant.now(),
-                1,
-                resolution);
+    private static UUID eventIdOf(Message<Object> message) {
+        return UUID.fromString((String) message.getHeaders().get("eventId"));
+    }
+
+    private static Message<Object> messageFor(EraResolutionCompletedPayload resolution) {
+        return message("EraResolutionCompleted", 1, resolution);
+    }
+
+    /** The published wire shape: envelope metadata in the headers, only the typed payload in the body. */
+    private static Message<Object> message(String eventType, int version, EraResolutionCompletedPayload resolution) {
+        var body = JSON_MAPPER.writeValueAsString(resolution).getBytes(StandardCharsets.UTF_8);
+        return MessageBuilder.withPayload((Object) body)
+                .setHeader("eventType", eventType)
+                .setHeader("eventId", UUID.randomUUID().toString())
+                .setHeader("aggregateId", GAME_ID.toString())
+                .setHeader("aggregateType", "Game")
+                .setHeader("gameId", GAME_ID.toString())
+                .setHeader("occurredAt", Instant.now())
+                .setHeader("version", version)
+                .build();
     }
 
     private static Lobby startedLobby() {

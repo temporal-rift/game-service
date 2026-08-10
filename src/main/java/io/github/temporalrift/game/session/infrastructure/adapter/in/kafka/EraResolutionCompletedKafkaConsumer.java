@@ -12,10 +12,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.messaging.Message;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.ObjectMapper;
 
+import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract;
+import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.EraResolutionCompletedPayload;
 import io.github.temporalrift.game.session.domain.event.EraResolutionCompleted;
 import io.github.temporalrift.game.session.domain.event.TimelineCollapsed;
 import io.github.temporalrift.game.session.domain.game.Game;
@@ -32,14 +35,15 @@ import io.github.temporalrift.game.session.domain.port.out.SessionEventPublisher
 import io.github.temporalrift.game.session.domain.port.out.SessionGameRulesPort;
 import io.github.temporalrift.game.shared.CarryOverState;
 import io.github.temporalrift.game.shared.DomainEventEnvelope;
-import io.github.temporalrift.game.shared.InboundEnvelope;
+import io.github.temporalrift.game.shared.MessagePayloads;
 import io.github.temporalrift.game.shared.ProcessedEventRepository;
+import io.github.temporalrift.game.shared.TimelineEventEnvelope;
 
 @Component
 class EraResolutionCompletedKafkaConsumer {
 
     private static final Logger log = LoggerFactory.getLogger(EraResolutionCompletedKafkaConsumer.class);
-    private static final String EVENT_TYPE = "timeline.EraResolutionCompleted";
+    private static final String EVENT_TYPE = GeneratedChannelContract.ERA_RESOLUTION_COMPLETED_EVENT_TYPE;
     private static final String CONSUMER = "session.era-resolution-completed";
 
     private final ProcessedEventRepository processedEventRepository;
@@ -49,6 +53,7 @@ class EraResolutionCompletedKafkaConsumer {
     private final SessionEventPublisher eventPublisher;
     private final ApplicationEventPublisher applicationEventPublisher;
     private final SessionGameRulesPort gameRules;
+    private final TimelineSessionWireMapper wireMapper;
     private final ObjectMapper objectMapper;
     private final Clock clock;
 
@@ -60,6 +65,7 @@ class EraResolutionCompletedKafkaConsumer {
             SessionEventPublisher eventPublisher,
             ApplicationEventPublisher applicationEventPublisher,
             SessionGameRulesPort gameRules,
+            TimelineSessionWireMapper wireMapper,
             ObjectMapper objectMapper,
             Clock clock) {
         this.processedEventRepository = processedEventRepository;
@@ -69,21 +75,23 @@ class EraResolutionCompletedKafkaConsumer {
         this.eventPublisher = eventPublisher;
         this.applicationEventPublisher = applicationEventPublisher;
         this.gameRules = gameRules;
+        this.wireMapper = wireMapper;
         this.objectMapper = objectMapper;
         this.clock = clock;
     }
 
     @KafkaListener(topics = "timeline.events", groupId = "game-service.session.era-resolution-completed")
     @Transactional(propagation = REQUIRES_NEW)
-    public void handle(InboundEnvelope envelope) {
-        if (envelope.eventId() == null || envelope.payload() == null) {
-            log.warn("Malformed envelope on timeline.events (missing eventId or payload) — discarding");
+    public void handle(Message<Object> message) {
+        var envelope = TimelineEventEnvelope.from(message);
+        if (envelope.eventId() == null || message.getPayload() == null) {
+            log.warn("Malformed record on timeline.events (missing eventId header or payload) — discarding");
             return;
         }
         if (!EVENT_TYPE.equals(envelope.eventType())) {
             return;
         }
-        if (envelope.version() != DomainEventEnvelope.SCHEMA_VERSION_V1) {
+        if (!envelope.hasVersion(DomainEventEnvelope.SCHEMA_VERSION_V1)) {
             log.warn(
                     "Unsupported {} envelope version {} for event {} — skipping",
                     EVENT_TYPE,
@@ -96,7 +104,8 @@ class EraResolutionCompletedKafkaConsumer {
             return;
         }
 
-        var resolution = objectMapper.convertValue(envelope.payload(), EraResolutionCompleted.class);
+        var resolution =
+                wireMapper.fromWire(MessagePayloads.read(objectMapper, message, EraResolutionCompletedPayload.class));
         var carryOverEvents = resolution.terminalResolutions().stream()
                 .filter(entry -> entry.terminalState() == EraResolutionCompleted.TerminalState.CASCADED
                         || entry.terminalState() == EraResolutionCompleted.TerminalState.STALLED)

@@ -14,19 +14,21 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.messaging.Message;
+import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.EraResolutionCompletedPayload;
+import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.EraTerminalResolution;
+import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.OutcomeAppliedPayload;
 import io.github.temporalrift.game.TestcontainersConfiguration;
-import io.github.temporalrift.game.scoring.domain.event.EraResolutionCompleted;
-import io.github.temporalrift.game.scoring.domain.event.OutcomeApplied;
 import io.github.temporalrift.game.scoring.domain.playerscore.ScoreEntry;
 import io.github.temporalrift.game.scoring.domain.playerscore.ScoreReason;
 import io.github.temporalrift.game.scoring.domain.port.out.EraScoringContextRepository;
 import io.github.temporalrift.game.scoring.domain.port.out.PlayerScoreRepository;
 import io.github.temporalrift.game.shared.EraActionFactsFinalized;
 import io.github.temporalrift.game.shared.Faction;
-import io.github.temporalrift.game.shared.InboundEnvelope;
 import io.github.temporalrift.game.shared.SpecialAction;
 
 @SpringBootTest
@@ -213,28 +215,29 @@ class TimelineScoringKafkaConsumerIT {
         contextRepository.markActionFactsReady(gameId, eraNumber);
     }
 
-    private static InboundEnvelope terminalBarrierEnvelope(
+    private static Message<Object> terminalBarrierEnvelope(
             UUID gameId, int eraNumber, UUID eventId, UUID winningOutcomeId) {
-        var barrier = new EraResolutionCompleted(
-                gameId,
-                eraNumber,
-                List.of(new EraResolutionCompleted.TerminalResolution(
-                        eventId, 0, EraResolutionCompleted.TerminalState.OUTCOME_APPLIED, winningOutcomeId)));
-        return new InboundEnvelope(
-                UUID.randomUUID(),
-                "timeline.EraResolutionCompleted",
-                gameId,
-                "Game",
-                gameId,
-                Instant.now(),
-                1,
-                barrier);
+        var barrier = new EraResolutionCompletedPayload(
+                gameId, eraNumber, List.of(new EraTerminalResolution(eventId, 0, "OUTCOME_APPLIED", winningOutcomeId)));
+        return message("EraResolutionCompleted", gameId, "Game", barrier);
     }
 
-    private static InboundEnvelope outcomeEnvelope(UUID gameId, int eraNumber, UUID eventId, UUID winningOutcomeId) {
-        var outcome = new OutcomeApplied(gameId, eraNumber, eventId, winningOutcomeId, List.of());
-        return new InboundEnvelope(
-                UUID.randomUUID(), "timeline.OutcomeApplied", gameId, "FutureEvent", gameId, Instant.now(), 1, outcome);
+    private static Message<Object> outcomeEnvelope(UUID gameId, int eraNumber, UUID eventId, UUID winningOutcomeId) {
+        var outcome = new OutcomeAppliedPayload(gameId, eraNumber, eventId, winningOutcomeId, List.of());
+        return message("OutcomeApplied", gameId, "FutureEvent", outcome);
+    }
+
+    /** The published wire shape: envelope metadata in the headers, only the typed payload in the body. */
+    private static Message<Object> message(String eventType, UUID gameId, String aggregateType, Object payload) {
+        return MessageBuilder.withPayload(payload)
+                .setHeader("eventType", eventType)
+                .setHeader("eventId", UUID.randomUUID().toString())
+                .setHeader("aggregateId", gameId.toString())
+                .setHeader("aggregateType", aggregateType)
+                .setHeader("gameId", gameId.toString())
+                .setHeader("occurredAt", Instant.now())
+                .setHeader("version", 1)
+                .build();
     }
 
     private Integer scoresUpdatedOutboxRows() {
