@@ -18,6 +18,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.kafka.support.KafkaNull;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.support.MessageBuilder;
 import tools.jackson.databind.json.JsonMapper;
@@ -124,6 +125,23 @@ class TimelineScoringKafkaConsumerTest {
     void handle_missingEventIdHeader_discarded() {
         var message = MessageBuilder.withPayload((Object) json(outcomeApplied()).getBytes(StandardCharsets.UTF_8))
                 .setHeader("eventType", "OutcomeApplied")
+                .setHeader("gameId", GAME_ID.toString())
+                .setHeader("version", 1)
+                .build();
+
+        consumer.handle(message);
+
+        then(processedEventRepository).should(never()).tryMarkProcessed(any(), any());
+        then(outcomeInboxRepository).should(never()).save(any());
+    }
+
+    @Test
+    @DisplayName("empty record body — discarded without claiming")
+    void handle_emptyBody_discarded() {
+        // A record published with a null value converts to KafkaNull, never to a null payload.
+        var message = MessageBuilder.withPayload((Object) KafkaNull.INSTANCE)
+                .setHeader("eventType", "OutcomeApplied")
+                .setHeader("eventId", UUID.randomUUID().toString())
                 .setHeader("gameId", GAME_ID.toString())
                 .setHeader("version", 1)
                 .build();

@@ -118,13 +118,13 @@ class TimelineEventsConsumerGroupsIT {
      * their real types.
      */
     private void send(UUID gameId, Message<Object> event) {
-        var record = new ProducerRecord<Object, Object>(TOPIC, null, gameId.toString(), event.getPayload());
-        HEADER_MAPPER.fromHeaders(event.getHeaders(), record.headers());
-        kafkaTemplate.send(record);
+        var producerRecord = new ProducerRecord<Object, Object>(TOPIC, null, gameId.toString(), event.getPayload());
+        HEADER_MAPPER.fromHeaders(event.getHeaders(), producerRecord.headers());
+        kafkaTemplate.send(producerRecord);
     }
 
-    private void awaitProcessed(Message<Object> record, String consumer) {
-        var eventId = UUID.fromString((String) record.getHeaders().get("eventId"));
+    private void awaitProcessed(Message<Object> event, String consumer) {
+        var eventId = UUID.fromString((String) event.getHeaders().get("eventId"));
         await().atMost(Duration.ofSeconds(30))
                 .untilAsserted(() -> assertThat(jdbcTemplate.queryForObject(
                                 "SELECT COUNT(*) FROM processed_events WHERE event_id = ? AND consumer = ?",

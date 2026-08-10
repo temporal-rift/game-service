@@ -76,7 +76,7 @@ class ResolutionFailedKafkaConsumer {
     }
 
     private boolean isMalformed(TimelineEventEnvelope envelope, Message<Object> message) {
-        return envelope.eventId() == null || message.getPayload() == null;
+        return envelope.eventId() == null || MessagePayloads.isEmpty(message);
     }
 
     private boolean hasSupportedVersion(TimelineEventEnvelope envelope) {
