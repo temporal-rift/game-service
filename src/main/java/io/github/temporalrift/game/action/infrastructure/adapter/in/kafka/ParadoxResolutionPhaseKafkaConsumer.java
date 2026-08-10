@@ -1,5 +1,7 @@
 package io.github.temporalrift.game.action.infrastructure.adapter.in.kafka;
 
+import static io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.ERA_RESOLUTION_COMPLETED_EVENT_TYPE;
+import static io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.PARADOX_RESOLUTION_PHASE_STARTED_EVENT_TYPE;
 import static org.springframework.transaction.annotation.Propagation.REQUIRES_NEW;
 
 import java.util.Objects;
@@ -8,22 +10,24 @@ import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.messaging.Message;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.ObjectMapper;
 
+import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.EraResolutionCompletedPayload;
+import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.ParadoxResolutionPhaseStartedPayload;
 import io.github.temporalrift.game.action.domain.paradoxresolutionphase.ParadoxResolutionPhase;
 import io.github.temporalrift.game.action.domain.port.out.ParadoxResolutionPhaseRepository;
 import io.github.temporalrift.game.shared.DomainEventEnvelope;
-import io.github.temporalrift.game.shared.InboundEnvelope;
+import io.github.temporalrift.game.shared.MessagePayloads;
 import io.github.temporalrift.game.shared.ProcessedEventRepository;
+import io.github.temporalrift.game.shared.TimelineEventEnvelope;
 
 @Component
 class ParadoxResolutionPhaseKafkaConsumer {
 
     private static final Logger log = LoggerFactory.getLogger(ParadoxResolutionPhaseKafkaConsumer.class);
-    private static final String PHASE_STARTED = "timeline.ParadoxResolutionPhaseStarted";
-    private static final String ERA_COMPLETED = "timeline.EraResolutionCompleted";
     private static final String CONSUMER = "action.paradox-resolution-phase";
 
     private final ProcessedEventRepository processedEventRepository;
@@ -41,15 +45,17 @@ class ParadoxResolutionPhaseKafkaConsumer {
 
     @KafkaListener(topics = "timeline.events", groupId = "game-service.action.paradox-resolution-phase")
     @Transactional(propagation = REQUIRES_NEW)
-    public void handle(InboundEnvelope envelope) {
-        if (isMalformed(envelope)) {
-            log.warn("Malformed envelope on timeline.events for paradox phase tracking — discarding");
+    public void handle(Message<Object> message) {
+        var envelope = TimelineEventEnvelope.from(message);
+        if (isMalformed(envelope, message)) {
+            log.warn("Malformed record on timeline.events for paradox phase tracking — discarding");
             return;
         }
-        if (!PHASE_STARTED.equals(envelope.eventType()) && !ERA_COMPLETED.equals(envelope.eventType())) {
+        if (!PARADOX_RESOLUTION_PHASE_STARTED_EVENT_TYPE.equals(envelope.eventType())
+                && !ERA_RESOLUTION_COMPLETED_EVENT_TYPE.equals(envelope.eventType())) {
             return;
         }
-        if (envelope.version() != DomainEventEnvelope.SCHEMA_VERSION_V1) {
+        if (!envelope.hasVersion(DomainEventEnvelope.SCHEMA_VERSION_V1)) {
             log.warn(
                     "Unsupported {} envelope version {} for event {} — skipping",
                     envelope.eventType(),
@@ -63,23 +69,22 @@ class ParadoxResolutionPhaseKafkaConsumer {
         }
 
         switch (envelope.eventType()) {
-            case PHASE_STARTED -> openPhase(envelope);
-            case ERA_COMPLETED -> closePhase(envelope);
+            case PARADOX_RESOLUTION_PHASE_STARTED_EVENT_TYPE -> openPhase(envelope, message);
+            case ERA_RESOLUTION_COMPLETED_EVENT_TYPE -> closePhase(envelope, message);
             default -> throw new IllegalStateException("Unreachable event type: " + envelope.eventType());
         }
     }
 
-    private boolean isMalformed(InboundEnvelope envelope) {
-        return envelope == null
-                || envelope.eventId() == null
+    private boolean isMalformed(TimelineEventEnvelope envelope, Message<Object> message) {
+        return envelope.eventId() == null
                 || envelope.aggregateId() == null
                 || envelope.gameId() == null
                 || envelope.occurredAt() == null
-                || envelope.payload() == null;
+                || message.getPayload() == null;
     }
 
-    private void openPhase(InboundEnvelope envelope) {
-        var started = objectMapper.convertValue(envelope.payload(), PhaseStartedPayload.class);
+    private void openPhase(TimelineEventEnvelope envelope, Message<Object> message) {
+        var started = MessagePayloads.read(objectMapper, message, ParadoxResolutionPhaseStartedPayload.class);
         if (hasMismatchedGameId(envelope, started.gameId())) {
             return;
         }
@@ -95,8 +100,8 @@ class ParadoxResolutionPhaseKafkaConsumer {
                 envelope.occurredAt().plusSeconds(started.timerSeconds())));
     }
 
-    private void closePhase(InboundEnvelope envelope) {
-        var completed = objectMapper.convertValue(envelope.payload(), EraCompletedPayload.class);
+    private void closePhase(TimelineEventEnvelope envelope, Message<Object> message) {
+        var completed = MessagePayloads.read(objectMapper, message, EraResolutionCompletedPayload.class);
         if (hasMismatchedGameId(envelope, completed.gameId())) {
             return;
         }
@@ -108,7 +113,7 @@ class ParadoxResolutionPhaseKafkaConsumer {
                 });
     }
 
-    private boolean hasMismatchedGameId(InboundEnvelope envelope, UUID payloadGameId) {
+    private boolean hasMismatchedGameId(TimelineEventEnvelope envelope, UUID payloadGameId) {
         if (Objects.equals(envelope.gameId(), payloadGameId)) {
             return false;
         }
@@ -120,8 +125,4 @@ class ParadoxResolutionPhaseKafkaConsumer {
                 envelope.gameId());
         return true;
     }
-
-    record PhaseStartedPayload(UUID gameId, int eraNumber, int timerSeconds) {}
-
-    record EraCompletedPayload(UUID gameId, int eraNumber) {}
 }
