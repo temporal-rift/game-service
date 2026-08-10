@@ -25,6 +25,7 @@ import io.github.temporalrift.game.TestcontainersConfiguration;
 import io.github.temporalrift.game.action.application.port.in.PlayCardUseCase;
 import io.github.temporalrift.game.action.application.port.in.PlayParadoxResolutionCardUseCase;
 import io.github.temporalrift.game.action.domain.actionround.ActionRound;
+import io.github.temporalrift.game.action.domain.actionround.ActionRoundConfig;
 import io.github.temporalrift.game.action.domain.actionround.SubmittedAction;
 import io.github.temporalrift.game.action.domain.paradoxresolutionphase.DuplicateParadoxResolutionSubmissionException;
 import io.github.temporalrift.game.action.domain.paradoxresolutionphase.ParadoxResolutionPhase;
@@ -136,8 +137,8 @@ class PlayCardConcurrencyIT {
 
         var roundId = UUID.randomUUID();
         transactionTemplate.executeWithoutResult(_ -> {
-            actionRoundRepository.save(
-                    new ActionRound(roundId, gameId, ERA, ROUND, List.of(playerA, playerB), TIMER_SECONDS));
+            actionRoundRepository.save(new ActionRound(
+                    roundId, new ActionRoundConfig(gameId, ERA, ROUND, TIMER_SECONDS), List.of(playerA, playerB)));
             playerStateRepository.save(playerStateWithCard(gameId, playerA, cardA));
             playerStateRepository.save(playerStateWithCard(gameId, playerB, cardB));
             futureEventDefinitionPort.replaceForGameEra(
@@ -185,8 +186,8 @@ class PlayCardConcurrencyIT {
     void lockedRead_serializesConcurrentTransactions() throws Exception {
         var gameId = UUID.randomUUID();
         var roundId = UUID.randomUUID();
-        transactionTemplate.executeWithoutResult(_ -> actionRoundRepository.save(
-                new ActionRound(roundId, gameId, ERA, ROUND, List.of(UUID.randomUUID()), TIMER_SECONDS)));
+        transactionTemplate.executeWithoutResult(_ -> actionRoundRepository.save(new ActionRound(
+                roundId, new ActionRoundConfig(gameId, ERA, ROUND, TIMER_SECONDS), List.of(UUID.randomUUID()))));
 
         var lockAcquiredByFirst = new CountDownLatch(1);
         var secondAttempting = new CountDownLatch(1);

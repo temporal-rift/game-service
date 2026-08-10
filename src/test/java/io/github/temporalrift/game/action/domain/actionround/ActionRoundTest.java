@@ -31,7 +31,7 @@ class ActionRoundTest {
     static final UUID PLAYER_B = UUID.randomUUID();
 
     ActionRound openRound(List<UUID> players) {
-        return new ActionRound(UUID.randomUUID(), GAME_ID, ERA, ROUND, players, TIMER_SECONDS);
+        return new ActionRound(UUID.randomUUID(), new ActionRoundConfig(GAME_ID, ERA, ROUND, TIMER_SECONDS), players);
     }
 
     static SubmittedAction.CardAction card(UUID playerId, CardType cardType) {
@@ -88,12 +88,8 @@ class ActionRoundTest {
         // when
         var round = new ActionRound(
                 UUID.randomUUID(),
-                GAME_ID,
-                ERA,
-                ROUND,
-                List.of(PLAYER_A, PLAYER_B),
-                TIMER_SECONDS,
-                List.of(declaration));
+                new ActionRoundConfig(GAME_ID, ERA, ROUND, TIMER_SECONDS),
+                new ActionRoundParticipants(List.of(PLAYER_A, PLAYER_B), List.of(declaration)));
 
         // then
         assertThat(round.pendingPlayerIds()).containsExactly(PLAYER_B);
@@ -113,10 +109,8 @@ class ActionRoundTest {
         // when
         var round = ActionRound.reconstitute(
                 UUID.randomUUID(),
-                GAME_ID,
-                ERA,
-                ROUND,
-                new ActionRound.PersistedState(RoundStatus.OPEN, TIMER_SECONDS, null, List.of(PLAYER_A), List.of()));
+                new ActionRoundConfig(GAME_ID, ERA, ROUND, TIMER_SECONDS),
+                new ActionRound.PersistedState(RoundStatus.OPEN, null, List.of(PLAYER_A), List.of()));
 
         // then
         assertThat(round.pullEvents()).isEmpty();
@@ -246,11 +240,8 @@ class ActionRoundTest {
         // given
         var round = ActionRound.reconstitute(
                 UUID.randomUUID(),
-                GAME_ID,
-                ERA,
-                ROUND,
-                new ActionRound.PersistedState(
-                        RoundStatus.CLOSING, TIMER_SECONDS, "TIMER_EXPIRED", List.of(PLAYER_A), List.of()));
+                new ActionRoundConfig(GAME_ID, ERA, ROUND, TIMER_SECONDS),
+                new ActionRound.PersistedState(RoundStatus.CLOSING, "TIMER_EXPIRED", List.of(PLAYER_A), List.of()));
         var action = card(PLAYER_A, CardType.PUSH);
 
         // when / then

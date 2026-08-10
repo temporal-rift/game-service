@@ -16,6 +16,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import io.github.temporalrift.game.action.application.ActionRoundEventPublication;
 import io.github.temporalrift.game.action.domain.actionround.ActionRound;
+import io.github.temporalrift.game.action.domain.actionround.ActionRoundConfig;
+import io.github.temporalrift.game.action.domain.actionround.ActionRoundParticipants;
 import io.github.temporalrift.game.action.domain.actionround.CloseOutcome;
 import io.github.temporalrift.game.action.domain.actionround.SubmittedAction;
 import io.github.temporalrift.game.action.domain.activisterastate.ProbabilityInfluenceSignature;
@@ -114,7 +116,9 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
                 .toList();
         stateManager.initWaiting(sagaId, gameId, eraNumber, roundNumber, pendingPlayerIds, timerExpiresAt);
         var round = new ActionRound(
-                UUID.randomUUID(), gameId, eraNumber, roundNumber, playerIds, timerSeconds, declaredActions);
+                UUID.randomUUID(),
+                new ActionRoundConfig(gameId, eraNumber, roundNumber, timerSeconds),
+                new ActionRoundParticipants(playerIds, declaredActions));
         actionRoundRepository.save(round);
         ActionRoundEventPublication.publish(round, actionEventPublisher, clock);
         if (pendingPlayerIds.isEmpty()) {

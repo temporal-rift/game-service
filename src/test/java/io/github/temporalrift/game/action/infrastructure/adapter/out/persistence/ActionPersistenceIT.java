@@ -14,6 +14,7 @@ import org.springframework.context.annotation.Import;
 
 import io.github.temporalrift.game.PostgresTestcontainersConfiguration;
 import io.github.temporalrift.game.action.domain.actionround.ActionRound;
+import io.github.temporalrift.game.action.domain.actionround.ActionRoundConfig;
 import io.github.temporalrift.game.action.domain.actionround.RoundStatus;
 import io.github.temporalrift.game.action.domain.actionround.SubmittedAction;
 import io.github.temporalrift.game.action.domain.activisterastate.ActivistDeclarationMode;
@@ -98,7 +99,7 @@ class ActionPersistenceIT {
         var targetPlayerId = UUID.randomUUID();
         var cardInstanceId = UUID.randomUUID();
 
-        var round = new ActionRound(roundId, gameId, 2, 3, List.of(player1, player2), 45);
+        var round = new ActionRound(roundId, new ActionRoundConfig(gameId, 2, 3, 45), List.of(player1, player2));
         round.pullEvents();
         round.submit(new SubmittedAction.CardAction(
                 player1, cardInstanceId, CardType.SWING, targetEventId, sourceOutcomeId, targetOutcomeId));

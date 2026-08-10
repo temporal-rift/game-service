@@ -25,61 +25,51 @@ public class ActionRound extends AggregateRoot {
     private RoundStatus status;
     private String closedReason;
 
-    public ActionRound(
-            UUID id, UUID gameId, int eraNumber, int roundNumber, List<UUID> pendingPlayerIds, int timerSeconds) {
-        this(id, gameId, eraNumber, roundNumber, pendingPlayerIds, timerSeconds, List.of());
+    public ActionRound(UUID id, ActionRoundConfig config, List<UUID> pendingPlayerIds) {
+        this(id, config, ActionRoundParticipants.pending(pendingPlayerIds));
     }
 
-    public ActionRound(
-            UUID id,
-            UUID gameId,
-            int eraNumber,
-            int roundNumber,
-            List<UUID> pendingPlayerIds,
-            int timerSeconds,
-            List<SubmittedAction> initialSubmittedActions) {
+    public ActionRound(UUID id, ActionRoundConfig config, ActionRoundParticipants participants) {
         this.id = Objects.requireNonNull(id, "id must not be null");
-        this.gameId = Objects.requireNonNull(gameId, "gameId must not be null");
-        this.eraNumber = eraNumber;
-        this.roundNumber = roundNumber;
-        this.timerSeconds = timerSeconds;
-        this.pendingPlayerIds =
-                new ArrayList<>(Objects.requireNonNull(pendingPlayerIds, "pendingPlayerIds must not be null"));
-        this.submittedActions = new ArrayList<>(
-                Objects.requireNonNull(initialSubmittedActions, "initialSubmittedActions must not be null"));
-        initialSubmittedActions.forEach(action -> this.pendingPlayerIds.remove(action.playerId()));
+        Objects.requireNonNull(config, "config must not be null");
+        this.gameId = config.gameId();
+        this.eraNumber = config.eraNumber();
+        this.roundNumber = config.roundNumber();
+        this.timerSeconds = config.timerSeconds();
+        this.pendingPlayerIds = new ArrayList<>(participants.pendingPlayerIds());
+        this.submittedActions = new ArrayList<>(participants.submittedActions());
+        this.submittedActions.forEach(action -> this.pendingPlayerIds.remove(action.playerId()));
         this.status = RoundStatus.OPEN;
         this.closedReason = null;
         registerEvent(new ActionRoundStarted(
                 gameId, eraNumber, roundNumber, timerSeconds, List.copyOf(this.pendingPlayerIds)));
-        // initialSubmittedActions carry Activist RALLY/MOMENTUM declarations made and validated earlier,
-        // by RecordActivistDeclarationCommandHandler against ActivistEraStateRepository, before this
-        // round existed — round 1 replays them as already-submitted so the player isn't asked again.
+        // participants.submittedActions() carry Activist RALLY/MOMENTUM declarations made and validated
+        // earlier, by RecordActivistDeclarationCommandHandler against ActivistEraStateRepository, before
+        // this round existed — round 1 replays them as already-submitted so the player isn't asked again.
         // submit() is skipped deliberately: SpecialActionSubmission.validate() rejects RALLY/MOMENTUM
         // unconditionally (see its switch), since a declaration is never made through submit().
-        initialSubmittedActions.forEach(action -> registerEvent(action.toPlayedEvent(gameId, eraNumber, roundNumber)));
+        this.submittedActions.forEach(action -> registerEvent(action.toPlayedEvent(gameId, eraNumber, roundNumber)));
     }
 
-    private ActionRound(UUID id, UUID gameId, int eraNumber, int roundNumber, PersistedState state) {
+    private ActionRound(UUID id, ActionRoundConfig config, PersistedState state) {
         this.id = id;
-        this.gameId = gameId;
-        this.eraNumber = eraNumber;
-        this.roundNumber = roundNumber;
-        this.timerSeconds = state.timerSeconds();
+        this.gameId = config.gameId();
+        this.eraNumber = config.eraNumber();
+        this.roundNumber = config.roundNumber();
+        this.timerSeconds = config.timerSeconds();
         this.status = state.status();
         this.closedReason = state.closedReason();
         this.pendingPlayerIds = new ArrayList<>(state.pendingPlayerIds());
         this.submittedActions = new ArrayList<>(state.submittedActions());
     }
 
-    public static ActionRound reconstitute(UUID id, UUID gameId, int eraNumber, int roundNumber, PersistedState state) {
-        return new ActionRound(id, gameId, eraNumber, roundNumber, state);
+    public static ActionRound reconstitute(UUID id, ActionRoundConfig config, PersistedState state) {
+        return new ActionRound(id, config, state);
     }
 
     /** The mutable, persisted part of an {@code ActionRound}'s state, as loaded from storage. */
     public record PersistedState(
             RoundStatus status,
-            int timerSeconds,
             String closedReason,
             List<UUID> pendingPlayerIds,
             List<SubmittedAction> submittedActions) {}
