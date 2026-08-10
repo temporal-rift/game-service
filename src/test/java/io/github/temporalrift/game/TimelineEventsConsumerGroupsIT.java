@@ -91,10 +91,11 @@ class TimelineEventsConsumerGroupsIT {
                         gameId, ERA_NUMBER, paradoxId, cascadedEventId, List.of(), List.of(UUID.randomUUID())));
 
         // Same key — all records land in the same partition, which is exactly the case a shared
-        // consumer group could not deliver to every listener.
-        send(gameId, resolution);
-        send(gameId, outcome);
+        // consumer group could not deliver to every listener. Publish in resolution order so the barrier
+        // closes a phase that is actually open, rather than arriving before anything opened one.
         send(gameId, phaseStarted);
+        send(gameId, outcome);
+        send(gameId, resolution);
         send(gameId, cascade);
 
         awaitProcessed(resolution, "session.era-resolution-completed");
@@ -105,6 +106,7 @@ class TimelineEventsConsumerGroupsIT {
         awaitProcessed(cascade, "scoring.timeline-events");
 
         assertThat(cascadeFactCount(gameId, paradoxId)).isEqualTo(1);
+        assertThat(phaseStatus(gameId)).isEqualTo("CLOSED");
     }
 
     /**
@@ -130,6 +132,15 @@ class TimelineEventsConsumerGroupsIT {
                                 eventId,
                                 consumer))
                         .isEqualTo(1));
+    }
+
+    /** Proves the barrier closed the phase the earlier {@code ParadoxResolutionPhaseStarted} record opened. */
+    private String phaseStatus(UUID gameId) {
+        return jdbcTemplate.queryForObject(
+                "SELECT status FROM paradox_resolution_phase WHERE game_id = ? AND era_number = ?",
+                String.class,
+                gameId,
+                ERA_NUMBER);
     }
 
     private Integer cascadeFactCount(UUID gameId, UUID paradoxId) {

@@ -6,9 +6,12 @@ import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Stream;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.messaging.support.MessageBuilder;
 
 class TimelineEventEnvelopeTest {
@@ -82,6 +85,46 @@ class TimelineEventEnvelopeTest {
         assertThat(envelope.gameId()).isNull();
         assertThat(envelope.occurredAt()).isNull();
         assertThat(envelope.version()).isNull();
+    }
+
+    @ParameterizedTest(name = "version header {0}")
+    @MethodSource("inexactVersions")
+    @DisplayName("a version that is not exactly an int reads as unsupported, never as a truncated one")
+    void from_inexactVersion_readsAsUnsupported(Object headerValue) {
+        var message = MessageBuilder.withPayload((Object) "payload")
+                .setHeader("eventId", EVENT_ID.toString())
+                .setHeader("version", headerValue)
+                .build();
+
+        var envelope = TimelineEventEnvelope.from(message);
+
+        assertThat(envelope.version()).isNull();
+        assertThat(envelope.hasVersion(1)).isFalse();
+    }
+
+    private static Stream<Object> inexactVersions() {
+        // Each would truncate to the supported version 1 and let the consumer claim an event it cannot handle.
+        return Stream.of(1.5d, 4294967297L, utf8("1.5"), utf8("not-a-number"));
+    }
+
+    @Test
+    @DisplayName("the header gameId matches only the payload game it was routed for")
+    void matchesGameId_comparesAgainstThePartitionKey() {
+        var envelope = new TimelineEventEnvelope(
+                EVENT_ID, "ParadoxCascaded", AGGREGATE_ID, "FutureEvent", GAME_ID, OCCURRED_AT, 1);
+
+        assertThat(envelope.matchesGameId(GAME_ID)).isTrue();
+        assertThat(envelope.matchesGameId(UUID.randomUUID())).isFalse();
+        assertThat(envelope.matchesGameId(null)).isFalse();
+    }
+
+    @Test
+    @DisplayName("an absent header gameId never matches a payload game")
+    void matchesGameId_withoutHeader_neverMatches() {
+        var envelope = new TimelineEventEnvelope(
+                EVENT_ID, "ParadoxCascaded", AGGREGATE_ID, "FutureEvent", null, OCCURRED_AT, 1);
+
+        assertThat(envelope.matchesGameId(GAME_ID)).isFalse();
     }
 
     private static byte[] utf8(String value) {

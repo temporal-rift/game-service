@@ -4,9 +4,6 @@ import static io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelCon
 import static io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.PARADOX_RESOLUTION_PHASE_STARTED_EVENT_TYPE;
 import static org.springframework.transaction.annotation.Propagation.REQUIRES_NEW;
 
-import java.util.Objects;
-import java.util.UUID;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.kafka.annotation.KafkaListener;
@@ -85,7 +82,7 @@ class ParadoxResolutionPhaseKafkaConsumer {
 
     private void openPhase(TimelineEventEnvelope envelope, Message<Object> message) {
         var started = MessagePayloads.read(objectMapper, message, ParadoxResolutionPhaseStartedPayload.class);
-        if (hasMismatchedGameId(envelope, started.gameId())) {
+        if (!envelope.matchesGameId(started.gameId())) {
             return;
         }
         if (phaseRepository
@@ -102,7 +99,7 @@ class ParadoxResolutionPhaseKafkaConsumer {
 
     private void closePhase(TimelineEventEnvelope envelope, Message<Object> message) {
         var completed = MessagePayloads.read(objectMapper, message, EraResolutionCompletedPayload.class);
-        if (hasMismatchedGameId(envelope, completed.gameId())) {
+        if (!envelope.matchesGameId(completed.gameId())) {
             return;
         }
         phaseRepository
@@ -111,18 +108,5 @@ class ParadoxResolutionPhaseKafkaConsumer {
                     phase.close();
                     phaseRepository.save(phase);
                 });
-    }
-
-    private boolean hasMismatchedGameId(TimelineEventEnvelope envelope, UUID payloadGameId) {
-        if (Objects.equals(envelope.gameId(), payloadGameId)) {
-            return false;
-        }
-        log.warn(
-                "{} event {} has payload gameId {} but envelope gameId {} — discarding",
-                envelope.eventType(),
-                envelope.eventId(),
-                payloadGameId,
-                envelope.gameId());
-        return true;
     }
 }
