@@ -94,16 +94,21 @@ class TimelineEventsConsumerGroupsIT {
         // consumer group could not deliver to every listener. Publish in resolution order so the barrier
         // closes a phase that is actually open, rather than arriving before anything opened one.
         send(gameId, phaseStarted);
-        send(gameId, outcome);
         send(gameId, resolution);
+        // The same cascade eventId twice. Cascade facts are inserted with a fresh primary key and no unique
+        // constraint, so only the eventId claim stops a redelivery from recording a second fact.
         send(gameId, cascade);
+        send(gameId, cascade);
+        // Published last on the same key: one partition, consumed in order, so the scoring group having
+        // claimed this record proves it already handled both cascade deliveries.
+        send(gameId, outcome);
 
         awaitProcessed(resolution, "session.era-resolution-completed");
         awaitProcessed(resolution, "scoring.timeline-events");
         awaitProcessed(resolution, "action.paradox-resolution-phase");
-        awaitProcessed(outcome, "scoring.timeline-events");
         awaitProcessed(phaseStarted, "action.paradox-resolution-phase");
         awaitProcessed(cascade, "scoring.timeline-events");
+        awaitProcessed(outcome, "scoring.timeline-events");
 
         assertThat(cascadeFactCount(gameId, paradoxId)).isEqualTo(1);
         assertThat(phaseStatus(gameId)).isEqualTo("CLOSED");
