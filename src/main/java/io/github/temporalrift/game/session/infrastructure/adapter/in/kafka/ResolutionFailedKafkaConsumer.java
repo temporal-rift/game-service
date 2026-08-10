@@ -48,7 +48,12 @@ class ResolutionFailedKafkaConsumer {
         }
 
         var payload = MessagePayloads.read(objectMapper, message, ResolutionFailedPayload.class);
+        // Validate before the mismatch check: a structurally invalid payload must still reach the dead-letter
+        // topic for investigation, while a merely mis-routed one is discarded.
         validate(payload);
+        if (!envelope.matchesGameId(payload.gameId())) {
+            return;
+        }
         applicationEventPublisher.publishEvent(new ResolutionFailedApplicationEvent(
                 payload.gameId(), payload.eraNumber(), payload.affectedEventId(), payload.reason()));
     }

@@ -228,6 +228,20 @@ class EraResolutionCompletedKafkaConsumerTest {
     }
 
     @Test
+    @DisplayName("barrier naming a different game than the header is discarded without mutating a game")
+    void handle_mismatchedPayloadGameId_noGameMutation() {
+        var otherGame = UUID.randomUUID();
+        var resolution = new EraResolutionCompletedPayload(otherGame, 1, List.of(cascaded(UUID.randomUUID(), 0)));
+        givenClaimedBarrier();
+
+        consumer.handle(messageFor(resolution));
+
+        then(gameRepository).should(never()).findByIdWithLock(any());
+        then(gameRepository).should(never()).save(any());
+        then(eventPublisher).should(never()).publish(any());
+    }
+
+    @Test
     @DisplayName("the retired namespaced event type is skipped before claiming the event")
     void handle_namespacedEventType_skippedWithoutClaim() {
         consumer.handle(message("timeline.EraResolutionCompleted", 1, resolution(1, cascaded(UUID.randomUUID(), 0))));

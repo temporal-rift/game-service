@@ -137,6 +137,21 @@ class ResolutionFailedKafkaConsumerTest {
         then(applicationEventPublisher).should(never()).publishEvent(any());
     }
 
+    @Test
+    @DisplayName("payload naming a different game than the header is discarded without publishing")
+    void handle_mismatchedPayloadGameId_ignored() {
+        // given
+        var payload = new ResolutionFailedPayload(UUID.randomUUID(), 2, AFFECTED_EVENT_ID, "PROBABILITY_SUM_INVALID");
+        given(processedEventRepository.tryMarkProcessed(EVENT_ID, "session.resolution-failed"))
+                .willReturn(true);
+
+        // when
+        consumer.handle(message("ResolutionFailed", 1, payload));
+
+        // then
+        then(applicationEventPublisher).should(never()).publishEvent(any());
+    }
+
     @ParameterizedTest(name = "{0}")
     @MethodSource("invalidPayloads")
     @DisplayName("malformed ResolutionFailed payload rolls back before local publication")

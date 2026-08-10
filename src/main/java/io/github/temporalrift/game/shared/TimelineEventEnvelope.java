@@ -4,6 +4,8 @@ import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.UUID;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.messaging.Message;
 
 /**
@@ -25,9 +27,30 @@ public record TimelineEventEnvelope(
         Instant occurredAt,
         Integer version) {
 
+    private static final Logger log = LoggerFactory.getLogger(TimelineEventEnvelope.class);
+
     /** Null-safe check against a consumer's supported envelope version — an absent header is never supported. */
     public boolean hasVersion(int supported) {
         return version != null && version == supported;
+    }
+
+    /**
+     * Checks the header {@code gameId} — which is also the record's partition key — against the game the payload
+     * itself names. A mismatch means the record was routed for a different game than it describes, so acting on it
+     * would mutate the payload's game off the wrong partition, outside that game's ordering guarantee. Callers
+     * discard rather than process; an absent header {@code gameId} never matches.
+     */
+    public boolean matchesGameId(UUID payloadGameId) {
+        if (gameId != null && gameId.equals(payloadGameId)) {
+            return true;
+        }
+        log.warn(
+                "{} event {} has payload gameId {} but envelope gameId {} — discarding",
+                eventType,
+                eventId,
+                payloadGameId,
+                gameId);
+        return false;
     }
 
     public static TimelineEventEnvelope from(Message<?> message) {
@@ -70,14 +93,34 @@ public record TimelineEventEnvelope(
         };
     }
 
+    /**
+     * Yields null for anything that is not exactly an {@code int}. Truncating a fractional, out-of-range, or
+     * unparseable version would silently turn an unsupported envelope into the supported one, and the consumer
+     * would claim an event it cannot handle — the opposite of the skip-without-claiming rule.
+     */
     private static Integer asInteger(Object value) {
         return switch (value) {
-            case Number number -> number.intValue();
+            case Integer version -> version;
+            case Number number -> isExactInt(number) ? number.intValue() : null;
             case null -> null;
-            default -> {
-                var text = asString(value);
-                yield text == null ? null : Integer.valueOf(text.trim());
-            }
+            default -> parseInt(asString(value));
         };
+    }
+
+    private static boolean isExactInt(Number number) {
+        var asLong = number.longValue();
+        return asLong == (int) asLong && number.doubleValue() == (double) asLong;
+    }
+
+    private static Integer parseInt(String text) {
+        if (text == null) {
+            return null;
+        }
+        try {
+            return Integer.valueOf(text.trim());
+        } catch (NumberFormatException _) {
+            log.warn("Unparseable version header '{}' on timeline.events — treating as unsupported", text);
+            return null;
+        }
     }
 }

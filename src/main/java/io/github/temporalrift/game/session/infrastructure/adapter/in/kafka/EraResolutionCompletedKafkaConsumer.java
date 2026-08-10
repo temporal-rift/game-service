@@ -106,6 +106,9 @@ class EraResolutionCompletedKafkaConsumer {
 
         var resolution =
                 wireMapper.fromWire(MessagePayloads.read(objectMapper, message, EraResolutionCompletedPayload.class));
+        if (!envelope.matchesGameId(resolution.gameId())) {
+            return;
+        }
         var carryOverEvents = resolution.terminalResolutions().stream()
                 .filter(entry -> entry.terminalState() == EraResolutionCompleted.TerminalState.CASCADED
                         || entry.terminalState() == EraResolutionCompleted.TerminalState.STALLED)
