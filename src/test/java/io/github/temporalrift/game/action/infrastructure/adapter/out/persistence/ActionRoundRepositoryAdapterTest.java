@@ -16,6 +16,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import io.github.temporalrift.game.action.domain.actionround.ActionRound;
+import io.github.temporalrift.game.action.domain.actionround.ActionRoundConfig;
 import io.github.temporalrift.game.action.domain.actionround.RoundStatus;
 import io.github.temporalrift.game.action.domain.actionround.SubmittedAction;
 import io.github.temporalrift.game.shared.CardType;
@@ -34,7 +35,8 @@ class ActionRoundRepositoryAdapterTest {
     @Test
     void save_mapsDomainToEntity() {
         var playerId = UUID.randomUUID();
-        var round = new ActionRound(UUID.randomUUID(), UUID.randomUUID(), 1, 2, List.of(playerId), 45);
+        var round = new ActionRound(
+                UUID.randomUUID(), new ActionRoundConfig(UUID.randomUUID(), 1, 2, 45), List.of(playerId));
         round.pullEvents();
         var cardId = UUID.randomUUID();
         var targetEventId = UUID.randomUUID();

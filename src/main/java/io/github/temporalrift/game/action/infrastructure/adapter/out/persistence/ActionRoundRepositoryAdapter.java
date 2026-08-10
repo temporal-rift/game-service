@@ -8,6 +8,7 @@ import java.util.UUID;
 import org.springframework.stereotype.Component;
 
 import io.github.temporalrift.game.action.domain.actionround.ActionRound;
+import io.github.temporalrift.game.action.domain.actionround.ActionRoundConfig;
 import io.github.temporalrift.game.action.domain.actionround.RoundStatus;
 import io.github.temporalrift.game.action.domain.port.out.ActionRoundRepository;
 
@@ -63,15 +64,15 @@ class ActionRoundRepositoryAdapter implements ActionRoundRepository {
     }
 
     private ActionRound toDomain(ActionRoundJpaEntity entity) {
+        var config = new ActionRoundConfig(
+                entity.getGameId(), entity.getEraNumber(), entity.getRoundNumber(), entity.getTimerSeconds());
         var state = new ActionRound.PersistedState(
                 RoundStatus.valueOf(entity.getStatus()),
-                entity.getTimerSeconds(),
                 entity.getClosedReason(),
                 new ArrayList<>(Arrays.asList(entity.getPendingPlayerIds())),
                 entity.getSubmittedActions().stream()
                         .map(StoredSubmittedAction::toDomain)
                         .collect(ArrayList::new, ArrayList::add, ArrayList::addAll));
-        return ActionRound.reconstitute(
-                entity.getId(), entity.getGameId(), entity.getEraNumber(), entity.getRoundNumber(), state);
+        return ActionRound.reconstitute(entity.getId(), config, state);
     }
 }
