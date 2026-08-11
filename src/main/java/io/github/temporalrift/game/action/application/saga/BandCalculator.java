@@ -112,13 +112,13 @@ class BandCalculator {
 
     private void applySwingShift(Map<UUID, Integer> outcomeMap, SubmittedAction.CardAction action) {
         if (action.sourceOutcomeId() == null) {
-            throw InvalidActionTargetException.swingRequiresSourceOutcome();
+            throw InvalidActionTargetException.requiresSourceOutcome(CardType.SWING);
         }
         if (action.targetOutcomeId() == null) {
-            throw InvalidActionTargetException.swingRequiresTargetOutcome();
+            throw InvalidActionTargetException.requiresTargetOutcome(CardType.SWING);
         }
         if (action.sourceOutcomeId().equals(action.targetOutcomeId())) {
-            throw InvalidActionTargetException.swingRequiresDistinctOutcomes();
+            throw InvalidActionTargetException.requiresDistinctOutcomes(CardType.SWING);
         }
         if (!outcomeMap.containsKey(action.sourceOutcomeId()) || !outcomeMap.containsKey(action.targetOutcomeId())) {
             return;

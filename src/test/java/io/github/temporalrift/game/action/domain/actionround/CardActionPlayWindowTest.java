@@ -24,7 +24,15 @@ class CardActionPlayWindowTest {
 
     @Test
     void collideRemainsEligibleDuringActionRounds() {
-        assertThatCode(cardAction(CardType.COLLIDE)::validate).doesNotThrowAnyException();
+        var action = new SubmittedAction.CardAction(
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                CardType.COLLIDE,
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                UUID.randomUUID());
+
+        assertThatCode(action::validate).doesNotThrowAnyException();
     }
 
     private SubmittedAction.CardAction cardAction(CardType cardType) {

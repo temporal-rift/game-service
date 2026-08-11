@@ -209,6 +209,46 @@ class ActionRoundTest {
     }
 
     @Test
+    @DisplayName("submit — CardAction Collide without source outcome — throws InvalidActionTargetException")
+    void submitCardCollideWithoutSourceOutcomeThrows() {
+        var round = openRound(List.of(PLAYER_A, PLAYER_B));
+        round.pullEvents();
+        var cardId = UUID.randomUUID();
+        var targetEventId = UUID.randomUUID();
+        var targetOutcomeId = UUID.randomUUID();
+        var action = card(PLAYER_A, cardId, CardType.COLLIDE, targetEventId, null, targetOutcomeId);
+
+        assertThatExceptionOfType(InvalidActionTargetException.class).isThrownBy(() -> round.submit(action));
+    }
+
+    @Test
+    @DisplayName("submit — CardAction Collide without target outcome — throws InvalidActionTargetException")
+    void submitCardCollideWithoutTargetOutcomeThrows() {
+        var round = openRound(List.of(PLAYER_A, PLAYER_B));
+        round.pullEvents();
+        var cardId = UUID.randomUUID();
+        var targetEventId = UUID.randomUUID();
+        var sourceOutcomeId = UUID.randomUUID();
+        var action = card(PLAYER_A, cardId, CardType.COLLIDE, targetEventId, sourceOutcomeId, null);
+
+        assertThatExceptionOfType(InvalidActionTargetException.class).isThrownBy(() -> round.submit(action));
+    }
+
+    @Test
+    @DisplayName(
+            "submit — CardAction Collide with same source and target outcome — throws InvalidActionTargetException")
+    void submitCardCollideWithSameSourceAndTargetOutcomeThrows() {
+        var round = openRound(List.of(PLAYER_A, PLAYER_B));
+        round.pullEvents();
+        var cardId = UUID.randomUUID();
+        var targetEventId = UUID.randomUUID();
+        var outcomeId = UUID.randomUUID();
+        var action = card(PLAYER_A, cardId, CardType.COLLIDE, targetEventId, outcomeId, outcomeId);
+
+        assertThatExceptionOfType(InvalidActionTargetException.class).isThrownBy(() -> round.submit(action));
+    }
+
+    @Test
     @DisplayName("submit — CardAction — last player submits — returns true")
     void submitCardLastPlayerReturnsTrue() {
         // given
