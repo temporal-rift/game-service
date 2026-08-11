@@ -235,8 +235,8 @@ class TimelineScoringKafkaConsumerIT {
                 .setHeader("aggregateId", gameId.toString())
                 .setHeader("aggregateType", aggregateType)
                 .setHeader("gameId", gameId.toString())
-                .setHeader("occurredAt", Instant.now())
-                .setHeader("version", 1)
+                .setHeader("occurredAt", Instant.now().toString())
+                .setHeader("version", "1")
                 .build();
     }
 

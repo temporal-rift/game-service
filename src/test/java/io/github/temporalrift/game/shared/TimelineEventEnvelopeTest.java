@@ -2,7 +2,6 @@ package io.github.temporalrift.game.shared;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Map;
 import java.util.UUID;
@@ -37,9 +36,9 @@ class TimelineEventEnvelopeTest {
                         "gameId",
                         GAME_ID.toString(),
                         "occurredAt",
-                        OCCURRED_AT,
+                        OCCURRED_AT.toString(),
                         "version",
-                        1))
+                        "1"))
                 .build();
 
         var envelope = TimelineEventEnvelope.from(message);
@@ -47,27 +46,6 @@ class TimelineEventEnvelopeTest {
         assertThat(envelope)
                 .isEqualTo(new TimelineEventEnvelope(
                         EVENT_ID, "ParadoxCascaded", AGGREGATE_ID, "FutureEvent", GAME_ID, OCCURRED_AT, 1));
-    }
-
-    @Test
-    @DisplayName("reads occurredAt and version delivered as raw bytes by an untrusting header mapper")
-    void from_rawByteHeaders_parsesTypedFields() {
-        var message = MessageBuilder.withPayload((Object) "payload")
-                .copyHeaders(Map.of(
-                        "eventType", utf8("OutcomeApplied"),
-                        "eventId", utf8(EVENT_ID.toString()),
-                        "gameId", utf8(GAME_ID.toString()),
-                        "occurredAt", utf8("\"" + OCCURRED_AT + "\""),
-                        "version", utf8("1")))
-                .build();
-
-        var envelope = TimelineEventEnvelope.from(message);
-
-        assertThat(envelope.eventType()).isEqualTo("OutcomeApplied");
-        assertThat(envelope.eventId()).isEqualTo(EVENT_ID);
-        assertThat(envelope.gameId()).isEqualTo(GAME_ID);
-        assertThat(envelope.occurredAt()).isEqualTo(OCCURRED_AT);
-        assertThat(envelope.version()).isEqualTo(1);
     }
 
     @Test
@@ -87,10 +65,10 @@ class TimelineEventEnvelopeTest {
         assertThat(envelope.version()).isNull();
     }
 
-    @ParameterizedTest(name = "version header {0}")
-    @MethodSource("inexactVersions")
-    @DisplayName("a version that is not exactly an int reads as unsupported, never as a truncated one")
-    void from_inexactVersion_readsAsUnsupported(Object headerValue) {
+    @ParameterizedTest(name = "version header \"{0}\"")
+    @MethodSource("unparseableVersions")
+    @DisplayName("a version that does not parse as an int reads as unsupported, never as a truncated one")
+    void from_unparseableVersion_readsAsUnsupported(String headerValue) {
         var message = MessageBuilder.withPayload((Object) "payload")
                 .setHeader("eventId", EVENT_ID.toString())
                 .setHeader("version", headerValue)
@@ -102,9 +80,10 @@ class TimelineEventEnvelopeTest {
         assertThat(envelope.hasVersion(1)).isFalse();
     }
 
-    private static Stream<Object> inexactVersions() {
-        // Each would truncate to the supported version 1 and let the consumer claim an event it cannot handle.
-        return Stream.of(1.5d, 4294967297L, utf8("1.5"), utf8("not-a-number"));
+    private static Stream<String> unparseableVersions() {
+        // "1.5" and an out-of-int-range value would truncate/overflow to the supported version 1 and let the
+        // consumer claim an event it cannot handle.
+        return Stream.of("1.5", "4294967297", "not-a-number");
     }
 
     @Test
@@ -125,9 +104,5 @@ class TimelineEventEnvelopeTest {
                 EVENT_ID, "ParadoxCascaded", AGGREGATE_ID, "FutureEvent", null, OCCURRED_AT, 1);
 
         assertThat(envelope.matchesGameId(GAME_ID)).isFalse();
-    }
-
-    private static byte[] utf8(String value) {
-        return value.getBytes(StandardCharsets.UTF_8);
     }
 }

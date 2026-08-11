@@ -119,8 +119,8 @@ class TimelineEventsConsumerGroupsIT {
      * event body. {@code KafkaTemplate.send(Message)} would first run it through the configured JSON
      * <em>message converter</em> and then through the JSON <em>value serializer</em>, double-encoding the body —
      * which is not what {@code timeline-service}'s relay produces. Headers go through the same
-     * {@link JsonKafkaHeaderMapper} the producer side uses, so {@code occurredAt} and {@code version} travel with
-     * their real types.
+     * {@link JsonKafkaHeaderMapper} the producer side uses; every value is a plain String on the wire, matching
+     * {@code TimelineEventHeaders.populate}.
      */
     private void send(UUID gameId, Message<Object> event) {
         var producerRecord = new ProducerRecord<Object, Object>(TOPIC, null, gameId.toString(), event.getPayload());
@@ -164,8 +164,8 @@ class TimelineEventsConsumerGroupsIT {
                 .setHeader("aggregateId", gameId.toString())
                 .setHeader("aggregateType", aggregateType)
                 .setHeader("gameId", gameId.toString())
-                .setHeader("occurredAt", Instant.now())
-                .setHeader("version", 1)
+                .setHeader("occurredAt", Instant.now().toString())
+                .setHeader("version", "1")
                 .build();
     }
 }
