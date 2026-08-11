@@ -128,6 +128,25 @@ class SessionControllerTest {
     }
 
     @Test
+    @DisplayName(
+            "Given a plain Accept: application/json header, when DELETE /lobbies/{lobbyId}/players/me, then 204"
+                    + " (not 406)")
+    void leaveLobby_plainJsonAcceptHeader_returns204() throws Exception {
+        // given
+        given(leaveLobbyUseCase.handle(any())).willReturn(new LeaveLobbyUseCase.Result());
+
+        // when / then — the default MockMvc request above sends no Accept header at all, which does not
+        // reproduce this bug. A real HTTP client sends Accept: application/json, which previously 406'd
+        // because leaveLobby's generated produces clause was restricted to application/problem+json —
+        // synthesized solely from the 404 response, since the 204 correctly declares no content of its
+        // own to contribute to that union. See session-api 2.0.1.
+        mockMvc.perform(delete("/api/v1/lobbies/{lobbyId}/players/me", LOBBY_ID)
+                        .with(auth())
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isNoContent());
+    }
+
+    @Test
     @DisplayName("Given valid request, when POST /lobbies/{lobbyId}/start, then 202 with gameId")
     void startGame_validRequest_returns202() throws Exception {
         // given
