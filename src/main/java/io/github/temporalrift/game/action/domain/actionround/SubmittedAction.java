@@ -1,6 +1,7 @@
 package io.github.temporalrift.game.action.domain.actionround;
 
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 import io.github.temporalrift.game.action.domain.event.CardPlayed;
@@ -48,22 +49,25 @@ public sealed interface SubmittedAction permits SubmittedAction.CardAction, Subm
             UUID targetOutcomeId)
             implements SubmittedAction {
 
+        /** The only card types whose resolution (timeline-service's {@code applyShift}) needs two outcomes. */
+        private static final Set<CardType> TWO_OUTCOME_CARD_TYPES = Set.of(CardType.SWING, CardType.COLLIDE);
+
         @Override
         public void validate() {
             if (cardType == CardType.STABILIZE || cardType == CardType.DETONATE) {
                 throw new CardNotEligibleForActionRoundException(cardType);
             }
-            if (cardType != CardType.SWING) {
+            if (!TWO_OUTCOME_CARD_TYPES.contains(cardType)) {
                 return;
             }
             if (sourceOutcomeId == null) {
-                throw InvalidActionTargetException.swingRequiresSourceOutcome();
+                throw InvalidActionTargetException.requiresSourceOutcome(cardType);
             }
             if (targetOutcomeId == null) {
-                throw InvalidActionTargetException.swingRequiresTargetOutcome();
+                throw InvalidActionTargetException.requiresTargetOutcome(cardType);
             }
             if (sourceOutcomeId.equals(targetOutcomeId)) {
-                throw InvalidActionTargetException.swingRequiresDistinctOutcomes();
+                throw InvalidActionTargetException.requiresDistinctOutcomes(cardType);
             }
         }
 

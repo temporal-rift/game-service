@@ -41,6 +41,7 @@ import io.github.temporalrift.game.action.domain.activisterastate.ExposeAlreadyR
 import io.github.temporalrift.game.action.domain.paradoxresolutionphase.CardNotEligibleForParadoxResolutionException;
 import io.github.temporalrift.game.action.domain.paradoxresolutionphase.DuplicateParadoxResolutionSubmissionException;
 import io.github.temporalrift.game.action.domain.paradoxresolutionphase.ParadoxResolutionPhaseNotOpenException;
+import io.github.temporalrift.game.shared.CardType;
 import io.github.temporalrift.game.shared.PlayerPrincipal;
 import io.github.temporalrift.game.shared.infrastructure.config.PlayerAuthenticationToken;
 import io.github.temporalrift.game.shared.infrastructure.config.SecurityConfig;
@@ -366,7 +367,8 @@ class ActionControllerTest {
     @DisplayName("Given InvalidActionTargetException, then returns 422")
     void invalidActionTarget() throws Exception {
         // given
-        given(playCardUseCase.handle(any())).willThrow(InvalidActionTargetException.swingRequiresDistinctOutcomes());
+        given(playCardUseCase.handle(any()))
+                .willThrow(InvalidActionTargetException.requiresDistinctOutcomes(CardType.SWING));
 
         // when / then
         mockMvc.perform(post(
