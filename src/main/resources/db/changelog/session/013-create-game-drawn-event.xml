@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.29.xsd">
+    <changeSet id="session-013-create-game-drawn-event" author="game-service">
+        <createTable tableName="game_drawn_event">
+            <column name="game_id" type="UUID"><constraints nullable="false"/></column>
+            <column name="event_id" type="UUID"><constraints nullable="false"/></column>
+            <column name="card_id" type="UUID"><constraints nullable="false"/></column>
+            <column name="outcome_ids" type="VARCHAR(200)"><constraints nullable="false"/></column>
+        </createTable>
+        <addPrimaryKey tableName="game_drawn_event" columnNames="game_id,event_id"
+                constraintName="pk_game_drawn_event"/>
+        <addForeignKeyConstraint baseTableName="game_drawn_event" baseColumnNames="game_id"
+                constraintName="fk_game_drawn_event_game" referencedTableName="game" referencedColumnNames="id"/>
+    </changeSet>
+</databaseChangeLog>

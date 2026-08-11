@@ -11,6 +11,7 @@ import static org.mockito.Mockito.verify;
 
 import java.time.Clock;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -289,6 +290,7 @@ class EraSagaAdvancerTest {
                 List.of(
                         new PendingCarryOverEvent(firstCascadedEvent, CarryOverState.CASCADED),
                         new PendingCarryOverEvent(secondCascadedEvent, CarryOverState.CASCADED)),
+                Map.of(),
                 GameStatus.IN_PROGRESS);
         given(gameRepository.findByIdWithLock(GAME_ID)).willReturn(Optional.of(game));
         var captor = ArgumentCaptor.forClass(Object.class);

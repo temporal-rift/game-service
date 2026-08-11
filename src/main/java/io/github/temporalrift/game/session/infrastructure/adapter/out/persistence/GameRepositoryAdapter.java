@@ -3,6 +3,7 @@ package io.github.temporalrift.game.session.infrastructure.adapter.out.persisten
 import java.util.ArrayList;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Component;
 
@@ -46,6 +47,9 @@ class GameRepositoryAdapter implements GameRepository {
         entity.setPendingCarryOverEvents(game.pendingCarryOverEvents().stream()
                 .map(PendingCarryOverEventEmbeddable::fromDomain)
                 .toList());
+        entity.setDrawnEvents(game.drawnEvents().entrySet().stream()
+                .map(e -> DrawnEventEmbeddable.of(e.getKey(), e.getValue()))
+                .toList());
         return entity;
     }
 
@@ -59,6 +63,9 @@ class GameRepositoryAdapter implements GameRepository {
                 entity.getPendingCarryOverEvents().stream()
                         .map(PendingCarryOverEventEmbeddable::toDomain)
                         .toList(),
+                entity.getDrawnEvents().stream()
+                        .collect(Collectors.toMap(
+                                DrawnEventEmbeddable::eventId, DrawnEventEmbeddable::toDrawnFutureEvent)),
                 GameStatus.valueOf(entity.getStatus()));
     }
 }

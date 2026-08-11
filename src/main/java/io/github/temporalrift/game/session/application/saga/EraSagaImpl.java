@@ -4,6 +4,8 @@ import static org.springframework.transaction.annotation.Propagation.REQUIRES_NE
 
 import java.security.SecureRandom;
 import java.time.Clock;
+import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -19,6 +21,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import io.github.temporalrift.game.session.domain.event.GameEndedAbnormally;
+import io.github.temporalrift.game.session.domain.game.DrawnFutureEvent;
 import io.github.temporalrift.game.session.domain.game.Game;
 import io.github.temporalrift.game.session.domain.game.GameNotFoundException;
 import io.github.temporalrift.game.session.domain.game.InsufficientDeckException;
@@ -39,7 +42,14 @@ import io.github.temporalrift.game.shared.StartActionRoundRequested;
 class EraSagaImpl implements EraSaga {
 
     private static final Logger log = LoggerFactory.getLogger(EraSagaImpl.class);
-    private static final CardType[] CARD_POOL = CardType.values();
+
+    /**
+     * STABILIZE and DETONATE are reactive Paradox Resolution cards, dealt only when a Paradox Resolution
+     * phase opens — never into the ordinary action-round hand (GDD §3.1).
+     */
+    private static final CardType[] CARD_POOL = Arrays.stream(CardType.values())
+            .filter(type -> type != CardType.STABILIZE && type != CardType.DETONATE)
+            .toArray(CardType[]::new);
 
     private final GameRepository gameRepository;
     private final FutureEventCatalogPort futureEventCatalog;
@@ -77,9 +87,11 @@ class EraSagaImpl implements EraSaga {
 
         try {
             var drawnIds = game.startEra(carryOverEvents.size(), gameRules.eventsPerEra());
+            var freshDraw = toFreshFutureEvents(drawnIds);
+            game.recordDrawnEvents(freshDraw.eventIdToDrawnEvent());
             gameRepository.save(game);
 
-            publishEventsDrawn(game, gameId, eraNumber, drawnIds, carryOverEvents);
+            publishEventsDrawn(game, gameId, eraNumber, freshDraw.events(), carryOverEvents);
             playerIds.forEach(playerId -> publishHandDealt(game, gameId, eraNumber, playerId));
 
             stateManager.advanceTo(gameId, EraSagaStatus.WAITING_ROUND_1);
@@ -98,9 +110,12 @@ class EraSagaImpl implements EraSaga {
     }
 
     private void publishEventsDrawn(
-            Game game, UUID gameId, int eraNumber, List<UUID> drawnIds, List<PendingCarryOverEvent> carryOverEvents) {
-        var events = Stream.concat(
-                        toFreshFutureEvents(drawnIds).stream(), toCarryOverFutureEvents(carryOverEvents).stream())
+            Game game,
+            UUID gameId,
+            int eraNumber,
+            List<EventsDrawn.FutureEvent> freshEvents,
+            List<PendingCarryOverEvent> carryOverEvents) {
+        var events = Stream.concat(freshEvents.stream(), toCarryOverFutureEvents(game, carryOverEvents).stream())
                 .toList();
         var eventsDrawn = new EventsDrawn(gameId, eraNumber, events);
         eventPublisher.publish(DomainEventEnvelope.create(
@@ -108,47 +123,83 @@ class EraSagaImpl implements EraSaga {
         applicationEventPublisher.publishEvent(eventsDrawn);
     }
 
-    private List<EventsDrawn.FutureEvent> toFreshFutureEvents(List<UUID> ids) {
-        return futureEventCatalog.findByEventIds(ids).stream()
-                .map(def -> new EventsDrawn.FutureEvent(
-                        def.eventId(),
-                        def.title(),
-                        def.outcomes().stream()
-                                .map(o -> new EventsDrawn.Outcome(o.outcomeId(), o.description(), o.probability()))
-                                .toList(),
-                        CarryOverState.FRESH))
+    /**
+     * Mints a fresh, per-game-unique {@code eventId}/{@code outcomeId} for each drawn catalog card instead of
+     * reusing the catalog's own fixed IDs (shared across every game) — see the {@code future-event-draw-identity}
+     * capability. Returns the resulting {@code eventId -> DrawnFutureEvent} mapping alongside the events so the
+     * caller can record it on {@link Game} for later carry-over lookups.
+     */
+    private FreshDraw toFreshFutureEvents(List<UUID> ids) {
+        var eventIdToDrawnEvent = new HashMap<UUID, DrawnFutureEvent>();
+        var events = futureEventCatalog.findByEventIds(ids).stream()
+                .map(def -> {
+                    var eventId = UUID.randomUUID();
+                    var outcomes = def.outcomes().stream()
+                            .map(o -> new EventsDrawn.Outcome(UUID.randomUUID(), o.description(), o.probability()))
+                            .toList();
+                    eventIdToDrawnEvent.put(
+                            eventId,
+                            new DrawnFutureEvent(
+                                    def.eventId(),
+                                    outcomes.stream()
+                                            .map(EventsDrawn.Outcome::outcomeId)
+                                            .toList()));
+                    return new EventsDrawn.FutureEvent(eventId, def.title(), outcomes, CarryOverState.FRESH);
+                })
                 .toList();
+        return new FreshDraw(events, Map.copyOf(eventIdToDrawnEvent));
     }
 
-    private List<EventsDrawn.FutureEvent> toCarryOverFutureEvents(List<PendingCarryOverEvent> carryOverEvents) {
-        Map<UUID, io.github.temporalrift.game.session.domain.futureevent.FutureEventDefinition> definitionsById =
+    private record FreshDraw(List<EventsDrawn.FutureEvent> events, Map<UUID, DrawnFutureEvent> eventIdToDrawnEvent) {}
+
+    /**
+     * A carried-over event republishes under the same {@code eventId} and the same {@code outcomeId}s it was
+     * originally drawn with — never freshly minted ones. Timeline-service never re-drafts a carried-over event's
+     * aggregate (its era-index entry is pre-inserted for the next era by {@code ResolveEraCommandHandler}/
+     * {@code ParadoxResolutionSagaImpl}), so its outcome IDs never change after the first draft; republishing with
+     * different IDs would make a subsequent action's {@code targetOutcomeId} pass game-service's own validation
+     * but fail against timeline-service's actual aggregate.
+     */
+    private List<EventsDrawn.FutureEvent> toCarryOverFutureEvents(
+            Game game, List<PendingCarryOverEvent> carryOverEvents) {
+        Map<UUID, io.github.temporalrift.game.session.domain.futureevent.FutureEventDefinition> definitionsByCardId =
                 futureEventCatalog
                         .findByEventIds(carryOverEvents.stream()
-                                .map(PendingCarryOverEvent::eventId)
+                                .map(carryOverEvent -> game.drawnEvent(carryOverEvent.eventId())
+                                        .cardId())
                                 .toList())
                         .stream()
                         .collect(Collectors.toMap(
                                 io.github.temporalrift.game.session.domain.futureevent.FutureEventDefinition::eventId,
                                 Function.identity()));
         return carryOverEvents.stream()
-                .map(carryOverEvent ->
-                        toFutureEvent(definitionsById.get(carryOverEvent.eventId()), carryOverEvent.carryOverState()))
+                .map(carryOverEvent -> {
+                    var drawnEvent = game.drawnEvent(carryOverEvent.eventId());
+                    return toFutureEvent(
+                            carryOverEvent.eventId(),
+                            drawnEvent.outcomeIds(),
+                            definitionsByCardId.get(drawnEvent.cardId()),
+                            carryOverEvent.carryOverState());
+                })
                 .toList();
     }
 
     private EventsDrawn.FutureEvent toFutureEvent(
+            UUID eventId,
+            List<UUID> outcomeIds,
             io.github.temporalrift.game.session.domain.futureevent.FutureEventDefinition definition,
             CarryOverState carryOverState) {
         if (definition == null) {
-            throw new IllegalStateException("Missing future event definition for carry-over event");
+            throw new IllegalStateException("Missing future event definition for carry-over event " + eventId);
         }
-        return new EventsDrawn.FutureEvent(
-                definition.eventId(),
-                definition.title(),
-                definition.outcomes().stream()
-                        .map(o -> new EventsDrawn.Outcome(o.outcomeId(), o.description(), o.probability()))
-                        .toList(),
-                carryOverState);
+        var catalogOutcomes = definition.outcomes();
+        var outcomes = IntStream.range(0, catalogOutcomes.size())
+                .mapToObj(i -> new EventsDrawn.Outcome(
+                        outcomeIds.get(i),
+                        catalogOutcomes.get(i).description(),
+                        catalogOutcomes.get(i).probability()))
+                .toList();
+        return new EventsDrawn.FutureEvent(eventId, definition.title(), outcomes, carryOverState);
     }
 
     private void publishHandDealt(Game game, UUID gameId, int eraNumber, UUID playerId) {

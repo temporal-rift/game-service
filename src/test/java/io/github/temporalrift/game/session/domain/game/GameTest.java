@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatNullPointerException;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.IntStream;
 
@@ -149,6 +150,41 @@ class GameTest {
 
         assertThat(game.drainPendingCarryOverEvents()).containsExactlyElementsOf(carryOvers);
         assertThat(game.pendingCarryOverEvents()).isEmpty();
+    }
+
+    // --- recordDrawnEvents() / drawnEvent() ---
+
+    @Test
+    void recordDrawnEvents_thenDrawnEvent_returnsWhatWasRecorded() {
+        var game = newGame();
+        var eventId = UUID.randomUUID();
+        var drawnEvent = new DrawnFutureEvent(UUID.randomUUID(), List.of(UUID.randomUUID(), UUID.randomUUID()));
+
+        game.recordDrawnEvents(Map.of(eventId, drawnEvent));
+
+        assertThat(game.drawnEvent(eventId)).isEqualTo(drawnEvent);
+        assertThat(game.drawnEvents()).containsExactly(Map.entry(eventId, drawnEvent));
+    }
+
+    @Test
+    void recordDrawnEvents_acrossTwoEras_mergesRatherThanReplaces() {
+        var game = newGame();
+        var firstEventId = UUID.randomUUID();
+        var firstDrawn = new DrawnFutureEvent(UUID.randomUUID(), List.of(UUID.randomUUID()));
+        var secondEventId = UUID.randomUUID();
+        var secondDrawn = new DrawnFutureEvent(UUID.randomUUID(), List.of(UUID.randomUUID()));
+
+        game.recordDrawnEvents(Map.of(firstEventId, firstDrawn));
+        game.recordDrawnEvents(Map.of(secondEventId, secondDrawn));
+
+        assertThat(game.drawnEvent(firstEventId)).isEqualTo(firstDrawn);
+        assertThat(game.drawnEvent(secondEventId)).isEqualTo(secondDrawn);
+    }
+
+    @Test
+    void drawnEvent_unrecordedEventId_throws() {
+        var game = newGame();
+        assertThatExceptionOfType(IllegalStateException.class).isThrownBy(() -> game.drawnEvent(UUID.randomUUID()));
     }
 
     @Test

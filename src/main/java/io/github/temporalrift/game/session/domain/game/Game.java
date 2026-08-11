@@ -2,7 +2,9 @@ package io.github.temporalrift.game.session.domain.game;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -16,6 +18,9 @@ public class Game extends AggregateRoot {
     private final UUID lobbyId;
     private final List<UUID> eventDeck;
     private final List<PendingCarryOverEvent> pendingCarryOverEvents;
+    /** Every drawn event's per-game eventId, mapped to the catalog card and outcome IDs it was drawn with. */
+    private final Map<UUID, DrawnFutureEvent> drawnEvents;
+
     private int eraCounter;
     private int cascadedParadoxCounter;
     private GameStatus status;
@@ -25,6 +30,7 @@ public class Game extends AggregateRoot {
         this.lobbyId = Objects.requireNonNull(lobbyId, "lobbyId must not be null");
         this.eventDeck = new ArrayList<>(Objects.requireNonNull(eventDeck, "eventDeck must not be null"));
         this.pendingCarryOverEvents = new ArrayList<>();
+        this.drawnEvents = new HashMap<>();
         this.eraCounter = 0;
         this.cascadedParadoxCounter = 0;
         this.status = GameStatus.IN_PROGRESS;
@@ -37,11 +43,13 @@ public class Game extends AggregateRoot {
             int eraCounter,
             int cascadedParadoxCounter,
             List<PendingCarryOverEvent> pendingCarryOverEvents,
+            Map<UUID, DrawnFutureEvent> drawnEvents,
             GameStatus status) {
         this.id = id;
         this.lobbyId = lobbyId;
         this.eventDeck = new ArrayList<>(eventDeck);
         this.pendingCarryOverEvents = new ArrayList<>(pendingCarryOverEvents);
+        this.drawnEvents = new HashMap<>(drawnEvents);
         this.eraCounter = eraCounter;
         this.cascadedParadoxCounter = cascadedParadoxCounter;
         this.status = status;
@@ -54,7 +62,7 @@ public class Game extends AggregateRoot {
             int eraCounter,
             int cascadedParadoxCounter,
             GameStatus status) {
-        return reconstitute(id, lobbyId, eventDeck, eraCounter, cascadedParadoxCounter, List.of(), status);
+        return reconstitute(id, lobbyId, eventDeck, eraCounter, cascadedParadoxCounter, List.of(), Map.of(), status);
     }
 
     public static Game reconstitute(
@@ -64,6 +72,7 @@ public class Game extends AggregateRoot {
             int eraCounter,
             int cascadedParadoxCounter,
             List<PendingCarryOverEvent> pendingCarryOverEvents,
+            Map<UUID, DrawnFutureEvent> drawnEvents,
             GameStatus status) {
         return new Game(
                 Objects.requireNonNull(id, "id must not be null"),
@@ -72,6 +81,7 @@ public class Game extends AggregateRoot {
                 eraCounter,
                 cascadedParadoxCounter,
                 Objects.requireNonNull(pendingCarryOverEvents, "pendingCarryOverEvents must not be null"),
+                Objects.requireNonNull(drawnEvents, "drawnEvents must not be null"),
                 Objects.requireNonNull(status, "status must not be null"));
     }
 
@@ -116,6 +126,25 @@ public class Game extends AggregateRoot {
         requireInProgress();
         pendingCarryOverEvents.clear();
         pendingCarryOverEvents.addAll(Objects.requireNonNull(carryOverEvents, "carryOverEvents must not be null"));
+    }
+
+    /**
+     * Records this era's freshly-drawn events, merged into every event drawn so far this game — a game only ever
+     * draws a bounded, small number of events, so entries for events that have already resolved are left in place
+     * rather than pruned.
+     */
+    public void recordDrawnEvents(Map<UUID, DrawnFutureEvent> eventIdToDrawnEvent) {
+        requireInProgress();
+        drawnEvents.putAll(Objects.requireNonNull(eventIdToDrawnEvent, "eventIdToDrawnEvent must not be null"));
+    }
+
+    /** The catalog card and original per-game outcome IDs a drawn event's {@code eventId} was drawn with. */
+    public DrawnFutureEvent drawnEvent(UUID eventId) {
+        var drawnEvent = drawnEvents.get(eventId);
+        if (drawnEvent == null) {
+            throw new IllegalStateException("No drawn-event record for event " + eventId);
+        }
+        return drawnEvent;
     }
 
     public List<PendingCarryOverEvent> drainPendingCarryOverEvents() {
@@ -175,5 +204,9 @@ public class Game extends AggregateRoot {
 
     public List<PendingCarryOverEvent> pendingCarryOverEvents() {
         return Collections.unmodifiableList(pendingCarryOverEvents);
+    }
+
+    public Map<UUID, DrawnFutureEvent> drawnEvents() {
+        return Collections.unmodifiableMap(drawnEvents);
     }
 }

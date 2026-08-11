@@ -44,6 +44,10 @@ class GameJpaEntity {
     @OrderColumn(name = "list_order")
     private List<PendingCarryOverEventEmbeddable> pendingCarryOverEvents = new ArrayList<>();
 
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "game_drawn_event", joinColumns = @JoinColumn(name = "game_id"))
+    private List<DrawnEventEmbeddable> drawnEvents = new ArrayList<>();
+
     protected GameJpaEntity() {}
 
     UUID getId() {
@@ -100,5 +104,13 @@ class GameJpaEntity {
 
     void setPendingCarryOverEvents(List<PendingCarryOverEventEmbeddable> pendingCarryOverEvents) {
         this.pendingCarryOverEvents = new ArrayList<>(pendingCarryOverEvents);
+    }
+
+    List<DrawnEventEmbeddable> getDrawnEvents() {
+        return drawnEvents;
+    }
+
+    void setDrawnEvents(List<DrawnEventEmbeddable> drawnEvents) {
+        this.drawnEvents = new ArrayList<>(drawnEvents);
     }
 }
