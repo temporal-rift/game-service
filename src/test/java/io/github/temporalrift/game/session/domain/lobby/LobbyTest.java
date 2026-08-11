@@ -285,7 +285,8 @@ class LobbyTest {
         assertThat(lobby.status()).isEqualTo(LobbyStatus.CLOSED);
 
         // when / then
-        assertThatExceptionOfType(LobbyNotFoundException.class).isThrownBy(() -> lobby.join(player()));
+        var latePlayer = player();
+        assertThatExceptionOfType(LobbyNotFoundException.class).isThrownBy(() -> lobby.join(latePlayer));
     }
 
     @Test
