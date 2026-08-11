@@ -128,9 +128,8 @@ class SessionControllerTest {
     }
 
     @Test
-    @DisplayName(
-            "Given a plain Accept: application/json header, when DELETE /lobbies/{lobbyId}/players/me, then 204"
-                    + " (not 406)")
+    @DisplayName("Given a plain Accept: application/json header, when DELETE /lobbies/{lobbyId}/players/me, then 204"
+            + " (not 406)")
     void leaveLobby_plainJsonAcceptHeader_returns204() throws Exception {
         // given
         given(leaveLobbyUseCase.handle(any())).willReturn(new LeaveLobbyUseCase.Result());
