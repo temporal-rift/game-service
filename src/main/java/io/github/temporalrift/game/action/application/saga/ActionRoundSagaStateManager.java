@@ -73,12 +73,17 @@ class ActionRoundSagaStateManager {
                 .ifPresent(state -> repository.save(state.withStatus(ActionRoundSagaStatus.CLOSING)));
     }
 
+    // A timer-expiry close never runs markSubmitted for players who didn't submit, so their ids are
+    // still sitting in pendingPlayerIds here — unlike ActionRound.close(), which does clear its own
+    // copy. GetRoundStatusQueryHandler prefers this saga state over the round's, so leaving it
+    // unset made a closed round permanently report the skipped players as still pending.
     @Transactional
     void complete(UUID gameId, int eraNumber, int roundNumber) {
         repository
                 .findByGameIdAndEraNumberAndRoundNumber(gameId, eraNumber, roundNumber)
                 .filter(state -> state.status() != ActionRoundSagaStatus.COMPLETED)
-                .ifPresent(state -> repository.save(state.withStatus(ActionRoundSagaStatus.COMPLETED)));
+                .ifPresent(state -> repository.save(
+                        state.withStatus(ActionRoundSagaStatus.COMPLETED).withPendingPlayerIds(List.of())));
     }
 
     Optional<ActionRoundSagaState> findBySagaId(UUID sagaId) {
