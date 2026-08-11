@@ -166,9 +166,15 @@ public class Lobby extends AggregateRoot {
         status = LobbyStatus.STARTED;
     }
 
+    // A closed lobby is gone from the caller's perspective — indistinguishable from one that
+    // never existed — so it must not surface as "already started" (409). Only STARTED does.
     private void requireWaiting() {
-        if (status != LobbyStatus.WAITING) {
-            throw new LobbyAlreadyStartedException();
+        switch (status) {
+            case WAITING -> {
+                // ok
+            }
+            case STARTED -> throw new LobbyAlreadyStartedException();
+            case CLOSED -> throw new LobbyNotFoundException(id);
         }
     }
 
