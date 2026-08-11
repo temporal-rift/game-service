@@ -58,7 +58,7 @@
         <action-event.version>1.1.0</action-event.version>
         <timeline-event.version>2.0.0</timeline-event.version>
         <scoring-event.version>1.0.1</scoring-event.version>
-        <session-api.version>2.0.0</session-api.version>
+        <session-api.version>2.0.1</session-api.version>
         <action-api.version>2.1.0</action-api.version>
         <scoring-api.version>2.0.0</scoring-api.version>
         <spring-retry.version>2.0.13</spring-retry.version>
