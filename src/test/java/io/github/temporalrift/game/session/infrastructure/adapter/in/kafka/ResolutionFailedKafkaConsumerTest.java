@@ -101,7 +101,7 @@ class ResolutionFailedKafkaConsumerTest {
         var message = MessageBuilder.withPayload((Object) "{}".getBytes(StandardCharsets.UTF_8))
                 .setHeader("eventType", "ResolutionFailed")
                 .setHeader("gameId", GAME_ID.toString())
-                .setHeader("version", 1)
+                .setHeader("version", "1")
                 .build();
 
         // when
@@ -184,8 +184,8 @@ class ResolutionFailedKafkaConsumerTest {
                 .setHeader("aggregateId", AFFECTED_EVENT_ID.toString())
                 .setHeader("aggregateType", "FutureEvent")
                 .setHeader("gameId", GAME_ID.toString())
-                .setHeader("occurredAt", Instant.EPOCH)
-                .setHeader("version", version)
+                .setHeader("occurredAt", Instant.EPOCH.toString())
+                .setHeader("version", String.valueOf(version))
                 .build();
     }
 }

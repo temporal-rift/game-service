@@ -126,7 +126,7 @@ class TimelineScoringKafkaConsumerTest {
         var message = MessageBuilder.withPayload((Object) json(outcomeApplied()).getBytes(StandardCharsets.UTF_8))
                 .setHeader("eventType", "OutcomeApplied")
                 .setHeader("gameId", GAME_ID.toString())
-                .setHeader("version", 1)
+                .setHeader("version", "1")
                 .build();
 
         consumer.handle(message);
@@ -143,7 +143,7 @@ class TimelineScoringKafkaConsumerTest {
                 .setHeader("eventType", "OutcomeApplied")
                 .setHeader("eventId", UUID.randomUUID().toString())
                 .setHeader("gameId", GAME_ID.toString())
-                .setHeader("version", 1)
+                .setHeader("version", "1")
                 .build();
 
         consumer.handle(message);
@@ -296,8 +296,8 @@ class TimelineScoringKafkaConsumerTest {
                 .setHeader("aggregateId", UUID.randomUUID().toString())
                 .setHeader("aggregateType", "FutureEvent")
                 .setHeader("gameId", GAME_ID.toString())
-                .setHeader("occurredAt", Instant.parse("2026-08-09T12:00:00Z"))
-                .setHeader("version", version)
+                .setHeader("occurredAt", Instant.parse("2026-08-09T12:00:00Z").toString())
+                .setHeader("version", String.valueOf(version))
                 .build();
     }
 }

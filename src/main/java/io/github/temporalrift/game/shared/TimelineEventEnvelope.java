@@ -1,6 +1,5 @@
 package io.github.temporalrift.game.shared;
 
-import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -13,10 +12,9 @@ import org.springframework.messaging.Message;
  * body field. The record body carries only the typed event payload, so {@code eventType} here is the contract's
  * plain AsyncAPI message name and the sole routing discriminator.
  *
- * <p>Producers stamp the UUID fields as plain strings and {@code occurredAt}/{@code version} as their own types, but
- * the header mapper only reconstructs non-String types for trusted packages — every field is therefore read
- * defensively, tolerating the typed value, its {@code String} rendering, and the raw {@code byte[]} the mapper
- * delivers when it does not trust the type.
+ * <p>Every header here travels as a plain String (TimelineEventHeaders.populate calls {@code .toString()} /
+ * {@code String.valueOf()} on each value before putting it on the generated producer's header map) — none arrive as
+ * their native type, so all of them must be parsed rather than cast.
  */
 public record TimelineEventEnvelope(
         UUID eventId,
@@ -54,72 +52,38 @@ public record TimelineEventEnvelope(
     }
 
     public static TimelineEventEnvelope from(Message<?> message) {
+        var headers = message.getHeaders();
         return new TimelineEventEnvelope(
-                asUuid(header(message, "eventId")),
-                asString(header(message, "eventType")),
-                asUuid(header(message, "aggregateId")),
-                asString(header(message, "aggregateType")),
-                asUuid(header(message, "gameId")),
-                asInstant(header(message, "occurredAt")),
-                asInteger(header(message, "version")));
+                asUuid(headers.get("eventId", String.class)),
+                headers.get("eventType", String.class),
+                asUuid(headers.get("aggregateId", String.class)),
+                headers.get("aggregateType", String.class),
+                asUuid(headers.get("gameId", String.class)),
+                asInstant(headers.get("occurredAt", String.class)),
+                asInteger(headers.get("version", String.class)));
     }
 
-    private static Object header(Message<?> message, String name) {
-        return message.getHeaders().get(name);
+    private static UUID asUuid(String value) {
+        return value == null ? null : UUID.fromString(value);
     }
 
-    private static String asString(Object value) {
-        return switch (value) {
-            case String text -> text;
-            case byte[] bytes -> new String(bytes, StandardCharsets.UTF_8);
-            case null, default -> null;
-        };
-    }
-
-    private static UUID asUuid(Object value) {
-        var text = asString(value);
-        return text == null ? null : UUID.fromString(text);
-    }
-
-    private static Instant asInstant(Object value) {
-        return switch (value) {
-            case Instant instant -> instant;
-            case null -> null;
-            default -> {
-                var text = asString(value);
-                // A JSON-serialized Instant header arrives quoted; strip the quotes before parsing.
-                yield text == null ? null : Instant.parse(text.replace("\"", ""));
-            }
-        };
+    private static Instant asInstant(String value) {
+        return value == null ? null : Instant.parse(value);
     }
 
     /**
-     * Yields null for anything that is not exactly an {@code int}. Truncating a fractional, out-of-range, or
-     * unparseable version would silently turn an unsupported envelope into the supported one, and the consumer
-     * would claim an event it cannot handle — the opposite of the skip-without-claiming rule.
+     * Yields null for an unparseable version rather than throwing. Silently truncating would turn an unsupported
+     * envelope into the supported one, and the consumer would claim an event it cannot handle — the opposite of the
+     * skip-without-claiming rule.
      */
-    private static Integer asInteger(Object value) {
-        return switch (value) {
-            case Integer version -> version;
-            case Number number -> isExactInt(number) ? number.intValue() : null;
-            case null -> null;
-            default -> parseInt(asString(value));
-        };
-    }
-
-    private static boolean isExactInt(Number number) {
-        var asLong = number.longValue();
-        return asLong == (int) asLong && number.doubleValue() == asLong;
-    }
-
-    private static Integer parseInt(String text) {
-        if (text == null) {
+    private static Integer asInteger(String value) {
+        if (value == null) {
             return null;
         }
         try {
-            return Integer.valueOf(text.trim());
+            return Integer.valueOf(value);
         } catch (NumberFormatException _) {
-            log.warn("Unparseable version header '{}' on timeline.events — treating as unsupported", text);
+            log.warn("Unparseable version header '{}' on timeline.events — treating as unsupported", value);
             return null;
         }
     }
