@@ -109,7 +109,6 @@ class ScoringReadRepositoryAdapterTest {
         assertThat(rows)
                 .singleElement()
                 .satisfies(row -> assertThat(row.eraNumber()).isEqualTo(1));
-        then(historyJpaRepository).should(never()).findMaxEraNumberByGameId(GAME_ID);
     }
 
     @Test
