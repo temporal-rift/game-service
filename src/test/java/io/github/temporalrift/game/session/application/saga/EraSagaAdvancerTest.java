@@ -38,6 +38,7 @@ import io.github.temporalrift.game.session.domain.game.GameProgress;
 import io.github.temporalrift.game.session.domain.game.GameStatus;
 import io.github.temporalrift.game.session.domain.game.PendingCarryOverEvent;
 import io.github.temporalrift.game.session.domain.port.out.EraSagaRepository;
+import io.github.temporalrift.game.session.domain.port.out.EraSagaScoresUpdatedInboxRepository;
 import io.github.temporalrift.game.session.domain.port.out.GameRepository;
 import io.github.temporalrift.game.session.domain.port.out.SessionEventPublisher;
 import io.github.temporalrift.game.session.domain.port.out.SessionGameRulesPort;
@@ -63,6 +64,9 @@ class EraSagaAdvancerTest {
 
     @Mock
     EraSagaRepository eraSagaRepository;
+
+    @Mock
+    EraSagaScoresUpdatedInboxRepository scoresUpdatedInbox;
 
     @Mock
     GameRepository gameRepository;
@@ -426,18 +430,20 @@ class EraSagaAdvancerTest {
     // ─── helpers ─────────────────────────────────────────────────────────────
 
     @Test
-    @DisplayName("saga not in WAITING_SCORES — handleScoresUpdated does nothing")
-    void handleScoresUpdated_wrongStatus_ignored() {
-        // given
+    @DisplayName("saga not in WAITING_SCORES — handleScoresUpdated does nothing but still records the fact")
+    void handleScoresUpdated_wrongStatus_ignoredButRecorded() {
+        // given — ActionRoundClosed (round 3) hasn't yet set WAITING_SCORES when ScoresUpdated arrives
         var state = new EraSagaState(GAME_ID, 1, EraSagaStatus.WAITING_ROUND_3, PLAYER_IDS);
         given(eraSagaRepository.findByGameIdWithLock(GAME_ID)).willReturn(Optional.of(state));
+        var su = noWinnerScores();
 
         // when
-        advancer.handleScoresUpdated(GAME_ID, noWinnerScores());
+        advancer.handleScoresUpdated(GAME_ID, su);
 
-        // then
+        // then — no immediate transition, but the fact is durably recorded for EraSagaScoresUpdatedSweep
         then(eraSagaRepository).should(never()).save(any());
         then(eventPublisher).should(never()).publish(any());
+        then(scoresUpdatedInbox).should().record(su);
     }
 
     @Test

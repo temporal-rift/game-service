@@ -25,6 +25,7 @@
     <include file="db/changelog/session/011-create-session-activist-declaration.xml"/>
     <include file="db/changelog/session/012-create-game-pending-carry-over-entry.xml"/>
     <include file="db/changelog/session/013-create-game-drawn-event.xml"/>
+    <include file="db/changelog/session/014-create-era-saga-scores-updated-inbox.xml"/>
 
     <!-- Action module -->
     <include file="db/changelog/action/001-create-action-round.xml"/>
