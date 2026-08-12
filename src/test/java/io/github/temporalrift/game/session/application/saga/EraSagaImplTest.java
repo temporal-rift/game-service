@@ -237,7 +237,7 @@ class EraSagaImplTest {
                 .flatMap(hand -> hand.cards().stream())
                 .map(HandDealt.CardInstance::cardType)
                 .toList();
-        assertThat(dealtCardTypes).doesNotContain(CardType.STABILIZE, CardType.DETONATE);
+        assertThat(dealtCardTypes).isNotEmpty().doesNotContain(CardType.STABILIZE, CardType.DETONATE);
     }
 
     @Test
