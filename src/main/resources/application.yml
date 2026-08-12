@@ -104,6 +104,7 @@ game:
     event-resubmit-interval: 30s
     action-round-sweep-interval: 1s
     reconnect-sweep-interval: 1s
+    scoring-completion-sweep-interval: 1s
   rules:
     min-players: 3
     max-players: 5

@@ -23,7 +23,11 @@ class IncompleteEventPublicationResubmitterTest {
         var resubmitter = new IncompleteEventPublicationResubmitter(
                 incompletePublications,
                 new TimerProperties(
-                        Duration.ofMinutes(2), Duration.ofSeconds(30), Duration.ofSeconds(1), Duration.ofSeconds(1)));
+                        Duration.ofMinutes(2),
+                        Duration.ofSeconds(30),
+                        Duration.ofSeconds(1),
+                        Duration.ofSeconds(1),
+                        Duration.ofSeconds(1)));
 
         resubmitter.resubmitStale();
 

@@ -9,7 +9,7 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
 import org.springframework.validation.annotation.Validated;
 
 /**
- * The three interval fields are read by {@code @Scheduled} through raw {@code ${game.timers.*}}
+ * The interval fields are read by {@code @Scheduled} through raw {@code ${game.timers.*}}
  * placeholders, which bypass this record entirely — the yml keys are therefore mandatory, and a
  * {@code @DefaultValue} here would never apply to the schedules. The fields exist so startup
  * validation still bounds the configured values.
@@ -23,4 +23,6 @@ record TimerProperties(
 
         @NotNull @DurationMin(seconds = 1) Duration actionRoundSweepInterval,
 
-        @NotNull @DurationMin(seconds = 1) Duration reconnectSweepInterval) {}
+        @NotNull @DurationMin(seconds = 1) Duration reconnectSweepInterval,
+
+        @NotNull @DurationMin(seconds = 1) Duration scoringCompletionSweepInterval) {}

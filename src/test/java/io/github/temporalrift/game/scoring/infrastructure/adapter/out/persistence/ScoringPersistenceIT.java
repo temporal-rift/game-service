@@ -21,9 +21,12 @@ import io.github.temporalrift.game.PostgresTestcontainersConfiguration;
 import io.github.temporalrift.game.scoring.domain.context.ChainScoringFact;
 import io.github.temporalrift.game.scoring.domain.context.EraScoringContextNotFoundException;
 import io.github.temporalrift.game.scoring.domain.context.ParadoxCascadeScoringFact;
+import io.github.temporalrift.game.scoring.domain.context.PendingEraScoringCompletion;
 import io.github.temporalrift.game.scoring.domain.context.PlayerFaction;
+import io.github.temporalrift.game.scoring.domain.event.EraResolutionCompleted;
 import io.github.temporalrift.game.scoring.domain.playerscore.ScoreReason;
 import io.github.temporalrift.game.scoring.domain.port.out.EraScoringContextRepository;
+import io.github.temporalrift.game.scoring.domain.port.out.ScoringEraCompletionRepository;
 import io.github.temporalrift.game.shared.Faction;
 
 @DataJpaTest
@@ -33,12 +36,16 @@ import io.github.temporalrift.game.shared.Faction;
 @Import({
     PostgresTestcontainersConfiguration.class,
     EraScoringContextRepositoryAdapter.class,
+    ScoringEraCompletionRepositoryAdapter.class,
     ScoringPersistenceIT.JacksonTestConfiguration.class
 })
 class ScoringPersistenceIT {
 
     @Autowired
     EraScoringContextRepository contextRepository;
+
+    @Autowired
+    ScoringEraCompletionRepository eraCompletionRepository;
 
     @Autowired
     ScoringContextChainFactJpaRepository chainFactJpaRepository;
@@ -143,6 +150,24 @@ class ScoringPersistenceIT {
 
         var secondContext = contextRepository.getRequired(gameId, 2);
         assertThat(secondContext.paradoxCascadeFacts()).isEmpty();
+    }
+
+    @Test
+    void findResolvedErasNotYetScored_returnsOnlyResolvedErasWithoutACompletionRow() {
+        var scoredGame = UUID.randomUUID();
+        var stuckGame = UUID.randomUUID();
+        var unresolvedGame = UUID.randomUUID();
+        contextRepository.saveEraResolutionCompleted(new EraResolutionCompleted(scoredGame, 1, List.of()));
+        eraCompletionRepository.tryMarkScoringComplete(scoredGame, 1);
+        contextRepository.saveEraResolutionCompleted(new EraResolutionCompleted(stuckGame, 1, List.of()));
+        // unresolvedGame has no resolution barrier at all — must not appear either.
+
+        var pending = contextRepository.findResolvedErasNotYetScored();
+
+        assertThat(pending)
+                .contains(new PendingEraScoringCompletion(stuckGame, 1))
+                .noneMatch(entry -> entry.gameId().equals(scoredGame))
+                .noneMatch(entry -> entry.gameId().equals(unresolvedGame));
     }
 
     @TestConfiguration(proxyBeanMethods = false)
