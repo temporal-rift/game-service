@@ -21,6 +21,7 @@ class OperationalTimerPropertiesTest {
                         "game.timers.action-round-sweep-interval=1s",
                         "game.timers.reconnect-sweep-interval=1s",
                         "game.timers.scoring-completion-sweep-interval=1s",
+                        "game.timers.era-saga-scores-updated-sweep-interval=1s",
                         "game.rate-limit.requests-per-minute=120",
                         "game.rate-limit.cleanup-interval=60s")
                 .run(context -> assertThat(context).hasFailed());
@@ -35,6 +36,7 @@ class OperationalTimerPropertiesTest {
                         "game.timers.action-round-sweep-interval=1s",
                         "game.timers.reconnect-sweep-interval=1s",
                         "game.timers.scoring-completion-sweep-interval=1s",
+                        "game.timers.era-saga-scores-updated-sweep-interval=1s",
                         "game.rate-limit.requests-per-minute=120",
                         "game.rate-limit.cleanup-interval=999ms")
                 .run(context -> assertThat(context).hasFailed());
