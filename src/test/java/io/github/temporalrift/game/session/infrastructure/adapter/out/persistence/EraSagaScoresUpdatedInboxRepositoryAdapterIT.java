@@ -48,7 +48,7 @@ class EraSagaScoresUpdatedInboxRepositoryAdapterIT {
         eraSagaRepository.save(new EraSagaState(gameId, 1, EraSagaStatus.WAITING_SCORES, List.of(UUID.randomUUID())));
         var su = scoresUpdated(gameId, 1);
 
-        scoresUpdatedInbox.record(su);
+        scoresUpdatedInbox.save(su);
 
         assertThat(scoresUpdatedInbox.findRecordedButNotAdvanced()).containsExactly(su);
     }
@@ -57,7 +57,7 @@ class EraSagaScoresUpdatedInboxRepositoryAdapterIT {
     void findRecordedButNotAdvanced_sagaAlreadyAdvanced_returnsNothing() {
         var gameId = UUID.randomUUID();
         eraSagaRepository.save(new EraSagaState(gameId, 1, EraSagaStatus.COMPLETED, List.of(UUID.randomUUID())));
-        scoresUpdatedInbox.record(scoresUpdated(gameId, 1));
+        scoresUpdatedInbox.save(scoresUpdated(gameId, 1));
 
         assertThat(scoresUpdatedInbox.findRecordedButNotAdvanced()).isEmpty();
     }
@@ -76,7 +76,7 @@ class EraSagaScoresUpdatedInboxRepositoryAdapterIT {
         // pending era-2 work
         var gameId = UUID.randomUUID();
         eraSagaRepository.save(new EraSagaState(gameId, 2, EraSagaStatus.WAITING_SCORES, List.of(UUID.randomUUID())));
-        scoresUpdatedInbox.record(scoresUpdated(gameId, 1));
+        scoresUpdatedInbox.save(scoresUpdated(gameId, 1));
 
         assertThat(scoresUpdatedInbox.findRecordedButNotAdvanced()).isEmpty();
     }
@@ -87,8 +87,8 @@ class EraSagaScoresUpdatedInboxRepositoryAdapterIT {
         eraSagaRepository.save(new EraSagaState(gameId, 1, EraSagaStatus.WAITING_SCORES, List.of(UUID.randomUUID())));
         var su = scoresUpdated(gameId, 1);
 
-        scoresUpdatedInbox.record(su);
-        scoresUpdatedInbox.record(su);
+        scoresUpdatedInbox.save(su);
+        scoresUpdatedInbox.save(su);
 
         assertThat(scoresUpdatedInbox.findRecordedButNotAdvanced()).hasSize(1);
     }

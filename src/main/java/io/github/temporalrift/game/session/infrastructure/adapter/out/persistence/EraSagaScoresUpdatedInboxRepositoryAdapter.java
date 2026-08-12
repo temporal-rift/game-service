@@ -22,7 +22,7 @@ class EraSagaScoresUpdatedInboxRepositoryAdapter implements EraSagaScoresUpdated
     }
 
     @Override
-    public void record(ScoresUpdated event) {
+    public void save(ScoresUpdated event) {
         // Native ON CONFLICT DO NOTHING, not check-then-insert: a failed statement inside this
         // @Transactional(REQUIRES_NEW) handler aborts the whole transaction even if the Java exception
         // is caught, poisoning the era-saga transition attempt that follows in the same call.

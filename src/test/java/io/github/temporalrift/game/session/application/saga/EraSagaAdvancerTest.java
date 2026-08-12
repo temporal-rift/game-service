@@ -443,7 +443,7 @@ class EraSagaAdvancerTest {
         // then — no immediate transition, but the fact is durably recorded for EraSagaScoresUpdatedSweep
         then(eraSagaRepository).should(never()).save(any());
         then(eventPublisher).should(never()).publish(any());
-        then(scoresUpdatedInbox).should().record(su);
+        then(scoresUpdatedInbox).should().save(su);
     }
 
     @Test
@@ -462,7 +462,7 @@ class EraSagaAdvancerTest {
         // then
         then(eraSagaRepository).should(never()).save(any());
         then(eventPublisher).should(never()).publish(any());
-        then(scoresUpdatedInbox).should().record(staleEraOneScores);
+        then(scoresUpdatedInbox).should().save(staleEraOneScores);
     }
 
     @Test
