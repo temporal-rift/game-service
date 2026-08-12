@@ -34,6 +34,7 @@ import io.github.temporalrift.game.session.domain.event.ResolutionStarted;
 import io.github.temporalrift.game.session.domain.event.TimelineStabilized;
 import io.github.temporalrift.game.session.domain.event.WinConditionMet;
 import io.github.temporalrift.game.session.domain.game.Game;
+import io.github.temporalrift.game.session.domain.game.GameProgress;
 import io.github.temporalrift.game.session.domain.game.GameStatus;
 import io.github.temporalrift.game.session.domain.game.PendingCarryOverEvent;
 import io.github.temporalrift.game.session.domain.port.out.EraSagaRepository;
@@ -285,13 +286,14 @@ class EraSagaAdvancerTest {
                 GAME_ID,
                 LOBBY_ID,
                 List.of(),
-                1,
-                0,
-                List.of(
-                        new PendingCarryOverEvent(firstCascadedEvent, CarryOverState.CASCADED),
-                        new PendingCarryOverEvent(secondCascadedEvent, CarryOverState.CASCADED)),
-                Map.of(),
-                GameStatus.IN_PROGRESS);
+                new GameProgress(
+                        1,
+                        0,
+                        List.of(
+                                new PendingCarryOverEvent(firstCascadedEvent, CarryOverState.CASCADED),
+                                new PendingCarryOverEvent(secondCascadedEvent, CarryOverState.CASCADED)),
+                        Map.of(),
+                        GameStatus.IN_PROGRESS));
         given(gameRepository.findByIdWithLock(GAME_ID)).willReturn(Optional.of(game));
         var captor = ArgumentCaptor.forClass(Object.class);
 

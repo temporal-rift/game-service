@@ -8,6 +8,7 @@ import java.util.stream.Collectors;
 import org.springframework.stereotype.Component;
 
 import io.github.temporalrift.game.session.domain.game.Game;
+import io.github.temporalrift.game.session.domain.game.GameProgress;
 import io.github.temporalrift.game.session.domain.game.GameStatus;
 import io.github.temporalrift.game.session.domain.port.out.GameRepository;
 
@@ -58,14 +59,15 @@ class GameRepositoryAdapter implements GameRepository {
                 entity.getId(),
                 entity.getLobbyId(),
                 new ArrayList<>(entity.getEventDeck()),
-                entity.getEraCounter(),
-                entity.getCascadedParadoxCounter(),
-                entity.getPendingCarryOverEvents().stream()
-                        .map(PendingCarryOverEventEmbeddable::toDomain)
-                        .toList(),
-                entity.getDrawnEvents().stream()
-                        .collect(Collectors.toMap(
-                                DrawnEventEmbeddable::eventId, DrawnEventEmbeddable::toDrawnFutureEvent)),
-                GameStatus.valueOf(entity.getStatus()));
+                new GameProgress(
+                        entity.getEraCounter(),
+                        entity.getCascadedParadoxCounter(),
+                        entity.getPendingCarryOverEvents().stream()
+                                .map(PendingCarryOverEventEmbeddable::toDomain)
+                                .toList(),
+                        entity.getDrawnEvents().stream()
+                                .collect(Collectors.toMap(
+                                        DrawnEventEmbeddable::eventId, DrawnEventEmbeddable::toDrawnFutureEvent)),
+                        GameStatus.valueOf(entity.getStatus())));
     }
 }

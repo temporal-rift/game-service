@@ -36,23 +36,15 @@ public class Game extends AggregateRoot {
         this.status = GameStatus.IN_PROGRESS;
     }
 
-    private Game(
-            UUID id,
-            UUID lobbyId,
-            List<UUID> eventDeck,
-            int eraCounter,
-            int cascadedParadoxCounter,
-            List<PendingCarryOverEvent> pendingCarryOverEvents,
-            Map<UUID, DrawnFutureEvent> drawnEvents,
-            GameStatus status) {
+    private Game(UUID id, UUID lobbyId, List<UUID> eventDeck, GameProgress progress) {
         this.id = id;
         this.lobbyId = lobbyId;
         this.eventDeck = new ArrayList<>(eventDeck);
-        this.pendingCarryOverEvents = new ArrayList<>(pendingCarryOverEvents);
-        this.drawnEvents = new HashMap<>(drawnEvents);
-        this.eraCounter = eraCounter;
-        this.cascadedParadoxCounter = cascadedParadoxCounter;
-        this.status = status;
+        this.pendingCarryOverEvents = new ArrayList<>(progress.pendingCarryOverEvents());
+        this.drawnEvents = new HashMap<>(progress.drawnEvents());
+        this.eraCounter = progress.eraCounter();
+        this.cascadedParadoxCounter = progress.cascadedParadoxCounter();
+        this.status = progress.status();
     }
 
     public static Game reconstitute(
@@ -62,27 +54,19 @@ public class Game extends AggregateRoot {
             int eraCounter,
             int cascadedParadoxCounter,
             GameStatus status) {
-        return reconstitute(id, lobbyId, eventDeck, eraCounter, cascadedParadoxCounter, List.of(), Map.of(), status);
+        return reconstitute(
+                id,
+                lobbyId,
+                eventDeck,
+                new GameProgress(eraCounter, cascadedParadoxCounter, List.of(), Map.of(), status));
     }
 
-    public static Game reconstitute(
-            UUID id,
-            UUID lobbyId,
-            List<UUID> eventDeck,
-            int eraCounter,
-            int cascadedParadoxCounter,
-            List<PendingCarryOverEvent> pendingCarryOverEvents,
-            Map<UUID, DrawnFutureEvent> drawnEvents,
-            GameStatus status) {
+    public static Game reconstitute(UUID id, UUID lobbyId, List<UUID> eventDeck, GameProgress progress) {
         return new Game(
                 Objects.requireNonNull(id, "id must not be null"),
                 Objects.requireNonNull(lobbyId, "lobbyId must not be null"),
                 Objects.requireNonNull(eventDeck, "eventDeck must not be null"),
-                eraCounter,
-                cascadedParadoxCounter,
-                Objects.requireNonNull(pendingCarryOverEvents, "pendingCarryOverEvents must not be null"),
-                Objects.requireNonNull(drawnEvents, "drawnEvents must not be null"),
-                Objects.requireNonNull(status, "status must not be null"));
+                Objects.requireNonNull(progress, "progress must not be null"));
     }
 
     public List<UUID> startEra(int carryOverCount, int eventsPerEra) {

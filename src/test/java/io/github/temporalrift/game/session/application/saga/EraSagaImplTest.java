@@ -243,8 +243,8 @@ class EraSagaImplTest {
     @Test
     @DisplayName("carry-over replaces a fresh draw without changing the cascade count")
     void start_withCarryOvers_drawsFewerFreshEventsAndPreservesTheirState() {
-        // given — cascadedId/stalledId are the per-game eventIds these events were originally drawn with;
-        // cascadedCardId/stalledCardId are the catalog cards they came from, tracked separately on Game
+        // given — cascadedId and stalledId are the per-game eventIds these events were originally drawn with,
+        // while cascadedCardId and stalledCardId are the catalog cards they came from, tracked separately on Game
         var cascadedId = UUID.randomUUID();
         var stalledId = UUID.randomUUID();
         var cascadedCardId = UUID.randomUUID();
