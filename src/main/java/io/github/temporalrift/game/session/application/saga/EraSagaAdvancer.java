@@ -92,7 +92,7 @@ class EraSagaAdvancer {
         scoresUpdatedInbox.record(su);
         eraSagaRepository
                 .findByGameIdWithLock(gameId)
-                .filter(s -> s.status() == EraSagaStatus.WAITING_SCORES)
+                .filter(s -> s.status() == EraSagaStatus.WAITING_SCORES && s.eraNumber() == su.eraNumber())
                 .ifPresent(state -> processScoresUpdated(gameId, state, su));
     }
 
