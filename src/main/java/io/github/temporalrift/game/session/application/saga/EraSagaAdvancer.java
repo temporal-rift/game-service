@@ -89,7 +89,7 @@ class EraSagaAdvancer {
         // WAITING_SCORES and ScoresUpdated fires from an independent async chain (timeline-service
         // resolution -> scoring), so either can arrive first. If this one loses the race, the record
         // lets EraSagaScoresUpdatedSweep complete the transition later without a second delivery.
-        scoresUpdatedInbox.record(su);
+        scoresUpdatedInbox.save(su);
         eraSagaRepository
                 .findByGameIdWithLock(gameId)
                 .filter(s -> s.status() == EraSagaStatus.WAITING_SCORES && s.eraNumber() == su.eraNumber())
