@@ -25,4 +25,6 @@ record TimerProperties(
 
         @NotNull @DurationMin(seconds = 1) Duration reconnectSweepInterval,
 
-        @NotNull @DurationMin(seconds = 1) Duration scoringCompletionSweepInterval) {}
+        @NotNull @DurationMin(seconds = 1) Duration scoringCompletionSweepInterval,
+
+        @NotNull @DurationMin(seconds = 1) Duration eraSagaScoresUpdatedSweepInterval) {}
