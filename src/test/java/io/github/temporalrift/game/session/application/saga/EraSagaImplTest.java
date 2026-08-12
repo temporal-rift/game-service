@@ -14,6 +14,7 @@ import static org.mockito.Mockito.times;
 import java.time.Clock;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.IntStream;
@@ -30,6 +31,7 @@ import org.springframework.context.ApplicationEventPublisher;
 
 import io.github.temporalrift.game.session.domain.event.GameEndedAbnormally;
 import io.github.temporalrift.game.session.domain.futureevent.FutureEventDefinition;
+import io.github.temporalrift.game.session.domain.game.DrawnFutureEvent;
 import io.github.temporalrift.game.session.domain.game.Game;
 import io.github.temporalrift.game.session.domain.game.GameStatus;
 import io.github.temporalrift.game.session.domain.game.PendingCarryOverEvent;
@@ -38,6 +40,7 @@ import io.github.temporalrift.game.session.domain.port.out.GameRepository;
 import io.github.temporalrift.game.session.domain.port.out.SessionEventPublisher;
 import io.github.temporalrift.game.session.domain.port.out.SessionGameRulesPort;
 import io.github.temporalrift.game.session.domain.saga.EraSagaStatus;
+import io.github.temporalrift.game.shared.CardType;
 import io.github.temporalrift.game.shared.CarryOverState;
 import io.github.temporalrift.game.shared.DomainEventEnvelope;
 import io.github.temporalrift.game.shared.EventsDrawn;
@@ -127,6 +130,54 @@ class EraSagaImplTest {
     }
 
     @Test
+    @DisplayName("the same catalog card drawn into two different games gets different eventIds and outcomeIds")
+    void start_sameCatalogCardDrawnTwice_yieldsDifferentEventIdsAndOutcomeIds() {
+        // given — a single fixed catalog card, drawn independently into two different games
+        var cardId = UUID.randomUUID();
+        var catalogDef = buildEventDef(cardId);
+        given(gameRules.eventsPerEra()).willReturn(1);
+        given(gameRules.cardsPerHand()).willReturn(CARDS_PER_HAND);
+        given(futureEventCatalog.findByEventIds(any())).willReturn(List.of(catalogDef));
+
+        var gameA = new Game(GAME_ID, LOBBY_ID, buildDeck(1));
+        given(gameRepository.findById(GAME_ID)).willReturn(Optional.of(gameA));
+        var captorA = ArgumentCaptor.<DomainEventEnvelope>captor();
+        eraSaga.start(GAME_ID, ERA_NUMBER, PLAYER_IDS, List.of());
+        then(eventPublisher).should(atLeastOnce()).publish(captorA.capture());
+        var eventA = eventsDrawnFrom(captorA).events().getFirst();
+
+        var gameBId = UUID.randomUUID();
+        var gameB = new Game(gameBId, LOBBY_ID, buildDeck(1));
+        given(gameRepository.findById(gameBId)).willReturn(Optional.of(gameB));
+        var captorB = ArgumentCaptor.<DomainEventEnvelope>captor();
+        eraSaga.start(gameBId, ERA_NUMBER, PLAYER_IDS, List.of());
+        then(eventPublisher).should(atLeastOnce()).publish(captorB.capture());
+        var eventB = eventsDrawnFrom(captorB).events().getFirst();
+
+        // then
+        assertThat(eventA.eventId()).isNotEqualTo(eventB.eventId());
+        assertThat(eventA.eventId()).isNotEqualTo(cardId);
+        assertThat(eventB.eventId()).isNotEqualTo(cardId);
+        var outcomeIdsA =
+                eventA.outcomes().stream().map(EventsDrawn.Outcome::outcomeId).toList();
+        var outcomeIdsB =
+                eventB.outcomes().stream().map(EventsDrawn.Outcome::outcomeId).toList();
+        assertThat(outcomeIdsA).doesNotContainAnyElementsOf(outcomeIdsB);
+        var catalogOutcomeIds = catalogDef.outcomes().stream()
+                .map(FutureEventDefinition.OutcomeDefinition::outcomeId)
+                .toList();
+        assertThat(outcomeIdsA).doesNotContainAnyElementsOf(catalogOutcomeIds);
+    }
+
+    private static EventsDrawn eventsDrawnFrom(ArgumentCaptor<DomainEventEnvelope> captor) {
+        return captor.getAllValues().stream()
+                .filter(e -> e.payload() instanceof EventsDrawn)
+                .map(e -> (EventsDrawn) e.payload())
+                .reduce((first, second) -> second)
+                .orElseThrow();
+    }
+
+    @Test
     @DisplayName("hand dealt carries correct player ID and card count")
     void start_happyPath_handDealtCarriesCorrectPlayerIdAndCardCount() {
         // given
@@ -160,20 +211,60 @@ class EraSagaImplTest {
     }
 
     @Test
+    @DisplayName("dealt hands never contain STABILIZE or DETONATE — reactive Paradox Resolution-only cards")
+    void start_happyPath_neverDealsStabilizeOrDetonateIntoTheActionHand() {
+        // given — a large hand size makes a regression (drawing either card by chance) astronomically unlikely
+        var largeHandSize = 2000;
+        var game = new Game(GAME_ID, LOBBY_ID, buildDeck(DECK_SIZE));
+        given(gameRepository.findById(GAME_ID)).willReturn(Optional.of(game));
+        given(gameRules.eventsPerEra()).willReturn(EVENTS_PER_ERA);
+        given(gameRules.cardsPerHand()).willReturn(largeHandSize);
+        given(futureEventCatalog.findByEventIds(any()))
+                .willReturn(IntStream.range(0, EVENTS_PER_ERA)
+                        .mapToObj(i -> buildEventDef())
+                        .toList());
+        var captor = ArgumentCaptor.<DomainEventEnvelope>captor();
+
+        // when
+        eraSaga.start(GAME_ID, ERA_NUMBER, PLAYER_IDS, List.of());
+
+        // then
+        then(eventPublisher).should(atLeastOnce()).publish(captor.capture());
+        var dealtCardTypes = captor.getAllValues().stream()
+                .map(DomainEventEnvelope::payload)
+                .filter(HandDealt.class::isInstance)
+                .map(HandDealt.class::cast)
+                .flatMap(hand -> hand.cards().stream())
+                .map(HandDealt.CardInstance::cardType)
+                .toList();
+        assertThat(dealtCardTypes).isNotEmpty().doesNotContain(CardType.STABILIZE, CardType.DETONATE);
+    }
+
+    @Test
     @DisplayName("carry-over replaces a fresh draw without changing the cascade count")
     void start_withCarryOvers_drawsFewerFreshEventsAndPreservesTheirState() {
-        // given
+        // given — cascadedId and stalledId are the per-game eventIds these events were originally drawn with,
+        // while cascadedCardId and stalledCardId are the catalog cards they came from, tracked separately on Game
         var cascadedId = UUID.randomUUID();
         var stalledId = UUID.randomUUID();
+        var cascadedCardId = UUID.randomUUID();
+        var stalledCardId = UUID.randomUUID();
+        var cascadedOutcomeIds = List.of(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID());
+        var stalledOutcomeIds = List.of(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID());
         var game = Game.reconstitute(GAME_ID, LOBBY_ID, buildDeck(DECK_SIZE), 1, 1, GameStatus.IN_PROGRESS);
+        game.recordDrawnEvents(Map.of(
+                cascadedId, new DrawnFutureEvent(cascadedCardId, cascadedOutcomeIds),
+                stalledId, new DrawnFutureEvent(stalledCardId, stalledOutcomeIds)));
         given(gameRepository.findById(GAME_ID)).willReturn(Optional.of(game));
         given(gameRules.eventsPerEra()).willReturn(3);
         given(gameRules.cardsPerHand()).willReturn(CARDS_PER_HAND);
-        // drawn IDs come from the deck; cascaded ID is known — stub each call separately
-        given(futureEventCatalog.findByEventIds(argThat(ids -> ids != null && !ids.contains(cascadedId))))
+        // drawn IDs come from the deck; carried-over cards are looked up by their catalog cardId
+        given(futureEventCatalog.findByEventIds(
+                        argThat(ids -> ids != null && !ids.contains(cascadedCardId) && !ids.contains(stalledCardId))))
                 .willReturn(List.of(buildEventDef()));
-        given(futureEventCatalog.findByEventIds(argThat(ids -> ids != null && ids.contains(cascadedId))))
-                .willReturn(List.of(buildEventDef(cascadedId), buildEventDef(stalledId)));
+        given(futureEventCatalog.findByEventIds(
+                        argThat(ids -> ids != null && ids.contains(cascadedCardId) && ids.contains(stalledCardId))))
+                .willReturn(List.of(buildEventDef(cascadedCardId), buildEventDef(stalledCardId)));
 
         var captor = ArgumentCaptor.<DomainEventEnvelope>captor();
 
@@ -198,6 +289,14 @@ class EraSagaImplTest {
         assertThat(eventsDrawn.events())
                 .extracting(EventsDrawn.FutureEvent::carryOverState)
                 .containsExactly(CarryOverState.FRESH, CarryOverState.CASCADED, CarryOverState.STALLED);
+        var cascadedEvent = eventsDrawn.events().stream()
+                .filter(e -> e.carryOverState() == CarryOverState.CASCADED)
+                .findFirst()
+                .orElseThrow();
+        assertThat(cascadedEvent.eventId()).isEqualTo(cascadedId);
+        assertThat(cascadedEvent.outcomes())
+                .extracting(EventsDrawn.Outcome::outcomeId)
+                .containsExactlyElementsOf(cascadedOutcomeIds);
         assertThat(game.eventDeck()).hasSize(DECK_SIZE - 1);
         assertThat(game.cascadedParadoxCounter()).isEqualTo(1);
     }

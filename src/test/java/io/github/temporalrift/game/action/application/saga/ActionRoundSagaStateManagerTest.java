@@ -163,6 +163,28 @@ class ActionRoundSagaStateManagerTest {
     }
 
     @Test
+    @DisplayName("complete clears pendingPlayerIds — a timer-expiry close never runs markSubmitted for skipped players")
+    void complete_timerExpiredWithSkippedPlayers_clearsPendingPlayerIds() {
+        // given
+        var state = new ActionRoundSagaState(
+                SAGA_ID,
+                GAME_ID,
+                ERA_NUMBER,
+                ROUND_NUMBER,
+                ActionRoundSagaStatus.CLOSING,
+                List.of(PLAYER_1),
+                TIMER_EXPIRES_AT);
+        given(repository.findByGameIdAndEraNumberAndRoundNumber(GAME_ID, ERA_NUMBER, ROUND_NUMBER))
+                .willReturn(Optional.of(state));
+
+        // when
+        stateManager.complete(GAME_ID, ERA_NUMBER, ROUND_NUMBER);
+
+        // then
+        then(repository).should().save(argThat(saved -> saved.pendingPlayerIds().isEmpty()));
+    }
+
+    @Test
     @DisplayName("findBySagaId and collection accessors delegate directly to the repository")
     void delegationMethods_delegateToRepository() {
         // given

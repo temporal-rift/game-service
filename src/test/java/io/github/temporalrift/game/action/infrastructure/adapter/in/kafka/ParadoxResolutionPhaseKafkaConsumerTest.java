@@ -146,7 +146,7 @@ class ParadoxResolutionPhaseKafkaConsumerTest {
         consumer.handle(MessageBuilder.withPayload((Object) "{}".getBytes(StandardCharsets.UTF_8))
                 .setHeader("eventType", "ParadoxResolutionPhaseStarted")
                 .setHeader("gameId", GAME_ID.toString())
-                .setHeader("version", 1)
+                .setHeader("version", "1")
                 .build());
 
         then(processedEventRepository).should(never()).tryMarkProcessed(any(), any());
@@ -175,8 +175,8 @@ class ParadoxResolutionPhaseKafkaConsumerTest {
                 .setHeader("aggregateId", PHASE_ID.toString())
                 .setHeader("aggregateType", "ParadoxResolutionPhase")
                 .setHeader("gameId", GAME_ID.toString())
-                .setHeader("occurredAt", OCCURRED_AT)
-                .setHeader("version", version)
+                .setHeader("occurredAt", OCCURRED_AT.toString())
+                .setHeader("version", String.valueOf(version))
                 .build();
     }
 }

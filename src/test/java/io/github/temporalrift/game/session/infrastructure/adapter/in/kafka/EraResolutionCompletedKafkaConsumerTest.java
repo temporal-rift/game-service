@@ -289,8 +289,8 @@ class EraResolutionCompletedKafkaConsumerTest {
                 .setHeader("aggregateId", GAME_ID.toString())
                 .setHeader("aggregateType", "Game")
                 .setHeader("gameId", GAME_ID.toString())
-                .setHeader("occurredAt", Instant.now())
-                .setHeader("version", version)
+                .setHeader("occurredAt", Instant.now().toString())
+                .setHeader("version", String.valueOf(version))
                 .build();
     }
 

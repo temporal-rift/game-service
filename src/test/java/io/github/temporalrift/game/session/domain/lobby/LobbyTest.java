@@ -276,6 +276,20 @@ class LobbyTest {
     }
 
     @Test
+    @DisplayName("join a closed lobby — throws LobbyNotFoundException, not LobbyAlreadyStartedException")
+    void join_closedLobby_throwsLobbyNotFound() {
+        // given
+        var host = player();
+        var lobby = lobbyWith(host);
+        lobby.leave(host.playerId());
+        assertThat(lobby.status()).isEqualTo(LobbyStatus.CLOSED);
+
+        // when / then
+        var latePlayer = player();
+        assertThatExceptionOfType(LobbyNotFoundException.class).isThrownBy(() -> lobby.join(latePlayer));
+    }
+
+    @Test
     @DisplayName("player not in lobby — throws PlayerNotInLobbyException")
     void leave_playerNotInLobby_throws() {
         var lobby = emptyLobby();
