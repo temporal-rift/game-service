@@ -17,9 +17,12 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import io.github.temporalrift.game.TestcontainersConfiguration;
+import io.github.temporalrift.game.scoring.application.command.EraScoringCompletionChecker;
 import io.github.temporalrift.game.scoring.domain.context.EraScoringContextNotFoundException;
 import io.github.temporalrift.game.scoring.domain.context.EventOutcomeFact;
+import io.github.temporalrift.game.scoring.domain.context.PendingEraScoringCompletion;
 import io.github.temporalrift.game.scoring.domain.context.PlayerFaction;
+import io.github.temporalrift.game.scoring.domain.event.EraResolutionCompleted;
 import io.github.temporalrift.game.scoring.domain.port.out.EraScoringContextRepository;
 import io.github.temporalrift.game.shared.CarryOverState;
 import io.github.temporalrift.game.shared.EraActionFactsFinalized;
@@ -42,6 +45,9 @@ class ScoringContextProjectionEventListenerIT {
 
     @Autowired
     TransactionTemplate transactionTemplate;
+
+    @Autowired
+    EraScoringCompletionChecker completionChecker;
 
     @Test
     void factionAssigned_populatesScoringContextPlayer() {
@@ -266,5 +272,30 @@ class ScoringContextProjectionEventListenerIT {
                             assertThat(fact.writtenOutcomeId()).isEqualTo(writtenOutcomeId);
                             assertThat(fact.endingOutcomeCount()).isEqualTo(2);
                         }));
+    }
+
+    @Test
+    void tryComplete_calledWithNoAmbientTransaction_completesRatherThanThrowing() {
+        // Reproduces ScoringCompletionSweep's exact calling context: a plain @Scheduled method has no
+        // surrounding transaction, unlike every other caller of tryComplete (Kafka listeners,
+        // @ApplicationModuleListener). tryMarkScoringComplete below requires one (MANDATORY) — this
+        // test proves EraScoringCompletionChecker.tryComplete's own @Transactional supplies it rather
+        // than throwing IllegalTransactionStateException. Deliberately not wrapped in
+        // transactionTemplate.executeWithoutResult, unlike every setup call above.
+        var gameId = UUID.randomUUID();
+        var playerId = UUID.randomUUID();
+        var eraNumber = 1;
+        transactionTemplate.executeWithoutResult(_ -> {
+            contextRepository.upsertPlayerFaction(gameId, playerId, Faction.WEAVERS);
+            contextRepository.markActionFactsReady(gameId, eraNumber);
+            contextRepository.saveEraResolutionCompleted(new EraResolutionCompleted(gameId, eraNumber, List.of()));
+        });
+        assertThat(contextRepository.findResolvedErasNotYetScored())
+                .contains(new PendingEraScoringCompletion(gameId, eraNumber));
+
+        completionChecker.tryComplete(gameId, eraNumber);
+
+        assertThat(contextRepository.findResolvedErasNotYetScored())
+                .noneMatch(pending -> pending.gameId().equals(gameId));
     }
 }

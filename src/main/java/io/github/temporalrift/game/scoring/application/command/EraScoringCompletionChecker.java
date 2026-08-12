@@ -4,6 +4,7 @@ import java.util.Objects;
 import java.util.UUID;
 
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 import io.github.temporalrift.game.scoring.domain.port.out.EraScoringContextRepository;
 import io.github.temporalrift.game.scoring.domain.port.out.ScoringEraCompletionRepository;
@@ -36,6 +37,12 @@ public class EraScoringCompletionChecker {
         this.updateScoresCommandHandler = Objects.requireNonNull(updateScoresCommandHandler);
     }
 
+    // Callers that already run inside a transaction (Kafka listeners, @ApplicationModuleListener) simply
+    // join it, unchanged from before this annotation existed. ScoringCompletionSweep's plain @Scheduled
+    // method has no ambient transaction, and tryMarkScoringComplete below requires one (MANDATORY) --
+    // without this, every sweep invocation that reaches real work throws and is silently swallowed by
+    // the sweep's own per-item catch, so scoring is never actually completed by the sweep.
+    @Transactional
     public void tryComplete(UUID gameId, int eraNumber) {
         if (!contextRepository.actionFactsReady(gameId, eraNumber)) {
             return;
