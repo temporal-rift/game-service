@@ -184,7 +184,8 @@ class GameTest {
     @Test
     void drawnEvent_unrecordedEventId_throws() {
         var game = newGame();
-        assertThatExceptionOfType(IllegalStateException.class).isThrownBy(() -> game.drawnEvent(UUID.randomUUID()));
+        var eventId = UUID.randomUUID();
+        assertThatExceptionOfType(IllegalStateException.class).isThrownBy(() -> game.drawnEvent(eventId));
     }
 
     @Test
