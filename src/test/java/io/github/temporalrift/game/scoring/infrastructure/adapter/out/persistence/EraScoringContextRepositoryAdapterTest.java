@@ -8,6 +8,7 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 
 import java.util.List;
@@ -265,6 +266,22 @@ class EraScoringContextRepositoryAdapterTest {
 
         assertThat(adapter.eraResolutionCompleted(gameId, 2)).isTrue();
         assertThat(adapter.requiredAppliedOutcomeCount(gameId, 2)).isOne();
+    }
+
+    @Test
+    void findResolvedErasNotYetScored_mapsRowsToDomain() {
+        var gameId = UUID.randomUUID();
+        var row = mock(ScoringTimelineResolutionBarrierJpaRepository.PendingCompletion.class);
+        given(row.getGameId()).willReturn(gameId);
+        given(row.getEraNumber()).willReturn(2);
+        given(resolutionBarrierJpaRepository.findResolvedErasNotYetScored()).willReturn(List.of(row));
+
+        var pending = adapter.findResolvedErasNotYetScored();
+
+        assertThat(pending).singleElement().satisfies(entry -> {
+            assertThat(entry.gameId()).isEqualTo(gameId);
+            assertThat(entry.eraNumber()).isEqualTo(2);
+        });
     }
 
     @Test

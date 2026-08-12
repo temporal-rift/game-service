@@ -21,6 +21,7 @@ import io.github.temporalrift.game.scoring.domain.context.EraScoringContextNotFo
 import io.github.temporalrift.game.scoring.domain.context.EventOutcomeFact;
 import io.github.temporalrift.game.scoring.domain.context.FulfillmentDeclarationFact;
 import io.github.temporalrift.game.scoring.domain.context.ParadoxCascadeScoringFact;
+import io.github.temporalrift.game.scoring.domain.context.PendingEraScoringCompletion;
 import io.github.temporalrift.game.scoring.domain.context.PlayerFaction;
 import io.github.temporalrift.game.scoring.domain.event.EraResolutionCompleted;
 import io.github.temporalrift.game.scoring.domain.playerscore.ScoreReason;
@@ -310,6 +311,13 @@ class EraScoringContextRepositoryAdapter implements EraScoringContextRepository 
         return resolutionBarrierJpaRepository
                 .findByGameIdAndEraNumber(gameId, eraNumber)
                 .isPresent();
+    }
+
+    @Override
+    public List<PendingEraScoringCompletion> findResolvedErasNotYetScored() {
+        return resolutionBarrierJpaRepository.findResolvedErasNotYetScored().stream()
+                .map(row -> new PendingEraScoringCompletion(row.getGameId(), row.getEraNumber()))
+                .toList();
     }
 
     @Override
