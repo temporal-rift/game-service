@@ -18,14 +18,17 @@ class ScoringReadRepositoryAdapter implements ScoringReadRepository {
     private final PlayerScoreJpaRepository playerScoreJpaRepository;
     private final PlayerScoreHistoryJpaRepository historyJpaRepository;
     private final ScoringPlayerJpaRepository playerJpaRepository;
+    private final ScoringEraCompletionJpaRepository eraCompletionJpaRepository;
 
     ScoringReadRepositoryAdapter(
             PlayerScoreJpaRepository playerScoreJpaRepository,
             PlayerScoreHistoryJpaRepository historyJpaRepository,
-            ScoringPlayerJpaRepository playerJpaRepository) {
+            ScoringPlayerJpaRepository playerJpaRepository,
+            ScoringEraCompletionJpaRepository eraCompletionJpaRepository) {
         this.playerScoreJpaRepository = playerScoreJpaRepository;
         this.historyJpaRepository = historyJpaRepository;
         this.playerJpaRepository = playerJpaRepository;
+        this.eraCompletionJpaRepository = eraCompletionJpaRepository;
     }
 
     @Override
@@ -38,7 +41,10 @@ class ScoringReadRepositoryAdapter implements ScoringReadRepository {
 
         var namesByPlayerId = playerJpaRepository.findAllByGameId(gameId).stream()
                 .collect(Collectors.toMap(ScoringPlayerJpaEntity::getPlayerId, ScoringPlayerJpaEntity::getPlayerName));
-        var maxEra = historyJpaRepository.findMaxEraNumberByGameId(gameId);
+        // Sourced from scoring_era_completion, not the history table: an era can complete scoring with
+        // zero decisions for every player (no faction's scoring condition was met), in which case the
+        // history table gets no new rows for that era at all.
+        var maxEra = eraCompletionJpaRepository.findMaxEraNumberByGameId(gameId);
         var eraNumber = maxEra == null ? 0 : maxEra;
 
         return scoreEntities.stream()
