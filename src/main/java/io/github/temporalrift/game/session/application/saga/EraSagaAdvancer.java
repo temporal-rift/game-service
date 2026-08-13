@@ -23,6 +23,7 @@ import io.github.temporalrift.game.session.domain.game.Game;
 import io.github.temporalrift.game.session.domain.game.GameNotFoundException;
 import io.github.temporalrift.game.session.domain.game.GameStatus;
 import io.github.temporalrift.game.session.domain.port.out.EraSagaRepository;
+import io.github.temporalrift.game.session.domain.port.out.EraSagaScoresUpdatedInboxRepository;
 import io.github.temporalrift.game.session.domain.port.out.GameRepository;
 import io.github.temporalrift.game.session.domain.port.out.SessionEventPublisher;
 import io.github.temporalrift.game.session.domain.port.out.SessionGameRulesPort;
@@ -40,6 +41,7 @@ class EraSagaAdvancer {
     private static final String RESOLUTION_FAILED_REASON = "resolution-failed";
 
     private final EraSagaRepository eraSagaRepository;
+    private final EraSagaScoresUpdatedInboxRepository scoresUpdatedInbox;
     private final GameRepository gameRepository;
     private final SessionEventPublisher eventPublisher;
     private final ApplicationEventPublisher applicationEventPublisher;
@@ -48,12 +50,14 @@ class EraSagaAdvancer {
 
     EraSagaAdvancer(
             EraSagaRepository eraSagaRepository,
+            EraSagaScoresUpdatedInboxRepository scoresUpdatedInbox,
             GameRepository gameRepository,
             SessionEventPublisher eventPublisher,
             ApplicationEventPublisher applicationEventPublisher,
             SessionGameRulesPort gameRules,
             Clock clock) {
         this.eraSagaRepository = eraSagaRepository;
+        this.scoresUpdatedInbox = scoresUpdatedInbox;
         this.gameRepository = gameRepository;
         this.eventPublisher = eventPublisher;
         this.applicationEventPublisher = applicationEventPublisher;
@@ -81,9 +85,14 @@ class EraSagaAdvancer {
 
     @Transactional(propagation = REQUIRES_NEW)
     void handleScoresUpdated(UUID gameId, ScoresUpdated su) {
+        // Recorded durably before the status check below: ActionRoundClosed (round 3) sets
+        // WAITING_SCORES and ScoresUpdated fires from an independent async chain (timeline-service
+        // resolution -> scoring), so either can arrive first. If this one loses the race, the record
+        // lets EraSagaScoresUpdatedSweep complete the transition later without a second delivery.
+        scoresUpdatedInbox.save(su);
         eraSagaRepository
                 .findByGameIdWithLock(gameId)
-                .filter(s -> s.status() == EraSagaStatus.WAITING_SCORES)
+                .filter(s -> s.status() == EraSagaStatus.WAITING_SCORES && s.eraNumber() == su.eraNumber())
                 .ifPresent(state -> processScoresUpdated(gameId, state, su));
     }
 

@@ -21,6 +21,25 @@ class ScoringEraCompletionPersistenceIT {
     @Autowired
     ScoringEraCompletionRepository scoringEraCompletionRepository;
 
+    @Autowired
+    ScoringEraCompletionJpaRepository jpaRepository;
+
+    @Test
+    void findMaxEraNumberByGameId_noCompletedEras_returnsNull() {
+        assertThat(jpaRepository.findMaxEraNumberByGameId(UUID.randomUUID())).isNull();
+    }
+
+    @Test
+    void findMaxEraNumberByGameId_returnsHighestCompletedEraForThatGame() {
+        var gameId = UUID.randomUUID();
+        var otherGameId = UUID.randomUUID();
+        scoringEraCompletionRepository.tryMarkScoringComplete(gameId, 1);
+        scoringEraCompletionRepository.tryMarkScoringComplete(gameId, 2);
+        scoringEraCompletionRepository.tryMarkScoringComplete(otherGameId, 5);
+
+        assertThat(jpaRepository.findMaxEraNumberByGameId(gameId)).isEqualTo(2);
+    }
+
     @Test
     void tryMarkScoringComplete_firstClaimWinsSecondClaimFails() {
         var gameId = UUID.randomUUID();

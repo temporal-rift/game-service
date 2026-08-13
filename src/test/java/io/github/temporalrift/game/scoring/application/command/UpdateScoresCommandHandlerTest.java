@@ -330,6 +330,12 @@ class UpdateScoresCommandHandlerTest {
         }
 
         @Override
+        public List<io.github.temporalrift.game.scoring.domain.context.PendingEraScoringCompletion>
+                findResolvedErasNotYetScored() {
+            throw new UnsupportedOperationException("not used by UpdateScoresCommandHandler");
+        }
+
+        @Override
         public int requiredAppliedOutcomeCount(UUID gameId, int eraNumber) {
             throw new UnsupportedOperationException("not used by UpdateScoresCommandHandler");
         }

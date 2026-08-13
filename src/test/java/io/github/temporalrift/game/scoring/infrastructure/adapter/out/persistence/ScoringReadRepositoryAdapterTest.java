@@ -38,6 +38,9 @@ class ScoringReadRepositoryAdapterTest {
     @Mock
     ScoringPlayerJpaRepository playerJpaRepository;
 
+    @Mock
+    ScoringEraCompletionJpaRepository eraCompletionJpaRepository;
+
     @InjectMocks
     ScoringReadRepositoryAdapter adapter;
 
@@ -54,7 +57,7 @@ class ScoringReadRepositoryAdapterTest {
 
         assertThat(rows).isEmpty();
         then(playerJpaRepository).should(never()).findAllByGameId(GAME_ID);
-        then(historyJpaRepository).should(never()).findMaxEraNumberByGameId(GAME_ID);
+        then(eraCompletionJpaRepository).should(never()).findMaxEraNumberByGameId(GAME_ID);
     }
 
     @Test
@@ -63,7 +66,7 @@ class ScoringReadRepositoryAdapterTest {
         var entity2 = scoreEntity(PLAYER_2, Faction.PROPHETS, 8);
         given(playerScoreJpaRepository.findAllByGameId(GAME_ID)).willReturn(List.of(entity2, entity1));
         given(playerJpaRepository.findAllByGameId(GAME_ID)).willReturn(List.of(playerEntity(PLAYER_1, "Ada")));
-        given(historyJpaRepository.findMaxEraNumberByGameId(GAME_ID)).willReturn(3);
+        given(eraCompletionJpaRepository.findMaxEraNumberByGameId(GAME_ID)).willReturn(3);
 
         var rows = adapter.findCurrentScores(GAME_ID);
 
@@ -78,17 +81,34 @@ class ScoringReadRepositoryAdapterTest {
     }
 
     @Test
-    void findCurrentScores_noHistoryYet_defaultsEraToZero() {
+    void findCurrentScores_noEraCompletedYet_defaultsEraToZero() {
         given(playerScoreJpaRepository.findAllByGameId(GAME_ID))
                 .willReturn(List.of(scoreEntity(PLAYER_1, Faction.WEAVERS, 0)));
         given(playerJpaRepository.findAllByGameId(GAME_ID)).willReturn(List.of());
-        given(historyJpaRepository.findMaxEraNumberByGameId(GAME_ID)).willReturn(null);
+        given(eraCompletionJpaRepository.findMaxEraNumberByGameId(GAME_ID)).willReturn(null);
 
         var rows = adapter.findCurrentScores(GAME_ID);
 
         assertThat(rows)
                 .singleElement()
                 .satisfies(row -> assertThat(row.eraNumber()).isZero());
+    }
+
+    @Test
+    void findCurrentScores_eraCompletedWithNoScoreDecisions_stillReportsTheCompletedEra() {
+        // A completed era can produce zero decisions for every player (no faction's scoring condition
+        // was met), leaving the history table without a single row for that era — eraNumber must still
+        // reflect the completed era, not silently default back to 0.
+        given(playerScoreJpaRepository.findAllByGameId(GAME_ID))
+                .willReturn(List.of(scoreEntity(PLAYER_1, Faction.WEAVERS, 0)));
+        given(playerJpaRepository.findAllByGameId(GAME_ID)).willReturn(List.of());
+        given(eraCompletionJpaRepository.findMaxEraNumberByGameId(GAME_ID)).willReturn(1);
+
+        var rows = adapter.findCurrentScores(GAME_ID);
+
+        assertThat(rows)
+                .singleElement()
+                .satisfies(row -> assertThat(row.eraNumber()).isEqualTo(1));
     }
 
     @Test

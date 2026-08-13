@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.UUID;
 
 import io.github.temporalrift.game.scoring.domain.context.EraScoringContext;
+import io.github.temporalrift.game.scoring.domain.context.PendingEraScoringCompletion;
 import io.github.temporalrift.game.scoring.domain.event.EraResolutionCompleted;
 import io.github.temporalrift.game.scoring.domain.playerscore.ScoreReason;
 import io.github.temporalrift.game.shared.ActivistDeclarationRecorded;
@@ -39,6 +40,8 @@ public interface EraScoringContextRepository {
     void saveEraResolutionCompleted(EraResolutionCompleted resolution);
 
     boolean eraResolutionCompleted(UUID gameId, int eraNumber);
+
+    List<PendingEraScoringCompletion> findResolvedErasNotYetScored();
 
     int requiredAppliedOutcomeCount(UUID gameId, int eraNumber);
 

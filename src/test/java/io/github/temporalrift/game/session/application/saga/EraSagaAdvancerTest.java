@@ -38,6 +38,7 @@ import io.github.temporalrift.game.session.domain.game.GameProgress;
 import io.github.temporalrift.game.session.domain.game.GameStatus;
 import io.github.temporalrift.game.session.domain.game.PendingCarryOverEvent;
 import io.github.temporalrift.game.session.domain.port.out.EraSagaRepository;
+import io.github.temporalrift.game.session.domain.port.out.EraSagaScoresUpdatedInboxRepository;
 import io.github.temporalrift.game.session.domain.port.out.GameRepository;
 import io.github.temporalrift.game.session.domain.port.out.SessionEventPublisher;
 import io.github.temporalrift.game.session.domain.port.out.SessionGameRulesPort;
@@ -63,6 +64,9 @@ class EraSagaAdvancerTest {
 
     @Mock
     EraSagaRepository eraSagaRepository;
+
+    @Mock
+    EraSagaScoresUpdatedInboxRepository scoresUpdatedInbox;
 
     @Mock
     GameRepository gameRepository;
@@ -326,7 +330,7 @@ class EraSagaAdvancerTest {
         // eraCounter == maxEras so endEra() sets ENDED_BY_STABILIZATION
         var game = Game.reconstitute(GAME_ID, LOBBY_ID, List.of(), MAX_ERAS, 0, GameStatus.IN_PROGRESS);
         given(gameRepository.findByIdWithLock(GAME_ID)).willReturn(Optional.of(game));
-        var su = noWinnerScores();
+        var su = noWinnerScores(MAX_ERAS);
 
         // when
         advancer.handleScoresUpdated(GAME_ID, su);
@@ -376,7 +380,7 @@ class EraSagaAdvancerTest {
         var captor = ArgumentCaptor.forClass(Object.class);
 
         // when
-        advancer.handleScoresUpdated(GAME_ID, noWinnerScores());
+        advancer.handleScoresUpdated(GAME_ID, noWinnerScores(MAX_ERAS));
 
         // then
         verify(applicationEventPublisher).publishEvent(captor.capture());
@@ -426,18 +430,39 @@ class EraSagaAdvancerTest {
     // ─── helpers ─────────────────────────────────────────────────────────────
 
     @Test
-    @DisplayName("saga not in WAITING_SCORES — handleScoresUpdated does nothing")
-    void handleScoresUpdated_wrongStatus_ignored() {
-        // given
+    @DisplayName("saga not in WAITING_SCORES — handleScoresUpdated does nothing but still records the fact")
+    void handleScoresUpdated_wrongStatus_ignoredButRecorded() {
+        // given — ActionRoundClosed (round 3) hasn't yet set WAITING_SCORES when ScoresUpdated arrives
         var state = new EraSagaState(GAME_ID, 1, EraSagaStatus.WAITING_ROUND_3, PLAYER_IDS);
         given(eraSagaRepository.findByGameIdWithLock(GAME_ID)).willReturn(Optional.of(state));
+        var su = noWinnerScores();
 
         // when
-        advancer.handleScoresUpdated(GAME_ID, noWinnerScores());
+        advancer.handleScoresUpdated(GAME_ID, su);
+
+        // then — no immediate transition, but the fact is durably recorded for EraSagaScoresUpdatedSweep
+        then(eraSagaRepository).should(never()).save(any());
+        then(eventPublisher).should(never()).publish(any());
+        then(scoresUpdatedInbox).should().save(su);
+    }
+
+    @Test
+    @DisplayName("stale ScoresUpdated for an earlier era while saga waits on a later era — ignored")
+    void handleScoresUpdated_staleEarlierEra_ignored() {
+        // given — a delayed era-1 ScoresUpdated arrives while the saga is already WAITING_SCORES for
+        // era 2; both share the same status, so eraNumber must also be checked to avoid applying era-1
+        // totals to era 2
+        var state = new EraSagaState(GAME_ID, 2, EraSagaStatus.WAITING_SCORES, PLAYER_IDS);
+        given(eraSagaRepository.findByGameIdWithLock(GAME_ID)).willReturn(Optional.of(state));
+        var staleEraOneScores = noWinnerScores();
+
+        // when
+        advancer.handleScoresUpdated(GAME_ID, staleEraOneScores);
 
         // then
         then(eraSagaRepository).should(never()).save(any());
         then(eventPublisher).should(never()).publish(any());
+        then(scoresUpdatedInbox).should().save(staleEraOneScores);
     }
 
     @Test
@@ -492,9 +517,13 @@ class EraSagaAdvancerTest {
     }
 
     private ScoresUpdated noWinnerScores() {
+        return noWinnerScores(1);
+    }
+
+    private ScoresUpdated noWinnerScores(int eraNumber) {
         return new ScoresUpdated(
                 GAME_ID,
-                1,
+                eraNumber,
                 List.of(
                         new ScoresUpdated.ScoreUpdate(PLAYER_1, Faction.PROPHETS, 2, "bonus", 10),
                         new ScoresUpdated.ScoreUpdate(PLAYER_2, Faction.WEAVERS, 1, "bonus", 8)));

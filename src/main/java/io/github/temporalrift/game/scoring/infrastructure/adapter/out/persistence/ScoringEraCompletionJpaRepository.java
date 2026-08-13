@@ -16,4 +16,7 @@ interface ScoringEraCompletionJpaRepository extends JpaRepository<ScoringEraComp
                     ON CONFLICT (game_id, era_number) DO NOTHING
                     """, nativeQuery = true)
     int insertIfAbsent(@Param("gameId") UUID gameId, @Param("eraNumber") int eraNumber);
+
+    @Query("select max(e.id.eraNumber) from ScoringEraCompletionJpaEntity e where e.id.gameId = :gameId")
+    Integer findMaxEraNumberByGameId(@Param("gameId") UUID gameId);
 }
