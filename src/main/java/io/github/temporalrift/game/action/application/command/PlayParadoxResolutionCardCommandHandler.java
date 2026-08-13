@@ -64,18 +64,22 @@ class PlayParadoxResolutionCardCommandHandler implements PlayParadoxResolutionCa
         playerState.removeCard(command.cardInstanceId());
         phaseRepository.save(phase);
         playerStateRepository.save(playerState);
-        publish(command, phase, submittedCard.cardType());
+        publish(command, phase, submittedCard.cardType(), submittedCard.grade());
         return new Result(command.gameId(), command.eraNumber(), command.playerId());
     }
 
     private void publish(
-            Command command, ParadoxResolutionPhase phase, io.github.temporalrift.game.shared.CardType cardType) {
+            Command command,
+            ParadoxResolutionPhase phase,
+            io.github.temporalrift.game.shared.CardType cardType,
+            io.github.temporalrift.game.shared.CardGrade grade) {
         var payload = new ParadoxResolutionCardPlayed(
                 command.gameId(),
                 command.eraNumber(),
                 command.playerId(),
                 command.cardInstanceId(),
                 cardType,
+                grade,
                 command.targetEventId(),
                 command.targetOutcomeId());
         actionEventPublisher.publish(DomainEventEnvelope.create(

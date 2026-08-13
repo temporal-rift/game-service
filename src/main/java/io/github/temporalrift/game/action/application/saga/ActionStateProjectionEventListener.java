@@ -56,7 +56,7 @@ class ActionStateProjectionEventListener {
                 state.playerId(),
                 state.faction(),
                 event.cards().stream()
-                        .map(card -> new PlayerState.CardInstance(card.cardInstanceId(), card.cardType()))
+                        .map(card -> new PlayerState.CardInstance(card.cardInstanceId(), card.cardType(), card.grade()))
                         .toList(),
                 state.isJammed()));
     }

@@ -3,11 +3,13 @@ package io.github.temporalrift.game.session.application.saga;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 
@@ -19,6 +21,7 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.IntStream;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -29,6 +32,7 @@ import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 
+import io.github.temporalrift.game.session.application.dealing.WeightedCardDealer;
 import io.github.temporalrift.game.session.domain.event.GameEndedAbnormally;
 import io.github.temporalrift.game.session.domain.futureevent.FutureEventDefinition;
 import io.github.temporalrift.game.session.domain.game.DrawnFutureEvent;
@@ -73,6 +77,9 @@ class EraSagaImplTest {
     SessionGameRulesPort gameRules;
 
     @Mock
+    WeightedCardDealer cardDealer;
+
+    @Mock
     ApplicationEventPublisher applicationEventPublisher;
 
     @Spy
@@ -80,6 +87,15 @@ class EraSagaImplTest {
 
     @InjectMocks
     EraSagaImpl eraSaga;
+
+    @BeforeEach
+    void defaultDeal() {
+        lenient()
+                .when(cardDealer.deal(anyInt()))
+                .thenAnswer(invocation -> IntStream.range(0, invocation.getArgument(0))
+                        .mapToObj(index -> new HandDealt.CardInstance(UUID.randomUUID(), CardType.PUSH))
+                        .toList());
+    }
 
     private static List<UUID> buildDeck(int size) {
         return new ArrayList<>(

@@ -6,6 +6,7 @@ import java.util.UUID;
 
 import io.github.temporalrift.game.action.domain.event.CardPlayed;
 import io.github.temporalrift.game.action.domain.event.SpecialActionPlayed;
+import io.github.temporalrift.game.shared.CardGrade;
 import io.github.temporalrift.game.shared.CardType;
 import io.github.temporalrift.game.shared.Faction;
 import io.github.temporalrift.game.shared.ForesightDeclared;
@@ -44,6 +45,7 @@ public sealed interface SubmittedAction permits SubmittedAction.CardAction, Subm
             UUID playerId,
             UUID cardInstanceId,
             CardType cardType,
+            CardGrade grade,
             UUID targetEventId,
             UUID sourceOutcomeId,
             UUID targetOutcomeId)
@@ -51,6 +53,16 @@ public sealed interface SubmittedAction permits SubmittedAction.CardAction, Subm
 
         /** The only card types whose resolution (timeline-service's {@code applyShift}) needs two outcomes. */
         private static final Set<CardType> TWO_OUTCOME_CARD_TYPES = Set.of(CardType.SWING, CardType.COLLIDE);
+
+        public CardAction(
+                UUID playerId,
+                UUID cardInstanceId,
+                CardType cardType,
+                UUID targetEventId,
+                UUID sourceOutcomeId,
+                UUID targetOutcomeId) {
+            this(playerId, cardInstanceId, cardType, CardGrade.I, targetEventId, sourceOutcomeId, targetOutcomeId);
+        }
 
         @Override
         public void validate() {
@@ -80,6 +92,7 @@ public sealed interface SubmittedAction permits SubmittedAction.CardAction, Subm
                     playerId,
                     cardInstanceId,
                     cardType,
+                    grade,
                     targetEventId,
                     sourceOutcomeId,
                     targetOutcomeId);

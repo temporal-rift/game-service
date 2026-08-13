@@ -1,0 +1,93 @@
+package io.github.temporalrift.game.session.application.dealing;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.BDDMockito.given;
+
+import java.util.EnumMap;
+import java.util.Map;
+import java.util.Random;
+
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import io.github.temporalrift.game.session.domain.port.out.SessionGameRulesPort;
+import io.github.temporalrift.game.shared.CardCategory;
+import io.github.temporalrift.game.shared.CardGrade;
+import io.github.temporalrift.game.shared.CardType;
+
+@ExtendWith(MockitoExtension.class)
+class WeightedCardDealerTest {
+
+    @Mock
+    SessionGameRulesPort gameRules;
+
+    @Test
+    @DisplayName("a category with the only positive weight is selected for every dealt card")
+    void deal_onlyPositiveCategoryWeight_dealsThatCategory() {
+        // given
+        given(gameRules.cardCategoryWeights()).willReturn(weights(CardCategory.PARADOX, 1));
+        given(gameRules.cardGradeWeights()).willReturn(weights(CardGrade.I, 1));
+        var dealer = new WeightedCardDealer(gameRules, new Random(42));
+
+        // when
+        var cards = dealer.deal(50);
+
+        // then
+        assertThat(cards).allSatisfy(card -> {
+            assertThat(card.cardType()).isEqualTo(CardType.COLLIDE);
+            assertThat(card.grade()).isEqualTo(CardGrade.I);
+        });
+    }
+
+    @Test
+    @DisplayName("grade weights select only cards that support the selected grade")
+    void deal_onlyGradeThreeWeight_dealsOnlyGradeThreeCapableCards() {
+        // given
+        given(gameRules.cardCategoryWeights()).willReturn(weights(CardCategory.INFORMATION, 1));
+        given(gameRules.cardGradeWeights()).willReturn(weights(CardGrade.III, 1));
+        var dealer = new WeightedCardDealer(gameRules, new Random(7));
+
+        // when
+        var cards = dealer.deal(50);
+
+        // then
+        assertThat(cards).allSatisfy(card -> {
+            assertThat(card.cardType()).isEqualTo(CardType.SCAN);
+            assertThat(card.grade()).isEqualTo(CardGrade.III);
+        });
+    }
+
+    @Test
+    @DisplayName("ordinary dealing never includes reactive Paradox Resolution cards")
+    void deal_defaultWeights_neverDealsReactiveCards() {
+        // given
+        given(gameRules.cardCategoryWeights())
+                .willReturn(Map.of(
+                        CardCategory.PROBABILITY_SHIFTER, 35,
+                        CardCategory.INFORMATION, 25,
+                        CardCategory.DISRUPTION, 25,
+                        CardCategory.PARADOX, 15));
+        given(gameRules.cardGradeWeights()).willReturn(Map.of(CardGrade.I, 60, CardGrade.II, 30, CardGrade.III, 10));
+        var dealer = new WeightedCardDealer(gameRules, new Random(99));
+
+        // when
+        var cards = dealer.deal(1_000);
+
+        // then
+        assertThat(cards).extracting(card -> card.cardType()).doesNotContain(CardType.STABILIZE, CardType.DETONATE);
+        assertThat(cards)
+                .allSatisfy(
+                        card -> assertThat(card.cardType().supportedGrades()).contains(card.grade()));
+    }
+
+    private static <T extends Enum<T>> Map<T, Integer> weights(T selected, int selectedWeight) {
+        var weights = new EnumMap<T, Integer>(selected.getDeclaringClass());
+        for (var value : selected.getDeclaringClass().getEnumConstants()) {
+            weights.put(value, value == selected ? selectedWeight : 0);
+        }
+        return weights;
+    }
+}

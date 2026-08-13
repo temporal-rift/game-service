@@ -69,6 +69,7 @@ class PlayCardCommandHandler implements PlayCardUseCase {
                 command.playerId(),
                 command.cardInstanceId(),
                 submittedCard.cardType(),
+                submittedCard.grade(),
                 command.targetEventId(),
                 command.sourceOutcomeId(),
                 command.targetOutcomeId());

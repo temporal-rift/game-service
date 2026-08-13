@@ -113,12 +113,26 @@ game:
     max-cascaded-paradoxes: 3
     events-per-era: 3
     cards-per-hand: 5
+    cards-per-deal: 7
     win-score-threshold: 20
     reconnect-grace-period-seconds: 30
     action-round-timer-seconds:
       3: 60
       4: 45
       5: 30
+    hand-selection-timer-seconds:
+      3: 60
+      4: 45
+      5: 30
+    card-category-weights:
+      PROBABILITY_SHIFTER: 35
+      INFORMATION: 25
+      DISRUPTION: 25
+      PARADOX: 15
+    card-grade-weights:
+      I: 60
+      II: 30
+      III: 10
     stabilization-winner-factions:
       - PROPHETS
       - WEAVERS

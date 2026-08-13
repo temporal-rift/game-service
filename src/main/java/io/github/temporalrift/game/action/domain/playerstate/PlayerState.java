@@ -8,6 +8,7 @@ import java.util.UUID;
 
 import io.github.temporalrift.game.action.domain.CardNotInHandException;
 import io.github.temporalrift.game.shared.AggregateRoot;
+import io.github.temporalrift.game.shared.CardGrade;
 import io.github.temporalrift.game.shared.CardType;
 import io.github.temporalrift.game.shared.Faction;
 
@@ -98,5 +99,10 @@ public class PlayerState extends AggregateRoot {
         return jammed;
     }
 
-    public record CardInstance(UUID cardInstanceId, CardType cardType) {}
+    public record CardInstance(UUID cardInstanceId, CardType cardType, CardGrade grade) {
+
+        public CardInstance(UUID cardInstanceId, CardType cardType) {
+            this(cardInstanceId, cardType, CardGrade.I);
+        }
+    }
 }
