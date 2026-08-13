@@ -2,9 +2,7 @@ package io.github.temporalrift.game.session.application.saga;
 
 import static org.springframework.transaction.annotation.Propagation.REQUIRES_NEW;
 
-import java.security.SecureRandom;
 import java.time.Clock;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -20,6 +18,7 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import io.github.temporalrift.game.session.application.dealing.WeightedCardDealer;
 import io.github.temporalrift.game.session.domain.event.GameEndedAbnormally;
 import io.github.temporalrift.game.session.domain.game.DrawnFutureEvent;
 import io.github.temporalrift.game.session.domain.game.Game;
@@ -31,7 +30,6 @@ import io.github.temporalrift.game.session.domain.port.out.GameRepository;
 import io.github.temporalrift.game.session.domain.port.out.SessionEventPublisher;
 import io.github.temporalrift.game.session.domain.port.out.SessionGameRulesPort;
 import io.github.temporalrift.game.session.domain.saga.EraSagaStatus;
-import io.github.temporalrift.game.shared.CardType;
 import io.github.temporalrift.game.shared.CarryOverState;
 import io.github.temporalrift.game.shared.DomainEventEnvelope;
 import io.github.temporalrift.game.shared.EventsDrawn;
@@ -43,21 +41,13 @@ class EraSagaImpl implements EraSaga {
 
     private static final Logger log = LoggerFactory.getLogger(EraSagaImpl.class);
 
-    /**
-     * STABILIZE and DETONATE are reactive Paradox Resolution cards, dealt only when a Paradox Resolution
-     * phase opens — never into the ordinary action-round hand (GDD §3.1).
-     */
-    private static final CardType[] CARD_POOL = Arrays.stream(CardType.values())
-            .filter(type -> type != CardType.STABILIZE && type != CardType.DETONATE)
-            .toArray(CardType[]::new);
-
     private final GameRepository gameRepository;
     private final FutureEventCatalogPort futureEventCatalog;
     private final SessionEventPublisher eventPublisher;
     private final ApplicationEventPublisher applicationEventPublisher;
     private final EraSagaStateManager stateManager;
     private final SessionGameRulesPort gameRules;
-    private final SecureRandom random;
+    private final WeightedCardDealer cardDealer;
     private final Clock clock;
 
     EraSagaImpl(
@@ -67,6 +57,7 @@ class EraSagaImpl implements EraSaga {
             ApplicationEventPublisher applicationEventPublisher,
             EraSagaStateManager stateManager,
             SessionGameRulesPort gameRules,
+            WeightedCardDealer cardDealer,
             Clock clock) {
         this.gameRepository = gameRepository;
         this.futureEventCatalog = futureEventCatalog;
@@ -74,7 +65,7 @@ class EraSagaImpl implements EraSaga {
         this.applicationEventPublisher = applicationEventPublisher;
         this.stateManager = stateManager;
         this.gameRules = gameRules;
-        this.random = new SecureRandom();
+        this.cardDealer = cardDealer;
         this.clock = clock;
     }
 
@@ -203,10 +194,7 @@ class EraSagaImpl implements EraSaga {
     }
 
     private void publishHandDealt(Game game, UUID gameId, int eraNumber, UUID playerId) {
-        var cards = IntStream.range(0, gameRules.cardsPerHand())
-                .mapToObj(
-                        i -> new HandDealt.CardInstance(UUID.randomUUID(), CARD_POOL[random.nextInt(CARD_POOL.length)]))
-                .toList();
+        var cards = cardDealer.deal(gameRules.cardsPerHand());
         var handDealt = new HandDealt(gameId, eraNumber, playerId, cards);
         eventPublisher.publish(DomainEventEnvelope.create(
                 game.id(), Game.AGGREGATE_TYPE, gameId, DomainEventEnvelope.SCHEMA_VERSION_V1, handDealt, clock));

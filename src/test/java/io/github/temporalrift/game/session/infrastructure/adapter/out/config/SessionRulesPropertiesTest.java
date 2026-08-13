@@ -8,12 +8,32 @@ import java.util.Set;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import io.github.temporalrift.game.shared.CardCategory;
+import io.github.temporalrift.game.shared.CardGrade;
 import io.github.temporalrift.game.shared.Faction;
 
 class SessionRulesPropertiesTest {
 
     static SessionRulesProperties properties(Map<Integer, Integer> timers) {
-        return new SessionRulesProperties(2, 8, 4, 3, 5, 7, 100, 30, timers, Set.of(Faction.PROPHETS, Faction.WEAVERS));
+        return new SessionRulesProperties(
+                2,
+                8,
+                4,
+                3,
+                5,
+                7,
+                7,
+                100,
+                30,
+                timers,
+                timers,
+                Map.of(
+                        CardCategory.PROBABILITY_SHIFTER, 35,
+                        CardCategory.INFORMATION, 25,
+                        CardCategory.DISRUPTION, 25,
+                        CardCategory.PARADOX, 15),
+                Map.of(CardGrade.I, 60, CardGrade.II, 30, CardGrade.III, 10),
+                Set.of(Faction.PROPHETS, Faction.WEAVERS));
     }
 
     @Test
@@ -35,5 +55,16 @@ class SessionRulesPropertiesTest {
 
         // when / then
         assertThat(props.actionRoundTimerSeconds(7)).isEqualTo(60);
+    }
+
+    @Test
+    @DisplayName("handSelectionTimerSeconds returns the mapped value and falls back to 60")
+    void handSelectionTimerSeconds_returnsMappedValueAndDefault() {
+        // given
+        var props = properties(Map.of(4, 45));
+
+        // when / then
+        assertThat(props.handSelectionTimerSeconds(4)).isEqualTo(45);
+        assertThat(props.handSelectionTimerSeconds(7)).isEqualTo(60);
     }
 }

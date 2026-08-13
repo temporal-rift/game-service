@@ -10,5 +10,10 @@ import java.util.UUID;
  */
 public record HandDealt(UUID gameId, int eraNumber, UUID playerId, List<CardInstance> cards) {
 
-    public record CardInstance(UUID cardInstanceId, CardType cardType) {}
+    public record CardInstance(UUID cardInstanceId, CardType cardType, CardGrade grade) {
+
+        public CardInstance(UUID cardInstanceId, CardType cardType) {
+            this(cardInstanceId, cardType, CardGrade.I);
+        }
+    }
 }
