@@ -1,6 +1,8 @@
 package io.github.temporalrift.game.action.infrastructure.adapter.out.persistence;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.times;
@@ -15,6 +17,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import tools.jackson.databind.ObjectMapper;
 
 import io.github.temporalrift.game.action.domain.handselection.HandSelection;
 import io.github.temporalrift.game.action.domain.handselection.HandSelectionStatus;
@@ -27,6 +30,9 @@ import io.github.temporalrift.game.shared.HandSelected;
 class HandSelectionRepositoryAdapterTest {
     @Mock
     HandSelectionJpaRepository jpaRepository;
+
+    @Mock
+    ObjectMapper objectMapper;
 
     @InjectMocks
     HandSelectionRepositoryAdapter adapter;
@@ -43,6 +49,9 @@ class HandSelectionRepositoryAdapterTest {
         assertThat(entity.id).isEqualTo(selection.id());
         assertThat(entity.status).isEqualTo(HandSelectionStatus.OPEN.name());
         assertThat(entity.dealtCards).hasSize(7);
+        assertThat(entity.dealtCards)
+                .extracting(StoredHandSelectionCard::cardGrade)
+                .contains(CardGrade.III.name());
         assertThat(entity.selectedCards).isEmpty();
 
         adapter.save(selection.selectRandomOnExpiry(Instant.EPOCH, new java.util.Random(4)));
@@ -55,7 +64,13 @@ class HandSelectionRepositoryAdapterTest {
 
     @Test
     void findWithLock_mapsPersistedFinalSelection() {
-        var selection = selection().selectRandomOnExpiry(Instant.EPOCH, new java.util.Random(7));
+        var openSelection = selection();
+        var selection = openSelection.select(
+                openSelection.dealtCards().stream()
+                        .limit(5)
+                        .map(HandDealt.CardInstance::cardInstanceId)
+                        .collect(java.util.stream.Collectors.toSet()),
+                Instant.EPOCH.minusSeconds(1));
         var entity = new HandSelectionJpaEntity();
         entity.id = selection.id();
         entity.gameId = selection.gameId();
@@ -77,11 +92,32 @@ class HandSelectionRepositoryAdapterTest {
                 selection.gameId(), selection.eraNumber(), selection.playerId());
 
         assertThat(loaded).contains(selection);
+        assertThat(loaded.orElseThrow().selectedCards())
+                .extracting(HandDealt.CardInstance::grade)
+                .contains(CardGrade.III);
+    }
+
+    @Test
+    void createIfAbsent_mapsAnOpenSelectionToTheAtomicInsert() {
+        var selection = selection();
+        given(objectMapper.writeValueAsString(any())).willReturn("[]");
+        given(jpaRepository.insertIfAbsent(
+                        eq(selection.id()),
+                        eq(selection.gameId()),
+                        eq(selection.eraNumber()),
+                        eq(selection.playerId()),
+                        eq(HandSelectionStatus.OPEN.name()),
+                        eq(selection.selectionExpiresAt()),
+                        eq("[]")))
+                .willReturn(1);
+
+        assertThat(adapter.createIfAbsent(selection)).isTrue();
     }
 
     private static HandSelection selection() {
         var cards = java.util.stream.IntStream.rangeClosed(1, 7)
-                .mapToObj(slot -> new HandDealt.CardInstance(UUID.randomUUID(), CardType.PUSH, CardGrade.I, slot))
+                .mapToObj(slot -> new HandDealt.CardInstance(
+                        UUID.randomUUID(), CardType.PUSH, slot == 1 ? CardGrade.III : CardGrade.I, slot))
                 .toList();
         return HandSelection.open(new HandDealt(UUID.randomUUID(), 1, UUID.randomUUID(), Instant.EPOCH, cards));
     }

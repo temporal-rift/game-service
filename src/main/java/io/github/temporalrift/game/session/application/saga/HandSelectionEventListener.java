@@ -39,25 +39,28 @@ class HandSelectionEventListener {
     @ApplicationModuleListener
     @Transactional(propagation = REQUIRES_NEW)
     void onHandSelected(HandSelected event) {
-        eventPublisher.publish(DomainEventEnvelope.create(
-                event.gameId(),
-                Game.AGGREGATE_TYPE,
-                event.gameId(),
-                DomainEventEnvelope.SCHEMA_VERSION_V1,
-                event,
-                clock));
         eraSagaRepository
                 .findByGameIdWithLock(event.gameId())
                 .filter(state -> state.eraNumber() == event.eraNumber())
                 .filter(state -> state.status() == EraSagaStatus.WAITING_HAND_SELECTION)
-                .ifPresent(state -> {
+                .filter(state -> state.playerIds().contains(event.playerId()))
+                .filter(state -> !state.handSelectedPlayerIds().contains(event.playerId()))
+                .map(state -> {
                     var selected = state.markHandSelected(event.playerId());
-                    if (selected.allHandsSelected()) {
-                        eraSagaRepository.save(selected.withStatus(EraSagaStatus.WAITING_ROUND_1));
+                    return selected.allHandsSelected() ? selected.withStatus(EraSagaStatus.WAITING_ROUND_1) : selected;
+                })
+                .ifPresent(selected -> {
+                    eraSagaRepository.save(selected);
+                    eventPublisher.publish(DomainEventEnvelope.create(
+                            event.gameId(),
+                            Game.AGGREGATE_TYPE,
+                            event.gameId(),
+                            DomainEventEnvelope.SCHEMA_VERSION_V1,
+                            event,
+                            clock));
+                    if (selected.status() == EraSagaStatus.WAITING_ROUND_1) {
                         applicationEventPublisher.publishEvent(new StartActionRoundRequested(
                                 event.gameId(), event.eraNumber(), 1, selected.playerIds()));
-                    } else {
-                        eraSagaRepository.save(selected);
                     }
                 });
     }

@@ -35,10 +35,14 @@ public record SessionRulesProperties(
     private static final int DEFAULT_ACTION_ROUND_TIMER_SECONDS = 60;
 
     public SessionRulesProperties {
+        if (cardsPerDeal < cardsPerHand) {
+            throw new IllegalArgumentException("cards-per-deal must be greater than or equal to cards-per-hand");
+        }
         actionRoundTimerSeconds = Map.copyOf(actionRoundTimerSeconds);
         handSelectionTimerSeconds = Map.copyOf(handSelectionTimerSeconds);
         cardCategoryWeights = Map.copyOf(cardCategoryWeights);
         cardGradeWeights = Map.copyOf(cardGradeWeights);
+        validatePositiveValues(handSelectionTimerSeconds, "hand-selection-timer-seconds");
         validateWeights(cardCategoryWeights, "card-category-weights");
         validateWeights(cardGradeWeights, "card-grade-weights");
     }
@@ -58,6 +62,12 @@ public record SessionRulesProperties(
                 || weights.values().stream().mapToInt(Integer::intValue).sum() == 0) {
             throw new IllegalArgumentException(
                     propertyName + " must contain non-negative weights with a positive total");
+        }
+    }
+
+    private static void validatePositiveValues(Map<?, Integer> values, String propertyName) {
+        if (values.values().stream().anyMatch(value -> value == null || value <= 0)) {
+            throw new IllegalArgumentException(propertyName + " must contain only positive values");
         }
     }
 }

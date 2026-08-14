@@ -23,12 +23,9 @@ class HandSelectionProjectionListener {
     @ApplicationModuleListener
     @Transactional(propagation = REQUIRES_NEW)
     void onHandDealt(HandDealt event) {
-        repository
-                .findByGameIdAndEraNumberAndPlayerIdWithLock(event.gameId(), event.eraNumber(), event.playerId())
-                .ifPresentOrElse(ignored -> {}, () -> {
-                    var selection = HandSelection.open(event);
-                    repository.save(selection);
-                    timerScheduler.scheduleAfterCommit(selection.id(), selection.selectionExpiresAt());
-                });
+        var selection = HandSelection.open(event);
+        if (repository.createIfAbsent(selection)) {
+            timerScheduler.scheduleAfterCommit(selection.id(), selection.selectionExpiresAt());
+        }
     }
 }

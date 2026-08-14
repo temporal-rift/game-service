@@ -23,6 +23,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import io.github.temporalrift.game.action.domain.playerstate.PlayerState;
 import io.github.temporalrift.game.action.domain.port.out.FutureEventDefinitionPort;
 import io.github.temporalrift.game.action.domain.port.out.PlayerStateRepository;
+import io.github.temporalrift.game.shared.CardGrade;
 import io.github.temporalrift.game.shared.CardType;
 import io.github.temporalrift.game.shared.CarryOverState;
 import io.github.temporalrift.game.shared.EventsDrawn;
@@ -76,7 +77,7 @@ class ActionStateProjectionEventListenerTest {
                 existing.gameId(),
                 1,
                 existing.playerId(),
-                List.of(new HandDealt.CardInstance(UUID.randomUUID(), CardType.PUSH)));
+                List.of(new HandDealt.CardInstance(UUID.randomUUID(), CardType.PUSH, CardGrade.III)));
         given(playerStateRepository.findOrCreateWithLock(existing.gameId(), existing.playerId()))
                 .willReturn(existing);
 
@@ -94,6 +95,10 @@ class ActionStateProjectionEventListenerTest {
                 .singleElement()
                 .extracting(PlayerState.CardInstance::cardType)
                 .isEqualTo(CardType.PUSH);
+        assertThat(captor.getValue().hand())
+                .singleElement()
+                .extracting(PlayerState.CardInstance::grade)
+                .isEqualTo(CardGrade.III);
     }
 
     @Test

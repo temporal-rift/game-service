@@ -6,6 +6,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 import org.springframework.stereotype.Component;
+import tools.jackson.databind.ObjectMapper;
 
 import io.github.temporalrift.game.action.domain.handselection.HandSelection;
 import io.github.temporalrift.game.action.domain.handselection.HandSelectionStatus;
@@ -15,15 +16,35 @@ import io.github.temporalrift.game.shared.HandSelected;
 @Component
 class HandSelectionRepositoryAdapter implements HandSelectionRepository {
     private final HandSelectionJpaRepository repository;
+    private final ObjectMapper objectMapper;
 
-    HandSelectionRepositoryAdapter(HandSelectionJpaRepository repository) {
+    HandSelectionRepositoryAdapter(HandSelectionJpaRepository repository, ObjectMapper objectMapper) {
         this.repository = repository;
+        this.objectMapper = objectMapper;
     }
 
     @Override
     public HandSelection save(HandSelection selection) {
         repository.save(toEntity(selection));
         return selection;
+    }
+
+    @Override
+    public boolean createIfAbsent(HandSelection selection) {
+        if (selection.status() != HandSelectionStatus.OPEN) {
+            throw new IllegalArgumentException("Only open hand selections can be created");
+        }
+        return repository.insertIfAbsent(
+                        selection.id(),
+                        selection.gameId(),
+                        selection.eraNumber(),
+                        selection.playerId(),
+                        selection.status().name(),
+                        selection.selectionExpiresAt(),
+                        objectMapper.writeValueAsString(selection.dealtCards().stream()
+                                .map(StoredHandSelectionCard::fromDomain)
+                                .toList()))
+                == 1;
     }
 
     @Override
