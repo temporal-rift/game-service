@@ -2,7 +2,6 @@ package io.github.temporalrift.game.action.infrastructure.adapter.out.persistenc
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.times;
@@ -102,13 +101,13 @@ class HandSelectionRepositoryAdapterTest {
         var selection = selection();
         given(objectMapper.writeValueAsString(any())).willReturn("[]");
         given(jpaRepository.insertIfAbsent(
-                        eq(selection.id()),
-                        eq(selection.gameId()),
-                        eq(selection.eraNumber()),
-                        eq(selection.playerId()),
-                        eq(HandSelectionStatus.OPEN.name()),
-                        eq(selection.selectionExpiresAt()),
-                        eq("[]")))
+                        selection.id(),
+                        selection.gameId(),
+                        selection.eraNumber(),
+                        selection.playerId(),
+                        HandSelectionStatus.OPEN.name(),
+                        selection.selectionExpiresAt(),
+                        "[]"))
                 .willReturn(1);
 
         assertThat(adapter.createIfAbsent(selection)).isTrue();

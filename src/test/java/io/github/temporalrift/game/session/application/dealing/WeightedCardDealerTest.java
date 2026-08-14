@@ -37,8 +37,7 @@ class WeightedCardDealerTest {
         var cards = dealer.deal(50);
 
         // then
-        assertThat(cards).isNotEmpty();
-        assertThat(cards).allSatisfy(card -> {
+        assertThat(cards).isNotEmpty().allSatisfy(card -> {
             assertThat(card.cardType()).isEqualTo(CardType.COLLIDE);
             assertThat(card.grade()).isEqualTo(CardGrade.I);
         });
@@ -56,8 +55,7 @@ class WeightedCardDealerTest {
         var cards = dealer.deal(50);
 
         // then
-        assertThat(cards).isNotEmpty();
-        assertThat(cards).allSatisfy(card -> {
+        assertThat(cards).isNotEmpty().allSatisfy(card -> {
             assertThat(card.cardType()).isEqualTo(CardType.SCAN);
             assertThat(card.grade()).isEqualTo(CardGrade.III);
         });
@@ -80,8 +78,7 @@ class WeightedCardDealerTest {
         var cards = dealer.deal(50);
 
         // then
-        assertThat(cards).isNotEmpty();
-        assertThat(cards).allSatisfy(card -> {
+        assertThat(cards).isNotEmpty().allSatisfy(card -> {
             assertThat(card.cardType().getCategory()).isEqualTo(CardCategory.PROBABILITY_SHIFTER);
             assertThat(card.grade()).isEqualTo(CardGrade.III);
         });
