@@ -28,6 +28,7 @@ class IncompleteEventPublicationResubmitterTest {
                         Duration.ofSeconds(1),
                         Duration.ofSeconds(1),
                         Duration.ofSeconds(1),
+                        Duration.ofSeconds(1),
                         Duration.ofSeconds(1)));
 
         resubmitter.resubmitStale();
