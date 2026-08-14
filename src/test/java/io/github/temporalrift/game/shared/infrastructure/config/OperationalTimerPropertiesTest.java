@@ -44,6 +44,38 @@ class OperationalTimerPropertiesTest {
                 .run(context -> assertThat(context).hasFailed());
     }
 
+    @Test
+    void timerProperties_acceptValidHandSelectionSweepInterval() {
+        contextRunner
+                .withPropertyValues(
+                        "game.timers.event-resubmit-min-age=2m",
+                        "game.timers.event-resubmit-interval=30s",
+                        "game.timers.action-round-sweep-interval=1s",
+                        "game.timers.hand-selection-sweep-interval=1s",
+                        "game.timers.reconnect-sweep-interval=1s",
+                        "game.timers.scoring-completion-sweep-interval=1s",
+                        "game.timers.era-saga-scores-updated-sweep-interval=1s",
+                        "game.rate-limit.requests-per-minute=120",
+                        "game.rate-limit.cleanup-interval=60s")
+                .run(context -> assertThat(context).hasNotFailed());
+    }
+
+    @Test
+    void timerProperties_rejectSubSecondHandSelectionSweepInterval() {
+        contextRunner
+                .withPropertyValues(
+                        "game.timers.event-resubmit-min-age=2m",
+                        "game.timers.event-resubmit-interval=30s",
+                        "game.timers.action-round-sweep-interval=1s",
+                        "game.timers.hand-selection-sweep-interval=999ms",
+                        "game.timers.reconnect-sweep-interval=1s",
+                        "game.timers.scoring-completion-sweep-interval=1s",
+                        "game.timers.era-saga-scores-updated-sweep-interval=1s",
+                        "game.rate-limit.requests-per-minute=120",
+                        "game.rate-limit.cleanup-interval=60s")
+                .run(context -> assertThat(context).hasFailed());
+    }
+
     @Configuration(proxyBeanMethods = false)
     @EnableConfigurationProperties({TimerProperties.class, RateLimitProperties.class})
     static class PropertiesConfiguration {}
