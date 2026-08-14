@@ -6,7 +6,7 @@
     <parent>
         <groupId>io.github.temporal-rift</groupId>
         <artifactId>temporal-rift-bom</artifactId>
-        <version>1.9.0</version>
+        <version>1.10.0</version>
         <relativePath/>
     </parent>
 
@@ -55,7 +55,7 @@
         <sonar.coverage.exclusions>**/generated-sources/**/*</sonar.coverage.exclusions>
 
         <session-event.version>1.2.0</session-event.version>
-        <action-event.version>1.2.0</action-event.version>
+        <action-event.version>1.3.0</action-event.version>
         <timeline-event.version>2.0.0</timeline-event.version>
         <scoring-event.version>1.0.2</scoring-event.version>
         <session-api.version>2.0.1</session-api.version>
@@ -306,7 +306,8 @@
                                 ${project.build.directory}/dependency-specs/session-api-${session-api.version}-jar/openapi/v1/session.yml
                             </inputSpec>
                             <output>${project.build.directory}/generated-sources/openapi/session</output>
-                            <apiPackage>io.github.temporalrift.game.session.infrastructure.adapter.in.rest.v1</apiPackage>
+                            <apiPackage>io.github.temporalrift.game.session.infrastructure.adapter.in.rest.v1
+                            </apiPackage>
                             <modelPackage>io.github.temporalrift.game.session.infrastructure.adapter.in.rest.v1.model
                             </modelPackage>
                         </configuration>
@@ -321,7 +322,8 @@
                                 ${project.build.directory}/dependency-specs/action-api-${action-api.version}-jar/openapi/v1/action.yml
                             </inputSpec>
                             <output>${project.build.directory}/generated-sources/openapi/action</output>
-                            <apiPackage>io.github.temporalrift.game.action.infrastructure.adapter.in.rest.v1</apiPackage>
+                            <apiPackage>io.github.temporalrift.game.action.infrastructure.adapter.in.rest.v1
+                            </apiPackage>
                             <modelPackage>io.github.temporalrift.game.action.infrastructure.adapter.in.rest.v1.model
                             </modelPackage>
                         </configuration>
@@ -336,7 +338,8 @@
                                 ${project.build.directory}/dependency-specs/scoring-api-${scoring-api.version}-jar/openapi/v1/scoring.yml
                             </inputSpec>
                             <output>${project.build.directory}/generated-sources/openapi/scoring</output>
-                            <apiPackage>io.github.temporalrift.game.scoring.infrastructure.adapter.in.rest.v1</apiPackage>
+                            <apiPackage>io.github.temporalrift.game.scoring.infrastructure.adapter.in.rest.v1
+                            </apiPackage>
                             <modelPackage>io.github.temporalrift.game.scoring.infrastructure.adapter.in.rest.v1.model
                             </modelPackage>
                         </configuration>
