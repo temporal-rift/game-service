@@ -28,6 +28,10 @@ public class EraSagaStateJpaEntity {
     @JdbcTypeCode(SqlTypes.ARRAY)
     private List<UUID> playerIds;
 
+    @Column(name = "hand_selected_player_ids", columnDefinition = "uuid[]", nullable = false)
+    @JdbcTypeCode(SqlTypes.ARRAY)
+    private List<UUID> handSelectedPlayerIds;
+
     protected EraSagaStateJpaEntity() {}
 
     public UUID getGameId() {
@@ -60,5 +64,13 @@ public class EraSagaStateJpaEntity {
 
     public void setPlayerIds(List<UUID> playerIds) {
         this.playerIds = playerIds;
+    }
+
+    public List<UUID> getHandSelectedPlayerIds() {
+        return handSelectedPlayerIds;
+    }
+
+    public void setHandSelectedPlayerIds(List<UUID> handSelectedPlayerIds) {
+        this.handSelectedPlayerIds = handSelectedPlayerIds;
     }
 }

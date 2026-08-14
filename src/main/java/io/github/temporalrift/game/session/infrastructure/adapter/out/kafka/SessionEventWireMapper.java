@@ -23,6 +23,7 @@ import io.github.temporalrift.asyncapi.sessionevents.GeneratedChannelContract.Ga
 import io.github.temporalrift.asyncapi.sessionevents.GeneratedChannelContract.GameStartedPayload;
 import io.github.temporalrift.asyncapi.sessionevents.GeneratedChannelContract.HandDealtCardInstance;
 import io.github.temporalrift.asyncapi.sessionevents.GeneratedChannelContract.HandDealtPayload;
+import io.github.temporalrift.asyncapi.sessionevents.GeneratedChannelContract.HandSelectedPayload;
 import io.github.temporalrift.asyncapi.sessionevents.GeneratedChannelContract.HostTransferredPayload;
 import io.github.temporalrift.asyncapi.sessionevents.GeneratedChannelContract.LobbyClosedPayload;
 import io.github.temporalrift.asyncapi.sessionevents.GeneratedChannelContract.LobbyCreatedPayload;
@@ -60,6 +61,7 @@ import io.github.temporalrift.game.shared.FactionAssigned;
 import io.github.temporalrift.game.shared.FactionRevealed;
 import io.github.temporalrift.game.shared.GameEnded;
 import io.github.temporalrift.game.shared.HandDealt;
+import io.github.temporalrift.game.shared.HandSelected;
 import io.github.temporalrift.game.shared.PlayerJoinedLobby;
 
 @Mapper(componentModel = "spring")
@@ -129,6 +131,8 @@ interface SessionEventWireMapper {
     EventsDrawnOutcome toWire(EventsDrawn.Outcome outcome);
 
     HandDealtPayload toWire(HandDealt event);
+
+    HandSelectedPayload toWire(HandSelected event);
 
     HandDealtCardInstance toWire(HandDealt.CardInstance cardInstance);
 }

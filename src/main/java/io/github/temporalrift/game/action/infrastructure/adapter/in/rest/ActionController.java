@@ -10,11 +10,15 @@ import io.github.temporalrift.game.action.application.port.in.PlayCardUseCase;
 import io.github.temporalrift.game.action.application.port.in.PlayParadoxResolutionCardUseCase;
 import io.github.temporalrift.game.action.application.port.in.PlaySpecialActionUseCase;
 import io.github.temporalrift.game.action.application.port.in.RecordActivistDeclarationUseCase;
+import io.github.temporalrift.game.action.application.port.in.SelectHandUseCase;
 import io.github.temporalrift.game.action.infrastructure.adapter.in.rest.v1.ActionApi;
 import io.github.temporalrift.game.action.infrastructure.adapter.in.rest.v1.model.ActionSubmissionStatus;
 import io.github.temporalrift.game.action.infrastructure.adapter.in.rest.v1.model.ActivistDeclarationRequest;
 import io.github.temporalrift.game.action.infrastructure.adapter.in.rest.v1.model.ActivistDeclarationResponse;
 import io.github.temporalrift.game.action.infrastructure.adapter.in.rest.v1.model.CardActionRequest;
+import io.github.temporalrift.game.action.infrastructure.adapter.in.rest.v1.model.HandSelectionRequest;
+import io.github.temporalrift.game.action.infrastructure.adapter.in.rest.v1.model.HandSelectionResponse;
+import io.github.temporalrift.game.action.infrastructure.adapter.in.rest.v1.model.HandSelectionStatus;
 import io.github.temporalrift.game.action.infrastructure.adapter.in.rest.v1.model.ParadoxResolutionCardRequest;
 import io.github.temporalrift.game.action.infrastructure.adapter.in.rest.v1.model.ParadoxResolutionCardResponse;
 import io.github.temporalrift.game.action.infrastructure.adapter.in.rest.v1.model.RoundStatus;
@@ -36,18 +40,31 @@ class ActionController implements ActionApi {
     private final RecordActivistDeclarationUseCase recordActivistDeclarationUseCase;
 
     private final GetRoundStatusUseCase getRoundStatusUseCase;
+    private final SelectHandUseCase selectHandUseCase;
 
     ActionController(
             PlayCardUseCase playCardUseCase,
             PlaySpecialActionUseCase playSpecialActionUseCase,
             PlayParadoxResolutionCardUseCase playParadoxResolutionCardUseCase,
             RecordActivistDeclarationUseCase recordActivistDeclarationUseCase,
-            GetRoundStatusUseCase getRoundStatusUseCase) {
+            GetRoundStatusUseCase getRoundStatusUseCase,
+            SelectHandUseCase selectHandUseCase) {
         this.playCardUseCase = playCardUseCase;
         this.playSpecialActionUseCase = playSpecialActionUseCase;
         this.playParadoxResolutionCardUseCase = playParadoxResolutionCardUseCase;
         this.recordActivistDeclarationUseCase = recordActivistDeclarationUseCase;
         this.getRoundStatusUseCase = getRoundStatusUseCase;
+        this.selectHandUseCase = selectHandUseCase;
+    }
+
+    @Override
+    public ResponseEntity<HandSelectionResponse> selectHand(
+            UUID gameId, Integer eraNumber, HandSelectionRequest handSelectionRequest) {
+        var result = selectHandUseCase.handle(new SelectHandUseCase.Command(
+                gameId, eraNumber, CurrentPlayer.id(), handSelectionRequest.getKeptCardInstanceIds()));
+        return ResponseEntity.accepted()
+                .body(new HandSelectionResponse(
+                        result.gameId(), result.eraNumber(), result.playerId(), HandSelectionStatus.SELECTED));
     }
 
     @Override

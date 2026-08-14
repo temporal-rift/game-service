@@ -30,6 +30,7 @@ import io.github.temporalrift.game.shared.FactionAssigned;
 import io.github.temporalrift.game.shared.FactionRevealed;
 import io.github.temporalrift.game.shared.GameEnded;
 import io.github.temporalrift.game.shared.HandDealt;
+import io.github.temporalrift.game.shared.HandSelected;
 import io.github.temporalrift.game.shared.OutboundIntegrationEventPublisher;
 import io.github.temporalrift.game.shared.PlayerJoinedLobby;
 
@@ -86,6 +87,7 @@ class SessionEventPublisherAdapter implements SessionEventPublisher {
             case FactionRevealed payload -> outboundEvents.publish("FactionRevealed", mapper.toWire(payload), event);
             case EventsDrawn payload -> outboundEvents.publish("EventsDrawn", mapper.toWire(payload), event);
             case HandDealt payload -> outboundEvents.publish("HandDealt", mapper.toWire(payload), event);
+            case HandSelected payload -> outboundEvents.publish("HandSelected", mapper.toWire(payload), event);
             case ResolutionStarted payload ->
                 outboundEvents.publish("ResolutionStarted", mapper.toWire(payload), event);
             default ->

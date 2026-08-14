@@ -3,6 +3,7 @@ package io.github.temporalrift.game.session.application.saga;
 import static org.springframework.transaction.annotation.Propagation.REQUIRES_NEW;
 
 import java.time.Clock;
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -34,7 +35,6 @@ import io.github.temporalrift.game.shared.CarryOverState;
 import io.github.temporalrift.game.shared.DomainEventEnvelope;
 import io.github.temporalrift.game.shared.EventsDrawn;
 import io.github.temporalrift.game.shared.HandDealt;
-import io.github.temporalrift.game.shared.StartActionRoundRequested;
 
 @Service
 class EraSagaImpl implements EraSaga {
@@ -83,10 +83,9 @@ class EraSagaImpl implements EraSaga {
             gameRepository.save(game);
 
             publishEventsDrawn(game, gameId, eraNumber, freshDraw.events(), carryOverEvents);
-            playerIds.forEach(playerId -> publishHandDealt(game, gameId, eraNumber, playerId));
+            playerIds.forEach(playerId -> publishHandDealt(game, gameId, eraNumber, playerId, playerIds.size()));
 
-            stateManager.advanceTo(gameId, EraSagaStatus.WAITING_ROUND_1);
-            applicationEventPublisher.publishEvent(new StartActionRoundRequested(gameId, eraNumber, 1, playerIds));
+            stateManager.advanceTo(gameId, EraSagaStatus.WAITING_HAND_SELECTION);
         } catch (InsufficientDeckException e) {
             log.warn("Deck exhausted for game {} era {} — ending game abnormally", gameId, eraNumber, e);
             stateManager.fail(gameId);
@@ -193,9 +192,15 @@ class EraSagaImpl implements EraSaga {
         return new EventsDrawn.FutureEvent(eventId, definition.title(), outcomes, carryOverState);
     }
 
-    private void publishHandDealt(Game game, UUID gameId, int eraNumber, UUID playerId) {
-        var cards = cardDealer.deal(gameRules.cardsPerHand());
-        var handDealt = new HandDealt(gameId, eraNumber, playerId, cards);
+    private void publishHandDealt(Game game, UUID gameId, int eraNumber, UUID playerId, int playerCount) {
+        var cards = IntStream.rangeClosed(1, gameRules.cardsPerDeal())
+                .mapToObj(slot -> {
+                    var card = cardDealer.deal(1).getFirst();
+                    return new HandDealt.CardInstance(card.cardInstanceId(), card.cardType(), card.grade(), slot);
+                })
+                .toList();
+        var expiresAt = clock.instant().plus(Duration.ofSeconds(gameRules.handSelectionTimerSeconds(playerCount)));
+        var handDealt = new HandDealt(gameId, eraNumber, playerId, expiresAt, cards);
         eventPublisher.publish(DomainEventEnvelope.create(
                 game.id(), Game.AGGREGATE_TYPE, gameId, DomainEventEnvelope.SCHEMA_VERSION_V1, handDealt, clock));
         applicationEventPublisher.publishEvent(handDealt);
