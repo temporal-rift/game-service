@@ -2,6 +2,7 @@ package io.github.temporalrift.game.session.domain.saga;
 
 public enum EraSagaStatus {
     RUNNING,
+    WAITING_HAND_SELECTION,
     WAITING_ROUND_1,
     WAITING_ROUND_2,
     WAITING_ROUND_3,

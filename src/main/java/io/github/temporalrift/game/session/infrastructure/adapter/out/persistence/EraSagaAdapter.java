@@ -40,6 +40,7 @@ public class EraSagaAdapter implements EraSagaRepository {
         entity.setEraNumber(state.eraNumber());
         entity.setStatus(state.status().name());
         entity.setPlayerIds(state.playerIds());
+        entity.setHandSelectedPlayerIds(state.handSelectedPlayerIds());
         return entity;
     }
 
@@ -48,6 +49,7 @@ public class EraSagaAdapter implements EraSagaRepository {
                 entity.getGameId(),
                 entity.getEraNumber(),
                 EraSagaStatus.valueOf(entity.getStatus()),
-                entity.getPlayerIds());
+                entity.getPlayerIds(),
+                entity.getHandSelectedPlayerIds());
     }
 }

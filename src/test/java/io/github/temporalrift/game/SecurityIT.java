@@ -17,6 +17,7 @@ import io.github.temporalrift.game.action.application.port.in.PlayCardUseCase;
 import io.github.temporalrift.game.action.application.port.in.PlayParadoxResolutionCardUseCase;
 import io.github.temporalrift.game.action.application.port.in.PlaySpecialActionUseCase;
 import io.github.temporalrift.game.action.application.port.in.RecordActivistDeclarationUseCase;
+import io.github.temporalrift.game.action.application.port.in.SelectHandUseCase;
 import io.github.temporalrift.game.scoring.application.port.in.GetScoresUseCase;
 import io.github.temporalrift.game.scoring.application.port.in.GetScoringHistoryUseCase;
 import io.github.temporalrift.game.session.application.port.in.CreateLobbyUseCase;
@@ -47,6 +48,9 @@ class SecurityIT {
 
     @MockitoBean
     private GetRoundStatusUseCase getRoundStatusUseCase;
+
+    @MockitoBean
+    private SelectHandUseCase selectHandUseCase;
 
     @MockitoBean
     private CreateLobbyUseCase createLobbyUseCase;

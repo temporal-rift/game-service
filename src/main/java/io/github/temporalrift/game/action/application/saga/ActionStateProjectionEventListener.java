@@ -13,7 +13,7 @@ import io.github.temporalrift.game.action.domain.port.out.PlayerStateRepository;
 import io.github.temporalrift.game.shared.EventsDrawn;
 import io.github.temporalrift.game.shared.Faction;
 import io.github.temporalrift.game.shared.FactionAssigned;
-import io.github.temporalrift.game.shared.HandDealt;
+import io.github.temporalrift.game.shared.HandSelected;
 
 @Component
 class ActionStateProjectionEventListener {
@@ -45,7 +45,7 @@ class ActionStateProjectionEventListener {
     }
 
     @ApplicationModuleListener
-    void onHandDealt(HandDealt event) {
+    void onHandSelected(HandSelected event) {
         // Find-or-create under lock: this listener and onFactionAssigned run in independent
         // post-commit transactions and both save the whole row, so an unlocked (or unguarded-create)
         // read-modify-write lets the last writer erase the other's field.

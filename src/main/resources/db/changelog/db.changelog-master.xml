@@ -26,6 +26,7 @@
     <include file="db/changelog/session/012-create-game-pending-carry-over-entry.xml"/>
     <include file="db/changelog/session/013-create-game-drawn-event.xml"/>
     <include file="db/changelog/session/014-create-era-saga-scores-updated-inbox.xml"/>
+    <include file="db/changelog/session/016-add-era-hand-selection-state.xml"/>
 
     <!-- Action module -->
     <include file="db/changelog/action/001-create-action-round.xml"/>
@@ -36,6 +37,7 @@
     <include file="db/changelog/action/006-create-activist-era-state.xml"/>
     <include file="db/changelog/action/007-create-paradox-resolution-phase.xml"/>
     <include file="db/changelog/action/008-add-player-hand-card-grade.xml"/>
+    <include file="db/changelog/action/009-create-hand-selection.xml"/>
 
     <!-- Scoring module -->
     <include file="db/changelog/scoring/001-create-scoring-context-player.xml"/>

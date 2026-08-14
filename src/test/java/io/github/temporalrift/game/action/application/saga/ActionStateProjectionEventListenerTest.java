@@ -29,6 +29,7 @@ import io.github.temporalrift.game.shared.EventsDrawn;
 import io.github.temporalrift.game.shared.Faction;
 import io.github.temporalrift.game.shared.FactionAssigned;
 import io.github.temporalrift.game.shared.HandDealt;
+import io.github.temporalrift.game.shared.HandSelected;
 
 @ExtendWith(MockitoExtension.class)
 class ActionStateProjectionEventListenerTest {
@@ -68,7 +69,7 @@ class ActionStateProjectionEventListenerTest {
     }
 
     @Test
-    void onHandDealt_replacesPlayerHandAndPreservesFaction() {
+    void onHandSelected_replacesPlayerHandAndPreservesFaction() {
         var existing = PlayerState.reconstitute(
                 UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), Faction.ERASERS, List.of(), false);
         var event = new HandDealt(
@@ -79,7 +80,12 @@ class ActionStateProjectionEventListenerTest {
         given(playerStateRepository.findOrCreateWithLock(existing.gameId(), existing.playerId()))
                 .willReturn(existing);
 
-        listener.onHandDealt(event);
+        listener.onHandSelected(new HandSelected(
+                event.gameId(),
+                event.eraNumber(),
+                event.playerId(),
+                HandSelected.SelectionOrigin.PLAYER,
+                event.cards()));
 
         var captor = ArgumentCaptor.forClass(PlayerState.class);
         then(playerStateRepository).should().save(captor.capture());
@@ -91,7 +97,7 @@ class ActionStateProjectionEventListenerTest {
     }
 
     @Test
-    void onHandDealt_createsPlayerStateWhenMissing() {
+    void onHandSelected_createsPlayerStateWhenMissing() {
         var gameId = UUID.randomUUID();
         var playerId = UUID.randomUUID();
         var card = new HandDealt.CardInstance(UUID.randomUUID(), CardType.SCAN);
@@ -99,7 +105,12 @@ class ActionStateProjectionEventListenerTest {
         given(playerStateRepository.findOrCreateWithLock(gameId, playerId))
                 .willReturn(new PlayerState(UUID.randomUUID(), gameId, playerId));
 
-        listener.onHandDealt(event);
+        listener.onHandSelected(new HandSelected(
+                event.gameId(),
+                event.eraNumber(),
+                event.playerId(),
+                HandSelected.SelectionOrigin.PLAYER,
+                event.cards()));
 
         var captor = ArgumentCaptor.forClass(PlayerState.class);
         then(playerStateRepository).should().save(captor.capture());

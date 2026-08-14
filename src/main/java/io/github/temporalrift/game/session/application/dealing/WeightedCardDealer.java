@@ -32,15 +32,19 @@ public class WeightedCardDealer {
     }
 
     private HandDealt.CardInstance dealCard() {
-        var category = weightedChoice(gameRules.cardCategoryWeights(), CardCategory.values());
-        var eligibleTypes = eligibleTypes(category, gameRules.cardGradeWeights());
-        if (eligibleTypes.isEmpty()) {
-            throw new IllegalStateException("No eligible card types have a positive configured grade weight");
-        }
+        var gradeWeights = gameRules.cardGradeWeights();
+        var category = weightedChoice(gameRules.cardCategoryWeights(), eligibleCategories(gradeWeights));
+        var eligibleTypes = eligibleTypes(category, gradeWeights);
         var cardType = eligibleTypes.get(random.nextInt(eligibleTypes.size()));
-        var grade = weightedChoice(
-                gameRules.cardGradeWeights(), cardType.supportedGrades().toArray(CardGrade[]::new));
+        var grade =
+                weightedChoice(gradeWeights, cardType.supportedGrades().stream().toList());
         return new HandDealt.CardInstance(UUID.randomUUID(), cardType, grade);
+    }
+
+    private static List<CardCategory> eligibleCategories(Map<CardGrade, Integer> gradeWeights) {
+        return Arrays.stream(CardCategory.values())
+                .filter(category -> !eligibleTypes(category, gradeWeights).isEmpty())
+                .toList();
     }
 
     private static List<CardType> eligibleTypes(CardCategory category, Map<CardGrade, Integer> gradeWeights) {
@@ -52,8 +56,8 @@ public class WeightedCardDealer {
                 .toList();
     }
 
-    private <T> T weightedChoice(Map<T, Integer> weights, T[] candidates) {
-        var total = Arrays.stream(candidates)
+    private <T> T weightedChoice(Map<T, Integer> weights, List<T> candidates) {
+        var total = candidates.stream()
                 .mapToInt(candidate -> weights.getOrDefault(candidate, 0))
                 .sum();
         if (total <= 0) {

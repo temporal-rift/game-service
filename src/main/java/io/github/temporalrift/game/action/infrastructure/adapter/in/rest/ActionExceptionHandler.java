@@ -23,6 +23,9 @@ import io.github.temporalrift.game.action.domain.activisterastate.ExposeAlreadyR
 import io.github.temporalrift.game.action.domain.activisterastate.ExposeTargetNotEligibleException;
 import io.github.temporalrift.game.action.domain.activisterastate.ExposeUnavailableException;
 import io.github.temporalrift.game.action.domain.activisterastate.MomentumNotEligibleException;
+import io.github.temporalrift.game.action.domain.handselection.HandSelectionAlreadyResolvedException;
+import io.github.temporalrift.game.action.domain.handselection.HandSelectionNotOpenException;
+import io.github.temporalrift.game.action.domain.handselection.InvalidHandSelectionException;
 import io.github.temporalrift.game.action.domain.paradoxresolutionphase.CardNotEligibleForParadoxResolutionException;
 import io.github.temporalrift.game.action.domain.paradoxresolutionphase.DuplicateParadoxResolutionSubmissionException;
 import io.github.temporalrift.game.action.domain.paradoxresolutionphase.ParadoxResolutionPhaseNotOpenException;
@@ -123,5 +126,20 @@ class ActionExceptionHandler {
     })
     ProblemDetail handleCardNotEligibleForPlayWindow(RuntimeException ex) {
         return ProblemDetails.of(HttpStatus.UNPROCESSABLE_CONTENT, ex.getMessage(), "422-10");
+    }
+
+    @ExceptionHandler(HandSelectionNotOpenException.class)
+    ProblemDetail handleHandSelectionNotOpen(HandSelectionNotOpenException ex) {
+        return ProblemDetails.of(HttpStatus.CONFLICT, ex.getMessage(), "409-08");
+    }
+
+    @ExceptionHandler(HandSelectionAlreadyResolvedException.class)
+    ProblemDetail handleHandSelectionResolved(HandSelectionAlreadyResolvedException ex) {
+        return ProblemDetails.of(HttpStatus.CONFLICT, ex.getMessage(), "409-09");
+    }
+
+    @ExceptionHandler(InvalidHandSelectionException.class)
+    ProblemDetail handleInvalidHandSelection(InvalidHandSelectionException ex) {
+        return ProblemDetails.of(HttpStatus.UNPROCESSABLE_CONTENT, ex.getMessage(), "422-11");
     }
 }

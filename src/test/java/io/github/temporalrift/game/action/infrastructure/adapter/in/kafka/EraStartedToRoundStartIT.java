@@ -19,18 +19,24 @@ import org.springframework.transaction.support.TransactionTemplate;
 import io.github.temporalrift.game.TestcontainersConfiguration;
 import io.github.temporalrift.game.action.domain.actionround.ActionRound;
 import io.github.temporalrift.game.action.domain.actionround.RoundStatus;
-import io.github.temporalrift.game.action.domain.playerstate.PlayerState;
+import io.github.temporalrift.game.action.domain.handselection.HandSelection;
+import io.github.temporalrift.game.action.domain.handselection.HandSelectionStatus;
 import io.github.temporalrift.game.action.domain.port.out.ActionRoundRepository;
 import io.github.temporalrift.game.action.domain.port.out.ActionRoundSagaRepository;
+import io.github.temporalrift.game.action.domain.port.out.HandSelectionRepository;
 import io.github.temporalrift.game.action.domain.port.out.PlayerStateRepository;
 import io.github.temporalrift.game.action.domain.saga.ActionRoundSagaState;
 import io.github.temporalrift.game.action.domain.saga.ActionRoundSagaStatus;
 import io.github.temporalrift.game.session.domain.event.EraStarted;
 import io.github.temporalrift.game.session.domain.game.Game;
+import io.github.temporalrift.game.session.domain.port.out.EraSagaRepository;
 import io.github.temporalrift.game.session.domain.port.out.FutureEventCatalogPort;
 import io.github.temporalrift.game.session.domain.port.out.GameRepository;
 import io.github.temporalrift.game.session.domain.port.out.SessionGameRulesPort;
+import io.github.temporalrift.game.session.domain.saga.EraSagaState;
+import io.github.temporalrift.game.session.domain.saga.EraSagaStatus;
 import io.github.temporalrift.game.shared.GameRulesPort;
+import io.github.temporalrift.game.shared.HandSelected;
 
 @SpringBootTest
 @ActiveProfiles("test")
@@ -45,6 +51,9 @@ class EraStartedToRoundStartIT {
 
     @Autowired
     ActionRoundSagaRepository actionRoundSagaRepository;
+
+    @Autowired
+    EraSagaRepository eraSagaRepository;
 
     @Autowired
     FutureEventCatalogPort futureEventCatalog;
@@ -62,10 +71,13 @@ class EraStartedToRoundStartIT {
     PlayerStateRepository playerStateRepository;
 
     @Autowired
+    HandSelectionRepository handSelectionRepository;
+
+    @Autowired
     TransactionTemplate transactionTemplate;
 
     @Test
-    void eraStarted_triggersRound1Start_andPersistsActionRound() {
+    void eraStarted_waitsForEveryFinalHandBeforeRoundOneStarts() {
         var gameId = UUID.randomUUID();
         var eraNumber = 1;
         var roundNumber = 1;
@@ -75,6 +87,26 @@ class EraStartedToRoundStartIT {
             gameRepository.save(new Game(gameId, UUID.randomUUID(), futureEventCatalog.allEventIds()));
             applicationEventPublisher.publishEvent(new EraStarted(gameId, eraNumber, List.of(), playerIds));
         });
+
+        var selections = playerIds.stream()
+                .map(playerId -> awaitHandSelection(gameId, eraNumber, playerId))
+                .toList();
+        assertThat(awaitEraSagaState(gameId)).satisfies(state -> {
+            assertThat(state.status()).isEqualTo(EraSagaStatus.WAITING_HAND_SELECTION);
+            assertThat(state.handSelectedPlayerIds()).isEmpty();
+        });
+        assertThat(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumber(gameId, eraNumber, roundNumber))
+                .isEmpty();
+
+        transactionTemplate.executeWithoutResult(_ ->
+                selections.forEach(selection -> applicationEventPublisher.publishEvent(new HandSelected(
+                        gameId,
+                        eraNumber,
+                        selection.playerId(),
+                        HandSelected.SelectionOrigin.PLAYER,
+                        selection.dealtCards().stream()
+                                .limit(sessionGameRules.cardsPerHand())
+                                .toList()))));
 
         var actionRound = awaitActionRound(gameId, eraNumber, roundNumber);
         assertThat(actionRound.gameId()).isEqualTo(gameId);
@@ -91,12 +123,11 @@ class EraStartedToRoundStartIT {
     }
 
     /**
-     * Regression coverage for the dormant-listener bug (issue #70): {@code EraSagaImpl} published
-     * {@code HandDealt} only as a Kafka envelope, so the action module never projected hands and
-     * every card play failed.
+     * Regression coverage for the cross-module pending-deal handoff: each player receives seven private cards, while
+     * the action hand remains empty until a terminal {@code HandSelected} fact is published.
      */
     @Test
-    void eraStarted_dealsHands_andProjectsThemIntoPlayerState() {
+    void eraStarted_createsSevenCardPendingSelectionsWithoutProjectingPlayableHands() {
         var gameId = UUID.randomUUID();
         var playerIds = List.of(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID());
 
@@ -106,16 +137,28 @@ class EraStartedToRoundStartIT {
         });
 
         for (var playerId : playerIds) {
-            var playerState = awaitPlayerStateWithHand(gameId, playerId);
-            assertThat(playerState.hand()).hasSize(sessionGameRules.cardsPerHand());
+            var selection = awaitHandSelection(gameId, 1, playerId);
+            assertThat(selection.status()).isEqualTo(HandSelectionStatus.OPEN);
+            assertThat(selection.dealtCards()).hasSize(sessionGameRules.cardsPerDeal());
+            assertThat(selection.selectedCards()).isEmpty();
+            assertThat(playerStateRepository.findByGameIdAndPlayerId(gameId, playerId))
+                    .isEmpty();
         }
     }
 
-    private PlayerState awaitPlayerStateWithHand(UUID gameId, UUID playerId) {
+    private HandSelection awaitHandSelection(UUID gameId, int eraNumber, UUID playerId) {
         return await().atMost(Duration.ofSeconds(10))
                 .until(
-                        () -> playerStateRepository.findByGameIdAndPlayerId(gameId, playerId),
-                        state -> state.map(s -> !s.hand().isEmpty()).orElse(false))
+                        () -> transactionTemplate.execute(
+                                _ -> handSelectionRepository.findByGameIdAndEraNumberAndPlayerIdWithLock(
+                                        gameId, eraNumber, playerId)),
+                        Optional::isPresent)
+                .orElseThrow();
+    }
+
+    private EraSagaState awaitEraSagaState(UUID gameId) {
+        return await().atMost(Duration.ofSeconds(10))
+                .until(() -> eraSagaRepository.findByGameId(gameId), Optional::isPresent)
                 .orElseThrow();
     }
 

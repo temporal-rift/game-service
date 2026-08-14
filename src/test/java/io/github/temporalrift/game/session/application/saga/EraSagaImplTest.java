@@ -90,6 +90,8 @@ class EraSagaImplTest {
 
     @BeforeEach
     void defaultDeal() {
+        lenient().when(gameRules.cardsPerDeal()).thenReturn(7);
+        lenient().when(gameRules.handSelectionTimerSeconds(anyInt())).thenReturn(60);
         lenient()
                 .when(cardDealer.deal(anyInt()))
                 .thenAnswer(invocation -> IntStream.range(0, invocation.getArgument(0))
@@ -121,14 +123,13 @@ class EraSagaImplTest {
     }
 
     @Test
-    @DisplayName("happy path — state set to RUNNING then WAITING_ROUND_1, events drawn and hands dealt")
-    void start_happyPath_publishesEventsDrawnAndHandDealtThenAdvancesToWaitingRound1() {
+    @DisplayName("happy path — state waits for hand selections after events and deals")
+    void start_happyPath_publishesEventsDrawnAndHandDealtThenWaitsForHandSelection() {
         // given
         var deck = buildDeck(DECK_SIZE);
         var game = new Game(GAME_ID, LOBBY_ID, deck);
         given(gameRepository.findById(GAME_ID)).willReturn(Optional.of(game));
         given(gameRules.eventsPerEra()).willReturn(EVENTS_PER_ERA);
-        given(gameRules.cardsPerHand()).willReturn(CARDS_PER_HAND);
         var catalogDefs = IntStream.range(0, EVENTS_PER_ERA)
                 .mapToObj(i -> buildEventDef())
                 .toList();
@@ -142,7 +143,7 @@ class EraSagaImplTest {
         then(stateManager).should(ordered).initRunning(GAME_ID, ERA_NUMBER, PLAYER_IDS);
         then(eventPublisher).should(ordered).publish(envelopeWithPayload(EventsDrawn.class));
         then(eventPublisher).should(ordered, times(2)).publish(envelopeWithPayload(HandDealt.class));
-        then(stateManager).should(ordered).advanceTo(GAME_ID, EraSagaStatus.WAITING_ROUND_1);
+        then(stateManager).should(ordered).advanceTo(GAME_ID, EraSagaStatus.WAITING_HAND_SELECTION);
     }
 
     @Test
@@ -152,7 +153,6 @@ class EraSagaImplTest {
         var cardId = UUID.randomUUID();
         var catalogDef = buildEventDef(cardId);
         given(gameRules.eventsPerEra()).willReturn(1);
-        given(gameRules.cardsPerHand()).willReturn(CARDS_PER_HAND);
         given(futureEventCatalog.findByEventIds(any())).willReturn(List.of(catalogDef));
 
         var gameA = new Game(GAME_ID, LOBBY_ID, buildDeck(1));
@@ -200,7 +200,6 @@ class EraSagaImplTest {
         var game = new Game(GAME_ID, LOBBY_ID, buildDeck(DECK_SIZE));
         given(gameRepository.findById(GAME_ID)).willReturn(Optional.of(game));
         given(gameRules.eventsPerEra()).willReturn(EVENTS_PER_ERA);
-        given(gameRules.cardsPerHand()).willReturn(CARDS_PER_HAND);
         given(futureEventCatalog.findByEventIds(any()))
                 .willReturn(IntStream.range(0, EVENTS_PER_ERA)
                         .mapToObj(i -> buildEventDef())
@@ -222,8 +221,8 @@ class EraSagaImplTest {
         var hand1 = (HandDealt) handDealtEnvelopes.get(0).payload();
         var hand2 = (HandDealt) handDealtEnvelopes.get(1).payload();
         assertThat(List.of(hand1.playerId(), hand2.playerId())).containsExactlyInAnyOrderElementsOf(PLAYER_IDS);
-        assertThat(hand1.cards()).hasSize(CARDS_PER_HAND);
-        assertThat(hand2.cards()).hasSize(CARDS_PER_HAND);
+        assertThat(hand1.cards()).hasSize(7);
+        assertThat(hand2.cards()).hasSize(7);
     }
 
     @Test
@@ -234,7 +233,7 @@ class EraSagaImplTest {
         var game = new Game(GAME_ID, LOBBY_ID, buildDeck(DECK_SIZE));
         given(gameRepository.findById(GAME_ID)).willReturn(Optional.of(game));
         given(gameRules.eventsPerEra()).willReturn(EVENTS_PER_ERA);
-        given(gameRules.cardsPerHand()).willReturn(largeHandSize);
+        given(gameRules.cardsPerDeal()).willReturn(largeHandSize);
         given(futureEventCatalog.findByEventIds(any()))
                 .willReturn(IntStream.range(0, EVENTS_PER_ERA)
                         .mapToObj(i -> buildEventDef())
@@ -273,7 +272,6 @@ class EraSagaImplTest {
                 stalledId, new DrawnFutureEvent(stalledCardId, stalledOutcomeIds)));
         given(gameRepository.findById(GAME_ID)).willReturn(Optional.of(game));
         given(gameRules.eventsPerEra()).willReturn(3);
-        given(gameRules.cardsPerHand()).willReturn(CARDS_PER_HAND);
         // drawn IDs come from the deck; carried-over cards are looked up by their catalog cardId
         given(futureEventCatalog.findByEventIds(
                         argThat(ids -> ids != null && !ids.contains(cascadedCardId) && !ids.contains(stalledCardId))))
@@ -353,7 +351,6 @@ class EraSagaImplTest {
         var game = new Game(GAME_ID, LOBBY_ID, buildDeck(DECK_SIZE));
         given(gameRepository.findById(GAME_ID)).willReturn(Optional.of(game));
         given(gameRules.eventsPerEra()).willReturn(EVENTS_PER_ERA);
-        given(gameRules.cardsPerHand()).willReturn(CARDS_PER_HAND);
         given(futureEventCatalog.findByEventIds(any()))
                 .willReturn(IntStream.range(0, EVENTS_PER_ERA)
                         .mapToObj(i -> buildEventDef())
@@ -363,8 +360,8 @@ class EraSagaImplTest {
         // when
         eraSaga.start(GAME_ID, ERA_NUMBER, PLAYER_IDS, List.of());
 
-        // then — EventsDrawn + one HandDealt per player + StartActionRoundRequested
-        then(applicationEventPublisher).should(times(4)).publishEvent(captor.capture());
+        // then — EventsDrawn + one pending HandDealt per player
+        then(applicationEventPublisher).should(times(3)).publishEvent(captor.capture());
         var eventsDrawn = captor.getAllValues().stream()
                 .filter(EventsDrawn.class::isInstance)
                 .map(EventsDrawn.class::cast)
@@ -382,7 +379,6 @@ class EraSagaImplTest {
         var game = new Game(GAME_ID, LOBBY_ID, buildDeck(DECK_SIZE));
         given(gameRepository.findById(GAME_ID)).willReturn(Optional.of(game));
         given(gameRules.eventsPerEra()).willReturn(EVENTS_PER_ERA);
-        given(gameRules.cardsPerHand()).willReturn(CARDS_PER_HAND);
         given(futureEventCatalog.findByEventIds(any()))
                 .willReturn(IntStream.range(0, EVENTS_PER_ERA)
                         .mapToObj(i -> buildEventDef())
@@ -393,13 +389,13 @@ class EraSagaImplTest {
         eraSaga.start(GAME_ID, ERA_NUMBER, PLAYER_IDS, List.of());
 
         // then
-        then(applicationEventPublisher).should(times(4)).publishEvent(captor.capture());
+        then(applicationEventPublisher).should(times(3)).publishEvent(captor.capture());
         var handsDealt = captor.getAllValues().stream()
                 .filter(HandDealt.class::isInstance)
                 .map(HandDealt.class::cast)
                 .toList();
         assertThat(handsDealt).extracting(HandDealt::playerId).containsExactlyInAnyOrderElementsOf(PLAYER_IDS);
-        assertThat(handsDealt).allSatisfy(hand -> assertThat(hand.cards()).hasSize(CARDS_PER_HAND));
+        assertThat(handsDealt).allSatisfy(hand -> assertThat(hand.cards()).hasSize(7));
     }
 
     @Test
@@ -409,7 +405,6 @@ class EraSagaImplTest {
         var game = new Game(GAME_ID, LOBBY_ID, buildDeck(DECK_SIZE));
         given(gameRepository.findById(GAME_ID)).willReturn(Optional.of(game));
         given(gameRules.eventsPerEra()).willReturn(EVENTS_PER_ERA);
-        given(gameRules.cardsPerHand()).willReturn(CARDS_PER_HAND);
         given(futureEventCatalog.findByEventIds(any()))
                 .willReturn(IntStream.range(0, EVENTS_PER_ERA)
                         .mapToObj(i -> buildEventDef())

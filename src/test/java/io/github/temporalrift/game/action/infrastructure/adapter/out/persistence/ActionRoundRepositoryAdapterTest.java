@@ -19,6 +19,7 @@ import io.github.temporalrift.game.action.domain.actionround.ActionRound;
 import io.github.temporalrift.game.action.domain.actionround.ActionRoundConfig;
 import io.github.temporalrift.game.action.domain.actionround.RoundStatus;
 import io.github.temporalrift.game.action.domain.actionround.SubmittedAction;
+import io.github.temporalrift.game.shared.CardGrade;
 import io.github.temporalrift.game.shared.CardType;
 import io.github.temporalrift.game.shared.Faction;
 import io.github.temporalrift.game.shared.SpecialAction;
@@ -63,6 +64,7 @@ class ActionRoundRepositoryAdapterTest {
                         playerId,
                         cardId,
                         CardType.SWING.name(),
+                        CardGrade.I.name(),
                         null,
                         null,
                         targetEventId,

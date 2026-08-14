@@ -30,6 +30,7 @@ import io.github.temporalrift.game.action.application.port.in.PlayCardUseCase;
 import io.github.temporalrift.game.action.application.port.in.PlayParadoxResolutionCardUseCase;
 import io.github.temporalrift.game.action.application.port.in.PlaySpecialActionUseCase;
 import io.github.temporalrift.game.action.application.port.in.RecordActivistDeclarationUseCase;
+import io.github.temporalrift.game.action.application.port.in.SelectHandUseCase;
 import io.github.temporalrift.game.action.domain.CardNotInHandException;
 import io.github.temporalrift.game.action.domain.actionround.ActionRoundClosedException;
 import io.github.temporalrift.game.action.domain.actionround.DuplicateSubmissionException;
@@ -38,6 +39,7 @@ import io.github.temporalrift.game.action.domain.actionround.InvalidActionTarget
 import io.github.temporalrift.game.action.domain.actionround.JammedPlayerException;
 import io.github.temporalrift.game.action.domain.actionround.RoundNotFoundException;
 import io.github.temporalrift.game.action.domain.activisterastate.ExposeAlreadyRecordedException;
+import io.github.temporalrift.game.action.domain.handselection.InvalidHandSelectionException;
 import io.github.temporalrift.game.action.domain.paradoxresolutionphase.CardNotEligibleForParadoxResolutionException;
 import io.github.temporalrift.game.action.domain.paradoxresolutionphase.DuplicateParadoxResolutionSubmissionException;
 import io.github.temporalrift.game.action.domain.paradoxresolutionphase.ParadoxResolutionPhaseNotOpenException;
@@ -77,6 +79,9 @@ class ActionControllerTest {
 
     @MockitoBean
     GetRoundStatusUseCase getRoundStatusUseCase;
+
+    @MockitoBean
+    SelectHandUseCase selectHandUseCase;
 
     private RequestPostProcessor auth() {
         return authentication(new PlayerAuthenticationToken(new PlayerPrincipal(PLAYER_ID)));
@@ -430,6 +435,41 @@ class ActionControllerTest {
                 .isEqualTo(io.github.temporalrift.game.action.domain.activisterastate.ActivistDeclarationMode.RALLY);
     }
 
+    @Test
+    void selectHand_dispatchesAuthenticatedFiveCardSelection() throws Exception {
+        var keptCards = java.util.stream.IntStream.range(0, 5)
+                .mapToObj(ignored -> UUID.randomUUID())
+                .collect(java.util.stream.Collectors.toSet());
+        given(selectHandUseCase.handle(any())).willReturn(new SelectHandUseCase.Result(GAME_ID, ERA, PLAYER_ID));
+
+        mockMvc.perform(post("/api/v1/games/{gameId}/eras/{eraNumber}/hand-selection", GAME_ID, ERA)
+                        .with(auth())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(handSelectionJson(keptCards)))
+                .andExpect(status().isAccepted())
+                .andExpect(jsonPath("$.status").value("SELECTED"));
+
+        var captor = ArgumentCaptor.forClass(SelectHandUseCase.Command.class);
+        org.mockito.BDDMockito.then(selectHandUseCase).should().handle(captor.capture());
+        assertThat(captor.getValue().playerId()).isEqualTo(PLAYER_ID);
+        assertThat(captor.getValue().keptCardInstanceIds()).isEqualTo(keptCards);
+    }
+
+    @Test
+    void selectHand_rejectsCardsOutsidePendingDeal() throws Exception {
+        given(selectHandUseCase.handle(any())).willThrow(new InvalidHandSelectionException());
+        var keptCards = java.util.stream.IntStream.range(0, 5)
+                .mapToObj(ignored -> UUID.randomUUID())
+                .collect(java.util.stream.Collectors.toSet());
+
+        mockMvc.perform(post("/api/v1/games/{gameId}/eras/{eraNumber}/hand-selection", GAME_ID, ERA)
+                        .with(auth())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(handSelectionJson(keptCards)))
+                .andExpect(status().isUnprocessableContent())
+                .andExpect(jsonPath("$.code").value("422-11"));
+    }
+
     private static String cardJson() {
         return """
                 {
@@ -472,5 +512,12 @@ class ActionControllerTest {
                   "targetOutcomeId": "%s"
                 }
                 """.formatted(CARD_INSTANCE_ID, TARGET_EVENT_ID, TARGET_OUTCOME_ID);
+    }
+
+    private static String handSelectionJson(java.util.Set<UUID> keptCardInstanceIds) {
+        return "{\"keptCardInstanceIds\":[%s]}"
+                .formatted(keptCardInstanceIds.stream()
+                        .map(id -> "\"" + id + "\"")
+                        .collect(java.util.stream.Collectors.joining(",")));
     }
 }

@@ -61,6 +61,29 @@ class WeightedCardDealerTest {
     }
 
     @Test
+    @DisplayName("categories without an ordinary card at an enabled grade are excluded before weighting")
+    void deal_ineligibleHighWeightCategory_doesNotPreventEligibleCategoryDeal() {
+        // given: Disruption has no grade-III ordinary card, while Probability Shifter does.
+        given(gameRules.cardCategoryWeights())
+                .willReturn(Map.of(
+                        CardCategory.PROBABILITY_SHIFTER, 1,
+                        CardCategory.INFORMATION, 0,
+                        CardCategory.DISRUPTION, 100,
+                        CardCategory.PARADOX, 0));
+        given(gameRules.cardGradeWeights()).willReturn(weights(CardGrade.III, 1));
+        var dealer = new WeightedCardDealer(gameRules, new Random(11));
+
+        // when
+        var cards = dealer.deal(50);
+
+        // then
+        assertThat(cards).allSatisfy(card -> {
+            assertThat(card.cardType().getCategory()).isEqualTo(CardCategory.PROBABILITY_SHIFTER);
+            assertThat(card.grade()).isEqualTo(CardGrade.III);
+        });
+    }
+
+    @Test
     @DisplayName("ordinary dealing never includes reactive Paradox Resolution cards")
     void deal_defaultWeights_neverDealsReactiveCards() {
         // given
@@ -81,6 +104,27 @@ class WeightedCardDealerTest {
         assertThat(cards)
                 .allSatisfy(
                         card -> assertThat(card.cardType().supportedGrades()).contains(card.grade()));
+    }
+
+    @Test
+    @DisplayName("configured category and grade weights drive a reproducible large sample")
+    void deal_configuredWeights_followExpectedDistribution() {
+        // Restrict to the fully graded probability-shifter group so the configured grade rarity is directly observable.
+        given(gameRules.cardCategoryWeights()).willReturn(weights(CardCategory.PROBABILITY_SHIFTER, 1));
+        given(gameRules.cardGradeWeights()).willReturn(Map.of(CardGrade.I, 60, CardGrade.II, 30, CardGrade.III, 10));
+        var dealer = new WeightedCardDealer(gameRules, new Random(1234));
+
+        var cards = dealer.deal(10_000);
+        var grades = cards.stream()
+                .collect(java.util.stream.Collectors.groupingBy(
+                        card -> card.grade(), java.util.stream.Collectors.counting()));
+
+        assertThat(cards)
+                .allSatisfy(
+                        card -> assertThat(card.cardType().getCategory()).isEqualTo(CardCategory.PROBABILITY_SHIFTER));
+        assertThat(grades.get(CardGrade.I)).isBetween(5_700L, 6_300L);
+        assertThat(grades.get(CardGrade.II)).isBetween(2_700L, 3_300L);
+        assertThat(grades.get(CardGrade.III)).isBetween(700L, 1_300L);
     }
 
     private static <T extends Enum<T>> Map<T, Integer> weights(T selected, int selectedWeight) {
