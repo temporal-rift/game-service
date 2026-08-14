@@ -23,6 +23,8 @@ record TimerProperties(
 
         @NotNull @DurationMin(seconds = 1) Duration actionRoundSweepInterval,
 
+        @NotNull @DurationMin(seconds = 1) Duration handSelectionSweepInterval,
+
         @NotNull @DurationMin(seconds = 1) Duration reconnectSweepInterval,
 
         @NotNull @DurationMin(seconds = 1) Duration scoringCompletionSweepInterval,
