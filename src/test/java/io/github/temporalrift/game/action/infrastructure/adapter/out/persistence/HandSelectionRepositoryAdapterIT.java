@@ -53,6 +53,32 @@ class HandSelectionRepositoryAdapterIT {
         assertThat(loaded).contains(selection);
     }
 
+    @Test
+    void saveAndLoad_roundTripsNonDefaultGradesForDealtAndSelectedCards() {
+        var gameId = UUID.randomUUID();
+        var playerId = UUID.randomUUID();
+        var openSelection = selection(gameId, playerId);
+        var selection = openSelection.select(
+                openSelection.dealtCards().stream()
+                        .limit(5)
+                        .map(HandDealt.CardInstance::cardInstanceId)
+                        .collect(java.util.stream.Collectors.toSet()),
+                Instant.EPOCH);
+
+        transactionTemplate.executeWithoutResult(_ -> repository.save(selection));
+
+        Optional<HandSelection> loaded = transactionTemplate.execute(
+                _ -> repository.findByGameIdAndEraNumberAndPlayerIdWithLock(gameId, 1, playerId));
+
+        assertThat(loaded).isPresent();
+        assertThat(loaded.orElseThrow().dealtCards())
+                .extracting(HandDealt.CardInstance::grade)
+                .containsOnly(CardGrade.II);
+        assertThat(loaded.orElseThrow().selectedCards())
+                .extracting(HandDealt.CardInstance::grade)
+                .containsOnly(CardGrade.II);
+    }
+
     private static HandSelection selection(UUID gameId, UUID playerId) {
         var cards = java.util.stream.IntStream.rangeClosed(1, 7)
                 .mapToObj(slot -> new HandDealt.CardInstance(UUID.randomUUID(), CardType.PUSH, CardGrade.II, slot))
