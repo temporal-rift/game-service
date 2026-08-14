@@ -48,14 +48,18 @@ class HandSelectionTest {
     @Test
     void invalidPlayerSelection_isRejected() {
         var selection = selection(Instant.parse("2026-08-14T00:00:10Z"));
-        assertThatThrownBy(() -> selection.select(Set.of(UUID.randomUUID()), Instant.EPOCH))
+        var invalidSelection = Set.of(UUID.randomUUID());
+
+        assertThatThrownBy(() -> selection.select(invalidSelection, Instant.EPOCH))
                 .isInstanceOf(InvalidHandSelectionException.class);
     }
 
     @Test
     void expiredOrAlreadyResolvedSelection_cannotResolveTwice() {
         var selection = selection(Instant.EPOCH);
-        assertThatThrownBy(() -> selection.select(Set.of(UUID.randomUUID()), Instant.EPOCH))
+        var invalidSelection = Set.of(UUID.randomUUID());
+
+        assertThatThrownBy(() -> selection.select(invalidSelection, Instant.EPOCH))
                 .isInstanceOf(HandSelectionNotOpenException.class);
         var resolved = selection.selectRandomOnExpiry(Instant.EPOCH, new SequenceRandomGenerator(0, 0));
         assertThat(resolved.selectRandomOnExpiry(Instant.EPOCH, new SequenceRandomGenerator(1, 1)))

@@ -3,6 +3,7 @@ package io.github.temporalrift.game.action.infrastructure.adapter.out.persistenc
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
+import static org.mockito.Mockito.times;
 
 import java.time.Instant;
 import java.util.Optional;
@@ -45,7 +46,7 @@ class HandSelectionRepositoryAdapterTest {
         assertThat(entity.selectedCards).isEmpty();
 
         adapter.save(selection.selectRandomOnExpiry(Instant.EPOCH, new java.util.Random(4)));
-        then(jpaRepository).should(org.mockito.Mockito.times(2)).save(captor.capture());
+        then(jpaRepository).should(times(2)).save(captor.capture());
         var resolved = captor.getAllValues().getLast();
         assertThat(resolved.status).isEqualTo(HandSelectionStatus.SELECTED.name());
         assertThat(resolved.selectionOrigin).isEqualTo(HandSelected.SelectionOrigin.TIMEOUT_RANDOM.name());

@@ -17,6 +17,7 @@ import io.github.temporalrift.game.session.domain.port.out.SessionGameRulesPort;
 import io.github.temporalrift.game.shared.CardCategory;
 import io.github.temporalrift.game.shared.CardGrade;
 import io.github.temporalrift.game.shared.CardType;
+import io.github.temporalrift.game.shared.HandDealt;
 
 @ExtendWith(MockitoExtension.class)
 class WeightedCardDealerTest {
@@ -36,6 +37,7 @@ class WeightedCardDealerTest {
         var cards = dealer.deal(50);
 
         // then
+        assertThat(cards).isNotEmpty();
         assertThat(cards).allSatisfy(card -> {
             assertThat(card.cardType()).isEqualTo(CardType.COLLIDE);
             assertThat(card.grade()).isEqualTo(CardGrade.I);
@@ -54,6 +56,7 @@ class WeightedCardDealerTest {
         var cards = dealer.deal(50);
 
         // then
+        assertThat(cards).isNotEmpty();
         assertThat(cards).allSatisfy(card -> {
             assertThat(card.cardType()).isEqualTo(CardType.SCAN);
             assertThat(card.grade()).isEqualTo(CardGrade.III);
@@ -77,6 +80,7 @@ class WeightedCardDealerTest {
         var cards = dealer.deal(50);
 
         // then
+        assertThat(cards).isNotEmpty();
         assertThat(cards).allSatisfy(card -> {
             assertThat(card.cardType().getCategory()).isEqualTo(CardCategory.PROBABILITY_SHIFTER);
             assertThat(card.grade()).isEqualTo(CardGrade.III);
@@ -100,7 +104,9 @@ class WeightedCardDealerTest {
         var cards = dealer.deal(1_000);
 
         // then
-        assertThat(cards).extracting(card -> card.cardType()).doesNotContain(CardType.STABILIZE, CardType.DETONATE);
+        assertThat(cards)
+                .extracting(HandDealt.CardInstance::cardType)
+                .doesNotContain(CardType.STABILIZE, CardType.DETONATE);
         assertThat(cards)
                 .allSatisfy(
                         card -> assertThat(card.cardType().supportedGrades()).contains(card.grade()));
@@ -117,7 +123,7 @@ class WeightedCardDealerTest {
         var cards = dealer.deal(10_000);
         var grades = cards.stream()
                 .collect(java.util.stream.Collectors.groupingBy(
-                        card -> card.grade(), java.util.stream.Collectors.counting()));
+                        HandDealt.CardInstance::grade, java.util.stream.Collectors.counting()));
 
         assertThat(cards)
                 .allSatisfy(
