@@ -5,7 +5,6 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 
 import java.time.Instant;
-import java.util.Optional;
 import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
@@ -33,13 +32,11 @@ class HandSelectionProjectionListenerTest {
     @Test
     void handDealt_createsAndSchedulesAnOpenSelection() {
         var event = event();
-        given(repository.findByGameIdAndEraNumberAndPlayerIdWithLock(
-                        event.gameId(), event.eraNumber(), event.playerId()))
-                .willReturn(Optional.empty());
+        given(repository.createIfAbsent(any())).willReturn(true);
 
         listener.onHandDealt(event);
 
-        then(repository).should().save(any());
+        then(repository).should().createIfAbsent(any());
         then(timerScheduler)
                 .should()
                 .scheduleAfterCommit(any(), org.mockito.ArgumentMatchers.eq(event.selectionExpiresAt()));
@@ -48,16 +45,11 @@ class HandSelectionProjectionListenerTest {
     @Test
     void duplicateHandDealt_doesNotReplaceOrRescheduleAnExistingSelection() {
         var event = event();
-        given(repository.findByGameIdAndEraNumberAndPlayerIdWithLock(
-                        event.gameId(), event.eraNumber(), event.playerId()))
-                .willReturn(
-                        Optional.of(io.github.temporalrift.game.action.domain.handselection.HandSelection.open(event)));
+        given(repository.createIfAbsent(any())).willReturn(false);
 
         listener.onHandDealt(event);
 
-        then(repository)
-                .should()
-                .findByGameIdAndEraNumberAndPlayerIdWithLock(event.gameId(), event.eraNumber(), event.playerId());
+        then(repository).should().createIfAbsent(any());
         then(repository).shouldHaveNoMoreInteractions();
         then(timerScheduler).shouldHaveNoInteractions();
     }

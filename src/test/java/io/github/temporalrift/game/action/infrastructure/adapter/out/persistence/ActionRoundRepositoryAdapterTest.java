@@ -44,7 +44,7 @@ class ActionRoundRepositoryAdapterTest {
         var sourceOutcomeId = UUID.randomUUID();
         var targetOutcomeId = UUID.randomUUID();
         round.submit(new SubmittedAction.CardAction(
-                playerId, cardId, CardType.SWING, targetEventId, sourceOutcomeId, targetOutcomeId));
+                playerId, cardId, CardType.SWING, CardGrade.II, targetEventId, sourceOutcomeId, targetOutcomeId));
         round.close("TIMER_EXPIRED");
 
         adapter.save(round);
@@ -64,7 +64,7 @@ class ActionRoundRepositoryAdapterTest {
                         playerId,
                         cardId,
                         CardType.SWING.name(),
-                        CardGrade.I.name(),
+                        CardGrade.II.name(),
                         null,
                         null,
                         targetEventId,
@@ -126,6 +126,7 @@ class ActionRoundRepositoryAdapterTest {
                 UUID.randomUUID(),
                 UUID.randomUUID(),
                 CardType.SWING.name(),
+                CardGrade.III.name(),
                 null,
                 null,
                 UUID.randomUUID(),
@@ -141,6 +142,7 @@ class ActionRoundRepositoryAdapterTest {
                 .satisfies(round -> assertThat(round.submittedActions())
                         .singleElement()
                         .isInstanceOfSatisfying(SubmittedAction.CardAction.class, card -> {
+                            assertThat(card.grade()).isEqualTo(CardGrade.III);
                             assertThat(card.sourceOutcomeId()).isEqualTo(sourceOutcomeId);
                             assertThat(card.targetOutcomeId()).isEqualTo(targetOutcomeId);
                         }));

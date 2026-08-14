@@ -1,6 +1,7 @@
 package io.github.temporalrift.game.session.infrastructure.adapter.out.config;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 
 import java.util.Map;
 import java.util.Set;
@@ -66,5 +67,33 @@ class SessionRulesPropertiesTest {
         // when / then
         assertThat(props.handSelectionTimerSeconds(4)).isEqualTo(45);
         assertThat(props.handSelectionTimerSeconds(7)).isEqualTo(60);
+    }
+
+    @Test
+    void cardsPerDeal_lessThanCardsPerHand_isRejected() {
+        assertThatIllegalArgumentException()
+                .isThrownBy(() -> new SessionRulesProperties(
+                        2,
+                        8,
+                        4,
+                        3,
+                        5,
+                        7,
+                        5,
+                        100,
+                        30,
+                        Map.of(3, 60),
+                        Map.of(3, 60),
+                        Map.of(CardCategory.PARADOX, 1),
+                        Map.of(CardGrade.I, 1),
+                        Set.of(Faction.PROPHETS)))
+                .withMessage("cards-per-deal must be greater than or equal to cards-per-hand");
+    }
+
+    @Test
+    void nonPositiveHandSelectionTimer_isRejected() {
+        assertThatIllegalArgumentException()
+                .isThrownBy(() -> properties(Map.of(3, 0)))
+                .withMessage("hand-selection-timer-seconds must contain only positive values");
     }
 }

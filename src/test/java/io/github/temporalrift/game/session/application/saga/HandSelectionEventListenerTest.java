@@ -84,5 +84,22 @@ class HandSelectionEventListenerTest {
                         EraSagaStatus.WAITING_HAND_SELECTION,
                         List.of(playerOne, playerTwo),
                         List.of(playerOne)));
+        then(eventPublisher).should().publish(any(DomainEventEnvelope.class));
+    }
+
+    @Test
+    void onHandSelected_staleOrDuplicateSelection_doesNotPublish() {
+        var gameId = UUID.randomUUID();
+        var playerId = UUID.randomUUID();
+        var accepted =
+                new EraSagaState(gameId, 1, EraSagaStatus.WAITING_HAND_SELECTION, List.of(playerId), List.of(playerId));
+        given(eraSagaRepository.findByGameIdWithLock(gameId)).willReturn(Optional.of(accepted));
+
+        listener.onHandSelected(new HandSelected(gameId, 1, playerId, HandSelected.SelectionOrigin.PLAYER, List.of()));
+
+        then(eraSagaRepository).should().findByGameIdWithLock(gameId);
+        then(eraSagaRepository).shouldHaveNoMoreInteractions();
+        then(eventPublisher).shouldHaveNoInteractions();
+        then(applicationEventPublisher).shouldHaveNoInteractions();
     }
 }
