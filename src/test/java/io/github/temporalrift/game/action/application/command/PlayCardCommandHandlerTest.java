@@ -27,6 +27,7 @@ import io.github.temporalrift.game.action.application.port.in.PlayCardUseCase;
 import io.github.temporalrift.game.action.domain.CardNotInHandException;
 import io.github.temporalrift.game.action.domain.actionround.ActionRound;
 import io.github.temporalrift.game.action.domain.actionround.ActionRoundClosedException;
+import io.github.temporalrift.game.action.domain.actionround.CardNotEligibleForRoundException;
 import io.github.temporalrift.game.action.domain.actionround.DuplicateSubmissionException;
 import io.github.temporalrift.game.action.domain.actionround.RoundNotFoundException;
 import io.github.temporalrift.game.action.domain.actionround.SubmittedAction;
@@ -195,6 +196,26 @@ class PlayCardCommandHandlerTest {
 
         // when / then
         assertThatExceptionOfType(DuplicateSubmissionException.class).isThrownBy(() -> handler.handle(command));
+    }
+
+    @Test
+    @DisplayName("handle — card not eligible for this round — propagates without consuming the player's action")
+    void handleCardNotEligibleForRoundDoesNotConsumeAction() {
+        // given
+        given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA, ROUND))
+                .willReturn(Optional.of(round));
+        given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(playerState));
+        given(playerState.hand()).willReturn(List.of(new PlayerState.CardInstance(CARD_INSTANCE_ID, CardType.TRACE)));
+        willThrow(new CardNotEligibleForRoundException(CardType.TRACE, ERA, ROUND))
+                .given(round)
+                .submit(any());
+        var command = new PlayCardUseCase.Command(GAME_ID, ERA, ROUND, PLAYER_ID, CARD_INSTANCE_ID, null, null, null);
+
+        // when / then
+        assertThatExceptionOfType(CardNotEligibleForRoundException.class).isThrownBy(() -> handler.handle(command));
+        then(playerState).should(never()).removeCard(any());
+        then(actionRoundRepository).should(never()).save(any());
+        then(playerStateRepository).should(never()).save(any());
     }
 
     @Test

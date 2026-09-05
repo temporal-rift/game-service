@@ -314,6 +314,22 @@ class ActionRoundTest {
     }
 
     @Test
+    @DisplayName("submit — TRACE in Era 1 Round 1 — throws CardNotEligibleForRoundException, does not consume "
+            + "the player's action")
+    void submitTraceInFirstRoundOfGameThrows() {
+        // given — openRound() uses ERA=1, ROUND=1
+        var round = openRound(List.of(PLAYER_A));
+        round.pullEvents();
+        var action = card(PLAYER_A, CardType.TRACE);
+
+        // when / then
+        assertThatExceptionOfType(CardNotEligibleForRoundException.class).isThrownBy(() -> round.submit(action));
+        assertThat(round.pendingPlayerIds()).containsExactly(PLAYER_A);
+        assertThat(round.submittedActions()).isEmpty();
+        assertThat(round.pullEvents()).isEmpty();
+    }
+
+    @Test
     @DisplayName("submit — SpecialActionSubmission — happy path — registers SpecialActionPlayed, returns false "
             + "when others pending")
     void submitSpecialHappyPath() {

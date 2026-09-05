@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import io.github.temporalrift.game.action.domain.CardNotInHandException;
 import io.github.temporalrift.game.action.domain.actionround.ActionRoundClosedException;
 import io.github.temporalrift.game.action.domain.actionround.CardNotEligibleForActionRoundException;
+import io.github.temporalrift.game.action.domain.actionround.CardNotEligibleForRoundException;
 import io.github.temporalrift.game.action.domain.actionround.DeclarationSpecialActionRequiredException;
 import io.github.temporalrift.game.action.domain.actionround.DuplicateSubmissionException;
 import io.github.temporalrift.game.action.domain.actionround.FactionRequiredException;
@@ -141,5 +142,10 @@ class ActionExceptionHandler {
     @ExceptionHandler(InvalidHandSelectionException.class)
     ProblemDetail handleInvalidHandSelection(InvalidHandSelectionException ex) {
         return ProblemDetails.of(HttpStatus.UNPROCESSABLE_CONTENT, ex.getMessage(), "422-11");
+    }
+
+    @ExceptionHandler(CardNotEligibleForRoundException.class)
+    ProblemDetail handleCardNotEligibleForRound(CardNotEligibleForRoundException ex) {
+        return ProblemDetails.of(HttpStatus.UNPROCESSABLE_CONTENT, ex.getMessage(), "422-12");
     }
 }

@@ -20,17 +20,21 @@ import io.github.temporalrift.game.shared.SpecialAction;
  * submission) and delegates everything action-specific here — it does not need to know the rules of
  * every card or special action.
  *
- * <p>Validation here is limited to what a submission can verify about itself in isolation (its own
- * fields). Cross-aggregate eligibility (does this player's faction allow this special, are they
- * jammed) is resolved by the command handler before constructing the submission — {@code ActionRound}
- * has no visibility into {@code PlayerState} to verify those itself.
+ * <p>Validation here is limited to what a submission can verify about itself and the round context
+ * {@link ActionRound} passes in (its own fields, plus the era/round number). Cross-aggregate eligibility
+ * (does this player's faction allow this special, are they jammed) is resolved by the command handler
+ * before constructing the submission — {@code ActionRound} has no visibility into {@code PlayerState} to
+ * verify those itself.
  */
 public sealed interface SubmittedAction permits SubmittedAction.CardAction, SubmittedAction.SpecialActionSubmission {
 
     UUID playerId();
 
-    /** Checks this submission's own structural invariants; throws if violated. */
-    void validate();
+    /**
+     * Checks this submission's own structural invariants and, for card actions, its round-scoped
+     * playability given the round the submission was made in; throws if violated.
+     */
+    void validate(int eraNumber, int roundNumber);
 
     /** The round-level event recorded for every submission, regardless of type. */
     Object toPlayedEvent(UUID gameId, int eraNumber, int roundNumber);
@@ -54,6 +58,10 @@ public sealed interface SubmittedAction permits SubmittedAction.CardAction, Subm
         /** The only card types whose resolution (timeline-service's {@code applyShift}) needs two outcomes. */
         private static final Set<CardType> TWO_OUTCOME_CARD_TYPES = Set.of(CardType.SWING, CardType.COLLIDE);
 
+        /** No following round or remaining era action left to use these cards' intel/effect in Round 3. */
+        private static final Set<CardType> ROUND_THREE_INELIGIBLE_CARD_TYPES =
+                Set.of(CardType.JAM, CardType.SCAN, CardType.INTERCEPT);
+
         public CardAction(
                 UUID playerId,
                 UUID cardInstanceId,
@@ -65,9 +73,17 @@ public sealed interface SubmittedAction permits SubmittedAction.CardAction, Subm
         }
 
         @Override
-        public void validate() {
+        public void validate(int eraNumber, int roundNumber) {
             if (cardType == CardType.STABILIZE || cardType == CardType.DETONATE) {
                 throw new CardNotEligibleForActionRoundException(cardType);
+            }
+            // TRACE's "last round" lookback reads across era boundaries (Era N Round 1 reads Era N-1 Round 3);
+            // only the very first round of the game has no predecessor round for it to read.
+            if (cardType == CardType.TRACE && eraNumber == 1 && roundNumber == 1) {
+                throw new CardNotEligibleForRoundException(cardType, eraNumber, roundNumber);
+            }
+            if (ROUND_THREE_INELIGIBLE_CARD_TYPES.contains(cardType) && roundNumber == 3) {
+                throw new CardNotEligibleForRoundException(cardType, eraNumber, roundNumber);
             }
             if (!TWO_OUTCOME_CARD_TYPES.contains(cardType)) {
                 return;
@@ -114,7 +130,7 @@ public sealed interface SubmittedAction permits SubmittedAction.CardAction, Subm
             implements SubmittedAction {
 
         @Override
-        public void validate() {
+        public void validate(int eraNumber, int roundNumber) {
             switch (specialAction) {
                 case RALLY, MOMENTUM -> throw new DeclarationSpecialActionRequiredException(specialAction);
                 case FORESIGHT, ANNIHILATE, SEAL, REWRITE, MIMIC -> requireEventAndOutcome();
