@@ -88,7 +88,7 @@ public class ActionRound extends AggregateRoot {
         if (!this.pendingPlayerIds.contains(action.playerId())) {
             throw new DuplicateSubmissionException(action.playerId());
         }
-        action.validate();
+        action.validate(eraNumber, roundNumber);
 
         pendingPlayerIds.remove(action.playerId());
         submittedActions.add(action);

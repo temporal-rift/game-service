@@ -33,6 +33,7 @@ import io.github.temporalrift.game.action.application.port.in.RecordActivistDecl
 import io.github.temporalrift.game.action.application.port.in.SelectHandUseCase;
 import io.github.temporalrift.game.action.domain.CardNotInHandException;
 import io.github.temporalrift.game.action.domain.actionround.ActionRoundClosedException;
+import io.github.temporalrift.game.action.domain.actionround.CardNotEligibleForRoundException;
 import io.github.temporalrift.game.action.domain.actionround.DuplicateSubmissionException;
 import io.github.temporalrift.game.action.domain.actionround.FactionRequiredException;
 import io.github.temporalrift.game.action.domain.actionround.InvalidActionTargetException;
@@ -328,6 +329,26 @@ class ActionControllerTest {
                         .content(cardJson()))
                 .andExpect(status().is(422))
                 .andExpect(jsonPath("$.code").value("422-01"));
+    }
+
+    @Test
+    @DisplayName("Given CardNotEligibleForRoundException, then returns 422 with its own code, distinct from 422-10")
+    void cardNotEligibleForRound() throws Exception {
+        // given
+        given(playCardUseCase.handle(any()))
+                .willThrow(new CardNotEligibleForRoundException(CardType.TRACE, ERA, ROUND));
+
+        // when / then
+        mockMvc.perform(post(
+                                "/api/v1/games/{gameId}/eras/{eraNumber}/rounds/{roundNumber}/actions",
+                                GAME_ID,
+                                ERA,
+                                ROUND)
+                        .with(auth())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(cardJson()))
+                .andExpect(status().is(422))
+                .andExpect(jsonPath("$.code").value("422-12"));
     }
 
     @Test
