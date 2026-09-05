@@ -52,6 +52,8 @@ jobs:
   build-test-analyze:
     needs: format-check
     runs-on: ubuntu-latest
+    env:
+      RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
@@ -104,8 +106,8 @@ jobs:
           fi
           mvn --batch-mode -f pom.xml verify sonar:sonar "${SONAR_ARGS[@]}"
 
+      # Deployment is currently dormant: no Render service is configured, so RENDER_DEPLOY_HOOK_URL is
+      # intentionally unset and this step reports skipped rather than red. See README.md#deployment-configuration.
       - name: Deploy to Render
-        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-        run: curl -s "$RENDER_DEPLOY_HOOK_URL" > /dev/null
-        env:
-          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push' && env.RENDER_DEPLOY_HOOK_URL != ''
+        run: curl --fail --silent --show-error "$RENDER_DEPLOY_HOOK_URL" > /dev/null

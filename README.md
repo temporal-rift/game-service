@@ -48,6 +48,13 @@ The default runtime profile intentionally has no insecure fallbacks for external
 rather than in application configuration. If a required variable is missing, startup fails with a diagnostic that
 identifies the variable and the required configuration contract.
 
+### Continuous deployment
+
+CI's `Deploy to Render` step (`.github/workflows/ci.yml`) is dormant: no Render service is configured, and
+`RENDER_DEPLOY_HOOK_URL` is intentionally left unset. The step is guarded on that secret being present, so a push to
+`main` reports it as skipped rather than failing. When a hosted target is chosen, set `RENDER_DEPLOY_HOOK_URL` as a
+repository secret to re-enable the step.
+
 ## Build and test
 
 ```bash
