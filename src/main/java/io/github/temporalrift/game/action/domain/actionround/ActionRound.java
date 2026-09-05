@@ -77,7 +77,7 @@ public class ActionRound extends AggregateRoot {
     /**
      * Accepts one player's submission for this round. {@code ActionRound} enforces only round-level
      * invariants (open, not a duplicate submission); the submission validates its own fields via
-     * {@link SubmittedAction#validate()}. Cross-aggregate eligibility (faction allows this special,
+     * {@link SubmittedAction#validate(int, int)}. Cross-aggregate eligibility (faction allows this special,
      * player is not jammed) is the caller's responsibility — {@code ActionRound} has no visibility into
      * {@code PlayerState} to verify those itself.
      */
