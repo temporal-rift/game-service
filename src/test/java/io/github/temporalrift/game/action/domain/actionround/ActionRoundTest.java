@@ -568,6 +568,21 @@ class ActionRoundTest {
     }
 
     @Test
+    @DisplayName("submit — CORRUPT carrying a targetOutcomeId — throws InvalidActionTargetException")
+    void submitSpecialCorruptCarryingTargetOutcomeThrows() {
+        // given
+        var round = openRound(List.of(PLAYER_A, PLAYER_B));
+        round.pullEvents();
+        var action = special(PLAYER_A, Faction.ERASERS, SpecialAction.CORRUPT, null, UUID.randomUUID(), PLAYER_B);
+
+        // when / then
+        assertThatExceptionOfType(InvalidActionTargetException.class).isThrownBy(() -> round.submit(action));
+        assertThat(round.pendingPlayerIds()).containsExactly(PLAYER_A, PLAYER_B);
+        assertThat(round.submittedActions()).isEmpty();
+        assertThat(round.pullEvents()).isEmpty();
+    }
+
+    @Test
     @DisplayName("submit — CORRUPT targeting self — throws InvalidActionTargetException")
     void submitSpecialCorruptTargetingSelfThrows() {
         // given

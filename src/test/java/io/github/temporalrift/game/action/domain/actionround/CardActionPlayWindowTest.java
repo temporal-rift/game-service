@@ -114,6 +114,38 @@ class CardActionPlayWindowTest {
     }
 
     @Test
+    void playerTargetingCardCarryingAnOutcomeTargetIsRejected() {
+        for (var cardType : PLAYER_TARGETING_CARD_TYPES) {
+            var playerId = UUID.randomUUID();
+            var withTargetOutcome = new SubmittedAction.CardAction(
+                    playerId,
+                    UUID.randomUUID(),
+                    cardType,
+                    CardGrade.I,
+                    null,
+                    null,
+                    UUID.randomUUID(),
+                    UUID.randomUUID());
+            var withSourceOutcome = new SubmittedAction.CardAction(
+                    playerId,
+                    UUID.randomUUID(),
+                    cardType,
+                    CardGrade.I,
+                    null,
+                    UUID.randomUUID(),
+                    null,
+                    UUID.randomUUID());
+
+            assertThatExceptionOfType(InvalidActionTargetException.class)
+                    .isThrownBy(() -> withTargetOutcome.validate(1, 1))
+                    .withMessageContaining(cardType.name());
+            assertThatExceptionOfType(InvalidActionTargetException.class)
+                    .isThrownBy(() -> withSourceOutcome.validate(1, 1))
+                    .withMessageContaining(cardType.name());
+        }
+    }
+
+    @Test
     void eventTargetingCardWithoutTargetEventIsRejected() {
         for (var cardType : new CardType[] {CardType.PUSH, CardType.SUPPRESS, CardType.SCAN, CardType.DECOY}) {
             var action = new SubmittedAction.CardAction(

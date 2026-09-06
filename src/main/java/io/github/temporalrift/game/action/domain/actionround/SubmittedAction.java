@@ -106,7 +106,7 @@ public sealed interface SubmittedAction permits SubmittedAction.CardAction, Subm
         }
 
         private void validatePlayerTarget() {
-            if (targetEventId != null) {
+            if (targetEventId != null || sourceOutcomeId != null || targetOutcomeId != null) {
                 throw InvalidActionTargetException.cardCannotTargetEvent(cardType);
             }
             if (targetPlayerId == null) {
@@ -196,7 +196,7 @@ public sealed interface SubmittedAction permits SubmittedAction.CardAction, Subm
         }
 
         private void requireOpponent() {
-            if (targetEventId != null) {
+            if (targetEventId != null || targetOutcomeId != null) {
                 throw InvalidActionTargetException.specialActionCannotTargetEvent(specialAction);
             }
             if (targetPlayerId == null) {
@@ -208,7 +208,7 @@ public sealed interface SubmittedAction permits SubmittedAction.CardAction, Subm
         }
 
         private void requireExposeTarget() {
-            if (targetEventId != null) {
+            if (targetEventId != null || targetOutcomeId != null) {
                 throw InvalidActionTargetException.specialActionCannotTargetEvent(specialAction);
             }
             if (targetPlayerId == null) {
