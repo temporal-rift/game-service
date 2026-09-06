@@ -2,7 +2,7 @@ spring:
   application:
     name: game-service
   config:
-    import: classpath:future-events.yml
+    import: "classpath:future-events.yml,optional:configserver:${CONFIG_SERVER_URI:http://config-server:8888}"
   jackson:
     default-property-inclusion: non_null
   datasource:
@@ -137,26 +137,9 @@ game:
     stabilization-winner-factions:
       - PROPHETS
       - WEAVERS
-    scoring:
-      card-shifts:
-        PUSH: 20
-        SUPPRESS: -20
-        # Non-shifter cards: resolved at timeline resolution time, not during the band preview.
-        AMPLIFY: 0
-        INTERCEPT: 0
-        SCAN: 0
-        TRACE: 0
-        DECOY: 0
-        JAM: 0
-        STALL: 0
-        REDIRECT: 0
-        NULLIFY: 0
-        COLLIDE: 0
-        STABILIZE: 0
-        DETONATE: 0
-      swing-shift: 30
-      low-max-probability: 30
-      medium-max-probability: 60
+    # card-shifts/swing-shift/low-max-probability/medium-max-probability come from the shared Config Server
+    # by default (spring.config.import above) — no longer hard-coded here. A profile document or environment
+    # variable can still override any individual key.
 
 logging:
   level:
