@@ -87,12 +87,6 @@ class PlaySpecialActionCommandHandler implements PlaySpecialActionUseCase {
         if (!faction.hasSpecialAction(command.specialAction())) {
             throw new InvalidSpecialActionException(faction, command.specialAction());
         }
-        if (command.specialAction() == SpecialAction.EXPOSE && faction == Faction.ACTIVISTS) {
-            recordExpose(command);
-        }
-        if (command.specialAction() == SpecialAction.CORRUPT) {
-            gameParticipantValidator.requireParticipant(command.gameId(), command.targetPlayerId());
-        }
         var action = new SubmittedAction.SpecialActionSubmission(
                 command.playerId(),
                 faction,
@@ -100,6 +94,16 @@ class PlaySpecialActionCommandHandler implements PlaySpecialActionUseCase {
                 command.targetEventId(),
                 command.targetOutcomeId(),
                 command.targetPlayerId());
+        // Structural shape (target fields, self-targeting) must be confirmed before any target-specific
+        // processing below reads those fields — recordExpose() in particular does a real round-1 lookup and
+        // can persist ActivistEraState for a submission round.submit() would otherwise reject.
+        action.validate(command.eraNumber(), command.roundNumber());
+        if (command.specialAction() == SpecialAction.EXPOSE && faction == Faction.ACTIVISTS) {
+            recordExpose(command);
+        }
+        if (command.specialAction() == SpecialAction.CORRUPT) {
+            gameParticipantValidator.requireParticipant(command.gameId(), command.targetPlayerId());
+        }
         var allSubmitted = round.submit(action);
         actionRoundRepository.save(round);
         ActionRoundEventPublication.publish(round, actionEventPublisher, clock);

@@ -3,6 +3,7 @@ package io.github.temporalrift.game.action.application.command;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
@@ -30,6 +31,7 @@ import io.github.temporalrift.game.action.domain.actionround.ActionRound;
 import io.github.temporalrift.game.action.domain.actionround.ActionRoundClosedException;
 import io.github.temporalrift.game.action.domain.actionround.DuplicateSubmissionException;
 import io.github.temporalrift.game.action.domain.actionround.FactionRequiredException;
+import io.github.temporalrift.game.action.domain.actionround.InvalidActionTargetException;
 import io.github.temporalrift.game.action.domain.actionround.InvalidSpecialActionException;
 import io.github.temporalrift.game.action.domain.actionround.JammedPlayerException;
 import io.github.temporalrift.game.action.domain.actionround.RoundNotFoundException;
@@ -326,14 +328,7 @@ class PlaySpecialActionCommandHandlerTest {
     @DisplayName("handle — Activist Expose outside Round 2 — rejects before submitting")
     void handleActivistExposeOutsideRoundTwoRejectsBeforeSubmitting() {
         var command = new PlaySpecialActionUseCase.Command(
-                GAME_ID,
-                ERA,
-                1,
-                PLAYER_ID,
-                SpecialAction.EXPOSE,
-                UUID.randomUUID(),
-                UUID.randomUUID(),
-                UUID.randomUUID());
+                GAME_ID, ERA, 1, PLAYER_ID, SpecialAction.EXPOSE, null, null, UUID.randomUUID());
         given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA, 1))
                 .willReturn(Optional.of(round));
         given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(playerState));
@@ -344,6 +339,43 @@ class PlaySpecialActionCommandHandlerTest {
 
         then(round).should(never()).submit(any());
         then(activistEraStateRepository).shouldHaveNoInteractions();
+    }
+
+    @Test
+    @DisplayName("handle — Activist Expose missing targetPlayerId — rejected before recordExpose runs")
+    void handleActivistExposeWithoutTargetPlayerRejectsBeforeRecordExpose() {
+        var command =
+                new PlaySpecialActionUseCase.Command(GAME_ID, 2, 2, PLAYER_ID, SpecialAction.EXPOSE, null, null, null);
+        given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, 2, 2))
+                .willReturn(Optional.of(round));
+        given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(playerState));
+        given(playerState.faction()).willReturn(Faction.ACTIVISTS);
+        given(playerState.isJammed()).willReturn(false);
+
+        assertThatExceptionOfType(InvalidActionTargetException.class).isThrownBy(() -> handler.handle(command));
+
+        then(actionRoundRepository).should(never()).findByGameIdAndEraNumberAndRoundNumber(any(), anyInt(), anyInt());
+        then(activistEraStateRepository).shouldHaveNoInteractions();
+        then(round).should(never()).submit(any());
+    }
+
+    @Test
+    @DisplayName("handle — Activist Expose carrying a targetEventId — rejected before recordExpose runs")
+    void handleActivistExposeCarryingTargetEventRejectsBeforeRecordExpose() {
+        var targetPlayerId = UUID.randomUUID();
+        var command = new PlaySpecialActionUseCase.Command(
+                GAME_ID, 2, 2, PLAYER_ID, SpecialAction.EXPOSE, UUID.randomUUID(), null, targetPlayerId);
+        given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, 2, 2))
+                .willReturn(Optional.of(round));
+        given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(playerState));
+        given(playerState.faction()).willReturn(Faction.ACTIVISTS);
+        given(playerState.isJammed()).willReturn(false);
+
+        assertThatExceptionOfType(InvalidActionTargetException.class).isThrownBy(() -> handler.handle(command));
+
+        then(actionRoundRepository).should(never()).findByGameIdAndEraNumberAndRoundNumber(any(), anyInt(), anyInt());
+        then(activistEraStateRepository).shouldHaveNoInteractions();
+        then(round).should(never()).submit(any());
     }
 
     @Test
