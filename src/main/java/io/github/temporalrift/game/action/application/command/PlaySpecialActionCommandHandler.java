@@ -8,6 +8,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import io.github.temporalrift.game.action.application.ActionRoundEventPublication;
 import io.github.temporalrift.game.action.application.ActionTargetValidator;
+import io.github.temporalrift.game.action.application.GameParticipantValidator;
 import io.github.temporalrift.game.action.application.port.in.PlaySpecialActionUseCase;
 import io.github.temporalrift.game.action.domain.actionround.FactionRequiredException;
 import io.github.temporalrift.game.action.domain.actionround.InvalidSpecialActionException;
@@ -40,6 +41,8 @@ class PlaySpecialActionCommandHandler implements PlaySpecialActionUseCase {
 
     private final ActionTargetValidator actionTargetValidator;
 
+    private final GameParticipantValidator gameParticipantValidator;
+
     private final Clock clock;
 
     PlaySpecialActionCommandHandler(
@@ -48,12 +51,14 @@ class PlaySpecialActionCommandHandler implements PlaySpecialActionUseCase {
             ActivistEraStateRepository activistEraStateRepository,
             ActionEventPublisher actionEventPublisher,
             ActionTargetValidator actionTargetValidator,
+            GameParticipantValidator gameParticipantValidator,
             Clock clock) {
         this.actionRoundRepository = actionRoundRepository;
         this.playerStateRepository = playerStateRepository;
         this.activistEraStateRepository = activistEraStateRepository;
         this.actionEventPublisher = actionEventPublisher;
         this.actionTargetValidator = actionTargetValidator;
+        this.gameParticipantValidator = gameParticipantValidator;
         this.clock = clock;
     }
 
@@ -86,7 +91,7 @@ class PlaySpecialActionCommandHandler implements PlaySpecialActionUseCase {
             recordExpose(command);
         }
         if (command.specialAction() == SpecialAction.CORRUPT) {
-            requireGameOpponent(command);
+            gameParticipantValidator.requireParticipant(command.gameId(), command.targetPlayerId());
         }
         var action = new SubmittedAction.SpecialActionSubmission(
                 command.playerId(),
@@ -101,20 +106,6 @@ class PlaySpecialActionCommandHandler implements PlaySpecialActionUseCase {
 
         return new Result(
                 command.gameId(), command.eraNumber(), command.roundNumber(), command.playerId(), allSubmitted);
-    }
-
-    // SubmittedAction.SpecialActionSubmission.validate() only rejects a null or self targetPlayerId —
-    // it has no visibility into the game's full player roster to verify the target is an actual
-    // opponent in this game. Checked here, where PlayerStateRepository has that visibility, mirroring
-    // how recordExpose already validates its own targetPlayerId via round-1 submission membership.
-    private void requireGameOpponent(Command command) {
-        var targetPlayerId = command.targetPlayerId();
-        if (targetPlayerId == null) {
-            return;
-        }
-        playerStateRepository
-                .findByGameIdAndPlayerId(command.gameId(), targetPlayerId)
-                .orElseThrow(() -> new PlayerStateNotFoundException(command.gameId(), targetPlayerId));
     }
 
     private void recordExpose(Command command) {

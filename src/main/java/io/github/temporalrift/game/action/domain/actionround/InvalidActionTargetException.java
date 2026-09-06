@@ -36,4 +36,24 @@ public class InvalidActionTargetException extends RuntimeException {
     public static InvalidActionTargetException corruptCannotTargetSelf() {
         return new InvalidActionTargetException("Corrupt cannot target the submitting player");
     }
+
+    public static InvalidActionTargetException cardRequiresTargetPlayer(CardType cardType) {
+        return new InvalidActionTargetException(cardType + " requires a targetPlayerId");
+    }
+
+    public static InvalidActionTargetException cardCannotTargetEvent(CardType cardType) {
+        return new InvalidActionTargetException(cardType + " cannot target an event");
+    }
+
+    public static InvalidActionTargetException cardRequiresTargetEvent(CardType cardType) {
+        return new InvalidActionTargetException(cardType + " requires a targetEventId");
+    }
+
+    public static InvalidActionTargetException cardCannotTargetPlayer(CardType cardType) {
+        return new InvalidActionTargetException(cardType + " cannot target a player");
+    }
+
+    public static InvalidActionTargetException cardCannotTargetSelf(CardType cardType) {
+        return new InvalidActionTargetException(cardType + " cannot target the submitting player");
+    }
 }

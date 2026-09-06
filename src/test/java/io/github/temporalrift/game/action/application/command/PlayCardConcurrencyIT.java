@@ -229,7 +229,8 @@ class PlayCardConcurrencyIT {
     }
 
     private PlayCardUseCase.Command command(UUID gameId, UUID playerId, UUID cardInstanceId, UUID targetEventId) {
-        return new PlayCardUseCase.Command(gameId, ERA, ROUND, playerId, cardInstanceId, targetEventId, null, null);
+        return new PlayCardUseCase.Command(
+                gameId, ERA, ROUND, playerId, cardInstanceId, targetEventId, null, null, null);
     }
 
     private PlayerState playerStateWithCard(UUID gameId, UUID playerId, UUID cardInstanceId) {

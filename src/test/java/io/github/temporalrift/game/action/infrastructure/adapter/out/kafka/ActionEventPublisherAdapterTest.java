@@ -97,7 +97,8 @@ class ActionEventPublisherAdapterTest {
                 CardType.PUSH,
                 UUID.randomUUID(),
                 UUID.randomUUID(),
-                UUID.randomUUID());
+                UUID.randomUUID(),
+                null);
         var cardPlayedWire = mock(CardPlayedPayload.class);
         given(mapper.toWire(cardPlayed)).willReturn(cardPlayedWire);
 

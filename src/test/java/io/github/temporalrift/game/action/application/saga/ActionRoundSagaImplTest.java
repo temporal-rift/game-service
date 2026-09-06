@@ -47,6 +47,7 @@ import io.github.temporalrift.game.action.domain.port.out.PlayerStateRepository;
 import io.github.temporalrift.game.action.domain.saga.ActionRoundSagaState;
 import io.github.temporalrift.game.action.domain.saga.ActionRoundSagaStatus;
 import io.github.temporalrift.game.shared.ActionRoundClosed;
+import io.github.temporalrift.game.shared.CardGrade;
 import io.github.temporalrift.game.shared.CardType;
 import io.github.temporalrift.game.shared.DomainEventEnvelope;
 import io.github.temporalrift.game.shared.EraActionFactsFinalized;
@@ -1031,6 +1032,57 @@ class ActionRoundSagaImplTest {
             assertThat(cardSummary).satisfies(s -> {
                 assertThat(s.playerId()).isEqualTo(PLAYER_1);
                 assertThat(s.actionCategory()).isEqualTo("PUSH");
+                assertThat(s.actionFamily()).isEqualTo("CARD");
+                assertThat(s.skipped()).isFalse();
+            });
+        }
+
+        @Test
+        @DisplayName("a player-targeting card action exposes only category and family, never the target player")
+        void roundSummary_playerTargetingCardActionDoesNotLeakTarget() {
+            // given
+            var roundId = UUID.randomUUID();
+            var cardInstanceId = UUID.randomUUID();
+
+            var round = new ActionRound(
+                    roundId,
+                    new ActionRoundConfig(GAME_ID, ERA_NUMBER, ROUND_NUMBER, TIMER_SECONDS),
+                    List.of(PLAYER_1, PLAYER_2, PLAYER_3));
+            round.submit(new SubmittedAction.CardAction(
+                    PLAYER_1, cardInstanceId, CardType.JAM, CardGrade.I, null, null, null, PLAYER_2));
+
+            given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(
+                            GAME_ID, ERA_NUMBER, ROUND_NUMBER))
+                    .willReturn(Optional.of(round));
+
+            // when — trigger close via all-submitted
+            var updatedState = new ActionRoundSagaState(
+                    UUID.randomUUID(),
+                    GAME_ID,
+                    ERA_NUMBER,
+                    ROUND_NUMBER,
+                    ActionRoundSagaStatus.WAITING,
+                    List.of(),
+                    TIMER_EXPIRES_AT);
+            given(stateManager.markSubmitted(GAME_ID, ERA_NUMBER, ROUND_NUMBER, PLAYER_1))
+                    .willReturn(Optional.of(updatedState));
+            saga.handlePlayerSubmitted(GAME_ID, ERA_NUMBER, ROUND_NUMBER, PLAYER_1);
+
+            // then
+            var captor = ArgumentCaptor.<DomainEventEnvelope>captor();
+            then(actionEventPublisher).should(atLeastOnce()).publish(captor.capture());
+            var summaryEnvelope = captor.getAllValues().stream()
+                    .filter(e -> e.payload() instanceof RoundSummaryPublished)
+                    .findFirst()
+                    .orElseThrow();
+            var summary = (RoundSummaryPublished) summaryEnvelope.payload();
+            var cardSummary = summary.actionSummaries().stream()
+                    .filter(s -> !s.skipped())
+                    .findFirst()
+                    .orElseThrow();
+            assertThat(cardSummary).satisfies(s -> {
+                assertThat(s.playerId()).isEqualTo(PLAYER_1);
+                assertThat(s.actionCategory()).isEqualTo("JAM");
                 assertThat(s.actionFamily()).isEqualTo("CARD");
                 assertThat(s.skipped()).isFalse();
             });

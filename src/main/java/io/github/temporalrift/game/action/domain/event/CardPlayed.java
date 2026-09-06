@@ -15,7 +15,8 @@ public record CardPlayed(
         CardGrade grade,
         UUID targetEventId,
         UUID sourceOutcomeId,
-        UUID targetOutcomeId)
+        UUID targetOutcomeId,
+        UUID targetPlayerId)
         implements ActionEventPayload {
 
     public CardPlayed(
@@ -27,7 +28,8 @@ public record CardPlayed(
             CardType cardType,
             UUID targetEventId,
             UUID sourceOutcomeId,
-            UUID targetOutcomeId) {
+            UUID targetOutcomeId,
+            UUID targetPlayerId) {
         this(
                 gameId,
                 eraNumber,
@@ -38,6 +40,7 @@ public record CardPlayed(
                 CardGrade.I,
                 targetEventId,
                 sourceOutcomeId,
-                targetOutcomeId);
+                targetOutcomeId,
+                targetPlayerId);
     }
 }
