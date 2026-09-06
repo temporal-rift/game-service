@@ -52,7 +52,8 @@ public sealed interface SubmittedAction permits SubmittedAction.CardAction, Subm
             CardGrade grade,
             UUID targetEventId,
             UUID sourceOutcomeId,
-            UUID targetOutcomeId)
+            UUID targetOutcomeId,
+            UUID targetPlayerId)
             implements SubmittedAction {
 
         /** The only card types whose resolution (timeline-service's {@code applyShift}) needs two outcomes. */
@@ -62,6 +63,10 @@ public sealed interface SubmittedAction permits SubmittedAction.CardAction, Subm
         private static final Set<CardType> ROUND_THREE_INELIGIBLE_CARD_TYPES =
                 Set.of(CardType.JAM, CardType.SCAN, CardType.INTERCEPT);
 
+        /** These disrupt another player directly rather than a future event. */
+        private static final Set<CardType> PLAYER_TARGETING_CARD_TYPES =
+                Set.of(CardType.NULLIFY, CardType.REDIRECT, CardType.AMPLIFY, CardType.JAM, CardType.INTERCEPT);
+
         public CardAction(
                 UUID playerId,
                 UUID cardInstanceId,
@@ -69,7 +74,15 @@ public sealed interface SubmittedAction permits SubmittedAction.CardAction, Subm
                 UUID targetEventId,
                 UUID sourceOutcomeId,
                 UUID targetOutcomeId) {
-            this(playerId, cardInstanceId, cardType, CardGrade.I, targetEventId, sourceOutcomeId, targetOutcomeId);
+            this(
+                    playerId,
+                    cardInstanceId,
+                    cardType,
+                    CardGrade.I,
+                    targetEventId,
+                    sourceOutcomeId,
+                    targetOutcomeId,
+                    null);
         }
 
         @Override
@@ -84,6 +97,32 @@ public sealed interface SubmittedAction permits SubmittedAction.CardAction, Subm
             }
             if (ROUND_THREE_INELIGIBLE_CARD_TYPES.contains(cardType) && roundNumber == 3) {
                 throw new CardNotEligibleForRoundException(cardType, eraNumber, roundNumber);
+            }
+            if (PLAYER_TARGETING_CARD_TYPES.contains(cardType)) {
+                validatePlayerTarget();
+            } else {
+                validateEventTarget();
+            }
+        }
+
+        private void validatePlayerTarget() {
+            if (targetEventId != null) {
+                throw InvalidActionTargetException.cardCannotTargetEvent(cardType);
+            }
+            if (targetPlayerId == null) {
+                throw InvalidActionTargetException.cardRequiresTargetPlayer(cardType);
+            }
+            if (targetPlayerId.equals(playerId)) {
+                throw InvalidActionTargetException.cardCannotTargetSelf(cardType);
+            }
+        }
+
+        private void validateEventTarget() {
+            if (targetPlayerId != null) {
+                throw InvalidActionTargetException.cardCannotTargetPlayer(cardType);
+            }
+            if (targetEventId == null) {
+                throw InvalidActionTargetException.cardRequiresTargetEvent(cardType);
             }
             if (!TWO_OUTCOME_CARD_TYPES.contains(cardType)) {
                 return;
@@ -111,7 +150,8 @@ public sealed interface SubmittedAction permits SubmittedAction.CardAction, Subm
                     grade,
                     targetEventId,
                     sourceOutcomeId,
-                    targetOutcomeId);
+                    targetOutcomeId,
+                    targetPlayerId);
         }
 
         @Override

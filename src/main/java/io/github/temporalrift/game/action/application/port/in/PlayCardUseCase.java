@@ -27,7 +27,8 @@ public interface PlayCardUseCase {
             UUID cardInstanceId,
             UUID targetEventId,
             UUID sourceOutcomeId,
-            UUID targetOutcomeId) {}
+            UUID targetOutcomeId,
+            UUID targetPlayerId) {}
 
     /**
      * Result returned after the submission is stored and its domain events are published.

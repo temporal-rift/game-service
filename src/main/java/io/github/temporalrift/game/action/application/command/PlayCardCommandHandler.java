@@ -8,6 +8,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import io.github.temporalrift.game.action.application.ActionRoundEventPublication;
 import io.github.temporalrift.game.action.application.ActionTargetValidator;
+import io.github.temporalrift.game.action.application.GameParticipantValidator;
 import io.github.temporalrift.game.action.application.port.in.PlayCardUseCase;
 import io.github.temporalrift.game.action.domain.CardNotInHandException;
 import io.github.temporalrift.game.action.domain.actionround.RoundNotFoundException;
@@ -29,6 +30,8 @@ class PlayCardCommandHandler implements PlayCardUseCase {
 
     private final ActionTargetValidator actionTargetValidator;
 
+    private final GameParticipantValidator gameParticipantValidator;
+
     private final Clock clock;
 
     PlayCardCommandHandler(
@@ -36,11 +39,13 @@ class PlayCardCommandHandler implements PlayCardUseCase {
             PlayerStateRepository playerStateRepository,
             ActionEventPublisher actionEventPublisher,
             ActionTargetValidator actionTargetValidator,
+            GameParticipantValidator gameParticipantValidator,
             Clock clock) {
         this.actionRoundRepository = actionRoundRepository;
         this.playerStateRepository = playerStateRepository;
         this.actionEventPublisher = actionEventPublisher;
         this.actionTargetValidator = actionTargetValidator;
+        this.gameParticipantValidator = gameParticipantValidator;
         this.clock = clock;
     }
 
@@ -53,6 +58,7 @@ class PlayCardCommandHandler implements PlayCardUseCase {
                 command.targetEventId(),
                 command.sourceOutcomeId(),
                 command.targetOutcomeId());
+        gameParticipantValidator.requireParticipant(command.gameId(), command.targetPlayerId());
         var round = actionRoundRepository
                 .findByGameIdAndEraNumberAndRoundNumberWithLock(
                         command.gameId(), command.eraNumber(), command.roundNumber())
@@ -72,7 +78,8 @@ class PlayCardCommandHandler implements PlayCardUseCase {
                 submittedCard.grade(),
                 command.targetEventId(),
                 command.sourceOutcomeId(),
-                command.targetOutcomeId());
+                command.targetOutcomeId(),
+                command.targetPlayerId());
         var allSubmitted = round.submit(action);
         playerState.removeCard(command.cardInstanceId());
         actionRoundRepository.save(round);

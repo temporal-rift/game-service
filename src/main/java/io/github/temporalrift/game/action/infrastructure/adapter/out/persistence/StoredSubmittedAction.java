@@ -55,7 +55,8 @@ record StoredSubmittedAction(
                     CardGrade grade,
                     UUID targetEventId,
                     UUID sourceOutcomeId,
-                    UUID targetOutcomeId) ->
+                    UUID targetOutcomeId,
+                    UUID targetPlayerId) ->
                 new StoredSubmittedAction(
                         "CARD",
                         playerId,
@@ -67,7 +68,7 @@ record StoredSubmittedAction(
                         targetEventId,
                         sourceOutcomeId,
                         targetOutcomeId,
-                        null);
+                        targetPlayerId);
             case SubmittedAction.SpecialActionSubmission(
                     UUID playerId,
                     Faction faction,
@@ -100,7 +101,8 @@ record StoredSubmittedAction(
                         cardGrade == null ? CardGrade.I : CardGrade.valueOf(cardGrade),
                         targetEventId,
                         sourceOutcomeId,
-                        targetOutcomeId);
+                        targetOutcomeId,
+                        targetPlayerId);
             case "SPECIAL" ->
                 new SubmittedAction.SpecialActionSubmission(
                         playerId,

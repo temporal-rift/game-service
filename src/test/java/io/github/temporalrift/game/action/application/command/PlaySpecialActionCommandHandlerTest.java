@@ -24,6 +24,7 @@ import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import io.github.temporalrift.game.action.application.ActionTargetValidator;
+import io.github.temporalrift.game.action.application.GameParticipantValidator;
 import io.github.temporalrift.game.action.application.port.in.PlaySpecialActionUseCase;
 import io.github.temporalrift.game.action.domain.actionround.ActionRound;
 import io.github.temporalrift.game.action.domain.actionround.ActionRoundClosedException;
@@ -76,6 +77,9 @@ class PlaySpecialActionCommandHandlerTest {
 
     @Mock
     ActionTargetValidator actionTargetValidator;
+
+    @Mock
+    GameParticipantValidator gameParticipantValidator;
 
     @Spy
     Clock clock = Clock.systemUTC();
@@ -263,8 +267,6 @@ class PlaySpecialActionCommandHandlerTest {
         given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA, ROUND))
                 .willReturn(Optional.of(round));
         given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(playerState));
-        given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, targetPlayerId))
-                .willReturn(Optional.of(mock(PlayerState.class)));
         given(playerState.faction()).willReturn(Faction.ERASERS);
         given(playerState.isJammed()).willReturn(false);
         given(round.submit(any())).willReturn(false);
@@ -276,6 +278,7 @@ class PlaySpecialActionCommandHandlerTest {
         handler.handle(command);
 
         // then
+        then(gameParticipantValidator).should().requireParticipant(GAME_ID, targetPlayerId);
         then(round)
                 .should()
                 .submit(eq(new SubmittedAction.SpecialActionSubmission(
@@ -293,10 +296,11 @@ class PlaySpecialActionCommandHandlerTest {
         given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA, ROUND))
                 .willReturn(Optional.of(round));
         given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(playerState));
-        given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, targetPlayerId))
-                .willReturn(Optional.empty());
         given(playerState.faction()).willReturn(Faction.ERASERS);
         given(playerState.isJammed()).willReturn(false);
+        willThrow(new PlayerStateNotFoundException(GAME_ID, targetPlayerId))
+                .given(gameParticipantValidator)
+                .requireParticipant(GAME_ID, targetPlayerId);
 
         // when / then
         assertThatExceptionOfType(PlayerStateNotFoundException.class).isThrownBy(() -> handler.handle(command));

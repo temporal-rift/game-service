@@ -38,4 +38,26 @@ class CardActionRequestTest {
             assertThat(card.getTargetOutcomeId()).isEqualTo(targetOutcomeId);
         });
     }
+
+    @Test
+    @DisplayName("SubmitActionRequest deserializes targetPlayerId for a player-targeting card, no targetEventId")
+    void submitActionRequestDeserializesTargetPlayerId() throws Exception {
+        var cardInstanceId = UUID.randomUUID();
+        var targetPlayerId = UUID.randomUUID();
+        var json = """
+                {
+                  "actionType": "CARD",
+                  "cardInstanceId": "%s",
+                  "targetPlayerId": "%s"
+                }
+                """.formatted(cardInstanceId, targetPlayerId);
+
+        var request = objectMapper.readValue(json, SubmitActionRequest.class);
+
+        assertThat(request).isInstanceOfSatisfying(CardActionRequest.class, card -> {
+            assertThat(card.getCardInstanceId()).isEqualTo(cardInstanceId);
+            assertThat(card.getTargetPlayerId()).isEqualTo(targetPlayerId);
+            assertThat(card.getTargetEventId()).isNull();
+        });
+    }
 }
