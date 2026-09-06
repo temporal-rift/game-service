@@ -354,7 +354,7 @@ class PlaySpecialActionCommandHandlerTest {
         var sourceOutcomeId = UUID.randomUUID();
         var targetOutcomeId = UUID.randomUUID();
         var command = new PlaySpecialActionUseCase.Command(
-                GAME_ID, 2, 2, PLAYER_ID, SpecialAction.EXPOSE, targetEventId, targetOutcomeId, targetPlayerId);
+                GAME_ID, 2, 2, PLAYER_ID, SpecialAction.EXPOSE, null, null, targetPlayerId);
         var roundOne = mock(ActionRound.class);
         var roundOneCard = new SubmittedAction.CardAction(
                 targetPlayerId, UUID.randomUUID(), CardType.PUSH, targetEventId, sourceOutcomeId, targetOutcomeId);

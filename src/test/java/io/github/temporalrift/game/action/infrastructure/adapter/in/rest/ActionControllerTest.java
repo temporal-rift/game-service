@@ -228,8 +228,8 @@ class ActionControllerTest {
         assertThat(captor.getValue().playerId()).isEqualTo(PLAYER_ID);
         assertThat(captor.getValue().specialAction())
                 .isEqualTo(io.github.temporalrift.game.shared.SpecialAction.CORRUPT);
-        assertThat(captor.getValue().targetEventId()).isEqualTo(TARGET_EVENT_ID);
-        assertThat(captor.getValue().targetOutcomeId()).isEqualTo(TARGET_OUTCOME_ID);
+        assertThat(captor.getValue().targetEventId()).isNull();
+        assertThat(captor.getValue().targetOutcomeId()).isNull();
         assertThat(captor.getValue().targetPlayerId()).isEqualTo(TARGET_PLAYER_ID);
     }
 
@@ -508,11 +508,9 @@ class ActionControllerTest {
                 {
                   "actionType": "SPECIAL",
                   "specialAction": "CORRUPT",
-                  "targetEventId": "%s",
-                  "targetOutcomeId": "%s",
                   "targetPlayerId": "%s"
                 }
-                """.formatted(TARGET_EVENT_ID, TARGET_OUTCOME_ID, TARGET_PLAYER_ID);
+                """.formatted(TARGET_PLAYER_ID);
     }
 
     private static String declarationJson() {
