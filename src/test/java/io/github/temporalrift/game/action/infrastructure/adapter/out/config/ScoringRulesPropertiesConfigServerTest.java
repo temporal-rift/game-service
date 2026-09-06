@@ -21,7 +21,7 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.Configuration;
 
-import io.github.temporalrift.game.shared.CardType;
+import io.github.temporalrift.game.shared.CardGrade;
 
 /**
  * Exercises spring.config.import=configserver:... end to end against an in-process HTTP stub serving the
@@ -48,9 +48,9 @@ class ScoringRulesPropertiesConfigServerTest {
 
         try (var context = startContext(configServerStub)) {
             var props = context.getBean(ScoringRulesProperties.class);
-            assertThat(props.cardShift(CardType.PUSH)).isEqualTo(20);
-            assertThat(props.cardShift(CardType.SUPPRESS)).isEqualTo(-20);
-            assertThat(props.swingShift()).isEqualTo(30);
+            assertThat(props.pushShift(CardGrade.II)).isEqualTo(20);
+            assertThat(props.suppressShift(CardGrade.II)).isEqualTo(-20);
+            assertThat(props.swingShift(CardGrade.II)).isEqualTo(30);
             assertThat(props.bandLowMaxProbability()).isEqualTo(30);
             assertThat(props.bandMediumMaxProbability()).isEqualTo(60);
         }
@@ -60,20 +60,20 @@ class ScoringRulesPropertiesConfigServerTest {
     void localOverride_winsOverConfigServerValue() throws IOException {
         configServerStub = startStub(completeSource());
 
-        try (var context = startContext(configServerStub, "game.rules.scoring.card-shifts.PUSH=999")) {
+        try (var context = startContext(configServerStub, "game.rules.probability.push-shift.II=999")) {
             var props = context.getBean(ScoringRulesProperties.class);
-            assertThat(props.cardShift(CardType.PUSH)).isEqualTo(999);
+            assertThat(props.pushShift(CardGrade.II)).isEqualTo(999);
             // Every other key still comes from the Config Server stub, untouched by the override.
-            assertThat(props.cardShift(CardType.SUPPRESS)).isEqualTo(-20);
+            assertThat(props.suppressShift(CardGrade.II)).isEqualTo(-20);
             assertThat(props.bandLowMaxProbability()).isEqualTo(30);
         }
     }
 
     @Test
     void incompleteEffectiveConfiguration_stillFailsFast() throws IOException {
-        var incompleteCardShifts = completeSource();
-        incompleteCardShifts.remove("game.rules.scoring.card-shifts.JAM");
-        configServerStub = startStub(incompleteCardShifts);
+        var incompleteShifts = completeSource();
+        incompleteShifts.remove("game.rules.probability.push-shift.III");
+        configServerStub = startStub(incompleteShifts);
 
         assertThatThrownBy(() -> startContext(configServerStub)).isInstanceOf(RuntimeException.class);
     }
@@ -101,16 +101,17 @@ class ScoringRulesPropertiesConfigServerTest {
 
     private static LinkedHashMap<String, Object> completeSource() {
         var source = new LinkedHashMap<String, Object>();
-        source.put("game.rules.scoring.card-shifts.PUSH", 20);
-        source.put("game.rules.scoring.card-shifts.SUPPRESS", -20);
-        for (var cardType : CardType.values()) {
-            if (cardType != CardType.PUSH && cardType != CardType.SUPPRESS && cardType != CardType.SWING) {
-                source.put("game.rules.scoring.card-shifts." + cardType.name(), 0);
-            }
-        }
-        source.put("game.rules.scoring.swing-shift", 30);
-        source.put("game.rules.scoring.low-max-probability", 30);
-        source.put("game.rules.scoring.medium-max-probability", 60);
+        source.put("game.rules.probability.push-shift.I", 10);
+        source.put("game.rules.probability.push-shift.II", 20);
+        source.put("game.rules.probability.push-shift.III", 30);
+        source.put("game.rules.probability.suppress-shift.I", -10);
+        source.put("game.rules.probability.suppress-shift.II", -20);
+        source.put("game.rules.probability.suppress-shift.III", -30);
+        source.put("game.rules.probability.swing-shift.I", 15);
+        source.put("game.rules.probability.swing-shift.II", 30);
+        source.put("game.rules.probability.swing-shift.III", 45);
+        source.put("game.rules.probability.band-low-max", 30);
+        source.put("game.rules.probability.band-medium-max", 60);
         return source;
     }
 
