@@ -176,7 +176,8 @@ public sealed interface SubmittedAction permits SubmittedAction.CardAction, Subm
                 case FORESIGHT, ANNIHILATE, SEAL, REWRITE, MIMIC -> requireEventAndOutcome();
                 case FULFILLMENT -> requireEvent();
                 case CORRUPT -> requireOpponent();
-                case CASCADE, OBSCURE, THREAD, TAPESTRY, UNRAVEL, EXPOSE -> {
+                case EXPOSE -> requireExposeTarget();
+                case CASCADE, OBSCURE, THREAD, TAPESTRY, UNRAVEL -> {
                     // No additional target requirement enforced yet for these special actions.
                 }
             }
@@ -195,11 +196,23 @@ public sealed interface SubmittedAction permits SubmittedAction.CardAction, Subm
         }
 
         private void requireOpponent() {
+            if (targetEventId != null) {
+                throw InvalidActionTargetException.specialActionCannotTargetEvent(specialAction);
+            }
             if (targetPlayerId == null) {
                 throw InvalidActionTargetException.specialActionRequiresTargetPlayer(specialAction);
             }
             if (targetPlayerId.equals(playerId)) {
                 throw InvalidActionTargetException.corruptCannotTargetSelf();
+            }
+        }
+
+        private void requireExposeTarget() {
+            if (targetEventId != null) {
+                throw InvalidActionTargetException.specialActionCannotTargetEvent(specialAction);
+            }
+            if (targetPlayerId == null) {
+                throw InvalidActionTargetException.specialActionRequiresTargetPlayer(specialAction);
             }
         }
 

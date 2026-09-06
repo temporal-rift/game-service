@@ -35,7 +35,7 @@ class ActionRoundTest {
     }
 
     static SubmittedAction.CardAction card(UUID playerId, CardType cardType) {
-        return new SubmittedAction.CardAction(playerId, UUID.randomUUID(), cardType, null, null, null);
+        return new SubmittedAction.CardAction(playerId, UUID.randomUUID(), cardType, UUID.randomUUID(), null, null);
     }
 
     static SubmittedAction.CardAction card(
@@ -544,6 +544,21 @@ class ActionRoundTest {
         var round = openRound(List.of(PLAYER_A, PLAYER_B));
         round.pullEvents();
         var action = special(PLAYER_A, Faction.ERASERS, SpecialAction.CORRUPT, null, null, null);
+
+        // when / then
+        assertThatExceptionOfType(InvalidActionTargetException.class).isThrownBy(() -> round.submit(action));
+        assertThat(round.pendingPlayerIds()).containsExactly(PLAYER_A, PLAYER_B);
+        assertThat(round.submittedActions()).isEmpty();
+        assertThat(round.pullEvents()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("submit — CORRUPT carrying a targetEventId — throws InvalidActionTargetException")
+    void submitSpecialCorruptCarryingTargetEventThrows() {
+        // given
+        var round = openRound(List.of(PLAYER_A, PLAYER_B));
+        round.pullEvents();
+        var action = special(PLAYER_A, Faction.ERASERS, SpecialAction.CORRUPT, UUID.randomUUID(), null, PLAYER_B);
 
         // when / then
         assertThatExceptionOfType(InvalidActionTargetException.class).isThrownBy(() -> round.submit(action));
