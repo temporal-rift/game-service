@@ -82,9 +82,9 @@ class BandCalculatorTest {
                         new FutureEventDefinitionPort.OutcomeDefinition(OUTCOME_1, 20),
                         new FutureEventDefinitionPort.OutcomeDefinition(OUTCOME_2, 55))));
         List<SubmittedAction> round1 = List.of(new SubmittedAction.CardAction(
-                PLAYER_ID, UUID.randomUUID(), CardType.PUSH, CardGrade.II, EVENT_ID, null, OUTCOME_1));
+                PLAYER_ID, UUID.randomUUID(), CardType.PUSH, CardGrade.II, EVENT_ID, null, OUTCOME_1, null));
         List<SubmittedAction> round2 = List.of(new SubmittedAction.CardAction(
-                PLAYER_ID, UUID.randomUUID(), CardType.SUPPRESS, CardGrade.II, EVENT_ID, null, OUTCOME_2));
+                PLAYER_ID, UUID.randomUUID(), CardType.SUPPRESS, CardGrade.II, EVENT_ID, null, OUTCOME_2, null));
 
         // when
         var result = calculator.computeBands(round1, round2, definitions);
@@ -147,7 +147,14 @@ class BandCalculatorTest {
                                 new FutureEventDefinitionPort.OutcomeDefinition(swingOutcomeId, 31))));
         List<SubmittedAction> round1 = List.of(
                 new SubmittedAction.CardAction(
-                        PLAYER_ID, UUID.randomUUID(), CardType.PUSH, CardGrade.II, pushEventId, null, pushOutcomeId),
+                        PLAYER_ID,
+                        UUID.randomUUID(),
+                        CardType.PUSH,
+                        CardGrade.II,
+                        pushEventId,
+                        null,
+                        pushOutcomeId,
+                        null),
                 new SubmittedAction.CardAction(
                         PLAYER_ID,
                         UUID.randomUUID(),
@@ -155,7 +162,8 @@ class BandCalculatorTest {
                         CardGrade.II,
                         suppressEventId,
                         null,
-                        suppressOutcomeId),
+                        suppressOutcomeId,
+                        null),
                 new SubmittedAction.CardAction(
                         PLAYER_ID,
                         UUID.randomUUID(),
@@ -163,7 +171,8 @@ class BandCalculatorTest {
                         CardGrade.II,
                         swingEventId,
                         swingSourceOutcomeId,
-                        swingOutcomeId));
+                        swingOutcomeId,
+                        null));
 
         // when
         var result = calculator.computeBands(round1, List.of(), definitions);
@@ -211,7 +220,14 @@ class BandCalculatorTest {
                                 new FutureEventDefinitionPort.OutcomeDefinition(swingOutcomeId, 15))));
         List<SubmittedAction> round1 = List.of(
                 new SubmittedAction.CardAction(
-                        PLAYER_ID, UUID.randomUUID(), CardType.PUSH, CardGrade.I, pushEventId, null, pushOutcomeId),
+                        PLAYER_ID,
+                        UUID.randomUUID(),
+                        CardType.PUSH,
+                        CardGrade.I,
+                        pushEventId,
+                        null,
+                        pushOutcomeId,
+                        null),
                 new SubmittedAction.CardAction(
                         PLAYER_ID,
                         UUID.randomUUID(),
@@ -219,7 +235,8 @@ class BandCalculatorTest {
                         CardGrade.I,
                         suppressEventId,
                         null,
-                        suppressOutcomeId),
+                        suppressOutcomeId,
+                        null),
                 new SubmittedAction.CardAction(
                         PLAYER_ID,
                         UUID.randomUUID(),
@@ -227,7 +244,8 @@ class BandCalculatorTest {
                         CardGrade.I,
                         swingEventId,
                         swingSourceOutcomeId,
-                        swingOutcomeId));
+                        swingOutcomeId,
+                        null));
 
         // when
         var result = calculator.computeBands(round1, List.of(), definitions);
@@ -275,7 +293,14 @@ class BandCalculatorTest {
                                 new FutureEventDefinitionPort.OutcomeDefinition(swingOutcomeId, 20))));
         List<SubmittedAction> round1 = List.of(
                 new SubmittedAction.CardAction(
-                        PLAYER_ID, UUID.randomUUID(), CardType.PUSH, CardGrade.III, pushEventId, null, pushOutcomeId),
+                        PLAYER_ID,
+                        UUID.randomUUID(),
+                        CardType.PUSH,
+                        CardGrade.III,
+                        pushEventId,
+                        null,
+                        pushOutcomeId,
+                        null),
                 new SubmittedAction.CardAction(
                         PLAYER_ID,
                         UUID.randomUUID(),
@@ -283,7 +308,8 @@ class BandCalculatorTest {
                         CardGrade.III,
                         suppressEventId,
                         null,
-                        suppressOutcomeId),
+                        suppressOutcomeId,
+                        null),
                 new SubmittedAction.CardAction(
                         PLAYER_ID,
                         UUID.randomUUID(),
@@ -291,7 +317,8 @@ class BandCalculatorTest {
                         CardGrade.III,
                         swingEventId,
                         swingSourceOutcomeId,
-                        swingOutcomeId));
+                        swingOutcomeId,
+                        null));
 
         // when
         var result = calculator.computeBands(round1, List.of(), definitions);
