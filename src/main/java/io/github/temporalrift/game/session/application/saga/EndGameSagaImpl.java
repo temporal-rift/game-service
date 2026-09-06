@@ -89,7 +89,7 @@ class EndGameSagaImpl implements EndGameSaga {
                                 player.playerId(), player.faction().name()))
                         .toList());
         // Kafka path for external services, plus the in-process path the scoring module's
-        // faction-visibility projection listens to (dual-publish pattern, see developer-notes.md).
+        // faction-visibility projection listens to (dual-publish pattern).
         publishEvent(gameId, factionRevealed);
         applicationEventPublisher.publishEvent(factionRevealed);
 

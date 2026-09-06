@@ -33,8 +33,8 @@ class JoinLobbyCommandHandler implements JoinLobbyUseCase {
 
         lobbyRepository.save(lobby);
 
-        // In-process path for the scoring module's player-name projection (dual-publish pattern,
-        // see developer-notes.md); the Kafka path is emitted by the lobby repository adapter.
+        // In-process path for the scoring module's player-name projection (dual-publish pattern);
+        // the Kafka path is emitted by the lobby repository adapter.
         applicationEventPublisher.publishEvent(
                 new PlayerJoinedLobby(lobby.gameId(), lobby.id(), command.playerId(), command.playerName()));
 

@@ -8,9 +8,9 @@ import org.slf4j.LoggerFactory;
 import org.springframework.messaging.Message;
 
 /**
- * The {@code timeline.events} envelope metadata, read from Kafka record headers (event-schema.md §1) — not from a
- * body field. The record body carries only the typed event payload, so {@code eventType} here is the contract's
- * plain AsyncAPI message name and the sole routing discriminator.
+ * The {@code timeline.events} envelope metadata, read from Kafka record headers — not from a body field. The record
+ * body carries only the typed event payload, so {@code eventType} here is the contract's plain AsyncAPI message name
+ * and the sole routing discriminator.
  *
  * <p>Every header here travels as a plain String (TimelineEventHeaders.populate calls {@code .toString()} /
  * {@code String.valueOf()} on each value before putting it on the generated producer's header map) — none arrive as

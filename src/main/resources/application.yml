@@ -84,7 +84,7 @@ spring:
         default:
           producer:
             # gameId is present as a header on every generated event's headers — partitioning by it
-            # guarantees ordering of all events within a game, matching event-schema.md.
+            # guarantees ordering of all events within a game.
             messageKeyExpression: headers['gameId']
 
 management:

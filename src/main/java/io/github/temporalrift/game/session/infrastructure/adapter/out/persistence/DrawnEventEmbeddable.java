@@ -12,7 +12,7 @@ import io.github.temporalrift.game.session.domain.game.DrawnFutureEvent;
 
 /**
  * One entry of a game's drawn-event map: a per-game {@code eventId} and the {@link DrawnFutureEvent} it was drawn
- * with. Outcome IDs are always exactly 3 (GDD §4.1), so a simple delimited column avoids a nested
+ * with. Outcome IDs are always exactly 3, so a simple delimited column avoids a nested
  * {@code @ElementCollection} inside this embeddable, which JPA does not support cleanly.
  */
 @Embeddable

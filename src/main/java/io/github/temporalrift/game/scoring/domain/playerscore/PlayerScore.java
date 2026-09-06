@@ -44,7 +44,7 @@ public class PlayerScore {
 
     /**
      * Applies {@code reason} at {@code multiplier} times its base {@link ScoreReason#pointsDelta()}.
-     * Used by DETONATE's "double the negative score effect" rule (GDD §3 Group 4); every other caller
+     * Used by DETONATE's "double the negative score effect" rule; every other caller
      * passes multiplier 1 via {@link #apply(int, ScoreReason)}.
      */
     public ScoreEntry apply(int eraNumber, ScoreReason reason, int multiplier) {

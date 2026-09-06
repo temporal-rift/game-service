@@ -19,7 +19,7 @@ public enum ScoreReason {
     DECLARED_OUTCOME_WON(Faction.ACTIVISTS, 4),
     EXPOSE_CHANGED_PLAYER_BEHAVIOR(Faction.ACTIVISTS, 2),
     // Faction-agnostic: applies to every player regardless of faction (see belongsTo). Base magnitude
-    // for GDD §3 Group 4 DETONATE's "double the negative score effect" is applied via a multiplier at
+    // for DETONATE's "double the negative score effect" is applied via a multiplier at
     // the call site (PlayerScore.apply), not by a second constant here.
     PARADOX_CASCADE_PENALTY(null, -2);
 
