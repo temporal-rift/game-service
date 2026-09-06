@@ -103,8 +103,13 @@ class BandCalculator {
             return;
         }
 
-        // Non-shifter cards (Amplify, Jam, etc.) return 0 and are resolved at timeline resolution time.
-        var shift = bandRules.cardShift(action.cardType());
+        // Non-shifter cards (Amplify, Jam, etc.) are resolved at timeline resolution time, not here.
+        var shift =
+                switch (action.cardType()) {
+                    case PUSH -> bandRules.pushShift(action.grade());
+                    case SUPPRESS -> bandRules.suppressShift(action.grade());
+                    default -> 0;
+                };
         if (shift != 0) {
             outcomeMap.merge(action.targetOutcomeId(), shift, Integer::sum);
         }
@@ -123,8 +128,9 @@ class BandCalculator {
         if (!outcomeMap.containsKey(action.sourceOutcomeId()) || !outcomeMap.containsKey(action.targetOutcomeId())) {
             return;
         }
-        outcomeMap.merge(action.sourceOutcomeId(), -bandRules.swingShift(), Integer::sum);
-        outcomeMap.merge(action.targetOutcomeId(), bandRules.swingShift(), Integer::sum);
+        var shift = bandRules.swingShift(action.grade());
+        outcomeMap.merge(action.sourceOutcomeId(), -shift, Integer::sum);
+        outcomeMap.merge(action.targetOutcomeId(), shift, Integer::sum);
     }
 
     @SuppressWarnings("java:S1172")

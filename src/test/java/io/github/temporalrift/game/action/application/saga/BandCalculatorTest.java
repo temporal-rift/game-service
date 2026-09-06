@@ -17,6 +17,7 @@ import io.github.temporalrift.game.action.domain.event.BandedProbabilityPublishe
 import io.github.temporalrift.game.action.domain.event.BandedProbabilityPublished.OutcomeBandState;
 import io.github.temporalrift.game.action.domain.port.out.BandRulesPort;
 import io.github.temporalrift.game.action.domain.port.out.FutureEventDefinitionPort;
+import io.github.temporalrift.game.shared.CardGrade;
 import io.github.temporalrift.game.shared.CardType;
 import io.github.temporalrift.game.shared.Faction;
 import io.github.temporalrift.game.shared.ProbabilityBand;
@@ -29,20 +30,33 @@ class BandCalculatorTest {
     static final UUID OUTCOME_2 = UUID.randomUUID();
     static final UUID PLAYER_ID = UUID.randomUUID();
 
-    // Mirrors the GDD default balance values wired in application.yml (game.rules.scoring).
+    // Mirrors the GDD default per-grade balance values wired in application.yml (game.rules.probability).
     static final BandRulesPort GDD_BAND_RULES = new BandRulesPort() {
         @Override
-        public int cardShift(CardType cardType) {
-            return switch (cardType) {
-                case PUSH -> 20;
-                case SUPPRESS -> -20;
-                default -> 0;
+        public int pushShift(CardGrade grade) {
+            return switch (grade) {
+                case I -> 10;
+                case II -> 20;
+                case III -> 30;
             };
         }
 
         @Override
-        public int swingShift() {
-            return 30;
+        public int suppressShift(CardGrade grade) {
+            return switch (grade) {
+                case I -> -10;
+                case II -> -20;
+                case III -> -30;
+            };
+        }
+
+        @Override
+        public int swingShift(CardGrade grade) {
+            return switch (grade) {
+                case I -> 15;
+                case II -> 30;
+                case III -> 45;
+            };
         }
 
         @Override
@@ -67,10 +81,10 @@ class BandCalculatorTest {
                 List.of(
                         new FutureEventDefinitionPort.OutcomeDefinition(OUTCOME_1, 20),
                         new FutureEventDefinitionPort.OutcomeDefinition(OUTCOME_2, 55))));
-        List<SubmittedAction> round1 = List.of(
-                new SubmittedAction.CardAction(PLAYER_ID, UUID.randomUUID(), CardType.PUSH, EVENT_ID, null, OUTCOME_1));
+        List<SubmittedAction> round1 = List.of(new SubmittedAction.CardAction(
+                PLAYER_ID, UUID.randomUUID(), CardType.PUSH, CardGrade.II, EVENT_ID, null, OUTCOME_1));
         List<SubmittedAction> round2 = List.of(new SubmittedAction.CardAction(
-                PLAYER_ID, UUID.randomUUID(), CardType.SUPPRESS, EVENT_ID, null, OUTCOME_2));
+                PLAYER_ID, UUID.randomUUID(), CardType.SUPPRESS, CardGrade.II, EVENT_ID, null, OUTCOME_2));
 
         // when
         var result = calculator.computeBands(round1, round2, definitions);
@@ -133,13 +147,20 @@ class BandCalculatorTest {
                                 new FutureEventDefinitionPort.OutcomeDefinition(swingOutcomeId, 31))));
         List<SubmittedAction> round1 = List.of(
                 new SubmittedAction.CardAction(
-                        PLAYER_ID, UUID.randomUUID(), CardType.PUSH, pushEventId, null, pushOutcomeId),
+                        PLAYER_ID, UUID.randomUUID(), CardType.PUSH, CardGrade.II, pushEventId, null, pushOutcomeId),
                 new SubmittedAction.CardAction(
-                        PLAYER_ID, UUID.randomUUID(), CardType.SUPPRESS, suppressEventId, null, suppressOutcomeId),
+                        PLAYER_ID,
+                        UUID.randomUUID(),
+                        CardType.SUPPRESS,
+                        CardGrade.II,
+                        suppressEventId,
+                        null,
+                        suppressOutcomeId),
                 new SubmittedAction.CardAction(
                         PLAYER_ID,
                         UUID.randomUUID(),
                         CardType.SWING,
+                        CardGrade.II,
                         swingEventId,
                         swingSourceOutcomeId,
                         swingOutcomeId));
@@ -155,6 +176,134 @@ class BandCalculatorTest {
                         new EventBandState(
                                 suppressEventId,
                                 List.of(new OutcomeBandState(suppressOutcomeId, ProbabilityBand.HIGH))),
+                        new EventBandState(
+                                swingEventId,
+                                List.of(
+                                        new OutcomeBandState(swingSourceOutcomeId, ProbabilityBand.MEDIUM),
+                                        new OutcomeBandState(swingOutcomeId, ProbabilityBand.HIGH))));
+    }
+
+    @Test
+    @DisplayName("computeBands uses the grade I magnitude for PUSH/SUPPRESS/SWING, not the grade II baseline")
+    void computeBands_usesGradeIShiftMagnitudes() {
+        // given: each base probability crosses a band boundary only under the grade I magnitude, not grade II's.
+        var pushEventId = UUID.randomUUID();
+        var suppressEventId = UUID.randomUUID();
+        var swingEventId = UUID.randomUUID();
+        var pushOutcomeId = UUID.randomUUID();
+        var suppressOutcomeId = UUID.randomUUID();
+        var swingSourceOutcomeId = UUID.randomUUID();
+        var swingOutcomeId = UUID.randomUUID();
+        var definitions = List.of(
+                // grade I: 15 + 10 = 25 (LOW); grade II would give 15 + 20 = 35 (MEDIUM).
+                new FutureEventDefinitionPort.EventDefinition(
+                        pushEventId, List.of(new FutureEventDefinitionPort.OutcomeDefinition(pushOutcomeId, 15))),
+                // grade I: 45 - 10 = 35 (MEDIUM); grade II would give 45 - 20 = 25 (LOW).
+                new FutureEventDefinitionPort.EventDefinition(
+                        suppressEventId,
+                        List.of(new FutureEventDefinitionPort.OutcomeDefinition(suppressOutcomeId, 45))),
+                // grade I: source 46 - 15 = 31 (MEDIUM), target 15 + 15 = 30 (LOW);
+                // grade II would give source 46 - 30 = 16 (LOW), target 15 + 30 = 45 (MEDIUM).
+                new FutureEventDefinitionPort.EventDefinition(
+                        swingEventId,
+                        List.of(
+                                new FutureEventDefinitionPort.OutcomeDefinition(swingSourceOutcomeId, 46),
+                                new FutureEventDefinitionPort.OutcomeDefinition(swingOutcomeId, 15))));
+        List<SubmittedAction> round1 = List.of(
+                new SubmittedAction.CardAction(
+                        PLAYER_ID, UUID.randomUUID(), CardType.PUSH, CardGrade.I, pushEventId, null, pushOutcomeId),
+                new SubmittedAction.CardAction(
+                        PLAYER_ID,
+                        UUID.randomUUID(),
+                        CardType.SUPPRESS,
+                        CardGrade.I,
+                        suppressEventId,
+                        null,
+                        suppressOutcomeId),
+                new SubmittedAction.CardAction(
+                        PLAYER_ID,
+                        UUID.randomUUID(),
+                        CardType.SWING,
+                        CardGrade.I,
+                        swingEventId,
+                        swingSourceOutcomeId,
+                        swingOutcomeId));
+
+        // when
+        var result = calculator.computeBands(round1, List.of(), definitions);
+
+        // then
+        assertThat(result)
+                .containsExactlyInAnyOrder(
+                        new EventBandState(
+                                pushEventId, List.of(new OutcomeBandState(pushOutcomeId, ProbabilityBand.LOW))),
+                        new EventBandState(
+                                suppressEventId,
+                                List.of(new OutcomeBandState(suppressOutcomeId, ProbabilityBand.MEDIUM))),
+                        new EventBandState(
+                                swingEventId,
+                                List.of(
+                                        new OutcomeBandState(swingSourceOutcomeId, ProbabilityBand.MEDIUM),
+                                        new OutcomeBandState(swingOutcomeId, ProbabilityBand.LOW))));
+    }
+
+    @Test
+    @DisplayName("computeBands uses the grade III magnitude for PUSH/SUPPRESS/SWING, not the grade II baseline")
+    void computeBands_usesGradeIiiShiftMagnitudes() {
+        // given: each base probability crosses a band boundary only under the grade III magnitude, not grade II's.
+        var pushEventId = UUID.randomUUID();
+        var suppressEventId = UUID.randomUUID();
+        var swingEventId = UUID.randomUUID();
+        var pushOutcomeId = UUID.randomUUID();
+        var suppressOutcomeId = UUID.randomUUID();
+        var swingSourceOutcomeId = UUID.randomUUID();
+        var swingOutcomeId = UUID.randomUUID();
+        var definitions = List.of(
+                // grade III: 35 + 30 = 65 (HIGH); grade II would give 35 + 20 = 55 (MEDIUM).
+                new FutureEventDefinitionPort.EventDefinition(
+                        pushEventId, List.of(new FutureEventDefinitionPort.OutcomeDefinition(pushOutcomeId, 35))),
+                // grade III: 85 - 30 = 55 (MEDIUM); grade II would give 85 - 20 = 65 (HIGH).
+                new FutureEventDefinitionPort.EventDefinition(
+                        suppressEventId,
+                        List.of(new FutureEventDefinitionPort.OutcomeDefinition(suppressOutcomeId, 85))),
+                // grade III: source 95 - 45 = 50 (MEDIUM), target 20 + 45 = 65 (HIGH);
+                // grade II would give source 95 - 30 = 65 (HIGH), target 20 + 30 = 50 (MEDIUM).
+                new FutureEventDefinitionPort.EventDefinition(
+                        swingEventId,
+                        List.of(
+                                new FutureEventDefinitionPort.OutcomeDefinition(swingSourceOutcomeId, 95),
+                                new FutureEventDefinitionPort.OutcomeDefinition(swingOutcomeId, 20))));
+        List<SubmittedAction> round1 = List.of(
+                new SubmittedAction.CardAction(
+                        PLAYER_ID, UUID.randomUUID(), CardType.PUSH, CardGrade.III, pushEventId, null, pushOutcomeId),
+                new SubmittedAction.CardAction(
+                        PLAYER_ID,
+                        UUID.randomUUID(),
+                        CardType.SUPPRESS,
+                        CardGrade.III,
+                        suppressEventId,
+                        null,
+                        suppressOutcomeId),
+                new SubmittedAction.CardAction(
+                        PLAYER_ID,
+                        UUID.randomUUID(),
+                        CardType.SWING,
+                        CardGrade.III,
+                        swingEventId,
+                        swingSourceOutcomeId,
+                        swingOutcomeId));
+
+        // when
+        var result = calculator.computeBands(round1, List.of(), definitions);
+
+        // then
+        assertThat(result)
+                .containsExactlyInAnyOrder(
+                        new EventBandState(
+                                pushEventId, List.of(new OutcomeBandState(pushOutcomeId, ProbabilityBand.HIGH))),
+                        new EventBandState(
+                                suppressEventId,
+                                List.of(new OutcomeBandState(suppressOutcomeId, ProbabilityBand.MEDIUM))),
                         new EventBandState(
                                 swingEventId,
                                 List.of(
