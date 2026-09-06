@@ -10,46 +10,62 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.validation.annotation.Validated;
 
 import io.github.temporalrift.game.action.domain.port.out.BandRulesPort;
-import io.github.temporalrift.game.shared.CardType;
+import io.github.temporalrift.game.shared.CardGrade;
 
-@ConfigurationProperties("game.rules.scoring")
+@ConfigurationProperties("game.rules.probability")
 @Validated
 public record ScoringRulesProperties(
-        @NotNull Map<CardType, Integer> cardShifts,
-        @Min(0) int swingShift,
-        @Min(0) int lowMaxProbability,
-        @Min(0) int mediumMaxProbability)
+        @NotNull Map<CardGrade, Integer> pushShift,
+        @NotNull Map<CardGrade, Integer> suppressShift,
+        @NotNull Map<CardGrade, Integer> swingShift,
+        @Min(0) int bandLowMax,
+        @Min(0) int bandMediumMax)
         implements BandRulesPort {
 
     public ScoringRulesProperties {
-        Objects.requireNonNull(cardShifts, "game.rules.scoring.card-shifts must not be null");
-        if (lowMaxProbability > mediumMaxProbability) {
-            throw new IllegalArgumentException(
-                    "game.rules.scoring.low-max-probability must be <= medium-max-probability");
-        }
-        // SWING is configured separately via swingShift; every other card type must have an explicit
-        // entry (0 for non-shifters) so a newly added CardType with no config entry fails fast at
-        // startup instead of silently defaulting to a 0 shift in cardShift(CardType).
-        var missing = Arrays.stream(CardType.values())
-                .filter(cardType -> cardType != CardType.SWING && !cardShifts.containsKey(cardType))
-                .toList();
-        if (!missing.isEmpty()) {
-            throw new IllegalArgumentException("game.rules.scoring.card-shifts is missing entries for: " + missing);
+        requireAllGrades(pushShift, "push-shift");
+        requireAllGrades(suppressShift, "suppress-shift");
+        requireAllGrades(swingShift, "swing-shift");
+        if (bandLowMax > bandMediumMax) {
+            throw new IllegalArgumentException("game.rules.probability.band-low-max must be <= band-medium-max");
         }
     }
 
+    private static void requireAllGrades(Map<CardGrade, Integer> values, String property) {
+        Objects.requireNonNull(values, "game.rules.probability." + property + " must not be null");
+        var missing = Arrays.stream(CardGrade.values())
+                .filter(grade -> !values.containsKey(grade))
+                .toList();
+        if (!missing.isEmpty()) {
+            throw new IllegalArgumentException(
+                    "game.rules.probability." + property + " is missing entries for: " + missing);
+        }
+    }
+
+    // requireAllGrades guarantees every CardGrade key is present, so these lookups never return null.
+
     @Override
-    public int cardShift(CardType cardType) {
-        return cardShifts.getOrDefault(cardType, 0);
+    public int pushShift(CardGrade grade) {
+        return pushShift.get(grade);
+    }
+
+    @Override
+    public int suppressShift(CardGrade grade) {
+        return suppressShift.get(grade);
+    }
+
+    @Override
+    public int swingShift(CardGrade grade) {
+        return swingShift.get(grade);
     }
 
     @Override
     public int bandLowMaxProbability() {
-        return lowMaxProbability;
+        return bandLowMax;
     }
 
     @Override
     public int bandMediumMaxProbability() {
-        return mediumMaxProbability;
+        return bandMediumMax;
     }
 }

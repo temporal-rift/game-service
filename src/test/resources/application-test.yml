@@ -1,26 +1,24 @@
 game:
   rules:
-    scoring:
+    probability:
       # Self-contained copy so the test suite never depends on a live Config Server; also demonstrates the
       # "profile config overrides the Config Server" requirement (game-scoring-config-client capability).
-      card-shifts:
-        PUSH: 20
-        SUPPRESS: -20
-        AMPLIFY: 0
-        INTERCEPT: 0
-        SCAN: 0
-        TRACE: 0
-        DECOY: 0
-        JAM: 0
-        STALL: 0
-        REDIRECT: 0
-        NULLIFY: 0
-        COLLIDE: 0
-        STABILIZE: 0
-        DETONATE: 0
-      swing-shift: 30
-      low-max-probability: 30
-      medium-max-probability: 60
+      # Same namespace timeline-service reads (shared-configuration-server capability) — game-service's
+      # ScoringRulesProperties binds only the fields it declares below.
+      push-shift:
+        I: 10
+        II: 20
+        III: 30
+      suppress-shift:
+        I: -10
+        II: -20
+        III: -30
+      swing-shift:
+        I: 15
+        II: 30
+        III: 45
+      band-low-max: 30
+      band-medium-max: 60
 
 spring:
   application:
