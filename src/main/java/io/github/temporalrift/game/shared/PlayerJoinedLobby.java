@@ -10,6 +10,6 @@ import java.util.UUID;
  *
  * <p>Carries the pre-assigned {@code gameId} (in addition to the {@code lobbyId} the Kafka payload
  * exposes) because in-process listeners receive the typed event directly, without the envelope headers
- * that would otherwise carry it. See developer-notes.md §4.
+ * that would otherwise carry it.
  */
 public record PlayerJoinedLobby(UUID gameId, UUID lobbyId, UUID playerId, String playerName) {}
