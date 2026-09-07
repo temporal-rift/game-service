@@ -9,7 +9,8 @@ public interface EndGameSagaRepository {
 
     EndGameSagaState save(EndGameSagaState state);
 
-    Optional<EndGameSagaState> findByGameId(UUID gameId);
+    /** Atomically inserts the RUNNING claim; returns false if a row for this gameId already exists. */
+    boolean claimIfAbsent(EndGameSagaState state);
 
     Optional<EndGameSagaState> findByGameIdWithLock(UUID gameId);
 }

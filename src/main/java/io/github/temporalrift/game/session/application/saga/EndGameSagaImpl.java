@@ -64,15 +64,15 @@ class EndGameSagaImpl implements EndGameSaga {
     public void start(UUID gameId, EndGameTrigger triggerType, UUID... playerIds) {
         // Every trigger's detection point (EraSagaAdvancer's win/collapse/stabilization branches)
         // transitions the Game aggregate itself before publishing the event that reaches this saga, so
-        // this saga never mutates Game -- it only finalizes (scores, GameEnded, FactionRevealed), gated by
-        // its own saga-state repository as the single idempotency guard for a redelivered event.
-        if (stateManager.isAlreadyHandled(gameId)) {
+        // this saga never mutates Game -- it only finalizes (scores, GameEnded, FactionRevealed). The
+        // atomic claim below is the single idempotency guard for a redelivered event, regardless of
+        // trigger type.
+        if (!stateManager.claimIfAbsent(gameId, triggerType, List.of(playerIds))) {
             log.info("EndGameSaga.start ignored for game {} — already handled", gameId);
             return;
         }
 
         var game = gameRepository.findById(gameId).orElseThrow(() -> new GameNotFoundException(gameId));
-        stateManager.initRunning(gameId, triggerType, List.of(playerIds));
 
         // The lobby roster is the system of record for assigned factions; start-game saga state is
         // workflow bookkeeping and never carries the assignments.
