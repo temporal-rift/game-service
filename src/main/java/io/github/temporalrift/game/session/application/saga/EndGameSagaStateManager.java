@@ -25,6 +25,11 @@ class EndGameSagaStateManager {
         endGameSagaRepository.save(new EndGameSagaState(gameId, triggerType, EndGameSagaStatus.RUNNING, playerIds));
     }
 
+    @Transactional(readOnly = true)
+    boolean isAlreadyHandled(UUID gameId) {
+        return endGameSagaRepository.findByGameId(gameId).isPresent();
+    }
+
     @Transactional
     void complete(UUID gameId) {
         endGameSagaRepository
