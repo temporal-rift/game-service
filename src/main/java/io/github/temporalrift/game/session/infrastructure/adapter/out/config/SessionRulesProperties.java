@@ -11,6 +11,7 @@ import org.springframework.validation.annotation.Validated;
 import io.github.temporalrift.game.session.domain.port.out.SessionGameRulesPort;
 import io.github.temporalrift.game.shared.CardCategory;
 import io.github.temporalrift.game.shared.CardGrade;
+import io.github.temporalrift.game.shared.CardType;
 import io.github.temporalrift.game.shared.Faction;
 import io.github.temporalrift.game.shared.SpecialAction;
 
@@ -31,7 +32,8 @@ public record SessionRulesProperties(
         @NotEmpty Map<CardCategory, Integer> cardCategoryWeights,
         @NotEmpty Map<CardGrade, Integer> cardGradeWeights,
         @NotEmpty Set<Faction> stabilizationWinnerFactions,
-        @NotEmpty Set<SpecialAction> onceEraBudgetedSpecials)
+        @NotEmpty Set<SpecialAction> onceEraBudgetedSpecials,
+        Set<CardType> handDealForcedTypes)
         implements SessionGameRulesPort {
 
     private static final int DEFAULT_ACTION_ROUND_TIMER_SECONDS = 60;
@@ -44,6 +46,7 @@ public record SessionRulesProperties(
         handSelectionTimerSeconds = Map.copyOf(handSelectionTimerSeconds);
         cardCategoryWeights = Map.copyOf(cardCategoryWeights);
         cardGradeWeights = Map.copyOf(cardGradeWeights);
+        handDealForcedTypes = handDealForcedTypes == null ? Set.of() : Set.copyOf(handDealForcedTypes);
         validatePositiveValues(handSelectionTimerSeconds, "hand-selection-timer-seconds");
         validateWeights(cardCategoryWeights, "card-category-weights");
         validateWeights(cardGradeWeights, "card-grade-weights");
