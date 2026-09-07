@@ -131,6 +131,15 @@ class EraSagaAdvancer {
                             var game = gameRepository
                                     .findByIdWithLock(gameId)
                                     .orElseThrow(() -> new GameNotFoundException(gameId));
+                            // A concurrent paradox-resolution collapse (a separate saga entirely) can win the
+                            // lock on this same aggregate first: same race the no-winner branch below already
+                            // guards against, just from the opposite trigger. Without this check, game.end()
+                            // would throw GameAlreadyOverException uncaught and this era saga would never
+                            // reach COMPLETED.
+                            if (game.status() == GameStatus.ENDED_BY_COLLAPSE) {
+                                eraSagaRepository.save(state.withStatus(EraSagaStatus.COMPLETED));
+                                return;
+                            }
                             game.end();
                             gameRepository.save(game);
                             eraSagaRepository.save(state.withStatus(EraSagaStatus.COMPLETED));
