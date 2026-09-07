@@ -12,8 +12,10 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 
 import java.time.Clock;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 import org.junit.jupiter.api.DisplayName;
@@ -46,8 +48,12 @@ import io.github.temporalrift.game.action.domain.port.out.ActionEventPublisher;
 import io.github.temporalrift.game.action.domain.port.out.ActionRoundRepository;
 import io.github.temporalrift.game.action.domain.port.out.ActivistEraStateRepository;
 import io.github.temporalrift.game.action.domain.port.out.PlayerStateRepository;
+import io.github.temporalrift.game.action.domain.port.out.SpecialActionEraUsageRepository;
+import io.github.temporalrift.game.action.domain.specialactionerausage.SpecialActionEraBudgetExhaustedException;
+import io.github.temporalrift.game.action.domain.specialactionerausage.SpecialActionEraUsage;
 import io.github.temporalrift.game.shared.CardType;
 import io.github.temporalrift.game.shared.Faction;
+import io.github.temporalrift.game.shared.GameRulesPort;
 import io.github.temporalrift.game.shared.SpecialAction;
 
 @ExtendWith(MockitoExtension.class)
@@ -67,6 +73,12 @@ class PlaySpecialActionCommandHandlerTest {
 
     @Mock
     ActivistEraStateRepository activistEraStateRepository;
+
+    @Mock
+    SpecialActionEraUsageRepository specialActionEraUsageRepository;
+
+    @Mock
+    GameRulesPort gameRules;
 
     @Mock
     ActionEventPublisher actionEventPublisher;
@@ -101,6 +113,7 @@ class PlaySpecialActionCommandHandlerTest {
         given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(playerState));
         given(playerState.faction()).willReturn(Faction.ERASERS);
         given(playerState.isJammed()).willReturn(false);
+        given(gameRules.onceEraBudgetedSpecials()).willReturn(Set.of());
         given(round.submit(any())).willReturn(false);
         given(round.id()).willReturn(UUID.randomUUID());
         given(round.gameId()).willReturn(GAME_ID);
@@ -132,6 +145,7 @@ class PlaySpecialActionCommandHandlerTest {
         given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(playerState));
         given(playerState.faction()).willReturn(Faction.PROPHETS);
         given(playerState.isJammed()).willReturn(false);
+        given(gameRules.onceEraBudgetedSpecials()).willReturn(Set.of());
         given(round.submit(any())).willReturn(true);
         given(round.id()).willReturn(UUID.randomUUID());
         given(round.gameId()).willReturn(GAME_ID);
@@ -234,6 +248,7 @@ class PlaySpecialActionCommandHandlerTest {
         given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(playerState));
         given(playerState.faction()).willReturn(Faction.PROPHETS);
         given(playerState.isJammed()).willReturn(false);
+        given(gameRules.onceEraBudgetedSpecials()).willReturn(Set.of());
         willThrow(new ActionRoundClosedException()).given(round).submit(any());
         var command = new PlaySpecialActionUseCase.Command(
                 GAME_ID, ERA, ROUND, PLAYER_ID, SpecialAction.SEAL, UUID.randomUUID(), UUID.randomUUID(), null);
@@ -251,6 +266,7 @@ class PlaySpecialActionCommandHandlerTest {
         given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(playerState));
         given(playerState.faction()).willReturn(Faction.PROPHETS);
         given(playerState.isJammed()).willReturn(false);
+        given(gameRules.onceEraBudgetedSpecials()).willReturn(Set.of());
         willThrow(new DuplicateSubmissionException(PLAYER_ID)).given(round).submit(any());
         var command = new PlaySpecialActionUseCase.Command(
                 GAME_ID, ERA, ROUND, PLAYER_ID, SpecialAction.SEAL, UUID.randomUUID(), UUID.randomUUID(), null);
@@ -271,6 +287,7 @@ class PlaySpecialActionCommandHandlerTest {
         given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(playerState));
         given(playerState.faction()).willReturn(Faction.ERASERS);
         given(playerState.isJammed()).willReturn(false);
+        given(gameRules.onceEraBudgetedSpecials()).willReturn(Set.of());
         given(round.submit(any())).willReturn(false);
         given(round.id()).willReturn(UUID.randomUUID());
         given(round.gameId()).willReturn(GAME_ID);
@@ -300,6 +317,7 @@ class PlaySpecialActionCommandHandlerTest {
         given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(playerState));
         given(playerState.faction()).willReturn(Faction.ERASERS);
         given(playerState.isJammed()).willReturn(false);
+        given(gameRules.onceEraBudgetedSpecials()).willReturn(Set.of());
         willThrow(new PlayerStateNotFoundException(GAME_ID, targetPlayerId))
                 .given(gameParticipantValidator)
                 .requireParticipant(GAME_ID, targetPlayerId);
@@ -334,6 +352,7 @@ class PlaySpecialActionCommandHandlerTest {
         given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(playerState));
         given(playerState.faction()).willReturn(Faction.ACTIVISTS);
         given(playerState.isJammed()).willReturn(false);
+        given(gameRules.onceEraBudgetedSpecials()).willReturn(Set.of());
 
         assertThatExceptionOfType(ExposeUnavailableException.class).isThrownBy(() -> handler.handle(command));
 
@@ -351,6 +370,7 @@ class PlaySpecialActionCommandHandlerTest {
         given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(playerState));
         given(playerState.faction()).willReturn(Faction.ACTIVISTS);
         given(playerState.isJammed()).willReturn(false);
+        given(gameRules.onceEraBudgetedSpecials()).willReturn(Set.of());
 
         assertThatExceptionOfType(InvalidActionTargetException.class).isThrownBy(() -> handler.handle(command));
 
@@ -370,6 +390,7 @@ class PlaySpecialActionCommandHandlerTest {
         given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(playerState));
         given(playerState.faction()).willReturn(Faction.ACTIVISTS);
         given(playerState.isJammed()).willReturn(false);
+        given(gameRules.onceEraBudgetedSpecials()).willReturn(Set.of());
 
         assertThatExceptionOfType(InvalidActionTargetException.class).isThrownBy(() -> handler.handle(command));
 
@@ -398,6 +419,7 @@ class PlaySpecialActionCommandHandlerTest {
         given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(playerState));
         given(playerState.faction()).willReturn(Faction.ACTIVISTS);
         given(playerState.isJammed()).willReturn(false);
+        given(gameRules.onceEraBudgetedSpecials()).willReturn(Set.of());
         given(activistEraStateRepository.findByGameIdAndEraNumberAndActivistPlayerId(GAME_ID, 2, PLAYER_ID))
                 .willReturn(Optional.empty());
         given(activistEraStateRepository.findByGameIdAndEraNumberAndActivistPlayerId(GAME_ID, 1, PLAYER_ID))
@@ -415,6 +437,116 @@ class PlaySpecialActionCommandHandlerTest {
         assertThat(state.getValue().exposedSignature())
                 .isEqualTo(new io.github.temporalrift.game.action.domain.activisterastate.ProbabilityInfluenceSignature(
                         CardType.PUSH, targetEventId, sourceOutcomeId, targetOutcomeId));
+    }
+
+    @Test
+    @DisplayName("handle — budgeted special never used this era — claims the budget and submits")
+    void handleBudgetedSpecialFirstUseClaimsAndSubmits() {
+        // given
+        var command = new PlaySpecialActionUseCase.Command(
+                GAME_ID, ERA, ROUND, PLAYER_ID, SpecialAction.ANNIHILATE, UUID.randomUUID(), UUID.randomUUID(), null);
+        given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA, ROUND))
+                .willReturn(Optional.of(round));
+        given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(playerState));
+        given(playerState.faction()).willReturn(Faction.ERASERS);
+        given(playerState.isJammed()).willReturn(false);
+        given(gameRules.onceEraBudgetedSpecials()).willReturn(EnumSet.of(SpecialAction.ANNIHILATE, SpecialAction.SEAL));
+        given(specialActionEraUsageRepository.findByGameIdAndEraNumberAndPlayerId(GAME_ID, ERA, PLAYER_ID))
+                .willReturn(Optional.empty());
+        given(round.submit(any())).willReturn(false);
+        given(round.id()).willReturn(UUID.randomUUID());
+        given(round.gameId()).willReturn(GAME_ID);
+        given(round.pullEvents()).willReturn(List.of(specialActionPlayedEvent()));
+
+        // when
+        handler.handle(command);
+
+        // then
+        var captor = org.mockito.ArgumentCaptor.forClass(SpecialActionEraUsage.class);
+        then(specialActionEraUsageRepository).should().save(captor.capture());
+        assertThat(captor.getValue().claimedSpecials()).containsExactly(SpecialAction.ANNIHILATE);
+        then(round).should().submit(any());
+    }
+
+    @Test
+    @DisplayName("handle — budgeted special already used this era — throws before submitting and does not re-save")
+    void handleBudgetedSpecialSecondUseRejectsBeforeSubmitting() {
+        // given
+        var command = new PlaySpecialActionUseCase.Command(
+                GAME_ID, ERA, ROUND, PLAYER_ID, SpecialAction.ANNIHILATE, UUID.randomUUID(), UUID.randomUUID(), null);
+        given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA, ROUND))
+                .willReturn(Optional.of(round));
+        given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(playerState));
+        given(playerState.faction()).willReturn(Faction.ERASERS);
+        given(playerState.isJammed()).willReturn(false);
+        given(gameRules.onceEraBudgetedSpecials()).willReturn(EnumSet.of(SpecialAction.ANNIHILATE, SpecialAction.SEAL));
+        var alreadyUsed = SpecialActionEraUsage.reconstitute(
+                UUID.randomUUID(), GAME_ID, ERA, PLAYER_ID, EnumSet.of(SpecialAction.ANNIHILATE));
+        given(specialActionEraUsageRepository.findByGameIdAndEraNumberAndPlayerId(GAME_ID, ERA, PLAYER_ID))
+                .willReturn(Optional.of(alreadyUsed));
+
+        // when / then
+        assertThatExceptionOfType(SpecialActionEraBudgetExhaustedException.class)
+                .isThrownBy(() -> handler.handle(command));
+        then(specialActionEraUsageRepository).should(never()).save(any());
+        then(round).should(never()).submit(any());
+    }
+
+    @Test
+    @DisplayName("handle — different budgeted special used this era — the new special's budget is independent")
+    void handleBudgetedSpecialIndependentPerSpecialType() {
+        // given
+        var command = new PlaySpecialActionUseCase.Command(
+                GAME_ID, ERA, ROUND, PLAYER_ID, SpecialAction.CORRUPT, null, null, UUID.randomUUID());
+        given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA, ROUND))
+                .willReturn(Optional.of(round));
+        given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(playerState));
+        given(playerState.faction()).willReturn(Faction.ERASERS);
+        given(playerState.isJammed()).willReturn(false);
+        given(gameRules.onceEraBudgetedSpecials())
+                .willReturn(EnumSet.of(SpecialAction.ANNIHILATE, SpecialAction.CORRUPT));
+        var alreadyUsedAnnihilate = SpecialActionEraUsage.reconstitute(
+                UUID.randomUUID(), GAME_ID, ERA, PLAYER_ID, EnumSet.of(SpecialAction.ANNIHILATE));
+        given(specialActionEraUsageRepository.findByGameIdAndEraNumberAndPlayerId(GAME_ID, ERA, PLAYER_ID))
+                .willReturn(Optional.of(alreadyUsedAnnihilate));
+        given(round.submit(any())).willReturn(false);
+        given(round.id()).willReturn(UUID.randomUUID());
+        given(round.gameId()).willReturn(GAME_ID);
+        given(round.pullEvents()).willReturn(List.of(specialActionPlayedEvent()));
+
+        // when
+        handler.handle(command);
+
+        // then
+        var captor = org.mockito.ArgumentCaptor.forClass(SpecialActionEraUsage.class);
+        then(specialActionEraUsageRepository).should().save(captor.capture());
+        assertThat(captor.getValue().claimedSpecials())
+                .containsExactlyInAnyOrder(SpecialAction.ANNIHILATE, SpecialAction.CORRUPT);
+        then(round).should().submit(any());
+    }
+
+    @Test
+    @DisplayName("handle — special outside the configured budget — never touches the budget repository")
+    void handleNonBudgetedSpecialSkipsBudgetRepository() {
+        // given
+        var command = new PlaySpecialActionUseCase.Command(
+                GAME_ID, ERA, ROUND, PLAYER_ID, SpecialAction.SEAL, UUID.randomUUID(), UUID.randomUUID(), null);
+        given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA, ROUND))
+                .willReturn(Optional.of(round));
+        given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(playerState));
+        given(playerState.faction()).willReturn(Faction.PROPHETS);
+        given(playerState.isJammed()).willReturn(false);
+        given(gameRules.onceEraBudgetedSpecials()).willReturn(EnumSet.of(SpecialAction.ANNIHILATE));
+        given(round.submit(any())).willReturn(false);
+        given(round.id()).willReturn(UUID.randomUUID());
+        given(round.gameId()).willReturn(GAME_ID);
+        given(round.pullEvents()).willReturn(List.of(specialActionPlayedEvent()));
+
+        // when
+        handler.handle(command);
+
+        // then
+        then(specialActionEraUsageRepository).shouldHaveNoInteractions();
     }
 
     private static SpecialActionPlayed specialActionPlayedEvent() {

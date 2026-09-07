@@ -24,7 +24,10 @@ import io.github.temporalrift.game.action.domain.port.out.ActionEventPublisher;
 import io.github.temporalrift.game.action.domain.port.out.ActionRoundRepository;
 import io.github.temporalrift.game.action.domain.port.out.ActivistEraStateRepository;
 import io.github.temporalrift.game.action.domain.port.out.PlayerStateRepository;
+import io.github.temporalrift.game.action.domain.port.out.SpecialActionEraUsageRepository;
+import io.github.temporalrift.game.action.domain.specialactionerausage.SpecialActionEraUsage;
 import io.github.temporalrift.game.shared.Faction;
+import io.github.temporalrift.game.shared.GameRulesPort;
 import io.github.temporalrift.game.shared.SpecialAction;
 
 @Service
@@ -37,11 +40,15 @@ class PlaySpecialActionCommandHandler implements PlaySpecialActionUseCase {
 
     private final ActivistEraStateRepository activistEraStateRepository;
 
+    private final SpecialActionEraUsageRepository specialActionEraUsageRepository;
+
     private final ActionEventPublisher actionEventPublisher;
 
     private final ActionTargetValidator actionTargetValidator;
 
     private final GameParticipantValidator gameParticipantValidator;
+
+    private final GameRulesPort gameRules;
 
     private final Clock clock;
 
@@ -49,16 +56,20 @@ class PlaySpecialActionCommandHandler implements PlaySpecialActionUseCase {
             ActionRoundRepository actionRoundRepository,
             PlayerStateRepository playerStateRepository,
             ActivistEraStateRepository activistEraStateRepository,
+            SpecialActionEraUsageRepository specialActionEraUsageRepository,
             ActionEventPublisher actionEventPublisher,
             ActionTargetValidator actionTargetValidator,
             GameParticipantValidator gameParticipantValidator,
+            GameRulesPort gameRules,
             Clock clock) {
         this.actionRoundRepository = actionRoundRepository;
         this.playerStateRepository = playerStateRepository;
         this.activistEraStateRepository = activistEraStateRepository;
+        this.specialActionEraUsageRepository = specialActionEraUsageRepository;
         this.actionEventPublisher = actionEventPublisher;
         this.actionTargetValidator = actionTargetValidator;
         this.gameParticipantValidator = gameParticipantValidator;
+        this.gameRules = gameRules;
         this.clock = clock;
     }
 
@@ -87,6 +98,14 @@ class PlaySpecialActionCommandHandler implements PlaySpecialActionUseCase {
         if (!faction.hasSpecialAction(command.specialAction())) {
             throw new InvalidSpecialActionException(faction, command.specialAction());
         }
+        SpecialActionEraUsage usage = null;
+        if (gameRules.onceEraBudgetedSpecials().contains(command.specialAction())) {
+            usage = specialActionEraUsageRepository
+                    .findByGameIdAndEraNumberAndPlayerId(command.gameId(), command.eraNumber(), command.playerId())
+                    .orElseGet(() -> new SpecialActionEraUsage(
+                            java.util.UUID.randomUUID(), command.gameId(), command.eraNumber(), command.playerId()));
+            usage.claim(command.specialAction());
+        }
         var action = new SubmittedAction.SpecialActionSubmission(
                 command.playerId(),
                 faction,
@@ -103,6 +122,9 @@ class PlaySpecialActionCommandHandler implements PlaySpecialActionUseCase {
         }
         if (command.specialAction() == SpecialAction.CORRUPT) {
             gameParticipantValidator.requireParticipant(command.gameId(), command.targetPlayerId());
+        }
+        if (usage != null) {
+            specialActionEraUsageRepository.save(usage);
         }
         var allSubmitted = round.submit(action);
         actionRoundRepository.save(round);
