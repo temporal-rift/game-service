@@ -18,6 +18,8 @@ import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
@@ -79,8 +81,10 @@ class EndGameSagaImplTest {
     @Test
     @DisplayName("WIN_CONDITION_MET trigger — game ends, GameEnded and FactionRevealed published")
     void start_winConditionMet_publishesGameEndedAndFactionRevealed() {
-        // given
-        var game = Game.reconstitute(GAME_ID, LOBBY_ID, List.of(), 1, 0, GameStatus.IN_PROGRESS);
+        // given: EraSagaAdvancer's winner branch already transitioned status to ENDED_BY_WIN and saved it
+        // before WinConditionMet (and therefore this saga) was ever published -- IN_PROGRESS here would not
+        // reproduce the real precondition this saga runs under, and this saga never mutates Game itself.
+        var game = Game.reconstitute(GAME_ID, LOBBY_ID, List.of(), 1, 0, GameStatus.ENDED_BY_WIN);
         given(gameRepository.findById(GAME_ID)).willReturn(Optional.of(game));
         given(lobbyRepository.findById(LOBBY_ID)).willReturn(Optional.of(lobby()));
         given(finalScoreQueryPort.getScores(GAME_ID)).willReturn(List.of());
@@ -89,7 +93,7 @@ class EndGameSagaImplTest {
         saga.start(GAME_ID, EndGameTrigger.WIN_CONDITION_MET, PLAYER_1);
 
         // then
-        then(gameRepository).should().save(argThat(g -> g.status() == GameStatus.ENDED_BY_WIN));
+        then(gameRepository).should(never()).save(any());
         then(eventPublisher).should().publish(argThat(e -> e.payload() instanceof GameEnded));
         then(eventPublisher).should().publish(argThat(e -> e.payload() instanceof FactionRevealed));
         then(stateManager).should().complete(GAME_ID);
@@ -99,7 +103,7 @@ class EndGameSagaImplTest {
     @DisplayName("WIN_CONDITION_MET — GameEnded endReason is WIN_CONDITION_MET")
     void start_winConditionMet_endReasonIsCorrect() {
         // given
-        var game = Game.reconstitute(GAME_ID, LOBBY_ID, List.of(), 1, 0, GameStatus.IN_PROGRESS);
+        var game = Game.reconstitute(GAME_ID, LOBBY_ID, List.of(), 1, 0, GameStatus.ENDED_BY_WIN);
         given(gameRepository.findById(GAME_ID)).willReturn(Optional.of(game));
         given(lobbyRepository.findById(LOBBY_ID)).willReturn(Optional.of(lobby()));
         given(finalScoreQueryPort.getScores(GAME_ID)).willReturn(List.of());
@@ -180,7 +184,7 @@ class EndGameSagaImplTest {
     @DisplayName("FactionRevealed contains all players with their factions")
     void start_factionRevealedContainsAllAssignments() {
         // given
-        var game = Game.reconstitute(GAME_ID, LOBBY_ID, List.of(), 1, 0, GameStatus.IN_PROGRESS);
+        var game = Game.reconstitute(GAME_ID, LOBBY_ID, List.of(), 1, 0, GameStatus.ENDED_BY_WIN);
         given(gameRepository.findById(GAME_ID)).willReturn(Optional.of(game));
         given(lobbyRepository.findById(LOBBY_ID)).willReturn(Optional.of(lobby()));
         given(finalScoreQueryPort.getScores(GAME_ID)).willReturn(List.of());
@@ -204,30 +208,15 @@ class EndGameSagaImplTest {
 
     // ─── idempotency ─────────────────────────────────────────────────────────
 
-    @Test
-    @DisplayName("game already over — start is a no-op")
-    void start_gameAlreadyOver_noOp() {
-        // given
-        var game = Game.reconstitute(GAME_ID, LOBBY_ID, List.of(), 1, 0, GameStatus.ENDED_BY_WIN);
-        given(gameRepository.findById(GAME_ID)).willReturn(Optional.of(game));
-
-        // when
-        saga.start(GAME_ID, EndGameTrigger.WIN_CONDITION_MET, PLAYER_1);
-
-        // then
-        then(gameRepository).should(never()).save(any());
-        then(eventPublisher).should(never()).publish(any());
-        then(stateManager).should(never()).complete(any());
-    }
-
-    @Test
-    @DisplayName("TIMELINE_STABILIZED redelivered after already handled — start is a no-op")
-    void start_timelineStabilizedAlreadyHandled_noOp() {
+    @ParameterizedTest
+    @EnumSource(EndGameTrigger.class)
+    @DisplayName("already handled — start is a no-op regardless of trigger")
+    void start_alreadyHandled_noOp(EndGameTrigger triggerType) {
         // given
         given(stateManager.isAlreadyHandled(GAME_ID)).willReturn(true);
 
         // when
-        saga.start(GAME_ID, EndGameTrigger.TIMELINE_STABILIZED, PLAYER_1, PLAYER_2);
+        saga.start(GAME_ID, triggerType, PLAYER_1, PLAYER_2);
 
         // then
         then(gameRepository).should(never()).findById(any());

@@ -125,6 +125,14 @@ class EraSagaAdvancer {
         findWinner(su)
                 .ifPresentOrElse(
                         winner -> {
+                            // Mirrors the collapse/stabilization branch below: the aggregate is transitioned
+                            // and saved here, at detection time, so EndGameSagaImpl never mutates Game itself
+                            // -- it only reads the already-correct terminal status for every trigger alike.
+                            var game = gameRepository
+                                    .findByIdWithLock(gameId)
+                                    .orElseThrow(() -> new GameNotFoundException(gameId));
+                            game.end();
+                            gameRepository.save(game);
                             eraSagaRepository.save(state.withStatus(EraSagaStatus.COMPLETED));
                             var winConditionMet = new WinConditionMet(
                                     gameId,
