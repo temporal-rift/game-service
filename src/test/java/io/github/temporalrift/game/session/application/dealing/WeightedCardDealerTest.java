@@ -130,6 +130,43 @@ class WeightedCardDealerTest {
         assertThat(grades.get(CardGrade.III)).isBetween(700L, 1_300L);
     }
 
+    @Test
+    @DisplayName("forced types are included in the deal with a still-weighted grade, on top of the normal deal")
+    void deal_configuredForcedTypes_includesThemWithRemainingCardsDealtNormally() {
+        // given
+        given(gameRules.handDealForcedTypes()).willReturn(java.util.Set.of(CardType.TRACE, CardType.NULLIFY));
+        given(gameRules.cardCategoryWeights()).willReturn(weights(CardCategory.PARADOX, 1));
+        given(gameRules.cardGradeWeights()).willReturn(weights(CardGrade.I, 1));
+        var dealer = new WeightedCardDealer(gameRules, new Random(42));
+
+        // when
+        var cards = dealer.deal(7);
+
+        // then
+        assertThat(cards).hasSize(7);
+        assertThat(cards).extracting(HandDealt.CardInstance::cardType).contains(CardType.TRACE, CardType.NULLIFY);
+        assertThat(cards)
+                .filteredOn(card -> card.cardType() != CardType.TRACE && card.cardType() != CardType.NULLIFY)
+                .allSatisfy(card -> assertThat(card.cardType()).isEqualTo(CardType.COLLIDE));
+    }
+
+    @Test
+    @DisplayName("no forced types configured deals every card from the normal weighted path")
+    void deal_noForcedTypesConfigured_dealsOnlyFromNormalWeightedPath() {
+        // given
+        given(gameRules.cardCategoryWeights()).willReturn(weights(CardCategory.PARADOX, 1));
+        given(gameRules.cardGradeWeights()).willReturn(weights(CardGrade.I, 1));
+        var dealer = new WeightedCardDealer(gameRules, new Random(42));
+
+        // when
+        var cards = dealer.deal(7);
+
+        // then
+        assertThat(cards)
+                .hasSize(7)
+                .allSatisfy(card -> assertThat(card.cardType()).isEqualTo(CardType.COLLIDE));
+    }
+
     private static <T extends Enum<T>> Map<T, Integer> weights(T selected, int selectedWeight) {
         var weights = new EnumMap<T, Integer>(selected.getDeclaringClass());
         for (var value : selected.getDeclaringClass().getEnumConstants()) {

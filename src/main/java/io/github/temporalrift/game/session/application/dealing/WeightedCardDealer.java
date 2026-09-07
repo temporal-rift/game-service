@@ -6,6 +6,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.random.RandomGenerator;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 import org.springframework.stereotype.Component;
 
@@ -28,7 +29,11 @@ public class WeightedCardDealer {
     }
 
     public List<HandDealt.CardInstance> deal(int cardCount) {
-        return IntStream.range(0, cardCount).mapToObj(ignored -> dealCard()).toList();
+        var forcedTypes =
+                gameRules.handDealForcedTypes().stream().limit(cardCount).toList();
+        var forced = forcedTypes.stream().map(this::dealCardOfType);
+        var remaining = IntStream.range(0, cardCount - forcedTypes.size()).mapToObj(ignored -> dealCard());
+        return Stream.concat(forced, remaining).toList();
     }
 
     private HandDealt.CardInstance dealCard() {
@@ -36,8 +41,13 @@ public class WeightedCardDealer {
         var category = weightedChoice(gameRules.cardCategoryWeights(), eligibleCategories(gradeWeights));
         var eligibleTypes = eligibleTypes(category, gradeWeights);
         var cardType = eligibleTypes.get(random.nextInt(eligibleTypes.size()));
-        var grade =
-                weightedChoice(gradeWeights, cardType.supportedGrades().stream().toList());
+        return dealCardOfType(cardType);
+    }
+
+    private HandDealt.CardInstance dealCardOfType(CardType cardType) {
+        var grade = weightedChoice(
+                gameRules.cardGradeWeights(),
+                cardType.supportedGrades().stream().toList());
         return new HandDealt.CardInstance(UUID.randomUUID(), cardType, grade);
     }
 

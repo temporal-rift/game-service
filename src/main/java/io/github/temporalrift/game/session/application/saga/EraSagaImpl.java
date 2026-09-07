@@ -193,10 +193,11 @@ class EraSagaImpl implements EraSaga {
     }
 
     private void publishHandDealt(Game game, UUID gameId, int eraNumber, UUID playerId, int playerCount) {
-        var cards = IntStream.rangeClosed(1, gameRules.cardsPerDeal())
-                .mapToObj(slot -> {
-                    var card = cardDealer.deal(1).getFirst();
-                    return new HandDealt.CardInstance(card.cardInstanceId(), card.cardType(), card.grade(), slot);
+        var dealtCards = cardDealer.deal(gameRules.cardsPerDeal());
+        var cards = IntStream.range(0, dealtCards.size())
+                .mapToObj(index -> {
+                    var card = dealtCards.get(index);
+                    return new HandDealt.CardInstance(card.cardInstanceId(), card.cardType(), card.grade(), index + 1);
                 })
                 .toList();
         var expiresAt = clock.instant().plus(Duration.ofSeconds(gameRules.handSelectionTimerSeconds(playerCount)));

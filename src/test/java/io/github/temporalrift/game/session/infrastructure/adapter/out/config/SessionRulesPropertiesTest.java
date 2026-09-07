@@ -36,7 +36,8 @@ class SessionRulesPropertiesTest {
                         CardCategory.PARADOX, 15),
                 Map.of(CardGrade.I, 60, CardGrade.II, 30, CardGrade.III, 10),
                 Set.of(Faction.PROPHETS, Faction.WEAVERS),
-                Set.of(SpecialAction.ANNIHILATE, SpecialAction.SEAL, SpecialAction.CORRUPT, SpecialAction.MIMIC));
+                Set.of(SpecialAction.ANNIHILATE, SpecialAction.SEAL, SpecialAction.CORRUPT, SpecialAction.MIMIC),
+                Set.of());
     }
 
     @Test
@@ -89,7 +90,8 @@ class SessionRulesPropertiesTest {
                         Map.of(CardCategory.PARADOX, 1),
                         Map.of(CardGrade.I, 1),
                         Set.of(Faction.PROPHETS),
-                        Set.of(SpecialAction.ANNIHILATE)))
+                        Set.of(SpecialAction.ANNIHILATE),
+                        Set.of()))
                 .withMessage("cards-per-deal must be greater than or equal to cards-per-hand");
     }
 

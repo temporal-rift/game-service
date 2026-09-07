@@ -5,6 +5,7 @@ import java.util.Set;
 
 import io.github.temporalrift.game.shared.CardCategory;
 import io.github.temporalrift.game.shared.CardGrade;
+import io.github.temporalrift.game.shared.CardType;
 import io.github.temporalrift.game.shared.Faction;
 import io.github.temporalrift.game.shared.GameRulesPort;
 
@@ -35,4 +36,11 @@ public interface SessionGameRulesPort extends GameRulesPort {
     Map<CardGrade, Integer> cardGradeWeights();
 
     Set<Faction> stabilizationWinnerFactions();
+
+    /**
+     * Card types that a deal must include, regardless of the configured category/grade weights. Empty in
+     * production; exists so a test environment can eliminate the randomness of which card types a black-box
+     * scenario happens to receive, without weakening or bypassing any real gameplay rule.
+     */
+    Set<CardType> handDealForcedTypes();
 }
