@@ -85,6 +85,7 @@ class EndGameSagaImplTest {
         // before WinConditionMet (and therefore this saga) was ever published -- IN_PROGRESS here would not
         // reproduce the real precondition this saga runs under, and this saga never mutates Game itself.
         var game = Game.reconstitute(GAME_ID, LOBBY_ID, List.of(), 1, 0, GameStatus.ENDED_BY_WIN);
+        given(stateManager.claimIfAbsent(any(), any(), any())).willReturn(true);
         given(gameRepository.findById(GAME_ID)).willReturn(Optional.of(game));
         given(lobbyRepository.findById(LOBBY_ID)).willReturn(Optional.of(lobby()));
         given(finalScoreQueryPort.getScores(GAME_ID)).willReturn(List.of());
@@ -104,6 +105,7 @@ class EndGameSagaImplTest {
     void start_winConditionMet_endReasonIsCorrect() {
         // given
         var game = Game.reconstitute(GAME_ID, LOBBY_ID, List.of(), 1, 0, GameStatus.ENDED_BY_WIN);
+        given(stateManager.claimIfAbsent(any(), any(), any())).willReturn(true);
         given(gameRepository.findById(GAME_ID)).willReturn(Optional.of(game));
         given(lobbyRepository.findById(LOBBY_ID)).willReturn(Optional.of(lobby()));
         given(finalScoreQueryPort.getScores(GAME_ID)).willReturn(List.of());
@@ -131,6 +133,7 @@ class EndGameSagaImplTest {
         // before TimelineCollapsed (and therefore this saga) was ever published -- IN_PROGRESS here would
         // not reproduce the real precondition this saga runs under for this trigger.
         var game = Game.reconstitute(GAME_ID, LOBBY_ID, List.of(), 1, 3, GameStatus.ENDED_BY_COLLAPSE);
+        given(stateManager.claimIfAbsent(any(), any(), any())).willReturn(true);
         given(gameRepository.findById(GAME_ID)).willReturn(Optional.of(game));
         given(lobbyRepository.findById(LOBBY_ID)).willReturn(Optional.of(lobby()));
         given(finalScoreQueryPort.getScores(GAME_ID)).willReturn(List.of());
@@ -159,6 +162,7 @@ class EndGameSagaImplTest {
         // TimelineStabilized (and therefore this saga) was ever published -- IN_PROGRESS here would not
         // reproduce the real precondition this saga runs under for this trigger.
         var game = Game.reconstitute(GAME_ID, LOBBY_ID, List.of(), 5, 0, GameStatus.ENDED_BY_STABILIZATION);
+        given(stateManager.claimIfAbsent(any(), any(), any())).willReturn(true);
         given(gameRepository.findById(GAME_ID)).willReturn(Optional.of(game));
         given(lobbyRepository.findById(LOBBY_ID)).willReturn(Optional.of(lobby()));
         given(finalScoreQueryPort.getScores(GAME_ID)).willReturn(List.of());
@@ -185,6 +189,7 @@ class EndGameSagaImplTest {
     void start_factionRevealedContainsAllAssignments() {
         // given
         var game = Game.reconstitute(GAME_ID, LOBBY_ID, List.of(), 1, 0, GameStatus.ENDED_BY_WIN);
+        given(stateManager.claimIfAbsent(any(), any(), any())).willReturn(true);
         given(gameRepository.findById(GAME_ID)).willReturn(Optional.of(game));
         given(lobbyRepository.findById(LOBBY_ID)).willReturn(Optional.of(lobby()));
         given(finalScoreQueryPort.getScores(GAME_ID)).willReturn(List.of());
@@ -212,8 +217,8 @@ class EndGameSagaImplTest {
     @EnumSource(EndGameTrigger.class)
     @DisplayName("already handled — start is a no-op regardless of trigger")
     void start_alreadyHandled_noOp(EndGameTrigger triggerType) {
-        // given
-        given(stateManager.isAlreadyHandled(GAME_ID)).willReturn(true);
+        // given: claimIfAbsent returns false when a row for this gameId already exists
+        given(stateManager.claimIfAbsent(any(), any(), any())).willReturn(false);
 
         // when
         saga.start(GAME_ID, triggerType, PLAYER_1, PLAYER_2);
