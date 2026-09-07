@@ -1,6 +1,7 @@
 package io.github.temporalrift.game.action.infrastructure.adapter.out.persistence;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.time.Instant;
 import java.util.List;
@@ -31,8 +32,11 @@ import io.github.temporalrift.game.action.domain.port.out.FutureEventDefinitionP
 import io.github.temporalrift.game.action.domain.port.out.FutureEventDefinitionPort.OutcomeDefinition;
 import io.github.temporalrift.game.action.domain.port.out.ParadoxResolutionPhaseRepository;
 import io.github.temporalrift.game.action.domain.port.out.PlayerStateRepository;
+import io.github.temporalrift.game.action.domain.port.out.SpecialActionEraUsageRepository;
 import io.github.temporalrift.game.action.domain.saga.ActionRoundSagaState;
 import io.github.temporalrift.game.action.domain.saga.ActionRoundSagaStatus;
+import io.github.temporalrift.game.action.domain.specialactionerausage.SpecialActionEraBudgetExhaustedException;
+import io.github.temporalrift.game.action.domain.specialactionerausage.SpecialActionEraUsage;
 import io.github.temporalrift.game.shared.CardType;
 import io.github.temporalrift.game.shared.Faction;
 import io.github.temporalrift.game.shared.SpecialAction;
@@ -46,7 +50,8 @@ import io.github.temporalrift.game.shared.SpecialAction;
     ActivistEraStateRepositoryAdapter.class,
     ActionRoundSagaAdapter.class,
     CurrentEraFutureEventAdapter.class,
-    ParadoxResolutionPhaseRepositoryAdapter.class
+    ParadoxResolutionPhaseRepositoryAdapter.class,
+    SpecialActionEraUsageRepositoryAdapter.class
 })
 class ActionPersistenceIT {
 
@@ -67,6 +72,9 @@ class ActionPersistenceIT {
 
     @Autowired
     ParadoxResolutionPhaseRepository paradoxResolutionPhaseRepository;
+
+    @Autowired
+    SpecialActionEraUsageRepository specialActionEraUsageRepository;
 
     @Test
     void paradoxResolutionPhase_saveAndLockedLookup_roundTripsState() {
@@ -276,5 +284,59 @@ class ActionPersistenceIT {
 
         assertThat(loaded)
                 .containsExactly(new EventDefinition(newEventId, List.of(new OutcomeDefinition(newOutcomeId, 85))));
+    }
+
+    @Test
+    void specialActionEraUsage_save_and_find_roundTripsClaimedSpecials() {
+        var usageId = UUID.randomUUID();
+        var gameId = UUID.randomUUID();
+        var playerId = UUID.randomUUID();
+        var usage = new SpecialActionEraUsage(usageId, gameId, 2, playerId);
+        usage.claim(SpecialAction.ANNIHILATE);
+        usage.claim(SpecialAction.CORRUPT);
+
+        specialActionEraUsageRepository.save(usage);
+
+        var loaded = specialActionEraUsageRepository.findByGameIdAndEraNumberAndPlayerId(gameId, 2, playerId);
+
+        assertThat(loaded).hasValueSatisfying(saved -> {
+            assertThat(saved.id()).isEqualTo(usageId);
+            assertThat(saved.gameId()).isEqualTo(gameId);
+            assertThat(saved.eraNumber()).isEqualTo(2);
+            assertThat(saved.playerId()).isEqualTo(playerId);
+            assertThat(saved.claimedSpecials())
+                    .containsExactlyInAnyOrder(SpecialAction.ANNIHILATE, SpecialAction.CORRUPT);
+        });
+    }
+
+    @Test
+    void specialActionEraUsage_reloadedInstance_stillEnforcesTheBudget() {
+        var gameId = UUID.randomUUID();
+        var playerId = UUID.randomUUID();
+        var usage = new SpecialActionEraUsage(UUID.randomUUID(), gameId, 1, playerId);
+        usage.claim(SpecialAction.SEAL);
+        specialActionEraUsageRepository.save(usage);
+
+        var reloaded = specialActionEraUsageRepository.findByGameIdAndEraNumberAndPlayerId(gameId, 1, playerId);
+
+        assertThat(reloaded).isPresent();
+        assertThatThrownBy(() -> reloaded.get().claim(SpecialAction.SEAL))
+                .isInstanceOf(SpecialActionEraBudgetExhaustedException.class);
+    }
+
+    @Test
+    void specialActionEraUsage_differentGameEraOrPlayer_isIndependent() {
+        var playerId = UUID.randomUUID();
+        var usage = new SpecialActionEraUsage(UUID.randomUUID(), UUID.randomUUID(), 1, playerId);
+        usage.claim(SpecialAction.MIMIC);
+        specialActionEraUsageRepository.save(usage);
+
+        assertThat(specialActionEraUsageRepository.findByGameIdAndEraNumberAndPlayerId(UUID.randomUUID(), 1, playerId))
+                .isEmpty();
+        assertThat(specialActionEraUsageRepository.findByGameIdAndEraNumberAndPlayerId(usage.gameId(), 2, playerId))
+                .isEmpty();
+        assertThat(specialActionEraUsageRepository.findByGameIdAndEraNumberAndPlayerId(
+                        usage.gameId(), 1, UUID.randomUUID()))
+                .isEmpty();
     }
 }
