@@ -262,6 +262,30 @@ class EraSagaAdvancerTest {
     }
 
     @Test
+    @DisplayName("score meets threshold but a concurrent collapse already won the lock — no win events")
+    void handleScoresUpdated_scoreAtThresholdButAlreadyCollapsed_completesWithoutWinEvents() {
+        // given: a separate paradox-resolution saga collapsed this same game and committed before this
+        // branch acquired findByIdWithLock's row lock -- mirrors the sibling no-winner-branch race below.
+        var state = new EraSagaState(GAME_ID, 1, EraSagaStatus.WAITING_SCORES, PLAYER_IDS);
+        given(eraSagaRepository.findByGameIdWithLock(GAME_ID)).willReturn(Optional.of(state));
+        given(gameRules.winScoreThreshold()).willReturn(WIN_THRESHOLD);
+        var game = Game.reconstitute(GAME_ID, LOBBY_ID, List.of(), 1, 3, GameStatus.ENDED_BY_COLLAPSE);
+        given(gameRepository.findByIdWithLock(GAME_ID)).willReturn(Optional.of(game));
+        var updates =
+                List.of(new ScoresUpdated.ScoreUpdate(PLAYER_1, Faction.PROPHETS, 5, "round-bonus", WIN_THRESHOLD));
+        var su = new ScoresUpdated(GAME_ID, 1, updates);
+
+        // when
+        advancer.handleScoresUpdated(GAME_ID, su);
+
+        // then
+        then(gameRepository).should(never()).save(any());
+        then(eraSagaRepository).should().save(argThat(s -> s.status() == EraSagaStatus.COMPLETED));
+        then(eventPublisher).should(never()).publish(any());
+        then(applicationEventPublisher).should(never()).publishEvent(any());
+    }
+
+    @Test
     @DisplayName("collapsed timeline — scores complete the saga without starting another era")
     void handleScoresUpdated_collapsedTimeline_completesWithoutPublishingEraEvents() {
         // given
