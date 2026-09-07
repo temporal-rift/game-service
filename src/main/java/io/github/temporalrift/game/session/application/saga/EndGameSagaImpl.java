@@ -63,16 +63,32 @@ class EndGameSagaImpl implements EndGameSaga {
     @Transactional(propagation = REQUIRES_NEW)
     @Retryable(retryFor = DataAccessException.class, maxAttempts = 3, backoff = @Backoff(delay = 500, multiplier = 2))
     public void start(UUID gameId, EndGameTrigger triggerType, UUID... playerIds) {
-        var game = gameRepository.findById(gameId).orElseThrow(() -> new GameNotFoundException(gameId));
-        try {
-            game.end();
-        } catch (GameAlreadyOverException _) {
-            log.info("EndGameSaga.start ignored for game {} — already over", gameId);
+        // WIN_CONDITION_MET is published while the game is still IN_PROGRESS, so this saga is the one
+        // that transitions it via game.end() -- game.end() throwing GameAlreadyOverException is this
+        // trigger's own idempotency signal for a redelivered event.
+        //
+        // TIMELINE_COLLAPSED/TIMELINE_STABILIZED are different: Game.recordCascadedParadox()/endEra()
+        // already moved the aggregate out of IN_PROGRESS *before* publishing the event that reaches this
+        // saga, so calling game.end() here would always throw GameAlreadyOverException on the very first,
+        // legitimate delivery -- not just on redelivery -- and this saga would never finalize the game.
+        // The saga-state repository is the idempotency guard for these two triggers instead.
+        if (triggerType != EndGameTrigger.WIN_CONDITION_MET && stateManager.isAlreadyHandled(gameId)) {
+            log.info("EndGameSaga.start ignored for game {} — already handled", gameId);
             return;
         }
 
+        var game = gameRepository.findById(gameId).orElseThrow(() -> new GameNotFoundException(gameId));
+        if (triggerType == EndGameTrigger.WIN_CONDITION_MET) {
+            try {
+                game.end();
+            } catch (GameAlreadyOverException _) {
+                log.info("EndGameSaga.start ignored for game {} — already over", gameId);
+                return;
+            }
+            gameRepository.save(game);
+        }
+
         stateManager.initRunning(gameId, triggerType, List.of(playerIds));
-        gameRepository.save(game);
 
         // The lobby roster is the system of record for assigned factions; start-game saga state is
         // workflow bookkeeping and never carries the assignments.

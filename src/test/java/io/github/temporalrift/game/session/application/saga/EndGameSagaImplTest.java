@@ -123,8 +123,10 @@ class EndGameSagaImplTest {
     @Test
     @DisplayName("TIMELINE_COLLAPSED trigger — game ends, GameEnded with TIMELINE_COLLAPSED reason")
     void start_timelineCollapsed_endReasonIsTimelineCollapsed() {
-        // given
-        var game = Game.reconstitute(GAME_ID, LOBBY_ID, List.of(), 1, 3, GameStatus.IN_PROGRESS);
+        // given: Game.recordCascadedParadox() already transitioned status to ENDED_BY_COLLAPSE and saved it
+        // before TimelineCollapsed (and therefore this saga) was ever published -- IN_PROGRESS here would
+        // not reproduce the real precondition this saga runs under for this trigger.
+        var game = Game.reconstitute(GAME_ID, LOBBY_ID, List.of(), 1, 3, GameStatus.ENDED_BY_COLLAPSE);
         given(gameRepository.findById(GAME_ID)).willReturn(Optional.of(game));
         given(lobbyRepository.findById(LOBBY_ID)).willReturn(Optional.of(lobby()));
         given(finalScoreQueryPort.getScores(GAME_ID)).willReturn(List.of());
@@ -134,6 +136,7 @@ class EndGameSagaImplTest {
         saga.start(GAME_ID, EndGameTrigger.TIMELINE_COLLAPSED, PLAYER_1, PLAYER_2);
 
         // then
+        then(gameRepository).should(never()).save(any());
         then(eventPublisher).should(atLeastOnce()).publish(captor.capture());
         var gameEnded = captor.getAllValues().stream()
                 .filter(e -> e.payload() instanceof GameEnded)
@@ -148,8 +151,10 @@ class EndGameSagaImplTest {
     @Test
     @DisplayName("TIMELINE_STABILIZED trigger — game ends, GameEnded with TIMELINE_STABILIZED reason")
     void start_timelineStabilized_endReasonIsTimelineStabilized() {
-        // given
-        var game = Game.reconstitute(GAME_ID, LOBBY_ID, List.of(), 5, 0, GameStatus.IN_PROGRESS);
+        // given: Game.endEra() already transitioned status to ENDED_BY_STABILIZATION and saved it before
+        // TimelineStabilized (and therefore this saga) was ever published -- IN_PROGRESS here would not
+        // reproduce the real precondition this saga runs under for this trigger.
+        var game = Game.reconstitute(GAME_ID, LOBBY_ID, List.of(), 5, 0, GameStatus.ENDED_BY_STABILIZATION);
         given(gameRepository.findById(GAME_ID)).willReturn(Optional.of(game));
         given(lobbyRepository.findById(LOBBY_ID)).willReturn(Optional.of(lobby()));
         given(finalScoreQueryPort.getScores(GAME_ID)).willReturn(List.of());
@@ -159,6 +164,7 @@ class EndGameSagaImplTest {
         saga.start(GAME_ID, EndGameTrigger.TIMELINE_STABILIZED, PLAYER_1, PLAYER_2);
 
         // then
+        then(gameRepository).should(never()).save(any());
         then(eventPublisher).should(atLeastOnce()).publish(captor.capture());
         var gameEnded = captor.getAllValues().stream()
                 .filter(e -> e.payload() instanceof GameEnded)
@@ -210,6 +216,21 @@ class EndGameSagaImplTest {
 
         // then
         then(gameRepository).should(never()).save(any());
+        then(eventPublisher).should(never()).publish(any());
+        then(stateManager).should(never()).complete(any());
+    }
+
+    @Test
+    @DisplayName("TIMELINE_STABILIZED redelivered after already handled — start is a no-op")
+    void start_timelineStabilizedAlreadyHandled_noOp() {
+        // given
+        given(stateManager.isAlreadyHandled(GAME_ID)).willReturn(true);
+
+        // when
+        saga.start(GAME_ID, EndGameTrigger.TIMELINE_STABILIZED, PLAYER_1, PLAYER_2);
+
+        // then
+        then(gameRepository).should(never()).findById(any());
         then(eventPublisher).should(never()).publish(any());
         then(stateManager).should(never()).complete(any());
     }
