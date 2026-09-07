@@ -47,6 +47,9 @@ public record SessionRulesProperties(
         cardCategoryWeights = Map.copyOf(cardCategoryWeights);
         cardGradeWeights = Map.copyOf(cardGradeWeights);
         handDealForcedTypes = handDealForcedTypes == null ? Set.of() : Set.copyOf(handDealForcedTypes);
+        if (handDealForcedTypes.size() > cardsPerDeal) {
+            throw new IllegalArgumentException("hand-deal-forced-types must not exceed cards-per-deal");
+        }
         validatePositiveValues(handSelectionTimerSeconds, "hand-selection-timer-seconds");
         validateWeights(cardCategoryWeights, "card-category-weights");
         validateWeights(cardGradeWeights, "card-grade-weights");
