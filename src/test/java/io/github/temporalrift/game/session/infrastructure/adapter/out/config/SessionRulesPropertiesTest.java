@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Test;
 
 import io.github.temporalrift.game.shared.CardCategory;
 import io.github.temporalrift.game.shared.CardGrade;
+import io.github.temporalrift.game.shared.CardType;
 import io.github.temporalrift.game.shared.Faction;
 import io.github.temporalrift.game.shared.SpecialAction;
 
@@ -93,6 +94,37 @@ class SessionRulesPropertiesTest {
                         Set.of(SpecialAction.ANNIHILATE),
                         Set.of()))
                 .withMessage("cards-per-deal must be greater than or equal to cards-per-hand");
+    }
+
+    @Test
+    void handDealForcedTypes_largerThanCardsPerDeal_isRejected() {
+        assertThatIllegalArgumentException()
+                .isThrownBy(() -> new SessionRulesProperties(
+                        2,
+                        8,
+                        4,
+                        3,
+                        5,
+                        7,
+                        7,
+                        100,
+                        30,
+                        Map.of(3, 60),
+                        Map.of(3, 60),
+                        Map.of(CardCategory.PARADOX, 1),
+                        Map.of(CardGrade.I, 1),
+                        Set.of(Faction.PROPHETS),
+                        Set.of(SpecialAction.ANNIHILATE),
+                        Set.of(
+                                CardType.TRACE,
+                                CardType.NULLIFY,
+                                CardType.DECOY,
+                                CardType.STALL,
+                                CardType.REDIRECT,
+                                CardType.INTERCEPT,
+                                CardType.SCAN,
+                                CardType.COLLIDE)))
+                .withMessage("hand-deal-forced-types must not exceed cards-per-deal");
     }
 
     @Test
