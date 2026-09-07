@@ -320,7 +320,8 @@ class ActionPersistenceIT {
         var reloaded = specialActionEraUsageRepository.findByGameIdAndEraNumberAndPlayerId(gameId, 1, playerId);
 
         assertThat(reloaded).isPresent();
-        assertThatThrownBy(() -> reloaded.get().claim(SpecialAction.SEAL))
+        var reloadedUsage = reloaded.orElseThrow();
+        assertThatThrownBy(() -> reloadedUsage.claim(SpecialAction.SEAL))
                 .isInstanceOf(SpecialActionEraBudgetExhaustedException.class);
     }
 
