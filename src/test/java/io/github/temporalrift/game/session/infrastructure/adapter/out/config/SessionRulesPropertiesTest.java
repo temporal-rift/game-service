@@ -12,6 +12,7 @@ import org.junit.jupiter.api.Test;
 import io.github.temporalrift.game.shared.CardCategory;
 import io.github.temporalrift.game.shared.CardGrade;
 import io.github.temporalrift.game.shared.Faction;
+import io.github.temporalrift.game.shared.SpecialAction;
 
 class SessionRulesPropertiesTest {
 
@@ -34,7 +35,8 @@ class SessionRulesPropertiesTest {
                         CardCategory.DISRUPTION, 25,
                         CardCategory.PARADOX, 15),
                 Map.of(CardGrade.I, 60, CardGrade.II, 30, CardGrade.III, 10),
-                Set.of(Faction.PROPHETS, Faction.WEAVERS));
+                Set.of(Faction.PROPHETS, Faction.WEAVERS),
+                Set.of(SpecialAction.ANNIHILATE, SpecialAction.SEAL, SpecialAction.CORRUPT, SpecialAction.MIMIC));
     }
 
     @Test
@@ -86,7 +88,8 @@ class SessionRulesPropertiesTest {
                         Map.of(3, 60),
                         Map.of(CardCategory.PARADOX, 1),
                         Map.of(CardGrade.I, 1),
-                        Set.of(Faction.PROPHETS)))
+                        Set.of(Faction.PROPHETS),
+                        Set.of(SpecialAction.ANNIHILATE)))
                 .withMessage("cards-per-deal must be greater than or equal to cards-per-hand");
     }
 

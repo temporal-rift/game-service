@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+            https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.29.xsd">
+
+    <changeSet id="action-010-create-special-action-era-usage" author="game-service">
+        <createTable tableName="special_action_era_usage">
+            <column name="id" type="UUID">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="game_id" type="UUID">
+                <constraints nullable="false"/>
+            </column>
+            <column name="era_number" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="player_id" type="UUID">
+                <constraints nullable="false"/>
+            </column>
+            <column name="claimed_specials" type="TEXT[]">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addUniqueConstraint
+                tableName="special_action_era_usage"
+                columnNames="game_id,era_number,player_id"
+                constraintName="uq_special_action_era_usage_game_era_player"/>
+    </changeSet>
+</databaseChangeLog>

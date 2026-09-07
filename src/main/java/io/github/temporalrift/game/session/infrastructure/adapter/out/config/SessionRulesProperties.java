@@ -12,6 +12,7 @@ import io.github.temporalrift.game.session.domain.port.out.SessionGameRulesPort;
 import io.github.temporalrift.game.shared.CardCategory;
 import io.github.temporalrift.game.shared.CardGrade;
 import io.github.temporalrift.game.shared.Faction;
+import io.github.temporalrift.game.shared.SpecialAction;
 
 @ConfigurationProperties("game.rules")
 @Validated
@@ -29,7 +30,8 @@ public record SessionRulesProperties(
         @NotEmpty Map<Integer, Integer> handSelectionTimerSeconds,
         @NotEmpty Map<CardCategory, Integer> cardCategoryWeights,
         @NotEmpty Map<CardGrade, Integer> cardGradeWeights,
-        @NotEmpty Set<Faction> stabilizationWinnerFactions)
+        @NotEmpty Set<Faction> stabilizationWinnerFactions,
+        @NotEmpty Set<SpecialAction> onceEraBudgetedSpecials)
         implements SessionGameRulesPort {
 
     private static final int DEFAULT_ACTION_ROUND_TIMER_SECONDS = 60;

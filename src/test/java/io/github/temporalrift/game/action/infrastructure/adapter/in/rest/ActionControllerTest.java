@@ -44,8 +44,10 @@ import io.github.temporalrift.game.action.domain.handselection.InvalidHandSelect
 import io.github.temporalrift.game.action.domain.paradoxresolutionphase.CardNotEligibleForParadoxResolutionException;
 import io.github.temporalrift.game.action.domain.paradoxresolutionphase.DuplicateParadoxResolutionSubmissionException;
 import io.github.temporalrift.game.action.domain.paradoxresolutionphase.ParadoxResolutionPhaseNotOpenException;
+import io.github.temporalrift.game.action.domain.specialactionerausage.SpecialActionEraBudgetExhaustedException;
 import io.github.temporalrift.game.shared.CardType;
 import io.github.temporalrift.game.shared.PlayerPrincipal;
+import io.github.temporalrift.game.shared.SpecialAction;
 import io.github.temporalrift.game.shared.infrastructure.config.PlayerAuthenticationToken;
 import io.github.temporalrift.game.shared.infrastructure.config.SecurityConfig;
 
@@ -424,6 +426,25 @@ class ActionControllerTest {
                         .content(specialJson()))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("409-05"));
+    }
+
+    @Test
+    @DisplayName("Given a budgeted special already used this era, then submits a 409 conflict distinguishable from "
+            + "Expose's")
+    void specialActionEraBudgetExhausted() throws Exception {
+        given(playSpecialActionUseCase.handle(any()))
+                .willThrow(new SpecialActionEraBudgetExhaustedException(PLAYER_ID, SpecialAction.ANNIHILATE, ERA));
+
+        mockMvc.perform(post(
+                                "/api/v1/games/{gameId}/eras/{eraNumber}/rounds/{roundNumber}/actions",
+                                GAME_ID,
+                                ERA,
+                                ROUND)
+                        .with(auth())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(specialJson()))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("409-10"));
     }
 
     @Test
