@@ -17,7 +17,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import io.github.temporalrift.game.session.domain.game.Game;
-import io.github.temporalrift.game.session.domain.game.GameAlreadyOverException;
 import io.github.temporalrift.game.session.domain.game.GameNotFoundException;
 import io.github.temporalrift.game.session.domain.lobby.LobbyNotFoundException;
 import io.github.temporalrift.game.session.domain.port.out.FinalScoreQueryPort;
@@ -63,31 +62,16 @@ class EndGameSagaImpl implements EndGameSaga {
     @Transactional(propagation = REQUIRES_NEW)
     @Retryable(retryFor = DataAccessException.class, maxAttempts = 3, backoff = @Backoff(delay = 500, multiplier = 2))
     public void start(UUID gameId, EndGameTrigger triggerType, UUID... playerIds) {
-        // WIN_CONDITION_MET is published while the game is still IN_PROGRESS, so this saga is the one
-        // that transitions it via game.end() -- game.end() throwing GameAlreadyOverException is this
-        // trigger's own idempotency signal for a redelivered event.
-        //
-        // TIMELINE_COLLAPSED/TIMELINE_STABILIZED are different: Game.recordCascadedParadox()/endEra()
-        // already moved the aggregate out of IN_PROGRESS *before* publishing the event that reaches this
-        // saga, so calling game.end() here would always throw GameAlreadyOverException on the very first,
-        // legitimate delivery -- not just on redelivery -- and this saga would never finalize the game.
-        // The saga-state repository is the idempotency guard for these two triggers instead.
-        if (triggerType != EndGameTrigger.WIN_CONDITION_MET && stateManager.isAlreadyHandled(gameId)) {
+        // Every trigger's detection point (EraSagaAdvancer's win/collapse/stabilization branches)
+        // transitions the Game aggregate itself before publishing the event that reaches this saga, so
+        // this saga never mutates Game -- it only finalizes (scores, GameEnded, FactionRevealed), gated by
+        // its own saga-state repository as the single idempotency guard for a redelivered event.
+        if (stateManager.isAlreadyHandled(gameId)) {
             log.info("EndGameSaga.start ignored for game {} — already handled", gameId);
             return;
         }
 
         var game = gameRepository.findById(gameId).orElseThrow(() -> new GameNotFoundException(gameId));
-        if (triggerType == EndGameTrigger.WIN_CONDITION_MET) {
-            try {
-                game.end();
-            } catch (GameAlreadyOverException _) {
-                log.info("EndGameSaga.start ignored for game {} — already over", gameId);
-                return;
-            }
-            gameRepository.save(game);
-        }
-
         stateManager.initRunning(gameId, triggerType, List.of(playerIds));
 
         // The lobby roster is the system of record for assigned factions; start-game saga state is
