@@ -195,6 +195,18 @@ class CardActionPlayWindowTest {
             return new SubmittedAction.CardAction(
                     UUID.randomUUID(), UUID.randomUUID(), cardType, CardGrade.I, null, null, null, UUID.randomUUID());
         }
+        if (cardType == CardType.SCAN) {
+            return new SubmittedAction.CardAction(
+                    UUID.randomUUID(),
+                    UUID.randomUUID(),
+                    cardType,
+                    CardGrade.I,
+                    null,
+                    java.util.List.of(UUID.randomUUID()),
+                    null,
+                    null,
+                    null);
+        }
         return new SubmittedAction.CardAction(
                 UUID.randomUUID(), UUID.randomUUID(), cardType, UUID.randomUUID(), null, UUID.randomUUID());
     }

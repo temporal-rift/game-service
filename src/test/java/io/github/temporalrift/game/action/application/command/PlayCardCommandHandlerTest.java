@@ -12,6 +12,7 @@ import static org.mockito.Mockito.never;
 import java.time.Clock;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 import org.junit.jupiter.api.DisplayName;
@@ -289,13 +290,24 @@ class PlayCardCommandHandlerTest {
         // given
         var command = new PlayCardUseCase.Command(
                 GAME_ID, ERA, ROUND, PLAYER_ID, CARD_INSTANCE_ID, UUID.randomUUID(), null, UUID.randomUUID(), null);
+        given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA, ROUND))
+                .willReturn(Optional.of(round));
+        given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(playerState));
+        given(playerState.hand()).willReturn(List.of(new PlayerState.CardInstance(CARD_INSTANCE_ID, CardType.PUSH)));
         willThrow(new UnknownActionTargetException(command.targetEventId()))
                 .given(actionTargetValidator)
-                .validate(any(), eq(ERA), any(), any(), any());
+                .validateCardTargets(
+                        GAME_ID,
+                        ERA,
+                        command.targetEventId(),
+                        null,
+                        command.sourceOutcomeId(),
+                        command.targetOutcomeId());
 
         // when / then
         assertThatExceptionOfType(UnknownActionTargetException.class).isThrownBy(() -> handler.handle(command));
-        then(actionRoundRepository).shouldHaveNoInteractions();
+        then(round).should(never()).submit(any());
+        then(actionRoundRepository).should(never()).save(any());
     }
 
     @Test
@@ -330,12 +342,45 @@ class PlayCardCommandHandlerTest {
         var targetPlayerId = UUID.randomUUID();
         var command = new PlayCardUseCase.Command(
                 GAME_ID, ERA, ROUND, PLAYER_ID, cardInstanceId, null, null, null, targetPlayerId);
+        given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA, ROUND))
+                .willReturn(Optional.of(round));
+        given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(playerState));
+        given(playerState.hand()).willReturn(List.of(new PlayerState.CardInstance(cardInstanceId, CardType.JAM)));
         willThrow(new PlayerStateNotFoundException(GAME_ID, targetPlayerId))
                 .given(gameParticipantValidator)
                 .requireParticipant(GAME_ID, targetPlayerId);
 
         assertThatExceptionOfType(PlayerStateNotFoundException.class).isThrownBy(() -> handler.handle(command));
-        then(actionRoundRepository).shouldHaveNoInteractions();
+        then(round).should(never()).submit(any());
+    }
+
+    @Test
+    @DisplayName("handle — resolves SCAN grade and preserves the validated target list")
+    void handleScanPreservesValidatedTargetList() {
+        var event1 = UUID.randomUUID();
+        var event2 = UUID.randomUUID();
+        var event3 = UUID.randomUUID();
+        var targets = List.of(event1, event3);
+        var command = new PlayCardUseCase.Command(
+                GAME_ID, ERA, ROUND, PLAYER_ID, CARD_INSTANCE_ID, null, targets, null, null, null);
+        given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA, ROUND))
+                .willReturn(Optional.of(round));
+        given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(playerState));
+        given(playerState.hand())
+                .willReturn(List.of(new PlayerState.CardInstance(CARD_INSTANCE_ID, CardType.SCAN, CardGrade.II)));
+        given(actionTargetValidator.validateCardTargets(GAME_ID, ERA, null, targets, null, null))
+                .willReturn(Set.of(event1, event2, event3));
+        given(round.submit(any())).willReturn(false);
+        given(round.id()).willReturn(UUID.randomUUID());
+        given(round.gameId()).willReturn(GAME_ID);
+        given(round.pullEvents()).willReturn(List.of(cardPlayedEvent()));
+
+        handler.handle(command);
+
+        then(round)
+                .should()
+                .submit(eq(new SubmittedAction.CardAction(
+                        PLAYER_ID, CARD_INSTANCE_ID, CardType.SCAN, CardGrade.II, null, targets, null, null, null)));
     }
 
     private static CardPlayed cardPlayedEvent() {

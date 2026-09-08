@@ -2,6 +2,7 @@ package io.github.temporalrift.game.action.infrastructure.adapter.in.rest.v1.mod
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.List;
 import java.util.UUID;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -58,6 +59,28 @@ class CardActionRequestTest {
             assertThat(card.getCardInstanceId()).isEqualTo(cardInstanceId);
             assertThat(card.getTargetPlayerId()).isEqualTo(targetPlayerId);
             assertThat(card.getTargetEventId()).isNull();
+        });
+    }
+
+    @Test
+    @DisplayName("SubmitActionRequest deserializes the SCAN event selection")
+    void submitActionRequestDeserializesTargetEventIds() throws Exception {
+        var cardInstanceId = UUID.randomUUID();
+        var eventIds = List.of(UUID.randomUUID(), UUID.randomUUID());
+        var json = """
+                {
+                  "actionType": "CARD",
+                  "cardInstanceId": "%s",
+                  "targetEventIds": ["%s", "%s"]
+                }
+                """.formatted(cardInstanceId, eventIds.get(0), eventIds.get(1));
+
+        var request = objectMapper.readValue(json, SubmitActionRequest.class);
+
+        assertThat(request).isInstanceOfSatisfying(CardActionRequest.class, card -> {
+            assertThat(card.getCardInstanceId()).isEqualTo(cardInstanceId);
+            assertThat(card.getTargetEventId()).isNull();
+            assertThat(card.getTargetEventIds()).containsExactlyElementsOf(eventIds);
         });
     }
 }

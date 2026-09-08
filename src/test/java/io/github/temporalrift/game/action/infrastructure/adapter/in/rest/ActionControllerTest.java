@@ -199,8 +199,33 @@ class ActionControllerTest {
         assertThat(captor.getValue().playerId()).isEqualTo(PLAYER_ID);
         assertThat(captor.getValue().cardInstanceId()).isEqualTo(CARD_INSTANCE_ID);
         assertThat(captor.getValue().targetEventId()).isEqualTo(TARGET_EVENT_ID);
+        assertThat(captor.getValue().targetEventIds()).isNull();
         assertThat(captor.getValue().sourceOutcomeId()).isEqualTo(SOURCE_OUTCOME_ID);
         assertThat(captor.getValue().targetOutcomeId()).isEqualTo(TARGET_OUTCOME_ID);
+    }
+
+    @Test
+    @DisplayName("Given SCAN list request, when POST action, then preserves every selected event id")
+    void submitScanTargets() throws Exception {
+        var secondEventId = UUID.randomUUID();
+        given(playCardUseCase.handle(any()))
+                .willReturn(new PlayCardUseCase.Result(GAME_ID, ERA, ROUND, PLAYER_ID, false));
+
+        mockMvc.perform(post(
+                                "/api/v1/games/{gameId}/eras/{eraNumber}/rounds/{roundNumber}/actions",
+                                GAME_ID,
+                                ERA,
+                                ROUND)
+                        .with(auth())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(scanJson(secondEventId)))
+                .andExpect(status().isAccepted());
+
+        var captor = ArgumentCaptor.forClass(PlayCardUseCase.Command.class);
+        org.mockito.BDDMockito.then(playCardUseCase).should().handle(captor.capture());
+        assertThat(captor.getValue().targetEventId()).isNull();
+        assertThat(captor.getValue().targetEventIds()).containsExactly(TARGET_EVENT_ID, secondEventId);
+        assertThat(captor.getValue().targetPlayerId()).isNull();
     }
 
     @Test
@@ -532,6 +557,16 @@ class ActionControllerTest {
                   "targetPlayerId": "%s"
                 }
                 """.formatted(TARGET_PLAYER_ID);
+    }
+
+    private static String scanJson(UUID secondEventId) {
+        return """
+                {
+                  "actionType": "CARD",
+                  "cardInstanceId": "%s",
+                  "targetEventIds": ["%s", "%s"]
+                }
+                """.formatted(CARD_INSTANCE_ID, TARGET_EVENT_ID, secondEventId);
     }
 
     private static String declarationJson() {

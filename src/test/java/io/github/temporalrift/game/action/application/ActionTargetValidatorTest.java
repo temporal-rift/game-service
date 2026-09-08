@@ -1,5 +1,6 @@
 package io.github.temporalrift.game.action.application;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.mockito.BDDMockito.given;
@@ -93,5 +94,40 @@ class ActionTargetValidatorTest {
         // when / then
         assertThatExceptionOfType(UnknownActionTargetException.class)
                 .isThrownBy(() -> validator.validate(GAME_ID, ERA, eventId, unknownOutcomeId));
+    }
+
+    @Test
+    @DisplayName("validateCardTargets — validates the whole list with one definition lookup")
+    void validateCardTargetsUsesOneDefinitionLookup() {
+        var event1 = UUID.randomUUID();
+        var event2 = UUID.randomUUID();
+        var event3 = UUID.randomUUID();
+        given(futureEventDefinitionPort.findByGameIdAndEraNumber(GAME_ID, ERA))
+                .willReturn(List.of(
+                        new FutureEventDefinitionPort.EventDefinition(event1, List.of()),
+                        new FutureEventDefinitionPort.EventDefinition(event2, List.of()),
+                        new FutureEventDefinitionPort.EventDefinition(event3, List.of())));
+
+        var knownIds = validator.validateCardTargets(GAME_ID, ERA, null, List.of(event1, event3));
+
+        assertThat(knownIds).containsExactlyInAnyOrder(event1, event2, event3);
+        then(futureEventDefinitionPort).should().findByGameIdAndEraNumber(GAME_ID, ERA);
+        then(futureEventDefinitionPort).shouldHaveNoMoreInteractions();
+    }
+
+    @Test
+    @DisplayName("validateCardTargets — any unknown list id is rejected")
+    void validateCardTargetsRejectsUnknownListId() {
+        var known = UUID.randomUUID();
+        var unknown = UUID.randomUUID();
+        given(futureEventDefinitionPort.findByGameIdAndEraNumber(GAME_ID, ERA))
+                .willReturn(List.of(new FutureEventDefinitionPort.EventDefinition(known, List.of())));
+
+        assertThatExceptionOfType(UnknownActionTargetException.class)
+                .isThrownBy(() -> validator.validateCardTargets(GAME_ID, ERA, null, List.of(known, unknown)))
+                .withMessageContaining(unknown.toString());
+
+        then(futureEventDefinitionPort).should().findByGameIdAndEraNumber(GAME_ID, ERA);
+        then(futureEventDefinitionPort).shouldHaveNoMoreInteractions();
     }
 }

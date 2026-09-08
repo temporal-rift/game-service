@@ -52,13 +52,6 @@ class PlayCardCommandHandler implements PlayCardUseCase {
     @Override
     @Transactional
     public Result handle(Command command) {
-        actionTargetValidator.validate(
-                command.gameId(),
-                command.eraNumber(),
-                command.targetEventId(),
-                command.sourceOutcomeId(),
-                command.targetOutcomeId());
-        gameParticipantValidator.requireParticipant(command.gameId(), command.targetPlayerId());
         var round = actionRoundRepository
                 .findByGameIdAndEraNumberAndRoundNumberWithLock(
                         command.gameId(), command.eraNumber(), command.roundNumber())
@@ -71,15 +64,25 @@ class PlayCardCommandHandler implements PlayCardUseCase {
                 .filter(card -> card.cardInstanceId().equals(command.cardInstanceId()))
                 .findFirst()
                 .orElseThrow(() -> new CardNotInHandException(command.cardInstanceId()));
+        var currentEraEventIds = actionTargetValidator.validateCardTargets(
+                command.gameId(),
+                command.eraNumber(),
+                command.targetEventId(),
+                command.targetEventIds(),
+                command.sourceOutcomeId(),
+                command.targetOutcomeId());
         var action = new SubmittedAction.CardAction(
                 command.playerId(),
                 command.cardInstanceId(),
                 submittedCard.cardType(),
                 submittedCard.grade(),
                 command.targetEventId(),
+                command.targetEventIds(),
                 command.sourceOutcomeId(),
                 command.targetOutcomeId(),
                 command.targetPlayerId());
+        action.validateCurrentEraTargets(currentEraEventIds);
+        gameParticipantValidator.requireParticipant(command.gameId(), command.targetPlayerId());
         var allSubmitted = round.submit(action);
         playerState.removeCard(command.cardInstanceId());
         actionRoundRepository.save(round);
