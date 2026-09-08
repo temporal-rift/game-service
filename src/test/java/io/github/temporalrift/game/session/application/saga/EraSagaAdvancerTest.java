@@ -192,12 +192,14 @@ class EraSagaAdvancerTest {
     // ─── handleScoresUpdated — era progression ───────────────────────────────
 
     @Test
-    @DisplayName("score meets threshold — saga COMPLETED and WinConditionMet published")
+    @DisplayName("score meets threshold — saga COMPLETED, game ended by win, WinConditionMet published")
     void handleScoresUpdated_scoreAtThreshold_completesAndPublishesWinConditionMet() {
         // given
         var state = new EraSagaState(GAME_ID, 1, EraSagaStatus.WAITING_SCORES, PLAYER_IDS);
         given(eraSagaRepository.findByGameIdWithLock(GAME_ID)).willReturn(Optional.of(state));
         given(gameRules.winScoreThreshold()).willReturn(WIN_THRESHOLD);
+        var game = Game.reconstitute(GAME_ID, LOBBY_ID, List.of(), 1, 0, GameStatus.IN_PROGRESS);
+        given(gameRepository.findByIdWithLock(GAME_ID)).willReturn(Optional.of(game));
         var updates =
                 List.of(new ScoresUpdated.ScoreUpdate(PLAYER_1, Faction.PROPHETS, 5, "round-bonus", WIN_THRESHOLD));
         var su = new ScoresUpdated(GAME_ID, 1, updates);
@@ -206,6 +208,7 @@ class EraSagaAdvancerTest {
         advancer.handleScoresUpdated(GAME_ID, su);
 
         // then
+        then(gameRepository).should().save(argThat(g -> g.status() == GameStatus.ENDED_BY_WIN));
         then(eraSagaRepository).should().save(argThat(s -> s.status() == EraSagaStatus.COMPLETED));
         then(eventPublisher).should().publish(envelopeWithPayload(WinConditionMet.class));
         then(eventPublisher).should(never()).publish(envelopeWithPayload(EraStarted.class));
@@ -218,6 +221,8 @@ class EraSagaAdvancerTest {
         var state = new EraSagaState(GAME_ID, 1, EraSagaStatus.WAITING_SCORES, PLAYER_IDS);
         given(eraSagaRepository.findByGameIdWithLock(GAME_ID)).willReturn(Optional.of(state));
         given(gameRules.winScoreThreshold()).willReturn(WIN_THRESHOLD);
+        var game = Game.reconstitute(GAME_ID, LOBBY_ID, List.of(), 1, 0, GameStatus.IN_PROGRESS);
+        given(gameRepository.findByIdWithLock(GAME_ID)).willReturn(Optional.of(game));
         var updates = List.of(
                 new ScoresUpdated.ScoreUpdate(PLAYER_1, Faction.PROPHETS, 5, "bonus", 22),
                 new ScoresUpdated.ScoreUpdate(PLAYER_2, Faction.WEAVERS, 3, "bonus", 25));
@@ -254,6 +259,30 @@ class EraSagaAdvancerTest {
         then(eventPublisher).should().publish(envelopeWithPayload(EraEnded.class));
         then(eventPublisher).should().publish(envelopeWithPayload(EraStarted.class));
         then(eventPublisher).should(never()).publish(envelopeWithPayload(TimelineStabilized.class));
+    }
+
+    @Test
+    @DisplayName("score meets threshold but a concurrent collapse already won the lock — no win events")
+    void handleScoresUpdated_scoreAtThresholdButAlreadyCollapsed_completesWithoutWinEvents() {
+        // given: a separate paradox-resolution saga collapsed this same game and committed before this
+        // branch acquired findByIdWithLock's row lock -- mirrors the sibling no-winner-branch race below.
+        var state = new EraSagaState(GAME_ID, 1, EraSagaStatus.WAITING_SCORES, PLAYER_IDS);
+        given(eraSagaRepository.findByGameIdWithLock(GAME_ID)).willReturn(Optional.of(state));
+        given(gameRules.winScoreThreshold()).willReturn(WIN_THRESHOLD);
+        var game = Game.reconstitute(GAME_ID, LOBBY_ID, List.of(), 1, 3, GameStatus.ENDED_BY_COLLAPSE);
+        given(gameRepository.findByIdWithLock(GAME_ID)).willReturn(Optional.of(game));
+        var updates =
+                List.of(new ScoresUpdated.ScoreUpdate(PLAYER_1, Faction.PROPHETS, 5, "round-bonus", WIN_THRESHOLD));
+        var su = new ScoresUpdated(GAME_ID, 1, updates);
+
+        // when
+        advancer.handleScoresUpdated(GAME_ID, su);
+
+        // then
+        then(gameRepository).should(never()).save(any());
+        then(eraSagaRepository).should().save(argThat(s -> s.status() == EraSagaStatus.COMPLETED));
+        then(eventPublisher).should(never()).publish(any());
+        then(applicationEventPublisher).should(never()).publishEvent(any());
     }
 
     @Test
@@ -350,6 +379,8 @@ class EraSagaAdvancerTest {
         var state = new EraSagaState(GAME_ID, 1, EraSagaStatus.WAITING_SCORES, PLAYER_IDS);
         given(eraSagaRepository.findByGameIdWithLock(GAME_ID)).willReturn(Optional.of(state));
         given(gameRules.winScoreThreshold()).willReturn(WIN_THRESHOLD);
+        var game = Game.reconstitute(GAME_ID, LOBBY_ID, List.of(), 1, 0, GameStatus.IN_PROGRESS);
+        given(gameRepository.findByIdWithLock(GAME_ID)).willReturn(Optional.of(game));
         var updates =
                 List.of(new ScoresUpdated.ScoreUpdate(PLAYER_1, Faction.PROPHETS, 5, "round-bonus", WIN_THRESHOLD));
         var su = new ScoresUpdated(GAME_ID, 1, updates);

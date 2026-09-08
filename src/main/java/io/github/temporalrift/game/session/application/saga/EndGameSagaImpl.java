@@ -17,7 +17,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import io.github.temporalrift.game.session.domain.game.Game;
-import io.github.temporalrift.game.session.domain.game.GameAlreadyOverException;
 import io.github.temporalrift.game.session.domain.game.GameNotFoundException;
 import io.github.temporalrift.game.session.domain.lobby.LobbyNotFoundException;
 import io.github.temporalrift.game.session.domain.port.out.FinalScoreQueryPort;
@@ -63,16 +62,17 @@ class EndGameSagaImpl implements EndGameSaga {
     @Transactional(propagation = REQUIRES_NEW)
     @Retryable(retryFor = DataAccessException.class, maxAttempts = 3, backoff = @Backoff(delay = 500, multiplier = 2))
     public void start(UUID gameId, EndGameTrigger triggerType, UUID... playerIds) {
-        var game = gameRepository.findById(gameId).orElseThrow(() -> new GameNotFoundException(gameId));
-        try {
-            game.end();
-        } catch (GameAlreadyOverException _) {
-            log.info("EndGameSaga.start ignored for game {} — already over", gameId);
+        // Every trigger's detection point (EraSagaAdvancer's win/collapse/stabilization branches)
+        // transitions the Game aggregate itself before publishing the event that reaches this saga, so
+        // this saga never mutates Game -- it only finalizes (scores, GameEnded, FactionRevealed). The
+        // atomic claim below is the single idempotency guard for a redelivered event, regardless of
+        // trigger type.
+        if (!stateManager.claimIfAbsent(gameId, triggerType, List.of(playerIds))) {
+            log.info("EndGameSaga.start ignored for game {} — already handled", gameId);
             return;
         }
 
-        stateManager.initRunning(gameId, triggerType, List.of(playerIds));
-        gameRepository.save(game);
+        var game = gameRepository.findById(gameId).orElseThrow(() -> new GameNotFoundException(gameId));
 
         // The lobby roster is the system of record for assigned factions; start-game saga state is
         // workflow bookkeeping and never carries the assignments.

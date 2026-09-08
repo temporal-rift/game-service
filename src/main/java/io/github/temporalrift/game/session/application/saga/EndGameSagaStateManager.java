@@ -20,9 +20,14 @@ class EndGameSagaStateManager {
         this.endGameSagaRepository = endGameSagaRepository;
     }
 
+    // Atomic insert-if-absent: two concurrent deliveries for the same gameId (e.g. a resubmitted
+    // incomplete Spring Modulith event publication racing a still-in-flight first attempt) must have
+    // exactly one of them proceed, not both -- a separate isAlreadyHandled check followed by a plain save
+    // is not atomic and would let both through.
     @Transactional
-    void initRunning(UUID gameId, EndGameTrigger triggerType, List<UUID> playerIds) {
-        endGameSagaRepository.save(new EndGameSagaState(gameId, triggerType, EndGameSagaStatus.RUNNING, playerIds));
+    boolean claimIfAbsent(UUID gameId, EndGameTrigger triggerType, List<UUID> playerIds) {
+        return endGameSagaRepository.claimIfAbsent(
+                new EndGameSagaState(gameId, triggerType, EndGameSagaStatus.RUNNING, playerIds));
     }
 
     @Transactional

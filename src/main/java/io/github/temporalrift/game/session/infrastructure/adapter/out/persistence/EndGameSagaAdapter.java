@@ -26,8 +26,13 @@ class EndGameSagaAdapter implements EndGameSagaRepository {
     }
 
     @Override
-    public Optional<EndGameSagaState> findByGameId(UUID gameId) {
-        return jpaRepository.findById(gameId).map(this::toDomain);
+    public boolean claimIfAbsent(EndGameSagaState state) {
+        var inserted = jpaRepository.claimIfAbsent(
+                state.gameId(),
+                state.triggerType().name(),
+                state.status().name(),
+                state.playerIds().toArray(UUID[]::new));
+        return inserted > 0;
     }
 
     @Override
