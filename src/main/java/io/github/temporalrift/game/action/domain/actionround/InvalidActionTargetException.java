@@ -1,5 +1,6 @@
 package io.github.temporalrift.game.action.domain.actionround;
 
+import io.github.temporalrift.game.shared.CardGrade;
 import io.github.temporalrift.game.shared.CardType;
 import io.github.temporalrift.game.shared.SpecialAction;
 
@@ -59,5 +60,26 @@ public class InvalidActionTargetException extends RuntimeException {
 
     public static InvalidActionTargetException cardCannotTargetSelf(CardType cardType) {
         return new InvalidActionTargetException(cardType + " cannot target the submitting player");
+    }
+
+    public static InvalidActionTargetException scanRequiresTargetEvents() {
+        return new InvalidActionTargetException("SCAN requires targetEventIds");
+    }
+
+    public static InvalidActionTargetException scanCannotUseScalarTargets() {
+        return new InvalidActionTargetException("SCAN cannot combine targetEventIds with scalar target fields");
+    }
+
+    public static InvalidActionTargetException scanRequiresDistinctTargets() {
+        return new InvalidActionTargetException("SCAN requires distinct targetEventIds");
+    }
+
+    public static InvalidActionTargetException scanRequiresTargetCount(CardGrade grade, int count) {
+        return new InvalidActionTargetException(
+                "SCAN grade " + grade + " requires exactly " + count + " targetEventIds");
+    }
+
+    public static InvalidActionTargetException scanRequiresCompleteCurrentEra() {
+        return new InvalidActionTargetException("SCAN grade III requires the complete current-era event set");
     }
 }

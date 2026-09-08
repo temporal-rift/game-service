@@ -149,6 +149,7 @@ class ActionController implements ActionApi {
                 playerId,
                 request.getCardInstanceId(),
                 request.getTargetEventId(),
+                request.getTargetEventIds(),
                 request.getSourceOutcomeId(),
                 request.getTargetOutcomeId(),
                 request.getTargetPlayerId()));

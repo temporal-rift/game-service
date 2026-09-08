@@ -2,13 +2,16 @@ package io.github.temporalrift.game.action.infrastructure.adapter.out.kafka;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.List;
 import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
 import org.mapstruct.factory.Mappers;
 
+import io.github.temporalrift.game.action.domain.event.CardPlayed;
 import io.github.temporalrift.game.action.domain.event.ExposeBehaviorChanged;
 import io.github.temporalrift.game.action.domain.event.ParadoxResolutionCardPlayed;
+import io.github.temporalrift.game.shared.CardGrade;
 import io.github.temporalrift.game.shared.CardType;
 
 class ActionEventWireMapperTest {
@@ -51,5 +54,29 @@ class ActionEventWireMapperTest {
         assertThat(wire.cardType().name()).isEqualTo("DETONATE");
         assertThat(wire.targetEventId()).isEqualTo(domain.targetEventId());
         assertThat(wire.targetOutcomeId()).isEqualTo(domain.targetOutcomeId());
+    }
+
+    @Test
+    void cardPlayedMapsPrivateScanTargetSelection() {
+        var targets = List.of(UUID.randomUUID(), UUID.randomUUID());
+        var domain = new CardPlayed(
+                UUID.randomUUID(),
+                2,
+                1,
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                CardType.SCAN,
+                CardGrade.II,
+                null,
+                targets,
+                null,
+                null,
+                null);
+
+        var wire = mapper.toWire(domain);
+
+        assertThat(wire.targetEventId()).isNull();
+        assertThat(wire.targetEventIds()).containsExactlyElementsOf(targets);
+        assertThat(wire.targetPlayerId()).isNull();
     }
 }

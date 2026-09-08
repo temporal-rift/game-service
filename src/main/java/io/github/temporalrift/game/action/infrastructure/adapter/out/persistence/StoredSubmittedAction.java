@@ -1,5 +1,6 @@
 package io.github.temporalrift.game.action.infrastructure.adapter.out.persistence;
 
+import java.util.List;
 import java.util.UUID;
 
 import io.github.temporalrift.game.action.domain.actionround.SubmittedAction;
@@ -17,9 +18,41 @@ record StoredSubmittedAction(
         String faction,
         String specialAction,
         UUID targetEventId,
+        List<UUID> targetEventIds,
         UUID sourceOutcomeId,
         UUID targetOutcomeId,
         UUID targetPlayerId) {
+
+    StoredSubmittedAction {
+        targetEventIds = targetEventIds == null ? null : List.copyOf(targetEventIds);
+    }
+
+    StoredSubmittedAction(
+            String type,
+            UUID playerId,
+            UUID cardInstanceId,
+            String cardType,
+            String cardGrade,
+            String faction,
+            String specialAction,
+            UUID targetEventId,
+            UUID sourceOutcomeId,
+            UUID targetOutcomeId,
+            UUID targetPlayerId) {
+        this(
+                type,
+                playerId,
+                cardInstanceId,
+                cardType,
+                cardGrade,
+                faction,
+                specialAction,
+                targetEventId,
+                null,
+                sourceOutcomeId,
+                targetOutcomeId,
+                targetPlayerId);
+    }
 
     StoredSubmittedAction(
             String type,
@@ -41,6 +74,7 @@ record StoredSubmittedAction(
                 faction,
                 specialAction,
                 targetEventId,
+                null,
                 sourceOutcomeId,
                 targetOutcomeId,
                 targetPlayerId);
@@ -54,6 +88,7 @@ record StoredSubmittedAction(
                     CardType cardType,
                     CardGrade grade,
                     UUID targetEventId,
+                    List<UUID> targetEventIds,
                     UUID sourceOutcomeId,
                     UUID targetOutcomeId,
                     UUID targetPlayerId) ->
@@ -66,6 +101,7 @@ record StoredSubmittedAction(
                         null,
                         null,
                         targetEventId,
+                        targetEventIds,
                         sourceOutcomeId,
                         targetOutcomeId,
                         targetPlayerId);
@@ -86,6 +122,7 @@ record StoredSubmittedAction(
                         specialAction.name(),
                         targetEventId,
                         null,
+                        null,
                         targetOutcomeId,
                         targetPlayerId);
         };
@@ -100,6 +137,7 @@ record StoredSubmittedAction(
                         CardType.valueOf(cardType),
                         cardGrade == null ? CardGrade.I : CardGrade.valueOf(cardGrade),
                         targetEventId,
+                        targetEventIds,
                         sourceOutcomeId,
                         targetOutcomeId,
                         targetPlayerId);

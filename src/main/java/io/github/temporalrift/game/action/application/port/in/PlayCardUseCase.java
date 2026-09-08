@@ -1,5 +1,6 @@
 package io.github.temporalrift.game.action.application.port.in;
 
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -26,9 +27,38 @@ public interface PlayCardUseCase {
             UUID playerId,
             UUID cardInstanceId,
             UUID targetEventId,
+            List<UUID> targetEventIds,
             UUID sourceOutcomeId,
             UUID targetOutcomeId,
-            UUID targetPlayerId) {}
+            UUID targetPlayerId) {
+
+        public Command {
+            targetEventIds = targetEventIds == null ? null : List.copyOf(targetEventIds);
+        }
+
+        public Command(
+                UUID gameId,
+                int eraNumber,
+                int roundNumber,
+                UUID playerId,
+                UUID cardInstanceId,
+                UUID targetEventId,
+                UUID sourceOutcomeId,
+                UUID targetOutcomeId,
+                UUID targetPlayerId) {
+            this(
+                    gameId,
+                    eraNumber,
+                    roundNumber,
+                    playerId,
+                    cardInstanceId,
+                    targetEventId,
+                    null,
+                    sourceOutcomeId,
+                    targetOutcomeId,
+                    targetPlayerId);
+        }
+    }
 
     /**
      * Result returned after the submission is stored and its domain events are published.

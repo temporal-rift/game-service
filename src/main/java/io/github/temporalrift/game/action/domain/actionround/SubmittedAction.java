@@ -1,5 +1,6 @@
 package io.github.temporalrift.game.action.domain.actionround;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -51,6 +52,7 @@ public sealed interface SubmittedAction permits SubmittedAction.CardAction, Subm
             CardType cardType,
             CardGrade grade,
             UUID targetEventId,
+            List<UUID> targetEventIds,
             UUID sourceOutcomeId,
             UUID targetOutcomeId,
             UUID targetPlayerId)
@@ -67,6 +69,31 @@ public sealed interface SubmittedAction permits SubmittedAction.CardAction, Subm
         private static final Set<CardType> PLAYER_TARGETING_CARD_TYPES =
                 Set.of(CardType.NULLIFY, CardType.REDIRECT, CardType.AMPLIFY, CardType.JAM, CardType.INTERCEPT);
 
+        public CardAction {
+            targetEventIds = targetEventIds == null ? null : List.copyOf(targetEventIds);
+        }
+
+        public CardAction(
+                UUID playerId,
+                UUID cardInstanceId,
+                CardType cardType,
+                CardGrade grade,
+                UUID targetEventId,
+                UUID sourceOutcomeId,
+                UUID targetOutcomeId,
+                UUID targetPlayerId) {
+            this(
+                    playerId,
+                    cardInstanceId,
+                    cardType,
+                    grade,
+                    targetEventId,
+                    null,
+                    sourceOutcomeId,
+                    targetOutcomeId,
+                    targetPlayerId);
+        }
+
         public CardAction(
                 UUID playerId,
                 UUID cardInstanceId,
@@ -80,6 +107,7 @@ public sealed interface SubmittedAction permits SubmittedAction.CardAction, Subm
                     cardType,
                     CardGrade.I,
                     targetEventId,
+                    null,
                     sourceOutcomeId,
                     targetOutcomeId,
                     null);
@@ -98,7 +126,9 @@ public sealed interface SubmittedAction permits SubmittedAction.CardAction, Subm
             if (ROUND_THREE_INELIGIBLE_CARD_TYPES.contains(cardType) && roundNumber == 3) {
                 throw new CardNotEligibleForRoundException(cardType, eraNumber, roundNumber);
             }
-            if (PLAYER_TARGETING_CARD_TYPES.contains(cardType)) {
+            if (cardType == CardType.SCAN) {
+                validateScanTargetMode();
+            } else if (PLAYER_TARGETING_CARD_TYPES.contains(cardType)) {
                 validatePlayerTarget();
             } else {
                 validateEventTarget();
@@ -106,7 +136,7 @@ public sealed interface SubmittedAction permits SubmittedAction.CardAction, Subm
         }
 
         private void validatePlayerTarget() {
-            if (targetEventId != null || sourceOutcomeId != null || targetOutcomeId != null) {
+            if (targetEventId != null || targetEventIds != null || sourceOutcomeId != null || targetOutcomeId != null) {
                 throw InvalidActionTargetException.cardCannotTargetEvent(cardType);
             }
             if (targetPlayerId == null) {
@@ -120,6 +150,9 @@ public sealed interface SubmittedAction permits SubmittedAction.CardAction, Subm
         private void validateEventTarget() {
             if (targetPlayerId != null) {
                 throw InvalidActionTargetException.cardCannotTargetPlayer(cardType);
+            }
+            if (targetEventIds != null) {
+                throw InvalidActionTargetException.cardCannotTargetEvent(cardType);
             }
             if (targetEventId == null) {
                 throw InvalidActionTargetException.cardRequiresTargetEvent(cardType);
@@ -138,6 +171,44 @@ public sealed interface SubmittedAction permits SubmittedAction.CardAction, Subm
             }
         }
 
+        private void validateScanTargetMode() {
+            if (targetEventIds == null || targetEventIds.isEmpty()) {
+                throw InvalidActionTargetException.scanRequiresTargetEvents();
+            }
+            if (targetEventId != null || targetPlayerId != null || sourceOutcomeId != null || targetOutcomeId != null) {
+                throw InvalidActionTargetException.scanCannotUseScalarTargets();
+            }
+            if (Set.copyOf(targetEventIds).size() != targetEventIds.size()) {
+                throw InvalidActionTargetException.scanRequiresDistinctTargets();
+            }
+            var requiredCount =
+                    switch (grade) {
+                        case I -> 1;
+                        case II -> 2;
+                        case III -> 3;
+                    };
+            if (targetEventIds.size() != requiredCount) {
+                throw InvalidActionTargetException.scanRequiresTargetCount(grade, requiredCount);
+            }
+        }
+
+        /** Validates the SCAN selection against the definitions loaded for this game's current era. */
+        public void validateCurrentEraTargets(Set<UUID> currentEraEventIds) {
+            if (cardType != CardType.SCAN) {
+                return;
+            }
+            validateScanTargetMode();
+            targetEventIds.stream()
+                    .filter(target -> !currentEraEventIds.contains(target))
+                    .findFirst()
+                    .ifPresent(target -> {
+                        throw new UnknownActionTargetException(target);
+                    });
+            if (grade == CardGrade.III && !Set.copyOf(targetEventIds).equals(currentEraEventIds)) {
+                throw InvalidActionTargetException.scanRequiresCompleteCurrentEra();
+            }
+        }
+
         @Override
         public Object toPlayedEvent(UUID gameId, int eraNumber, int roundNumber) {
             return new CardPlayed(
@@ -149,6 +220,7 @@ public sealed interface SubmittedAction permits SubmittedAction.CardAction, Subm
                     cardType,
                     grade,
                     targetEventId,
+                    targetEventIds,
                     sourceOutcomeId,
                     targetOutcomeId,
                     targetPlayerId);
