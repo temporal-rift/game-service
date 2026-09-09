@@ -83,6 +83,18 @@ class ActionTargetValidatorTest {
     }
 
     @Test
+    @DisplayName("validate — outcome id supplied without a target event — throws UnknownActionTargetException")
+    void validateOutcomeWithoutEventThrows() {
+        // given
+        var strayOutcomeId = UUID.randomUUID();
+        given(futureEventDefinitionPort.findByGameIdAndEraNumber(GAME_ID, ERA)).willReturn(List.of());
+
+        // when / then
+        assertThatExceptionOfType(UnknownActionTargetException.class)
+                .isThrownBy(() -> validator.validate(GAME_ID, ERA, null, strayOutcomeId));
+    }
+
+    @Test
     @DisplayName("validate — unknown outcome id — throws UnknownActionTargetException")
     void validateUnknownOutcomeThrows() {
         // given
@@ -120,11 +132,12 @@ class ActionTargetValidatorTest {
     void validateCardTargetsRejectsUnknownListId() {
         var known = UUID.randomUUID();
         var unknown = UUID.randomUUID();
+        var requestedIds = List.of(known, unknown);
         given(futureEventDefinitionPort.findByGameIdAndEraNumber(GAME_ID, ERA))
                 .willReturn(List.of(new FutureEventDefinitionPort.EventDefinition(known, List.of())));
 
         assertThatExceptionOfType(UnknownActionTargetException.class)
-                .isThrownBy(() -> validator.validateCardTargets(GAME_ID, ERA, null, List.of(known, unknown)))
+                .isThrownBy(() -> validator.validateCardTargets(GAME_ID, ERA, null, requestedIds))
                 .withMessageContaining(unknown.toString());
 
         then(futureEventDefinitionPort).should().findByGameIdAndEraNumber(GAME_ID, ERA);

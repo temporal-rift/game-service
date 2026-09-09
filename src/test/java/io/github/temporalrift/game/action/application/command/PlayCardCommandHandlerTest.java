@@ -10,6 +10,7 @@ import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.never;
 
 import java.time.Clock;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -381,6 +382,16 @@ class PlayCardCommandHandlerTest {
                 .should()
                 .submit(eq(new SubmittedAction.CardAction(
                         PLAYER_ID, CARD_INSTANCE_ID, CardType.SCAN, CardGrade.II, null, targets, null, null, null)));
+    }
+
+    @Test
+    @DisplayName("Command — targetEventIds containing a null element — rejects it instead of NPE-ing on copy")
+    void commandRejectsNullElementInTargetEventIds() {
+        var targets = Arrays.asList(UUID.randomUUID(), null);
+
+        assertThatExceptionOfType(UnknownActionTargetException.class)
+                .isThrownBy(() -> new PlayCardUseCase.Command(
+                        GAME_ID, ERA, ROUND, PLAYER_ID, CARD_INSTANCE_ID, null, targets, null, null, null));
     }
 
     private static CardPlayed cardPlayedEvent() {

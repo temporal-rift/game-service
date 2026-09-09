@@ -1,7 +1,10 @@
 package io.github.temporalrift.game.action.application.port.in;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
+
+import io.github.temporalrift.game.action.domain.actionround.UnknownActionTargetException;
 
 /**
  * Accepts a player's card submission for an open action round.
@@ -33,6 +36,9 @@ public interface PlayCardUseCase {
             UUID targetPlayerId) {
 
         public Command {
+            if (targetEventIds != null && targetEventIds.stream().anyMatch(Objects::isNull)) {
+                throw new UnknownActionTargetException(null);
+            }
             targetEventIds = targetEventIds == null ? null : List.copyOf(targetEventIds);
         }
 
