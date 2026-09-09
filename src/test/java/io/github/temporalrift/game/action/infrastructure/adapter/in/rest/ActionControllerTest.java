@@ -229,6 +229,23 @@ class ActionControllerTest {
     }
 
     @Test
+    @DisplayName("Given duplicate SCAN target JSON, when POST action, then rejects it before set deserialization")
+    void submitScanDuplicateTargets() throws Exception {
+        mockMvc.perform(post(
+                                "/api/v1/games/{gameId}/eras/{eraNumber}/rounds/{roundNumber}/actions",
+                                GAME_ID,
+                                ERA,
+                                ROUND)
+                        .with(auth())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(scanJson(TARGET_EVENT_ID)))
+                .andExpect(status().isUnprocessableContent())
+                .andExpect(jsonPath("$.code").value("422-03"));
+
+        org.mockito.BDDMockito.then(playCardUseCase).shouldHaveNoInteractions();
+    }
+
+    @Test
     @DisplayName("Given SPECIAL request, when POST action, then maps generated enum and returns 202")
     void submitSpecial() throws Exception {
         // given
