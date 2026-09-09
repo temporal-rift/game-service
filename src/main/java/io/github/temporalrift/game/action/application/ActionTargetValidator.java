@@ -60,6 +60,12 @@ public class ActionTargetValidator {
         });
 
         if (targetEventId == null) {
+            Arrays.stream(suppliedOutcomeIds)
+                    .filter(Objects::nonNull)
+                    .findFirst()
+                    .ifPresent(outcomeId -> {
+                        throw new UnknownActionTargetException(outcomeId);
+                    });
             return Set.copyOf(knownEventIds);
         }
 
