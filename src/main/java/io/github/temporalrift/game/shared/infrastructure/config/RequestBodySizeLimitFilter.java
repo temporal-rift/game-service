@@ -1,6 +1,9 @@
 package io.github.temporalrift.game.shared.infrastructure.config;
 
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ReadListener;
@@ -49,6 +52,12 @@ class RequestBodySizeLimitFilter extends OncePerRequestFilter {
         public ServletInputStream getInputStream() throws IOException {
             return new BoundedServletInputStream(super.getInputStream(), maxBytes);
         }
+
+        @Override
+        public BufferedReader getReader() throws IOException {
+            var charset = getCharacterEncoding() != null ? getCharacterEncoding() : StandardCharsets.ISO_8859_1.name();
+            return new BufferedReader(new InputStreamReader(getInputStream(), charset));
+        }
     }
 
     private static final class BoundedServletInputStream extends ServletInputStream {
@@ -64,7 +73,7 @@ class RequestBodySizeLimitFilter extends OncePerRequestFilter {
         @Override
         public int read() throws IOException {
             if (remaining <= 0) {
-                throw new IOException("Request body exceeds the maximum allowed size");
+                return rejectIfMoreDataExists();
             }
             var read = delegate.read();
             if (read != -1) {
@@ -75,14 +84,29 @@ class RequestBodySizeLimitFilter extends OncePerRequestFilter {
 
         @Override
         public int read(byte[] b, int off, int len) throws IOException {
+            if (len == 0) {
+                return 0;
+            }
             if (remaining <= 0) {
-                throw new IOException("Request body exceeds the maximum allowed size");
+                return rejectIfMoreDataExists();
             }
             var bounded = delegate.read(b, off, (int) Math.min(len, remaining));
             if (bounded > 0) {
                 remaining -= bounded;
             }
             return bounded;
+        }
+
+        /**
+         * A body of exactly {@code maxBytes} must still read cleanly to EOF once the budget is
+         * spent — only a body carrying at least one more byte beyond the limit is actually
+         * oversized. Reads one probe byte from the delegate to tell the two cases apart.
+         */
+        private int rejectIfMoreDataExists() throws IOException {
+            if (delegate.read() != -1) {
+                throw new IOException("Request body exceeds the maximum allowed size");
+            }
+            return -1;
         }
 
         @Override

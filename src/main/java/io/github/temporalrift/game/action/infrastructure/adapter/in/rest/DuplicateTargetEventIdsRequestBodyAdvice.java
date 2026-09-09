@@ -101,9 +101,9 @@ class DuplicateTargetEventIdsRequestBodyAdvice implements RequestBodyAdvice {
 
         @Override
         public boolean equals(Object o) {
-            return o instanceof CachedHttpInputMessage other
-                    && Objects.equals(delegate, other.delegate)
-                    && Arrays.equals(body, other.body);
+            return o instanceof CachedHttpInputMessage(var otherDelegate, var otherBody)
+                    && Objects.equals(delegate, otherDelegate)
+                    && Arrays.equals(body, otherBody);
         }
 
         @Override
