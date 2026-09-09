@@ -72,6 +72,62 @@ class RequestBodySizeLimitFilterTest {
         assertThat(wrappedRequest.get().getInputStream().readAllBytes()).isEqualTo(payload);
     }
 
+    @Test
+    @DisplayName("a body exactly at the byte limit reads through fully instead of failing at EOF")
+    void passesThroughBodyExactlyAtLimit() throws Exception {
+        var payload = "x".repeat(1024).getBytes(StandardCharsets.UTF_8);
+        var request = mock(HttpServletRequest.class);
+        var response = mock(HttpServletResponse.class);
+        given(request.getContentLengthLong()).willReturn(-1L);
+        given(request.getInputStream()).willReturn(new StubServletInputStream(payload));
+        var wrappedRequest = new AtomicReference<HttpServletRequest>();
+        FilterChain chain = (req, res) -> wrappedRequest.set((HttpServletRequest) req);
+
+        new RequestBodySizeLimitFilter(1024).doFilterInternal(request, response, chain);
+
+        assertThat(wrappedRequest.get().getInputStream().readAllBytes()).isEqualTo(payload);
+    }
+
+    @Test
+    @DisplayName("a body one byte over the limit fails, not just bodies far over it")
+    void rejectsBodyOneByteOverLimit() throws Exception {
+        var payload = "x".repeat(1025).getBytes(StandardCharsets.UTF_8);
+        var request = mock(HttpServletRequest.class);
+        var response = mock(HttpServletResponse.class);
+        given(request.getContentLengthLong()).willReturn(-1L);
+        given(request.getInputStream()).willReturn(new StubServletInputStream(payload));
+        var wrappedRequest = new AtomicReference<HttpServletRequest>();
+        FilterChain chain = (req, res) -> wrappedRequest.set((HttpServletRequest) req);
+
+        new RequestBodySizeLimitFilter(1024).doFilterInternal(request, response, chain);
+
+        var boundedInput = wrappedRequest.get().getInputStream();
+        assertThatThrownBy(boundedInput::readAllBytes).isInstanceOf(IOException.class);
+    }
+
+    @Test
+    @DisplayName("getReader() is bounded the same way getInputStream() is, not left to bypass the limit")
+    void rejectsOversizedBodyReadThroughReader() throws Exception {
+        var payload = "x".repeat(2048).getBytes(StandardCharsets.UTF_8);
+        var request = mock(HttpServletRequest.class);
+        var response = mock(HttpServletResponse.class);
+        given(request.getContentLengthLong()).willReturn(-1L);
+        given(request.getInputStream()).willReturn(new StubServletInputStream(payload));
+        given(request.getCharacterEncoding()).willReturn(null);
+        var wrappedRequest = new AtomicReference<HttpServletRequest>();
+        FilterChain chain = (req, res) -> wrappedRequest.set((HttpServletRequest) req);
+
+        new RequestBodySizeLimitFilter(1024).doFilterInternal(request, response, chain);
+
+        var reader = wrappedRequest.get().getReader();
+        assertThatThrownBy(() -> {
+                    while (reader.read() != -1) {
+                        // drain until the bounded stream rejects the oversized body
+                    }
+                })
+                .isInstanceOf(IOException.class);
+    }
+
     private static final class StubServletInputStream extends ServletInputStream {
 
         private final ByteArrayInputStream delegate;
@@ -101,6 +157,8 @@ class RequestBodySizeLimitFilterTest {
         }
 
         @Override
-        public void setReadListener(ReadListener readListener) {}
+        public void setReadListener(ReadListener readListener) {
+            // Synchronous test double; this filter only ever reads blocking-style, never registers a listener.
+        }
     }
 }
