@@ -1,5 +1,6 @@
 package io.github.temporalrift.game.action.infrastructure.adapter.in.rest;
 
+import java.util.List;
 import java.util.UUID;
 
 import org.springframework.http.ResponseEntity;
@@ -149,7 +150,7 @@ class ActionController implements ActionApi {
                 playerId,
                 request.getCardInstanceId(),
                 request.getTargetEventId(),
-                request.getTargetEventIds(),
+                request.getTargetEventIds() == null ? null : List.copyOf(request.getTargetEventIds()),
                 request.getSourceOutcomeId(),
                 request.getTargetOutcomeId(),
                 request.getTargetPlayerId()));
