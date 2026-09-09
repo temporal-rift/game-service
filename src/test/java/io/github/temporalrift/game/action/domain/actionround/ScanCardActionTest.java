@@ -80,9 +80,9 @@ class ScanCardActionTest {
                 .withMessageContaining(foreignEvent.toString());
 
         var incompleteKnownSet = Set.of(EVENT_1, EVENT_2, EVENT_3, UUID.randomUUID());
+        var completeSelection = actionWithEvents(EVENT_1, EVENT_2, EVENT_3);
         assertThatExceptionOfType(InvalidActionTargetException.class)
-                .isThrownBy(
-                        () -> actionWithEvents(EVENT_1, EVENT_2, EVENT_3).validateCurrentEraTargets(incompleteKnownSet))
+                .isThrownBy(() -> completeSelection.validateCurrentEraTargets(incompleteKnownSet))
                 .withMessageContaining("complete current-era event set");
     }
 
@@ -92,9 +92,10 @@ class ScanCardActionTest {
         var action = scan(CardGrade.II, submittedTargets);
         submittedTargets.clear();
 
-        assertThat(action.targetEventIds()).containsExactly(EVENT_1, EVENT_2);
+        var immutableTargetEventIds = action.targetEventIds();
+        assertThat(immutableTargetEventIds).containsExactly(EVENT_1, EVENT_2);
         assertThatExceptionOfType(UnsupportedOperationException.class)
-                .isThrownBy(() -> action.targetEventIds().add(EVENT_3));
+                .isThrownBy(() -> immutableTargetEventIds.add(EVENT_3));
 
         var played = (CardPlayed) action.toPlayedEvent(UUID.randomUUID(), 1, 1);
         assertThat(played.targetEventId()).isNull();

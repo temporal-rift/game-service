@@ -3,7 +3,9 @@ package io.github.temporalrift.game.action.infrastructure.adapter.in.rest;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.lang.reflect.Type;
+import java.util.Arrays;
 import java.util.HashSet;
+import java.util.Objects;
 import java.util.UUID;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -79,7 +81,7 @@ class DuplicateTargetEventIdsRequestBodyAdvice implements RequestBodyAdvice {
                 if (!seen.add(UUID.fromString(targetEventId.textValue()))) {
                     throw InvalidActionTargetException.scanRequiresDistinctTargets();
                 }
-            } catch (IllegalArgumentException ignored) {
+            } catch (IllegalArgumentException _) {
                 // Generated UUID binding reports malformed target values through the normal request error contract.
             }
         }
@@ -95,6 +97,23 @@ class DuplicateTargetEventIdsRequestBodyAdvice implements RequestBodyAdvice {
         @Override
         public org.springframework.http.HttpHeaders getHeaders() {
             return delegate.getHeaders();
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            return o instanceof CachedHttpInputMessage other
+                    && Objects.equals(delegate, other.delegate)
+                    && Arrays.equals(body, other.body);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(delegate, Arrays.hashCode(body));
+        }
+
+        @Override
+        public String toString() {
+            return "CachedHttpInputMessage[delegate=" + delegate + ", body=" + Arrays.toString(body) + "]";
         }
     }
 }
