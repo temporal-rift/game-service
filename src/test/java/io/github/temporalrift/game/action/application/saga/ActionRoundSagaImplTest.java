@@ -11,9 +11,11 @@ import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 
+import java.lang.reflect.RecordComponent;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -1238,8 +1240,8 @@ class ActionRoundSagaImplTest {
                     .map(RoundSummaryPublished.class::cast)
                     .toList();
             assertThat(roundSummaries).singleElement();
-            assertThat(java.util.Arrays.stream(ActionSummary.class.getRecordComponents())
-                            .map(java.lang.reflect.RecordComponent::getName)
+            assertThat(Arrays.stream(ActionSummary.class.getRecordComponents())
+                            .map(RecordComponent::getName)
                             .toList())
                     .containsExactly("playerId", "actionCategory", "actionFamily", "skipped");
             then(playerStateRepository).should().lockAllByGameId(GAME_ID);
