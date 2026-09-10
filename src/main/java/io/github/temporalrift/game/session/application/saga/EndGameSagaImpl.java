@@ -88,10 +88,8 @@ class EndGameSagaImpl implements EndGameSaga {
                         .map(player -> new FactionRevealed.PlayerFactionResult(
                                 player.playerId(), player.faction().name()))
                         .toList());
-        // Kafka path for external services (timeline-service, read-service), plus a synchronous
-        // in-transaction call into scoring's own bonus-award/visibility-flip logic -- both are
-        // computable immediately from data already on hand, so there is no reason to route them
-        // through Modulith's eventually-consistent async event dispatch.
+        // Kafka path for external services, plus a synchronous in-transaction call into scoring's
+        // own bonus-award/visibility-flip logic instead of an async Modulith listener.
         publishEvent(gameId, factionRevealed);
         factionRevealPort.reveal(factionRevealed);
 
