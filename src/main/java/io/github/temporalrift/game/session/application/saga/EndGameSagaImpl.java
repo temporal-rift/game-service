@@ -79,19 +79,21 @@ class EndGameSagaImpl implements EndGameSaga {
         var lobby =
                 lobbyRepository.findById(game.lobbyId()).orElseThrow(() -> new LobbyNotFoundException(game.lobbyId()));
 
-        var finalScores = finalScoreQueryPort.getScores(gameId);
-        publishEvent(gameId, new GameEnded(gameId, triggerType.name(), finalScores));
-
         var factionRevealed = new FactionRevealed(
                 gameId,
                 lobby.currentPlayers().stream()
                         .map(player -> new FactionRevealed.PlayerFactionResult(
                                 player.playerId(), player.faction().name()))
                         .toList());
-        // Kafka path for external services, plus a synchronous in-transaction call into scoring's
-        // own bonus-award/visibility-flip logic instead of an async Modulith listener.
-        publishEvent(gameId, factionRevealed);
+
+        // Awards the end-game faction bonus and flips faction visibility before the snapshot below is
+        // taken: GameEnded.finalScores is the only carrier of that bonus to every downstream consumer,
+        // so a snapshot taken first publishes scores that are permanently short by the bonus.
         factionRevealPort.reveal(factionRevealed);
+
+        var finalScores = finalScoreQueryPort.getScores(gameId);
+        publishEvent(gameId, new GameEnded(gameId, triggerType.name(), finalScores));
+        publishEvent(gameId, factionRevealed);
 
         stateManager.complete(gameId);
     }

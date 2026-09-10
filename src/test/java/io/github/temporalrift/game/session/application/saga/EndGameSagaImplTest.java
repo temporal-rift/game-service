@@ -7,6 +7,7 @@ import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
 
 import java.time.Clock;
@@ -232,6 +233,26 @@ class EndGameSagaImplTest {
                 .extracting(FactionRevealed.PlayerFactionResult::playerId, FactionRevealed.PlayerFactionResult::faction)
                 .containsExactlyInAnyOrder(
                         tuple(PLAYER_1, Faction.PROPHETS.name()), tuple(PLAYER_2, Faction.ERASERS.name()));
+    }
+
+    @Test
+    @DisplayName("faction reveal is applied before the final-score snapshot GameEnded publishes")
+    void start_appliesFactionRevealBeforeSnapshottingFinalScores() {
+        // given
+        var game = Game.reconstitute(GAME_ID, LOBBY_ID, List.of(), 1, 0, GameStatus.ENDED_BY_WIN);
+        given(stateManager.claimIfAbsent(any(), any(), any())).willReturn(true);
+        given(gameRepository.findById(GAME_ID)).willReturn(Optional.of(game));
+        given(lobbyRepository.findById(LOBBY_ID)).willReturn(Optional.of(lobby()));
+        given(finalScoreQueryPort.getScores(GAME_ID)).willReturn(List.of());
+
+        // when
+        saga.start(GAME_ID, EndGameTrigger.WIN_CONDITION_MET, PLAYER_1);
+
+        // then: the unidentified-faction bonus reaches every consumer only through GameEnded.finalScores,
+        // so reading the scores first would publish a snapshot permanently short by that bonus
+        var inOrder = inOrder(factionRevealPort, finalScoreQueryPort);
+        inOrder.verify(factionRevealPort).reveal(any());
+        inOrder.verify(finalScoreQueryPort).getScores(GAME_ID);
     }
 
     // ─── idempotency ─────────────────────────────────────────────────────────
