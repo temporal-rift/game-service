@@ -39,6 +39,7 @@ import io.github.temporalrift.game.action.domain.activisterastate.ActivistEraSta
 import io.github.temporalrift.game.action.domain.event.ActionRoundStarted;
 import io.github.temporalrift.game.action.domain.event.ActionRoundTimerExpired;
 import io.github.temporalrift.game.action.domain.event.BandedProbabilityPublished;
+import io.github.temporalrift.game.action.domain.event.InfluenceTraced;
 import io.github.temporalrift.game.action.domain.event.PlayerJammed;
 import io.github.temporalrift.game.action.domain.event.RoundSummaryPublished;
 import io.github.temporalrift.game.action.domain.event.RoundSummaryPublished.ActionSummary;
@@ -1351,6 +1352,165 @@ class ActionRoundSagaImplTest {
             assertThat(target.isJammed()).isFalse();
             then(playerStateRepository).should().save(target);
             then(actionEventPublisher).should(never()).publish(envelopeWithPayload(PlayerJammed.class));
+        }
+    }
+
+    @Nested
+    @DisplayName("Trace influence resolution")
+    class TraceInfluenceResolutionTests {
+
+        @Test
+        @DisplayName("publishes direct influencers after the round summary")
+        void publishesDirectInfluencersAfterRoundSummary() {
+            var targetEventId = UUID.randomUUID();
+            var previousRound = new ActionRound(
+                    UUID.randomUUID(),
+                    new ActionRoundConfig(GAME_ID, ERA_NUMBER, 1, TIMER_SECONDS),
+                    List.of(PLAYER_2, PLAYER_3));
+            previousRound.submit(new SubmittedAction.CardAction(
+                    PLAYER_2, UUID.randomUUID(), CardType.PUSH, targetEventId, null, UUID.randomUUID()));
+            previousRound.submit(new SubmittedAction.CardAction(
+                    PLAYER_3, UUID.randomUUID(), CardType.SUPPRESS, targetEventId, null, UUID.randomUUID()));
+            var currentRound = traceRound(ERA_NUMBER, 2, PLAYER_1, CardGrade.I, targetEventId);
+
+            given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA_NUMBER, 2))
+                    .willReturn(Optional.of(currentRound));
+            given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumber(GAME_ID, ERA_NUMBER, 1))
+                    .willReturn(Optional.of(previousRound));
+            given(stateManager.markSubmitted(GAME_ID, ERA_NUMBER, 2, PLAYER_1)).willReturn(completedState(2));
+
+            saga.handlePlayerSubmitted(GAME_ID, ERA_NUMBER, 2, PLAYER_1);
+
+            var traced = tracedEvents();
+            assertThat(traced)
+                    .containsExactly(new InfluenceTraced(
+                            GAME_ID, ERA_NUMBER, 2, PLAYER_1, targetEventId, List.of(PLAYER_2, PLAYER_3)));
+            var ordered = inOrder(actionEventPublisher);
+            then(actionEventPublisher).should(ordered).publish(envelopeWithPayload(RoundSummaryPublished.class));
+            then(actionEventPublisher).should(ordered).publish(envelopeWithPayload(InfluenceTraced.class));
+        }
+
+        @Test
+        @DisplayName("excludes DECOY and returns an empty result for an absent predecessor event")
+        void excludesDecoyAndReturnsEmptyResultForAbsentEvent() {
+            var decoyTargetId = UUID.randomUUID();
+            var absentTargetId = UUID.randomUUID();
+            var previousRound = new ActionRound(
+                    UUID.randomUUID(), new ActionRoundConfig(GAME_ID, ERA_NUMBER, 1, TIMER_SECONDS), List.of(PLAYER_2));
+            previousRound.submit(new SubmittedAction.CardAction(
+                    PLAYER_2, UUID.randomUUID(), CardType.DECOY, decoyTargetId, null, null));
+            var currentRound = new ActionRound(
+                    UUID.randomUUID(),
+                    new ActionRoundConfig(GAME_ID, ERA_NUMBER, 2, TIMER_SECONDS),
+                    List.of(PLAYER_1, PLAYER_2));
+            currentRound.submit(new SubmittedAction.CardAction(
+                    PLAYER_1, UUID.randomUUID(), CardType.TRACE, CardGrade.I, decoyTargetId, null, null, null));
+            currentRound.submit(new SubmittedAction.CardAction(
+                    PLAYER_2, UUID.randomUUID(), CardType.TRACE, CardGrade.I, absentTargetId, null, null, null));
+
+            given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA_NUMBER, 2))
+                    .willReturn(Optional.of(currentRound));
+            given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumber(GAME_ID, ERA_NUMBER, 1))
+                    .willReturn(Optional.of(previousRound));
+            given(stateManager.markSubmitted(GAME_ID, ERA_NUMBER, 2, PLAYER_1)).willReturn(completedState(2));
+
+            saga.handlePlayerSubmitted(GAME_ID, ERA_NUMBER, 2, PLAYER_1);
+
+            assertThat(tracedEvents())
+                    .containsExactlyInAnyOrder(
+                            new InfluenceTraced(GAME_ID, ERA_NUMBER, 2, PLAYER_1, decoyTargetId, List.of()),
+                            new InfluenceTraced(GAME_ID, ERA_NUMBER, 2, PLAYER_2, absentTargetId, List.of()));
+        }
+
+        @Test
+        @DisplayName("reads the preceding era's final round for Era 2 Round 1")
+        void crossesTheEraBoundary() {
+            var targetEventId = UUID.randomUUID();
+            var previousRound = new ActionRound(
+                    UUID.randomUUID(), new ActionRoundConfig(GAME_ID, 1, 3, TIMER_SECONDS), List.of(PLAYER_2));
+            previousRound.submit(new SubmittedAction.CardAction(
+                    PLAYER_2, UUID.randomUUID(), CardType.SWING, targetEventId, UUID.randomUUID(), UUID.randomUUID()));
+            var currentRound = traceRound(2, 1, PLAYER_1, CardGrade.I, targetEventId);
+
+            given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, 2, 1))
+                    .willReturn(Optional.of(currentRound));
+            given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumber(GAME_ID, 1, 3))
+                    .willReturn(Optional.of(previousRound));
+            given(stateManager.markSubmitted(GAME_ID, 2, 1, PLAYER_1)).willReturn(completedState(1));
+
+            saga.handlePlayerSubmitted(GAME_ID, 2, 1, PLAYER_1);
+
+            assertThat(tracedEvents())
+                    .containsExactly(new InfluenceTraced(GAME_ID, 2, 1, PLAYER_1, targetEventId, List.of(PLAYER_2)));
+        }
+
+        @Test
+        @DisplayName("Grade II publishes one result for every predecessor-era event")
+        void gradeTwoPublishesEveryPredecessorEraEvent() {
+            var firstEventId = UUID.randomUUID();
+            var secondEventId = UUID.randomUUID();
+            var untouchedEventId = UUID.randomUUID();
+            var previousRound = new ActionRound(
+                    UUID.randomUUID(),
+                    new ActionRoundConfig(GAME_ID, ERA_NUMBER, 1, TIMER_SECONDS),
+                    List.of(PLAYER_2, PLAYER_3));
+            previousRound.submit(new SubmittedAction.CardAction(
+                    PLAYER_2, UUID.randomUUID(), CardType.PUSH, firstEventId, null, UUID.randomUUID()));
+            previousRound.submit(new SubmittedAction.CardAction(
+                    PLAYER_3, UUID.randomUUID(), CardType.SUPPRESS, secondEventId, null, UUID.randomUUID()));
+            var currentRound = traceRound(ERA_NUMBER, 2, PLAYER_1, CardGrade.II, firstEventId);
+            var definitions = List.of(
+                    new FutureEventDefinitionPort.EventDefinition(firstEventId, List.of()),
+                    new FutureEventDefinitionPort.EventDefinition(secondEventId, List.of()),
+                    new FutureEventDefinitionPort.EventDefinition(untouchedEventId, List.of()));
+
+            given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA_NUMBER, 2))
+                    .willReturn(Optional.of(currentRound));
+            given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumber(GAME_ID, ERA_NUMBER, 1))
+                    .willReturn(Optional.of(previousRound));
+            given(futureEventDefinitionPort.findByGameIdAndEraNumber(GAME_ID, ERA_NUMBER))
+                    .willReturn(definitions);
+            given(stateManager.markSubmitted(GAME_ID, ERA_NUMBER, 2, PLAYER_1)).willReturn(completedState(2));
+
+            saga.handlePlayerSubmitted(GAME_ID, ERA_NUMBER, 2, PLAYER_1);
+
+            assertThat(tracedEvents())
+                    .containsExactly(
+                            new InfluenceTraced(GAME_ID, ERA_NUMBER, 2, PLAYER_1, firstEventId, List.of(PLAYER_2)),
+                            new InfluenceTraced(GAME_ID, ERA_NUMBER, 2, PLAYER_1, secondEventId, List.of(PLAYER_3)),
+                            new InfluenceTraced(GAME_ID, ERA_NUMBER, 2, PLAYER_1, untouchedEventId, List.of()));
+        }
+
+        private ActionRound traceRound(
+                int eraNumber, int roundNumber, UUID playerId, CardGrade grade, UUID targetEventId) {
+            var round = new ActionRound(
+                    UUID.randomUUID(),
+                    new ActionRoundConfig(GAME_ID, eraNumber, roundNumber, TIMER_SECONDS),
+                    List.of(playerId));
+            round.submit(new SubmittedAction.CardAction(
+                    playerId, UUID.randomUUID(), CardType.TRACE, grade, targetEventId, null, null, null));
+            return round;
+        }
+
+        private Optional<ActionRoundSagaState> completedState(int roundNumber) {
+            return Optional.of(new ActionRoundSagaState(
+                    UUID.randomUUID(),
+                    GAME_ID,
+                    ERA_NUMBER,
+                    roundNumber,
+                    ActionRoundSagaStatus.WAITING,
+                    List.of(),
+                    TIMER_EXPIRES_AT));
+        }
+
+        private List<InfluenceTraced> tracedEvents() {
+            var published = ArgumentCaptor.<DomainEventEnvelope>captor();
+            then(actionEventPublisher).should(atLeastOnce()).publish(published.capture());
+            return published.getAllValues().stream()
+                    .map(DomainEventEnvelope::payload)
+                    .filter(InfluenceTraced.class::isInstance)
+                    .map(InfluenceTraced.class::cast)
+                    .toList();
         }
     }
 
