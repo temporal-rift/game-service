@@ -113,6 +113,31 @@ class PlayCardCommandHandlerTest {
     }
 
     @Test
+    @DisplayName("handle — jammed player can still submit an otherwise-valid card")
+    void handleJammedPlayerCanStillSubmitCard() {
+        var cardInstanceId = UUID.randomUUID();
+        var command = new PlayCardUseCase.Command(
+                GAME_ID, ERA, ROUND, PLAYER_ID, cardInstanceId, UUID.randomUUID(), null, UUID.randomUUID(), null);
+        var jammedPlayer = new PlayerState(UUID.randomUUID(), GAME_ID, PLAYER_ID);
+        jammedPlayer.dealCard(new PlayerState.CardInstance(cardInstanceId, CardType.PUSH), 7);
+        jammedPlayer.applyJam();
+        given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA, ROUND))
+                .willReturn(Optional.of(round));
+        given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(jammedPlayer));
+        given(round.submit(any())).willReturn(false);
+        given(round.id()).willReturn(UUID.randomUUID());
+        given(round.gameId()).willReturn(GAME_ID);
+        given(round.pullEvents()).willReturn(List.of(cardPlayedEvent()));
+
+        var result = handler.handle(command);
+
+        then(round).should().submit(any(SubmittedAction.CardAction.class));
+        then(playerStateRepository).should().save(jammedPlayer);
+        assertThat(jammedPlayer.isJammed()).isTrue();
+        assertThat(result.roundClosed()).isFalse();
+    }
+
+    @Test
     @DisplayName("handle — all players submitted — does not close directly and returns roundClosed true")
     void handleAllSubmittedDoesNotCloseDirectly() {
         // given

@@ -15,6 +15,7 @@ public sealed interface ActionEventPayload
                 ExposeBehaviorChanged,
                 ExposeSignatureRevealed,
                 ParadoxResolutionCardPlayed,
+                PlayerJammed,
                 PlayerSkipped,
                 RoundSummaryPublished,
                 SpecialActionPlayed {}
