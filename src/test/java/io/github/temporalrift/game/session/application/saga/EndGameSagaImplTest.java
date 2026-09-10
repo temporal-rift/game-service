@@ -25,7 +25,6 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.context.ApplicationEventPublisher;
 
 import io.github.temporalrift.game.session.domain.game.Game;
 import io.github.temporalrift.game.session.domain.game.GameStatus;
@@ -33,6 +32,7 @@ import io.github.temporalrift.game.session.domain.lobby.Lobby;
 import io.github.temporalrift.game.session.domain.lobby.LobbyConfig;
 import io.github.temporalrift.game.session.domain.lobby.LobbyPlayer;
 import io.github.temporalrift.game.session.domain.lobby.LobbyStatus;
+import io.github.temporalrift.game.session.domain.port.out.FactionRevealPort;
 import io.github.temporalrift.game.session.domain.port.out.FinalScoreQueryPort;
 import io.github.temporalrift.game.session.domain.port.out.GameRepository;
 import io.github.temporalrift.game.session.domain.port.out.LobbyRepository;
@@ -62,7 +62,7 @@ class EndGameSagaImplTest {
     SessionEventPublisher eventPublisher;
 
     @Mock
-    ApplicationEventPublisher applicationEventPublisher;
+    FactionRevealPort factionRevealPort;
 
     @Mock
     EndGameSagaStateManager stateManager;
@@ -211,6 +211,29 @@ class EndGameSagaImplTest {
                         tuple(PLAYER_1, Faction.PROPHETS.name()), tuple(PLAYER_2, Faction.ERASERS.name()));
     }
 
+    @Test
+    @DisplayName("FactionRevealed is also applied synchronously in-transaction, not only published to Kafka")
+    void start_appliesFactionRevealSynchronously() {
+        // given
+        var game = Game.reconstitute(GAME_ID, LOBBY_ID, List.of(), 1, 0, GameStatus.ENDED_BY_WIN);
+        given(stateManager.claimIfAbsent(any(), any(), any())).willReturn(true);
+        given(gameRepository.findById(GAME_ID)).willReturn(Optional.of(game));
+        given(lobbyRepository.findById(LOBBY_ID)).willReturn(Optional.of(lobby()));
+        given(finalScoreQueryPort.getScores(GAME_ID)).willReturn(List.of());
+        var captor = ArgumentCaptor.<FactionRevealed>captor();
+
+        // when
+        saga.start(GAME_ID, EndGameTrigger.WIN_CONDITION_MET, PLAYER_1);
+
+        // then: the same payload handed to the Kafka outbox is also applied synchronously, so
+        // the bonus award and visibility flip never depend on Modulith's async event dispatch
+        then(factionRevealPort).should().reveal(captor.capture());
+        assertThat(captor.getValue().reveals())
+                .extracting(FactionRevealed.PlayerFactionResult::playerId, FactionRevealed.PlayerFactionResult::faction)
+                .containsExactlyInAnyOrder(
+                        tuple(PLAYER_1, Faction.PROPHETS.name()), tuple(PLAYER_2, Faction.ERASERS.name()));
+    }
+
     // ─── idempotency ─────────────────────────────────────────────────────────
 
     @ParameterizedTest
@@ -226,6 +249,7 @@ class EndGameSagaImplTest {
         // then
         then(gameRepository).should(never()).findById(any());
         then(eventPublisher).should(never()).publish(any());
+        then(factionRevealPort).should(never()).reveal(any());
         then(stateManager).should(never()).complete(any());
     }
 
