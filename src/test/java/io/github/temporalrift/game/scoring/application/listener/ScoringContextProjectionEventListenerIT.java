@@ -10,13 +10,10 @@ import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.context.annotation.Import;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.support.TransactionTemplate;
 
-import io.github.temporalrift.game.TestcontainersConfiguration;
+import io.github.temporalrift.game.GameServiceIntegrationTest;
 import io.github.temporalrift.game.scoring.application.command.EraScoringCompletionChecker;
 import io.github.temporalrift.game.scoring.domain.context.EraScoringContextNotFoundException;
 import io.github.temporalrift.game.scoring.domain.context.EventOutcomeFact;
@@ -32,9 +29,7 @@ import io.github.temporalrift.game.shared.FactionAssigned;
 import io.github.temporalrift.game.shared.ForesightDeclared;
 import io.github.temporalrift.game.shared.OutcomeAnnihilated;
 
-@SpringBootTest
-@ActiveProfiles("test")
-@Import(TestcontainersConfiguration.class)
+@GameServiceIntegrationTest
 class ScoringContextProjectionEventListenerIT {
 
     @Autowired

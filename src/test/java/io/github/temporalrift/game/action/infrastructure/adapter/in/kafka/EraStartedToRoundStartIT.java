@@ -10,13 +10,10 @@ import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.context.annotation.Import;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.support.TransactionTemplate;
 
-import io.github.temporalrift.game.TestcontainersConfiguration;
+import io.github.temporalrift.game.GameServiceIntegrationTest;
 import io.github.temporalrift.game.action.domain.actionround.ActionRound;
 import io.github.temporalrift.game.action.domain.actionround.RoundStatus;
 import io.github.temporalrift.game.action.domain.handselection.HandSelection;
@@ -38,9 +35,7 @@ import io.github.temporalrift.game.session.domain.saga.EraSagaStatus;
 import io.github.temporalrift.game.shared.GameRulesPort;
 import io.github.temporalrift.game.shared.HandSelected;
 
-@SpringBootTest
-@ActiveProfiles("test")
-@Import(TestcontainersConfiguration.class)
+@GameServiceIntegrationTest
 class EraStartedToRoundStartIT {
 
     @Autowired

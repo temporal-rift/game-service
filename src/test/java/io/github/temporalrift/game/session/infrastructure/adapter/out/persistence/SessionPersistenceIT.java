@@ -12,14 +12,8 @@ import java.util.stream.IntStream;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
-import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
-import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Import;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
-import io.github.temporalrift.game.PostgresTestcontainersConfiguration;
+import io.github.temporalrift.game.PersistenceIntegrationTest;
 import io.github.temporalrift.game.session.domain.game.Game;
 import io.github.temporalrift.game.session.domain.game.GameStatus;
 import io.github.temporalrift.game.session.domain.lobby.Lobby;
@@ -28,17 +22,9 @@ import io.github.temporalrift.game.session.domain.lobby.LobbyPlayer;
 import io.github.temporalrift.game.session.domain.lobby.LobbyStatus;
 import io.github.temporalrift.game.session.domain.port.out.GameRepository;
 import io.github.temporalrift.game.session.domain.port.out.LobbyRepository;
-import io.github.temporalrift.game.session.domain.port.out.SessionEventPublisher;
 import io.github.temporalrift.game.shared.Faction;
 
-@DataJpaTest
-@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
-@Import({
-    PostgresTestcontainersConfiguration.class,
-    SessionPersistenceIT.TestClockConfiguration.class,
-    GameRepositoryAdapter.class,
-    LobbyRepositoryAdapter.class
-})
+@PersistenceIntegrationTest
 class SessionPersistenceIT {
 
     static final int MAX_ERAS = 5;
@@ -54,9 +40,6 @@ class SessionPersistenceIT {
 
     @Autowired
     Clock clock;
-
-    @MockitoBean
-    SessionEventPublisher sessionEventPublisher;
 
     @Test
     void lobby_save_and_findById_roundTripsAllFields() {
@@ -176,14 +159,5 @@ class SessionPersistenceIT {
                                 firstCarryOverEvent, io.github.temporalrift.game.shared.CarryOverState.STALLED),
                         new io.github.temporalrift.game.session.domain.game.PendingCarryOverEvent(
                                 secondCarryOverEvent, io.github.temporalrift.game.shared.CarryOverState.CASCADED));
-    }
-
-    @TestConfiguration(proxyBeanMethods = false)
-    static class TestClockConfiguration {
-
-        @Bean
-        Clock clock() {
-            return Clock.systemUTC();
-        }
     }
 }

@@ -11,14 +11,11 @@ import java.util.UUID;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.support.JsonKafkaHeaderMapper;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.support.MessageBuilder;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.EraResolutionCompletedPayload;
@@ -38,9 +35,7 @@ import io.github.temporalrift.game.session.domain.port.out.GameRepository;
  * each listener silently missed the records assigned to the other. Every logical timeline-event consumer now has its
  * own group and receives the same partition.
  */
-@SpringBootTest
-@ActiveProfiles("test")
-@Import(TestcontainersConfiguration.class)
+@GameServiceIntegrationTest
 class TimelineEventsConsumerGroupsIT {
 
     private static final String TOPIC = "timeline.events";

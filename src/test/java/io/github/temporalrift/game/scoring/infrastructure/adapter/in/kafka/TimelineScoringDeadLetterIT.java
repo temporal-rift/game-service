@@ -14,13 +14,10 @@ import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.annotation.Import;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.listener.DeadLetterPublishingRecoverer;
-import org.springframework.test.context.ActiveProfiles;
 
-import io.github.temporalrift.game.TestcontainersConfiguration;
+import io.github.temporalrift.game.GameServiceIntegrationTest;
 
 /**
  * Verifies that the configured dead-letter recoverer parks an unprocessable record on {@code game.dlq}
@@ -28,9 +25,7 @@ import io.github.temporalrift.game.TestcontainersConfiguration;
  * invokes it once retries are exhausted; the end-to-end listener path is covered by
  * {@code TimelineEventsConsumerGroupsIT}.
  */
-@SpringBootTest
-@ActiveProfiles("test")
-@Import(TestcontainersConfiguration.class)
+@GameServiceIntegrationTest
 class TimelineScoringDeadLetterIT {
 
     private static final String TIMELINE_TOPIC = "timeline.events";

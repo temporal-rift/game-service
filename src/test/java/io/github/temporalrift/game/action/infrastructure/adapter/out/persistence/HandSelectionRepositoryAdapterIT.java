@@ -8,23 +8,16 @@ import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
-import org.springframework.boot.jackson.autoconfigure.JacksonAutoConfiguration;
-import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
-import org.springframework.context.annotation.Import;
 import org.springframework.transaction.support.TransactionTemplate;
 
-import io.github.temporalrift.game.PostgresTestcontainersConfiguration;
+import io.github.temporalrift.game.PersistenceIntegrationTest;
 import io.github.temporalrift.game.action.domain.handselection.HandSelection;
 import io.github.temporalrift.game.action.domain.port.out.HandSelectionRepository;
 import io.github.temporalrift.game.shared.CardGrade;
 import io.github.temporalrift.game.shared.CardType;
 import io.github.temporalrift.game.shared.HandDealt;
 
-@DataJpaTest
-@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
-@Import({PostgresTestcontainersConfiguration.class, JacksonAutoConfiguration.class, HandSelectionRepositoryAdapter.class
-})
+@PersistenceIntegrationTest
 class HandSelectionRepositoryAdapterIT {
 
     @Autowired

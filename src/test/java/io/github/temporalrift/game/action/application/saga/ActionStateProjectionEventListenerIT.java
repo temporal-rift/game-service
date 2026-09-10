@@ -10,13 +10,10 @@ import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.context.annotation.Import;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.support.TransactionTemplate;
 
-import io.github.temporalrift.game.TestcontainersConfiguration;
+import io.github.temporalrift.game.GameServiceIntegrationTest;
 import io.github.temporalrift.game.action.domain.playerstate.PlayerState;
 import io.github.temporalrift.game.action.domain.port.out.FutureEventDefinitionPort;
 import io.github.temporalrift.game.action.domain.port.out.PlayerStateRepository;
@@ -31,9 +28,7 @@ import io.github.temporalrift.game.shared.FactionAssigned;
  * (issue #56), where these handlers existed but were never triggered because the session module only
  * published Kafka envelopes, never the typed Spring events {@code @ApplicationModuleListener} needs.
  */
-@SpringBootTest
-@ActiveProfiles("test")
-@Import(TestcontainersConfiguration.class)
+@GameServiceIntegrationTest
 class ActionStateProjectionEventListenerIT {
 
     @Autowired

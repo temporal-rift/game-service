@@ -6,16 +6,11 @@ import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
-import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
-import org.springframework.context.annotation.Import;
 
-import io.github.temporalrift.game.PostgresTestcontainersConfiguration;
+import io.github.temporalrift.game.PersistenceIntegrationTest;
 import io.github.temporalrift.game.scoring.domain.port.out.ScoringEraCompletionRepository;
 
-@DataJpaTest
-@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
-@Import({PostgresTestcontainersConfiguration.class, ScoringEraCompletionRepositoryAdapter.class})
+@PersistenceIntegrationTest
 class ScoringEraCompletionPersistenceIT {
 
     @Autowired
