@@ -8,7 +8,6 @@ import java.util.UUID;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataAccessException;
 import org.springframework.retry.annotation.Backoff;
 import org.springframework.retry.annotation.Recover;
@@ -19,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 import io.github.temporalrift.game.session.domain.game.Game;
 import io.github.temporalrift.game.session.domain.game.GameNotFoundException;
 import io.github.temporalrift.game.session.domain.lobby.LobbyNotFoundException;
+import io.github.temporalrift.game.session.domain.port.out.FactionRevealPort;
 import io.github.temporalrift.game.session.domain.port.out.FinalScoreQueryPort;
 import io.github.temporalrift.game.session.domain.port.out.GameRepository;
 import io.github.temporalrift.game.session.domain.port.out.LobbyRepository;
@@ -36,7 +36,7 @@ class EndGameSagaImpl implements EndGameSaga {
     private final GameRepository gameRepository;
     private final LobbyRepository lobbyRepository;
     private final SessionEventPublisher eventPublisher;
-    private final ApplicationEventPublisher applicationEventPublisher;
+    private final FactionRevealPort factionRevealPort;
     private final EndGameSagaStateManager stateManager;
     private final FinalScoreQueryPort finalScoreQueryPort;
     private final Clock clock;
@@ -45,14 +45,14 @@ class EndGameSagaImpl implements EndGameSaga {
             GameRepository gameRepository,
             LobbyRepository lobbyRepository,
             SessionEventPublisher eventPublisher,
-            ApplicationEventPublisher applicationEventPublisher,
+            FactionRevealPort factionRevealPort,
             EndGameSagaStateManager stateManager,
             FinalScoreQueryPort finalScoreQueryPort,
             Clock clock) {
         this.gameRepository = gameRepository;
         this.lobbyRepository = lobbyRepository;
         this.eventPublisher = eventPublisher;
-        this.applicationEventPublisher = applicationEventPublisher;
+        this.factionRevealPort = factionRevealPort;
         this.stateManager = stateManager;
         this.finalScoreQueryPort = finalScoreQueryPort;
         this.clock = clock;
@@ -88,10 +88,12 @@ class EndGameSagaImpl implements EndGameSaga {
                         .map(player -> new FactionRevealed.PlayerFactionResult(
                                 player.playerId(), player.faction().name()))
                         .toList());
-        // Kafka path for external services, plus the in-process path the scoring module's
-        // faction-visibility projection listens to (dual-publish pattern).
+        // Kafka path for external services (timeline-service, read-service), plus a synchronous
+        // in-transaction call into scoring's own bonus-award/visibility-flip logic -- both are
+        // computable immediately from data already on hand, so there is no reason to route them
+        // through Modulith's eventually-consistent async event dispatch.
         publishEvent(gameId, factionRevealed);
-        applicationEventPublisher.publishEvent(factionRevealed);
+        factionRevealPort.reveal(factionRevealed);
 
         stateManager.complete(gameId);
     }
