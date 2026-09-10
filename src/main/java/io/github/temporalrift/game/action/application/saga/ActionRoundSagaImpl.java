@@ -29,6 +29,7 @@ import io.github.temporalrift.game.action.domain.event.ExposeSignatureRevealed;
 import io.github.temporalrift.game.action.domain.event.PlayerJammed;
 import io.github.temporalrift.game.action.domain.event.RoundSummaryPublished;
 import io.github.temporalrift.game.action.domain.event.RoundSummaryPublished.ActionSummary;
+import io.github.temporalrift.game.action.domain.playerstate.PlayerState;
 import io.github.temporalrift.game.action.domain.port.out.ActionEventPublisher;
 import io.github.temporalrift.game.action.domain.port.out.ActionRoundRepository;
 import io.github.temporalrift.game.action.domain.port.out.ActivistEraStateRepository;
@@ -266,7 +267,7 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
             if (jammedForNextRound) {
                 actionEventPublisher.publish(DomainEventEnvelope.create(
                         playerState.id(),
-                        io.github.temporalrift.game.action.domain.playerstate.PlayerState.AGGREGATE_TYPE,
+                        PlayerState.AGGREGATE_TYPE,
                         gameId,
                         DomainEventEnvelope.SCHEMA_VERSION_V1,
                         new PlayerJammed(gameId, eraNumber, playerState.playerId(), roundNumber + 1),
