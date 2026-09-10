@@ -75,9 +75,7 @@ class SessionEventPublisherAdapterIT {
             sessionEventPublisher.publish(envelope);
         });
 
-        final var count = jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM event_publication WHERE event_type LIKE '%OutboundIntegrationEvent%'",
-                Integer.class);
+        final var count = outboxRowsFor(envelope);
         assertThat(count).isEqualTo(1);
     }
 
@@ -107,9 +105,15 @@ class SessionEventPublisherAdapterIT {
             status.setRollbackOnly();
         });
 
-        final var count = jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM event_publication WHERE event_type LIKE '%OutboundIntegrationEvent%'",
-                Integer.class);
+        final var count = outboxRowsFor(envelope);
         assertThat(count).isZero();
+    }
+
+    private Integer outboxRowsFor(DomainEventEnvelope<?> envelope) {
+        return jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM event_publication "
+                        + "WHERE event_type LIKE '%OutboundIntegrationEvent%' "
+                        + "AND serialized_event LIKE ?",
+                Integer.class, "%\"eventId\":\"" + envelope.eventId() + "\"%");
     }
 }
