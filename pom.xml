@@ -118,7 +118,7 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-zipkin</artifactId>
         </dependency>
-        <!-- Sources game.rules.scoring.* from the shared infrastructure Config Server by default;
+        <!-- Sources game.rules.probability.* from the shared infrastructure Config Server by default;
              see spring.config.import in application.yml. -->
         <dependency>
             <groupId>org.springframework.cloud</groupId>
