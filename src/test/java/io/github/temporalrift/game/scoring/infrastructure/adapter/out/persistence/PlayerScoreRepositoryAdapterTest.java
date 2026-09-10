@@ -9,6 +9,7 @@ import static org.mockito.Mockito.never;
 import java.util.List;
 import java.util.UUID;
 
+import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -29,6 +30,9 @@ class PlayerScoreRepositoryAdapterTest {
 
     @Mock
     PlayerScoreHistoryJpaRepository historyJpaRepository;
+
+    @Mock
+    EntityManager entityManager;
 
     @InjectMocks
     PlayerScoreRepositoryAdapter adapter;
