@@ -11,6 +11,7 @@ import org.mapstruct.factory.Mappers;
 import io.github.temporalrift.game.action.domain.event.CardPlayed;
 import io.github.temporalrift.game.action.domain.event.ExposeBehaviorChanged;
 import io.github.temporalrift.game.action.domain.event.ParadoxResolutionCardPlayed;
+import io.github.temporalrift.game.action.domain.event.PlayerJammed;
 import io.github.temporalrift.game.shared.CardGrade;
 import io.github.temporalrift.game.shared.CardType;
 
@@ -78,5 +79,17 @@ class ActionEventWireMapperTest {
         assertThat(wire.targetEventId()).isNull();
         assertThat(wire.targetEventIds()).containsExactlyElementsOf(targets);
         assertThat(wire.targetPlayerId()).isNull();
+    }
+
+    @Test
+    void playerJammed_mapsOnlySuppressedViewerAndBoundedRound() {
+        var domain = new PlayerJammed(UUID.randomUUID(), 2, UUID.randomUUID(), 3);
+
+        var wire = mapper.toWire(domain);
+
+        assertThat(wire.gameId()).isEqualTo(domain.gameId());
+        assertThat(wire.eraNumber()).isEqualTo(domain.eraNumber());
+        assertThat(wire.playerId()).isEqualTo(domain.playerId());
+        assertThat(wire.jammedUntilRound()).isEqualTo(domain.jammedUntilRound());
     }
 }

@@ -37,8 +37,10 @@ import io.github.temporalrift.game.action.domain.activisterastate.ActivistEraSta
 import io.github.temporalrift.game.action.domain.event.ActionRoundStarted;
 import io.github.temporalrift.game.action.domain.event.ActionRoundTimerExpired;
 import io.github.temporalrift.game.action.domain.event.BandedProbabilityPublished;
+import io.github.temporalrift.game.action.domain.event.PlayerJammed;
 import io.github.temporalrift.game.action.domain.event.RoundSummaryPublished;
 import io.github.temporalrift.game.action.domain.event.RoundSummaryPublished.ActionSummary;
+import io.github.temporalrift.game.action.domain.playerstate.PlayerState;
 import io.github.temporalrift.game.action.domain.port.out.ActionEventPublisher;
 import io.github.temporalrift.game.action.domain.port.out.ActionRoundRepository;
 import io.github.temporalrift.game.action.domain.port.out.ActivistEraStateRepository;
@@ -1183,6 +1185,170 @@ class ActionRoundSagaImplTest {
             assertThat(summary.actionSummaries())
                     .extracting(ActionSummary::playerId)
                     .containsExactlyInAnyOrder(PLAYER_2, PLAYER_3);
+        }
+    }
+
+    @Nested
+    @DisplayName("Jam suppression lifecycle")
+    class JamSuppressionLifecycleTests {
+
+        @Test
+        @DisplayName("applies one Jam per distinct target after the public summary")
+        void appliesOneJamPerDistinctTargetAfterPublicSummary() {
+            var target = new PlayerState(UUID.randomUUID(), GAME_ID, PLAYER_2);
+            var otherPlayer = new PlayerState(UUID.randomUUID(), GAME_ID, PLAYER_3);
+            var round = new ActionRound(
+                    UUID.randomUUID(),
+                    new ActionRoundConfig(GAME_ID, ERA_NUMBER, ROUND_NUMBER, TIMER_SECONDS),
+                    List.of(PLAYER_1, PLAYER_2, PLAYER_3));
+            round.submit(new SubmittedAction.CardAction(
+                    PLAYER_1, UUID.randomUUID(), CardType.JAM, CardGrade.I, null, null, null, PLAYER_2));
+            round.submit(new SubmittedAction.CardAction(
+                    PLAYER_3, UUID.randomUUID(), CardType.JAM, CardGrade.I, null, null, null, PLAYER_2));
+            given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(
+                            GAME_ID, ERA_NUMBER, ROUND_NUMBER))
+                    .willReturn(Optional.of(round));
+            given(playerStateRepository.findAllByGameId(GAME_ID)).willReturn(List.of(target, otherPlayer));
+            given(stateManager.markSubmitted(GAME_ID, ERA_NUMBER, ROUND_NUMBER, PLAYER_1))
+                    .willReturn(Optional.of(new ActionRoundSagaState(
+                            UUID.randomUUID(),
+                            GAME_ID,
+                            ERA_NUMBER,
+                            ROUND_NUMBER,
+                            ActionRoundSagaStatus.WAITING,
+                            List.of(),
+                            TIMER_EXPIRES_AT)));
+
+            saga.handlePlayerSubmitted(GAME_ID, ERA_NUMBER, ROUND_NUMBER, PLAYER_1);
+
+            assertThat(target.isJammed()).isTrue();
+            assertThat(otherPlayer.isJammed()).isFalse();
+            then(playerStateRepository).should().save(target);
+            var published = ArgumentCaptor.<DomainEventEnvelope>captor();
+            then(actionEventPublisher).should(atLeastOnce()).publish(published.capture());
+            var jammedEvents = published.getAllValues().stream()
+                    .map(DomainEventEnvelope::payload)
+                    .filter(PlayerJammed.class::isInstance)
+                    .map(PlayerJammed.class::cast)
+                    .toList();
+            assertThat(jammedEvents).containsExactly(new PlayerJammed(GAME_ID, ERA_NUMBER, PLAYER_2, ROUND_NUMBER + 1));
+            var roundSummaries = published.getAllValues().stream()
+                    .map(DomainEventEnvelope::payload)
+                    .filter(RoundSummaryPublished.class::isInstance)
+                    .map(RoundSummaryPublished.class::cast)
+                    .toList();
+            assertThat(roundSummaries).singleElement();
+            var roundSummary = roundSummaries.getFirst();
+            assertThat(java.util.Arrays.stream(ActionSummary.class.getRecordComponents())
+                            .map(component -> component.getName())
+                            .toList())
+                    .containsExactly("playerId", "actionCategory", "actionFamily", "skipped");
+            var ordered = inOrder(actionEventPublisher);
+            then(actionEventPublisher).should(ordered).publish(envelopeWithPayload(RoundSummaryPublished.class));
+            then(actionEventPublisher).should(ordered).publish(envelopeWithPayload(PlayerJammed.class));
+        }
+
+        @Test
+        @DisplayName("clears Jam when the suppressed round closes without a replacement")
+        void clearsJamWhenSuppressedRoundClosesWithoutReplacement() {
+            var target =
+                    PlayerState.reconstitute(UUID.randomUUID(), GAME_ID, PLAYER_2, Faction.ERASERS, List.of(), true);
+            var round = new ActionRound(
+                    UUID.randomUUID(), new ActionRoundConfig(GAME_ID, ERA_NUMBER, 2, TIMER_SECONDS), List.of(PLAYER_2));
+            given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA_NUMBER, 2))
+                    .willReturn(Optional.of(round));
+            given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumber(GAME_ID, ERA_NUMBER, 1))
+                    .willReturn(Optional.of(new ActionRound(
+                            UUID.randomUUID(),
+                            new ActionRoundConfig(GAME_ID, ERA_NUMBER, 1, TIMER_SECONDS),
+                            List.of(PLAYER_2))));
+            given(futureEventDefinitionPort.findByGameIdAndEraNumber(GAME_ID, ERA_NUMBER))
+                    .willReturn(List.of());
+            given(bandCalculator.computeBands(any(), any(), any())).willReturn(List.of());
+            given(playerStateRepository.findAllByGameId(GAME_ID)).willReturn(List.of(target));
+            given(stateManager.markSubmitted(GAME_ID, ERA_NUMBER, 2, PLAYER_2))
+                    .willReturn(Optional.of(new ActionRoundSagaState(
+                            UUID.randomUUID(),
+                            GAME_ID,
+                            ERA_NUMBER,
+                            2,
+                            ActionRoundSagaStatus.WAITING,
+                            List.of(),
+                            TIMER_EXPIRES_AT)));
+
+            saga.handlePlayerSubmitted(GAME_ID, ERA_NUMBER, 2, PLAYER_2);
+
+            assertThat(target.isJammed()).isFalse();
+            then(playerStateRepository).should().save(target);
+            then(actionEventPublisher).should(never()).publish(envelopeWithPayload(PlayerJammed.class));
+        }
+
+        @Test
+        @DisplayName("replaces a consecutive Jam without stacking its duration")
+        void replacesConsecutiveJamWithoutStackingItsDuration() {
+            var target =
+                    PlayerState.reconstitute(UUID.randomUUID(), GAME_ID, PLAYER_2, Faction.ERASERS, List.of(), true);
+            var round = new ActionRound(
+                    UUID.randomUUID(),
+                    new ActionRoundConfig(GAME_ID, ERA_NUMBER, 2, TIMER_SECONDS),
+                    List.of(PLAYER_1, PLAYER_2));
+            round.submit(new SubmittedAction.CardAction(
+                    PLAYER_1, UUID.randomUUID(), CardType.JAM, CardGrade.I, null, null, null, PLAYER_2));
+            given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA_NUMBER, 2))
+                    .willReturn(Optional.of(round));
+            given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumber(GAME_ID, ERA_NUMBER, 1))
+                    .willReturn(Optional.of(new ActionRound(
+                            UUID.randomUUID(),
+                            new ActionRoundConfig(GAME_ID, ERA_NUMBER, 1, TIMER_SECONDS),
+                            List.of(PLAYER_1, PLAYER_2))));
+            given(futureEventDefinitionPort.findByGameIdAndEraNumber(GAME_ID, ERA_NUMBER))
+                    .willReturn(List.of());
+            given(bandCalculator.computeBands(any(), any(), any())).willReturn(List.of());
+            given(playerStateRepository.findAllByGameId(GAME_ID)).willReturn(List.of(target));
+            given(stateManager.markSubmitted(GAME_ID, ERA_NUMBER, 2, PLAYER_1))
+                    .willReturn(Optional.of(new ActionRoundSagaState(
+                            UUID.randomUUID(),
+                            GAME_ID,
+                            ERA_NUMBER,
+                            2,
+                            ActionRoundSagaStatus.WAITING,
+                            List.of(),
+                            TIMER_EXPIRES_AT)));
+
+            saga.handlePlayerSubmitted(GAME_ID, ERA_NUMBER, 2, PLAYER_1);
+
+            assertThat(target.isJammed()).isTrue();
+            var published = ArgumentCaptor.<DomainEventEnvelope>captor();
+            then(actionEventPublisher).should(atLeastOnce()).publish(published.capture());
+            assertThat(published.getAllValues().stream().map(DomainEventEnvelope::payload))
+                    .contains(new PlayerJammed(GAME_ID, ERA_NUMBER, PLAYER_2, 3));
+        }
+
+        @Test
+        @DisplayName("clears every Jam at the final round boundary")
+        void clearsEveryJamAtFinalRoundBoundary() {
+            var target =
+                    PlayerState.reconstitute(UUID.randomUUID(), GAME_ID, PLAYER_2, Faction.ERASERS, List.of(), true);
+            var round = new ActionRound(
+                    UUID.randomUUID(), new ActionRoundConfig(GAME_ID, ERA_NUMBER, 3, TIMER_SECONDS), List.of(PLAYER_2));
+            given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA_NUMBER, 3))
+                    .willReturn(Optional.of(round));
+            given(playerStateRepository.findAllByGameId(GAME_ID)).willReturn(List.of(target));
+            given(stateManager.markSubmitted(GAME_ID, ERA_NUMBER, 3, PLAYER_2))
+                    .willReturn(Optional.of(new ActionRoundSagaState(
+                            UUID.randomUUID(),
+                            GAME_ID,
+                            ERA_NUMBER,
+                            3,
+                            ActionRoundSagaStatus.WAITING,
+                            List.of(),
+                            TIMER_EXPIRES_AT)));
+
+            saga.handlePlayerSubmitted(GAME_ID, ERA_NUMBER, 3, PLAYER_2);
+
+            assertThat(target.isJammed()).isFalse();
+            then(playerStateRepository).should().save(target);
+            then(actionEventPublisher).should(never()).publish(envelopeWithPayload(PlayerJammed.class));
         }
     }
 

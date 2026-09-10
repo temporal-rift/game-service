@@ -24,6 +24,7 @@ import io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract.Car
 import io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract.ExposeBehaviorChangedPayload;
 import io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract.ExposeSignatureRevealedPayload;
 import io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract.ParadoxResolutionCardPlayedPayload;
+import io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract.PlayerJammedPayload;
 import io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract.PlayerSkippedPayload;
 import io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract.RoundSummaryPublishedPayload;
 import io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract.SpecialActionPlayedPayload;
@@ -38,6 +39,7 @@ import io.github.temporalrift.game.action.domain.event.CardPlayed;
 import io.github.temporalrift.game.action.domain.event.ExposeBehaviorChanged;
 import io.github.temporalrift.game.action.domain.event.ExposeSignatureRevealed;
 import io.github.temporalrift.game.action.domain.event.ParadoxResolutionCardPlayed;
+import io.github.temporalrift.game.action.domain.event.PlayerJammed;
 import io.github.temporalrift.game.action.domain.event.PlayerSkipped;
 import io.github.temporalrift.game.action.domain.event.RoundSummaryPublished;
 import io.github.temporalrift.game.action.domain.event.SpecialActionPlayed;
@@ -151,6 +153,10 @@ class ActionEventPublisherAdapterTest {
         var paradoxResolutionCardPlayedWire = mock(ParadoxResolutionCardPlayedPayload.class);
         given(mapper.toWire(paradoxResolutionCardPlayed)).willReturn(paradoxResolutionCardPlayedWire);
 
+        var playerJammed = new PlayerJammed(gameId, 1, playerId, 2);
+        var playerJammedWire = mock(PlayerJammedPayload.class);
+        given(mapper.toWire(playerJammed)).willReturn(playerJammedWire);
+
         var activistDeclarationRecordedEnvelope = envelope(gameId, activistDeclarationRecorded);
         var actionRoundStartedEnvelope = envelope(gameId, actionRoundStarted);
         var cardPlayedEnvelope = envelope(gameId, cardPlayed);
@@ -162,6 +168,7 @@ class ActionEventPublisherAdapterTest {
         var roundSummaryPublishedEnvelope = envelope(gameId, roundSummaryPublished);
         var bandedProbabilityPublishedEnvelope = envelope(gameId, bandedProbabilityPublished);
         var paradoxResolutionCardPlayedEnvelope = envelope(gameId, paradoxResolutionCardPlayed);
+        var playerJammedEnvelope = envelope(gameId, playerJammed);
 
         adapter.publish(activistDeclarationRecordedEnvelope);
         adapter.publish(actionRoundStartedEnvelope);
@@ -174,6 +181,7 @@ class ActionEventPublisherAdapterTest {
         adapter.publish(roundSummaryPublishedEnvelope);
         adapter.publish(bandedProbabilityPublishedEnvelope);
         adapter.publish(paradoxResolutionCardPlayedEnvelope);
+        adapter.publish(playerJammedEnvelope);
 
         then(outboundEvents)
                 .should()
@@ -227,6 +235,7 @@ class ActionEventPublisherAdapterTest {
                         eq("ParadoxResolutionCardPlayed"),
                         same(paradoxResolutionCardPlayedWire),
                         same(paradoxResolutionCardPlayedEnvelope));
+        then(outboundEvents).should().publish(eq("PlayerJammed"), same(playerJammedWire), same(playerJammedEnvelope));
     }
 
     @Test

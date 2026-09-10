@@ -5,6 +5,7 @@ import static org.springframework.transaction.annotation.Propagation.REQUIRES_NE
 import java.time.Clock;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.UUID;
 
@@ -25,6 +26,7 @@ import io.github.temporalrift.game.action.domain.event.ActionRoundTimerExpired;
 import io.github.temporalrift.game.action.domain.event.BandedProbabilityPublished;
 import io.github.temporalrift.game.action.domain.event.ExposeBehaviorChanged;
 import io.github.temporalrift.game.action.domain.event.ExposeSignatureRevealed;
+import io.github.temporalrift.game.action.domain.event.PlayerJammed;
 import io.github.temporalrift.game.action.domain.event.RoundSummaryPublished;
 import io.github.temporalrift.game.action.domain.event.RoundSummaryPublished.ActionSummary;
 import io.github.temporalrift.game.action.domain.port.out.ActionEventPublisher;
@@ -191,6 +193,7 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
                 ActionRoundEventPublication.publish(round, actionEventPublisher, clock);
 
                 publishRoundSummary(round, gameId, eraNumber, roundNumber, skippedPlayerIds);
+                reconcileJamState(round, gameId, eraNumber, roundNumber);
 
                 if (roundNumber == SIGNATURE_REVEAL_ROUND_NUMBER) {
                     publishBandedProbabilities(gameId, eraNumber, round);
@@ -234,6 +237,41 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
                 DomainEventEnvelope.SCHEMA_VERSION_V1,
                 new RoundSummaryPublished(gameId, eraNumber, roundNumber, summaries),
                 clock));
+    }
+
+    private void reconcileJamState(ActionRound round, UUID gameId, int eraNumber, int roundNumber) {
+        var jammedPlayerIds = new LinkedHashSet<UUID>();
+        if (roundNumber < FINAL_ROUND_NUMBER) {
+            round.submittedActions().stream()
+                    .filter(SubmittedAction.CardAction.class::isInstance)
+                    .map(SubmittedAction.CardAction.class::cast)
+                    .filter(card -> card.cardType() == CardType.JAM)
+                    .map(SubmittedAction.CardAction::targetPlayerId)
+                    .forEach(jammedPlayerIds::add);
+        }
+
+        for (var playerState : playerStateRepository.findAllByGameId(gameId)) {
+            var previouslyJammed = playerState.isJammed();
+            var jammedForNextRound = jammedPlayerIds.contains(playerState.playerId());
+            if (previouslyJammed) {
+                playerState.clearJam();
+            }
+            if (jammedForNextRound) {
+                playerState.applyJam();
+            }
+            if (previouslyJammed || jammedForNextRound) {
+                playerStateRepository.save(playerState);
+            }
+            if (jammedForNextRound) {
+                actionEventPublisher.publish(DomainEventEnvelope.create(
+                        playerState.id(),
+                        io.github.temporalrift.game.action.domain.playerstate.PlayerState.AGGREGATE_TYPE,
+                        gameId,
+                        DomainEventEnvelope.SCHEMA_VERSION_V1,
+                        new PlayerJammed(gameId, eraNumber, playerState.playerId(), roundNumber + 1),
+                        clock));
+            }
+        }
     }
 
     // Corrupt blind-targets a player, not a card (submissions within a round are simultaneous), so the
