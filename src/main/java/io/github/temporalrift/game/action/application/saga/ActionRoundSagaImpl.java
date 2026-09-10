@@ -26,6 +26,7 @@ import io.github.temporalrift.game.action.domain.event.ActionRoundTimerExpired;
 import io.github.temporalrift.game.action.domain.event.BandedProbabilityPublished;
 import io.github.temporalrift.game.action.domain.event.ExposeBehaviorChanged;
 import io.github.temporalrift.game.action.domain.event.ExposeSignatureRevealed;
+import io.github.temporalrift.game.action.domain.event.InfluenceTraced;
 import io.github.temporalrift.game.action.domain.event.PlayerJammed;
 import io.github.temporalrift.game.action.domain.event.RoundSummaryPublished;
 import io.github.temporalrift.game.action.domain.event.RoundSummaryPublished.ActionSummary;
@@ -194,6 +195,7 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
                 ActionRoundEventPublication.publish(round, actionEventPublisher, clock);
 
                 publishRoundSummary(round, gameId, eraNumber, roundNumber, skippedPlayerIds);
+                publishTracedInfluence(round, gameId, eraNumber, roundNumber);
                 reconcileJamState(round, gameId, eraNumber, roundNumber);
 
                 if (roundNumber == SIGNATURE_REVEAL_ROUND_NUMBER) {
@@ -274,6 +276,66 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
                         clock));
             }
         }
+    }
+
+    private void publishTracedInfluence(ActionRound round, UUID gameId, int eraNumber, int roundNumber) {
+        var traces = round.submittedActions().stream()
+                .filter(SubmittedAction.CardAction.class::isInstance)
+                .map(SubmittedAction.CardAction.class::cast)
+                .filter(card -> card.cardType() == CardType.TRACE)
+                .toList();
+        if (traces.isEmpty()) {
+            return;
+        }
+        var predecessor = previousRound(gameId, eraNumber, roundNumber);
+        for (var trace : traces) {
+            traceTargets(trace, gameId, eraNumber, roundNumber).forEach(targetEventId -> {
+                var influencerPlayerIds = predecessor.map(ActionRound::submittedActions).orElseGet(List::of).stream()
+                        .filter(SubmittedAction.CardAction.class::isInstance)
+                        .map(SubmittedAction.CardAction.class::cast)
+                        .filter(card -> card.isDirectProbabilityInfluenceOn(targetEventId))
+                        .map(SubmittedAction.CardAction::playerId)
+                        .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
+                actionEventPublisher.publish(DomainEventEnvelope.create(
+                        round.id(),
+                        ActionRound.AGGREGATE_TYPE,
+                        gameId,
+                        DomainEventEnvelope.SCHEMA_VERSION_V1,
+                        new InfluenceTraced(
+                                gameId,
+                                eraNumber,
+                                roundNumber,
+                                trace.playerId(),
+                                targetEventId,
+                                List.copyOf(influencerPlayerIds)),
+                        clock));
+            });
+        }
+    }
+
+    private java.util.Optional<ActionRound> previousRound(UUID gameId, int eraNumber, int roundNumber) {
+        if (eraNumber == 1 && roundNumber == 1) {
+            return java.util.Optional.empty();
+        }
+        var predecessorEra = roundNumber == 1 ? eraNumber - 1 : eraNumber;
+        var predecessorRound = roundNumber == 1 ? FINAL_ROUND_NUMBER : roundNumber - 1;
+        return actionRoundRepository.findByGameIdAndEraNumberAndRoundNumber(gameId, predecessorEra, predecessorRound);
+    }
+
+    private List<UUID> traceTargets(SubmittedAction.CardAction trace, UUID gameId, int eraNumber, int roundNumber) {
+        return switch (trace.grade()) {
+            case I -> List.of(trace.targetEventId());
+            case II ->
+                previousRound(gameId, eraNumber, roundNumber)
+                        .map(ignored ->
+                                futureEventDefinitionPort
+                                        .findByGameIdAndEraNumber(gameId, roundNumber == 1 ? eraNumber - 1 : eraNumber)
+                                        .stream()
+                                        .map(FutureEventDefinitionPort.EventDefinition::eventId)
+                                        .toList())
+                        .orElseGet(List::of);
+            case III -> throw new IllegalStateException("TRACE does not support Grade III");
+        };
     }
 
     // Corrupt blind-targets a player, not a card (submissions within a round are simultaneous), so the

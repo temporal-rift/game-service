@@ -209,6 +209,11 @@ public sealed interface SubmittedAction permits SubmittedAction.CardAction, Subm
             }
         }
 
+        public boolean isDirectProbabilityInfluenceOn(UUID eventId) {
+            return eventId.equals(targetEventId)
+                    && (cardType == CardType.PUSH || cardType == CardType.SUPPRESS || cardType == CardType.SWING);
+        }
+
         @Override
         public Object toPlayedEvent(UUID gameId, int eraNumber, int roundNumber) {
             return new CardPlayed(

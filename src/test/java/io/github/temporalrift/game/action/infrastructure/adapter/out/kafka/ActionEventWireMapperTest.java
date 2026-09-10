@@ -10,6 +10,7 @@ import org.mapstruct.factory.Mappers;
 
 import io.github.temporalrift.game.action.domain.event.CardPlayed;
 import io.github.temporalrift.game.action.domain.event.ExposeBehaviorChanged;
+import io.github.temporalrift.game.action.domain.event.InfluenceTraced;
 import io.github.temporalrift.game.action.domain.event.ParadoxResolutionCardPlayed;
 import io.github.temporalrift.game.action.domain.event.PlayerJammed;
 import io.github.temporalrift.game.shared.CardGrade;
@@ -91,5 +92,20 @@ class ActionEventWireMapperTest {
         assertThat(wire.eraNumber()).isEqualTo(domain.eraNumber());
         assertThat(wire.playerId()).isEqualTo(domain.playerId());
         assertThat(wire.jammedUntilRound()).isEqualTo(domain.jammedUntilRound());
+    }
+
+    @Test
+    void influenceTraced_mapsOnlyTheViewerTargetAndInfluencers() {
+        var domain = new InfluenceTraced(
+                UUID.randomUUID(), 2, 1, UUID.randomUUID(), UUID.randomUUID(), List.of(UUID.randomUUID()));
+
+        var wire = mapper.toWire(domain);
+
+        assertThat(wire.gameId()).isEqualTo(domain.gameId());
+        assertThat(wire.eraNumber()).isEqualTo(domain.eraNumber());
+        assertThat(wire.roundNumber()).isEqualTo(domain.roundNumber());
+        assertThat(wire.playerId()).isEqualTo(domain.playerId());
+        assertThat(wire.targetEventId()).isEqualTo(domain.targetEventId());
+        assertThat(wire.influencerPlayerIds()).containsExactlyElementsOf(domain.influencerPlayerIds());
     }
 }

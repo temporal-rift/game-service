@@ -23,6 +23,7 @@ import io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract.Ban
 import io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract.CardPlayedPayload;
 import io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract.ExposeBehaviorChangedPayload;
 import io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract.ExposeSignatureRevealedPayload;
+import io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract.InfluenceTracedPayload;
 import io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract.ParadoxResolutionCardPlayedPayload;
 import io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract.PlayerJammedPayload;
 import io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract.PlayerSkippedPayload;
@@ -38,6 +39,7 @@ import io.github.temporalrift.game.action.domain.event.BandedProbabilityPublishe
 import io.github.temporalrift.game.action.domain.event.CardPlayed;
 import io.github.temporalrift.game.action.domain.event.ExposeBehaviorChanged;
 import io.github.temporalrift.game.action.domain.event.ExposeSignatureRevealed;
+import io.github.temporalrift.game.action.domain.event.InfluenceTraced;
 import io.github.temporalrift.game.action.domain.event.ParadoxResolutionCardPlayed;
 import io.github.temporalrift.game.action.domain.event.PlayerJammed;
 import io.github.temporalrift.game.action.domain.event.PlayerSkipped;
@@ -73,6 +75,21 @@ class ActionEventPublisherAdapterTest {
         adapter.publishRoundClosed(event);
 
         then(outboundEvents).should().publish(eq("ActionRoundClosed"), any(), eq(event));
+    }
+
+    @Test
+    void publishInfluenceTraced_usesStableMessageType() {
+        var adapter = new ActionEventPublisherAdapter(applicationEventPublisher, mapper, outboundEvents);
+        var gameId = UUID.randomUUID();
+        var traced =
+                new InfluenceTraced(gameId, 2, 1, UUID.randomUUID(), UUID.randomUUID(), List.of(UUID.randomUUID()));
+        var wire = mock(InfluenceTracedPayload.class);
+        var event = envelope(gameId, traced);
+        given(mapper.toWire(traced)).willReturn(wire);
+
+        adapter.publish(event);
+
+        then(outboundEvents).should().publish(eq("InfluenceTraced"), same(wire), same(event));
     }
 
     @Test
