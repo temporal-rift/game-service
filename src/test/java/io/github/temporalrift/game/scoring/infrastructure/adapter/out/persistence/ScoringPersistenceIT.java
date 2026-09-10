@@ -8,16 +8,8 @@ import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
-import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
-import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Import;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.TestPropertySource;
-import tools.jackson.databind.ObjectMapper;
 
-import io.github.temporalrift.game.PostgresTestcontainersConfiguration;
+import io.github.temporalrift.game.PersistenceIntegrationTest;
 import io.github.temporalrift.game.scoring.domain.context.ChainScoringFact;
 import io.github.temporalrift.game.scoring.domain.context.EraScoringContextNotFoundException;
 import io.github.temporalrift.game.scoring.domain.context.ParadoxCascadeScoringFact;
@@ -29,16 +21,7 @@ import io.github.temporalrift.game.scoring.domain.port.out.EraScoringContextRepo
 import io.github.temporalrift.game.scoring.domain.port.out.ScoringEraCompletionRepository;
 import io.github.temporalrift.game.shared.Faction;
 
-@DataJpaTest
-@ActiveProfiles("test")
-@TestPropertySource(properties = "spring.kafka.bootstrap-servers=localhost:9092")
-@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
-@Import({
-    PostgresTestcontainersConfiguration.class,
-    EraScoringContextRepositoryAdapter.class,
-    ScoringEraCompletionRepositoryAdapter.class,
-    ScoringPersistenceIT.JacksonTestConfiguration.class
-})
+@PersistenceIntegrationTest
 class ScoringPersistenceIT {
 
     @Autowired
@@ -168,14 +151,5 @@ class ScoringPersistenceIT {
                 .contains(new PendingEraScoringCompletion(stuckGame, 1))
                 .noneMatch(entry -> entry.gameId().equals(scoredGame))
                 .noneMatch(entry -> entry.gameId().equals(unresolvedGame));
-    }
-
-    @TestConfiguration(proxyBeanMethods = false)
-    static class JacksonTestConfiguration {
-
-        @Bean
-        ObjectMapper objectMapper() {
-            return new ObjectMapper();
-        }
     }
 }

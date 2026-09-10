@@ -7,16 +7,8 @@ import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
-import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
-import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Import;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.TestPropertySource;
-import tools.jackson.databind.ObjectMapper;
 
-import io.github.temporalrift.game.PostgresTestcontainersConfiguration;
+import io.github.temporalrift.game.PersistenceIntegrationTest;
 import io.github.temporalrift.game.session.domain.port.out.EraSagaRepository;
 import io.github.temporalrift.game.session.domain.port.out.EraSagaScoresUpdatedInboxRepository;
 import io.github.temporalrift.game.session.domain.saga.EraSagaState;
@@ -24,16 +16,7 @@ import io.github.temporalrift.game.session.domain.saga.EraSagaStatus;
 import io.github.temporalrift.game.shared.Faction;
 import io.github.temporalrift.game.shared.ScoresUpdated;
 
-@DataJpaTest
-@ActiveProfiles("test")
-@TestPropertySource(properties = "spring.kafka.bootstrap-servers=localhost:9092")
-@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
-@Import({
-    PostgresTestcontainersConfiguration.class,
-    EraSagaAdapter.class,
-    EraSagaScoresUpdatedInboxRepositoryAdapter.class,
-    EraSagaScoresUpdatedInboxRepositoryAdapterIT.JacksonTestConfiguration.class
-})
+@PersistenceIntegrationTest
 class EraSagaScoresUpdatedInboxRepositoryAdapterIT {
 
     @Autowired
@@ -98,14 +81,5 @@ class EraSagaScoresUpdatedInboxRepositoryAdapterIT {
                 gameId,
                 eraNumber,
                 List.of(new ScoresUpdated.ScoreUpdate(UUID.randomUUID(), Faction.PROPHETS, 2, "bonus", 10)));
-    }
-
-    @TestConfiguration(proxyBeanMethods = false)
-    static class JacksonTestConfiguration {
-
-        @Bean
-        ObjectMapper objectMapper() {
-            return new ObjectMapper();
-        }
     }
 }
