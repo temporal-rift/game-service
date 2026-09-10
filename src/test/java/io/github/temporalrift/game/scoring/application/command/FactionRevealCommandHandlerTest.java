@@ -1,6 +1,5 @@
 package io.github.temporalrift.game.scoring.application.command;
 
-import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.inOrder;
 
 import java.util.List;
