@@ -4,7 +4,6 @@ import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
-import jakarta.persistence.EntityManager;
 import org.springframework.stereotype.Component;
 
 import io.github.temporalrift.game.scoring.domain.playerscore.PlayerScore;
@@ -16,15 +15,11 @@ class PlayerScoreRepositoryAdapter implements PlayerScoreRepository {
 
     private final PlayerScoreJpaRepository jpaRepository;
     private final PlayerScoreHistoryJpaRepository historyJpaRepository;
-    private final EntityManager entityManager;
 
     PlayerScoreRepositoryAdapter(
-            PlayerScoreJpaRepository jpaRepository,
-            PlayerScoreHistoryJpaRepository historyJpaRepository,
-            EntityManager entityManager) {
+            PlayerScoreJpaRepository jpaRepository, PlayerScoreHistoryJpaRepository historyJpaRepository) {
         this.jpaRepository = jpaRepository;
         this.historyJpaRepository = historyJpaRepository;
-        this.entityManager = entityManager;
     }
 
     @Override
@@ -58,13 +53,19 @@ class PlayerScoreRepositoryAdapter implements PlayerScoreRepository {
     }
 
     private void saveScoreAndNewHistory(PlayerScore score) {
-        var persistedId = jpaRepository.upsert(
+        jpaRepository.upsert(
                 score.id(), score.gameId(), score.playerId(), score.faction().name(), score.totalScore());
-        reloadIfManaged(persistedId);
+        // Read back rather than RETURNING id: the upsert clears the persistence context, so a row
+        // loaded earlier in this transaction would otherwise still read at its pre-write value.
+        var persistedId = jpaRepository
+                .findByGameIdAndPlayerId(score.gameId(), score.playerId())
+                .map(PlayerScoreJpaEntity::getId)
+                .orElseThrow(() -> new IllegalStateException("player_score row missing after upsert for game "
+                        + score.gameId() + " player " + score.playerId()));
 
         var alreadyPersisted = (int) historyJpaRepository.countByPlayerScoreId(persistedId);
         if (alreadyPersisted >= score.history().size()) {
-            // Lost a first-insert race: the row upsert() returned already has at least as
+            // Lost a first-insert race: the persisted row already has at least as
             // much history as this in-memory aggregate knows about — nothing new to add.
             return;
         }
@@ -75,16 +76,6 @@ class PlayerScoreRepositoryAdapter implements PlayerScoreRepository {
                         PlayerScoreHistoryJpaEntity.fromDomain(persistedId, score.gameId(), score.playerId(), entry))
                 .toList();
         historyJpaRepository.saveAll(newHistoryRows);
-    }
-
-    // upsert() is native SQL, so a row already loaded in this transaction stays managed with its
-    // pre-write total and any later read in the same transaction gets that stale instance back
-    // instead of the row just written.
-    private void reloadIfManaged(UUID persistedId) {
-        var managed = entityManager.find(PlayerScoreJpaEntity.class, persistedId);
-        if (managed != null) {
-            entityManager.refresh(managed);
-        }
     }
 
     private PlayerScore toDomain(PlayerScoreJpaEntity entity, List<PlayerScoreHistoryJpaEntity> historyEntities) {

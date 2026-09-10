@@ -7,6 +7,7 @@ import java.util.UUID;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -20,14 +21,14 @@ interface PlayerScoreJpaRepository extends JpaRepository<PlayerScoreJpaEntity, U
     @Query("select p from PlayerScoreJpaEntity p where p.gameId = :gameId")
     List<PlayerScoreJpaEntity> findAllByGameIdWithLock(@Param("gameId") UUID gameId);
 
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query(value = """
                     INSERT INTO player_score (id, game_id, player_id, faction, total_score)
                     VALUES (:id, :gameId, :playerId, :faction, :totalScore)
                     ON CONFLICT (game_id, player_id)
                     DO UPDATE SET faction = EXCLUDED.faction, total_score = EXCLUDED.total_score
-                    RETURNING id
                     """, nativeQuery = true)
-    UUID upsert(
+    void upsert(
             @Param("id") UUID id,
             @Param("gameId") UUID gameId,
             @Param("playerId") UUID playerId,

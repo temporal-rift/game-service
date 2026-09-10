@@ -4,12 +4,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
-import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -30,9 +31,6 @@ class PlayerScoreRepositoryAdapterTest {
 
     @Mock
     PlayerScoreHistoryJpaRepository historyJpaRepository;
-
-    @Mock
-    EntityManager entityManager;
 
     @InjectMocks
     PlayerScoreRepositoryAdapter adapter;
@@ -76,8 +74,9 @@ class PlayerScoreRepositoryAdapterTest {
     void saveAll_upsertsScoreAndPersistsFullHistoryForNewAggregate() {
         var score = new PlayerScore(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), Faction.ACTIVISTS);
         score.apply(1, ScoreReason.DECLARED_OUTCOME_WON);
-        given(jpaRepository.upsert(score.id(), score.gameId(), score.playerId(), Faction.ACTIVISTS.name(), 4))
-                .willReturn(score.id());
+        var persistedRow = rowWithId(score.id());
+        given(jpaRepository.findByGameIdAndPlayerId(score.gameId(), score.playerId()))
+                .willReturn(Optional.of(persistedRow));
         given(historyJpaRepository.countByPlayerScoreId(score.id())).willReturn(0L);
 
         adapter.saveAll(List.of(score));
@@ -102,8 +101,8 @@ class PlayerScoreRepositoryAdapterTest {
                 2,
                 List.of(new ScoreEntry(1, ScoreReason.CHAIN_LINK_ADDED, 2, 2)));
         score.apply(2, ScoreReason.CHAIN_COMPLETED);
-        given(jpaRepository.upsert(scoreId, gameId, playerId, Faction.WEAVERS.name(), 12))
-                .willReturn(scoreId);
+        var persistedRow = rowWithId(scoreId);
+        given(jpaRepository.findByGameIdAndPlayerId(gameId, playerId)).willReturn(Optional.of(persistedRow));
         given(historyJpaRepository.countByPlayerScoreId(scoreId)).willReturn(1L);
 
         adapter.saveAll(List.of(score));
@@ -117,7 +116,7 @@ class PlayerScoreRepositoryAdapterTest {
 
     @Test
     void saveAll_linksHistoryToThePersistedIdEvenWhenItDiffersFromTheInMemoryId() {
-        // simulates losing a first-insert race: upsert returns the id of the row a
+        // simulates losing a first-insert race: the read-back after the upsert finds the row a
         // concurrent transaction already created, not this aggregate's in-memory id
         var inMemoryId = UUID.randomUUID();
         var winningId = UUID.randomUUID();
@@ -125,8 +124,8 @@ class PlayerScoreRepositoryAdapterTest {
         var playerId = UUID.randomUUID();
         var score = PlayerScore.reconstitute(inMemoryId, gameId, playerId, Faction.ERASERS, 0, List.of());
         score.apply(1, ScoreReason.ANNIHILATED_OUTCOME);
-        given(jpaRepository.upsert(inMemoryId, gameId, playerId, Faction.ERASERS.name(), 3))
-                .willReturn(winningId);
+        var persistedRow = rowWithId(winningId);
+        given(jpaRepository.findByGameIdAndPlayerId(gameId, playerId)).willReturn(Optional.of(persistedRow));
         given(historyJpaRepository.countByPlayerScoreId(winningId)).willReturn(0L);
 
         adapter.saveAll(List.of(score));
@@ -148,8 +147,8 @@ class PlayerScoreRepositoryAdapterTest {
         var playerId = UUID.randomUUID();
         var score = PlayerScore.reconstitute(inMemoryId, gameId, playerId, Faction.ERASERS, 0, List.of());
         score.apply(1, ScoreReason.ANNIHILATED_OUTCOME);
-        given(jpaRepository.upsert(inMemoryId, gameId, playerId, Faction.ERASERS.name(), 3))
-                .willReturn(winningId);
+        var persistedRow = rowWithId(winningId);
+        given(jpaRepository.findByGameIdAndPlayerId(gameId, playerId)).willReturn(Optional.of(persistedRow));
         given(historyJpaRepository.countByPlayerScoreId(winningId)).willReturn(5L);
 
         adapter.saveAll(List.of(score));
@@ -166,5 +165,11 @@ class PlayerScoreRepositoryAdapterTest {
 
         then(jpaRepository).should().findAllByGameId(gameId);
         then(jpaRepository).should(never()).findAllByGameIdWithLock(any());
+    }
+
+    private static PlayerScoreJpaEntity rowWithId(UUID id) {
+        var entity = mock(PlayerScoreJpaEntity.class);
+        given(entity.getId()).willReturn(id);
+        return entity;
     }
 }
