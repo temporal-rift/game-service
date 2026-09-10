@@ -1238,11 +1238,11 @@ class ActionRoundSagaImplTest {
                     .map(RoundSummaryPublished.class::cast)
                     .toList();
             assertThat(roundSummaries).singleElement();
-            var roundSummary = roundSummaries.getFirst();
             assertThat(java.util.Arrays.stream(ActionSummary.class.getRecordComponents())
-                            .map(component -> component.getName())
+                            .map(java.lang.reflect.RecordComponent::getName)
                             .toList())
                     .containsExactly("playerId", "actionCategory", "actionFamily", "skipped");
+            then(playerStateRepository).should().lockAllByGameId(GAME_ID);
             var ordered = inOrder(actionEventPublisher);
             then(actionEventPublisher).should(ordered).publish(envelopeWithPayload(RoundSummaryPublished.class));
             then(actionEventPublisher).should(ordered).publish(envelopeWithPayload(PlayerJammed.class));

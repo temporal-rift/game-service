@@ -240,6 +240,7 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
     }
 
     private void reconcileJamState(ActionRound round, UUID gameId, int eraNumber, int roundNumber) {
+        playerStateRepository.lockAllByGameId(gameId);
         var jammedPlayerIds = new LinkedHashSet<UUID>();
         if (roundNumber < FINAL_ROUND_NUMBER) {
             round.submittedActions().stream()
