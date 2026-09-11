@@ -13,6 +13,7 @@ import io.github.temporalrift.game.action.domain.event.BandedProbabilityPublishe
 import io.github.temporalrift.game.action.domain.event.CardPlayed;
 import io.github.temporalrift.game.action.domain.event.ExposeBehaviorChanged;
 import io.github.temporalrift.game.action.domain.event.ExposeSignatureRevealed;
+import io.github.temporalrift.game.action.domain.event.HandCardIntercepted;
 import io.github.temporalrift.game.action.domain.event.InfluenceTraced;
 import io.github.temporalrift.game.action.domain.event.ParadoxResolutionCardPlayed;
 import io.github.temporalrift.game.action.domain.event.PlayerJammed;
@@ -64,6 +65,8 @@ class ActionEventPublisherAdapter implements ActionEventPublisher {
             case ExposeBehaviorChanged payload ->
                 outboundEvents.publish("ExposeBehaviorChanged", mapper.toWire(payload), event);
             case InfluenceTraced payload -> outboundEvents.publish("InfluenceTraced", mapper.toWire(payload), event);
+            case HandCardIntercepted payload ->
+                outboundEvents.publish("HandCardIntercepted", mapper.toWire(payload), event);
             case ParadoxResolutionCardPlayed payload ->
                 outboundEvents.publish("ParadoxResolutionCardPlayed", mapper.toWire(payload), event);
             case PlayerJammed payload -> outboundEvents.publish("PlayerJammed", mapper.toWire(payload), event);

@@ -14,8 +14,10 @@ import io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract.Car
 import io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract.ExposeBehaviorChangedPayload;
 import io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract.ExposeInfluenceSignature;
 import io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract.ExposeSignatureRevealedPayload;
+import io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract.HandCardInterceptedPayload;
 import io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract.InfluenceSignatureType;
 import io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract.InfluenceTracedPayload;
+import io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract.InterceptedHandCard;
 import io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract.ParadoxResolutionCardPlayedPayload;
 import io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract.PlayerJammedPayload;
 import io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract.PlayerSkippedPayload;
@@ -28,6 +30,7 @@ import io.github.temporalrift.game.action.domain.event.BandedProbabilityPublishe
 import io.github.temporalrift.game.action.domain.event.CardPlayed;
 import io.github.temporalrift.game.action.domain.event.ExposeBehaviorChanged;
 import io.github.temporalrift.game.action.domain.event.ExposeSignatureRevealed;
+import io.github.temporalrift.game.action.domain.event.HandCardIntercepted;
 import io.github.temporalrift.game.action.domain.event.InfluenceTraced;
 import io.github.temporalrift.game.action.domain.event.ParadoxResolutionCardPlayed;
 import io.github.temporalrift.game.action.domain.event.PlayerJammed;
@@ -58,6 +61,10 @@ interface ActionEventWireMapper {
     ExposeBehaviorChangedPayload toWire(ExposeBehaviorChanged event);
 
     InfluenceTracedPayload toWire(InfluenceTraced event);
+
+    HandCardInterceptedPayload toWire(HandCardIntercepted event);
+
+    InterceptedHandCard toWire(HandCardIntercepted.RevealedCard card);
 
     ActionRoundStartedPayload toWire(ActionRoundStarted event);
 

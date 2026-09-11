@@ -23,6 +23,7 @@ import io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract.Ban
 import io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract.CardPlayedPayload;
 import io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract.ExposeBehaviorChangedPayload;
 import io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract.ExposeSignatureRevealedPayload;
+import io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract.HandCardInterceptedPayload;
 import io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract.InfluenceTracedPayload;
 import io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract.ParadoxResolutionCardPlayedPayload;
 import io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract.PlayerJammedPayload;
@@ -39,6 +40,7 @@ import io.github.temporalrift.game.action.domain.event.BandedProbabilityPublishe
 import io.github.temporalrift.game.action.domain.event.CardPlayed;
 import io.github.temporalrift.game.action.domain.event.ExposeBehaviorChanged;
 import io.github.temporalrift.game.action.domain.event.ExposeSignatureRevealed;
+import io.github.temporalrift.game.action.domain.event.HandCardIntercepted;
 import io.github.temporalrift.game.action.domain.event.InfluenceTraced;
 import io.github.temporalrift.game.action.domain.event.ParadoxResolutionCardPlayed;
 import io.github.temporalrift.game.action.domain.event.PlayerJammed;
@@ -90,6 +92,20 @@ class ActionEventPublisherAdapterTest {
         adapter.publish(event);
 
         then(outboundEvents).should().publish(eq("InfluenceTraced"), same(wire), same(event));
+    }
+
+    @Test
+    void publishHandCardIntercepted_usesStableMessageType() {
+        var adapter = new ActionEventPublisherAdapter(applicationEventPublisher, mapper, outboundEvents);
+        var gameId = UUID.randomUUID();
+        var intercepted = new HandCardIntercepted(gameId, 2, 1, UUID.randomUUID(), UUID.randomUUID(), List.of());
+        var wire = mock(HandCardInterceptedPayload.class);
+        var event = envelope(gameId, intercepted);
+        given(mapper.toWire(intercepted)).willReturn(wire);
+
+        adapter.publish(event);
+
+        then(outboundEvents).should().publish(eq("HandCardIntercepted"), same(wire), same(event));
     }
 
     @Test
@@ -174,6 +190,10 @@ class ActionEventPublisherAdapterTest {
         var playerJammedWire = mock(PlayerJammedPayload.class);
         given(mapper.toWire(playerJammed)).willReturn(playerJammedWire);
 
+        var handCardIntercepted = new HandCardIntercepted(gameId, 1, 2, playerId, UUID.randomUUID(), List.of());
+        var handCardInterceptedWire = mock(HandCardInterceptedPayload.class);
+        given(mapper.toWire(handCardIntercepted)).willReturn(handCardInterceptedWire);
+
         var activistDeclarationRecordedEnvelope = envelope(gameId, activistDeclarationRecorded);
         var actionRoundStartedEnvelope = envelope(gameId, actionRoundStarted);
         var cardPlayedEnvelope = envelope(gameId, cardPlayed);
@@ -186,6 +206,7 @@ class ActionEventPublisherAdapterTest {
         var bandedProbabilityPublishedEnvelope = envelope(gameId, bandedProbabilityPublished);
         var paradoxResolutionCardPlayedEnvelope = envelope(gameId, paradoxResolutionCardPlayed);
         var playerJammedEnvelope = envelope(gameId, playerJammed);
+        var handCardInterceptedEnvelope = envelope(gameId, handCardIntercepted);
 
         adapter.publish(activistDeclarationRecordedEnvelope);
         adapter.publish(actionRoundStartedEnvelope);
@@ -199,6 +220,7 @@ class ActionEventPublisherAdapterTest {
         adapter.publish(bandedProbabilityPublishedEnvelope);
         adapter.publish(paradoxResolutionCardPlayedEnvelope);
         adapter.publish(playerJammedEnvelope);
+        adapter.publish(handCardInterceptedEnvelope);
 
         then(outboundEvents)
                 .should()
@@ -253,6 +275,9 @@ class ActionEventPublisherAdapterTest {
                         same(paradoxResolutionCardPlayedWire),
                         same(paradoxResolutionCardPlayedEnvelope));
         then(outboundEvents).should().publish(eq("PlayerJammed"), same(playerJammedWire), same(playerJammedEnvelope));
+        then(outboundEvents)
+                .should()
+                .publish(eq("HandCardIntercepted"), same(handCardInterceptedWire), same(handCardInterceptedEnvelope));
     }
 
     @Test
