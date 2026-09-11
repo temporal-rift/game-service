@@ -2,11 +2,14 @@ package io.github.temporalrift.game.action.application.saga;
 
 import static org.springframework.transaction.annotation.Propagation.REQUIRES_NEW;
 
+import java.security.SecureRandom;
 import java.time.Clock;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Random;
 import java.util.UUID;
 
 import org.slf4j.Logger;
@@ -26,6 +29,7 @@ import io.github.temporalrift.game.action.domain.event.ActionRoundTimerExpired;
 import io.github.temporalrift.game.action.domain.event.BandedProbabilityPublished;
 import io.github.temporalrift.game.action.domain.event.ExposeBehaviorChanged;
 import io.github.temporalrift.game.action.domain.event.ExposeSignatureRevealed;
+import io.github.temporalrift.game.action.domain.event.HandCardIntercepted;
 import io.github.temporalrift.game.action.domain.event.InfluenceTraced;
 import io.github.temporalrift.game.action.domain.event.PlayerJammed;
 import io.github.temporalrift.game.action.domain.event.RoundSummaryPublished;
@@ -52,6 +56,8 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
     private static final String CLOSE_REASON_ALL_SUBMITTED = "ALL_SUBMITTED";
     private static final String CLOSE_REASON_TIMER_EXPIRED = "TIMER_EXPIRED";
     private static final int SIGNATURE_REVEAL_ROUND_NUMBER = 2;
+
+    private static final Random INTERCEPT_RANDOMNESS = new SecureRandom();
 
     // Era saga hard-caps rounds at 3 (see EraSagaAdvancer.FINAL_ROUND, session module) — this module
     // needs its own copy because it is the one computing the round boundary; scoring no longer needs
@@ -196,6 +202,7 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
 
                 publishRoundSummary(round, gameId, eraNumber, roundNumber, skippedPlayerIds);
                 publishTracedInfluence(round, gameId, eraNumber, roundNumber);
+                publishInterceptedHands(round, gameId, eraNumber, roundNumber);
                 reconcileJamState(round, gameId, eraNumber, roundNumber);
 
                 if (roundNumber == SIGNATURE_REVEAL_ROUND_NUMBER) {
@@ -310,6 +317,36 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
                                 List.copyOf(influencerPlayerIds)),
                         clock));
             });
+        }
+    }
+
+    private void publishInterceptedHands(ActionRound round, UUID gameId, int eraNumber, int roundNumber) {
+        var intercepts = round.submittedActions().stream()
+                .filter(SubmittedAction.CardAction.class::isInstance)
+                .map(SubmittedAction.CardAction.class::cast)
+                .filter(card -> card.cardType() == CardType.INTERCEPT)
+                .toList();
+        if (intercepts.isEmpty()) {
+            return;
+        }
+        var handsByPlayer = new HashMap<UUID, List<PlayerState.CardInstance>>();
+        for (var playerState : playerStateRepository.findAllByGameId(gameId)) {
+            handsByPlayer.put(playerState.playerId(), playerState.hand());
+        }
+        for (var intercept : intercepts) {
+            var hand = handsByPlayer.getOrDefault(intercept.targetPlayerId(), List.of());
+            var revealed = InterceptHandSampler.select(hand, intercept.grade(), INTERCEPT_RANDOMNESS).stream()
+                    .map(card ->
+                            new HandCardIntercepted.RevealedCard(card.cardInstanceId(), card.cardType(), card.grade()))
+                    .toList();
+            actionEventPublisher.publish(DomainEventEnvelope.create(
+                    round.id(),
+                    ActionRound.AGGREGATE_TYPE,
+                    gameId,
+                    DomainEventEnvelope.SCHEMA_VERSION_V1,
+                    new HandCardIntercepted(
+                            gameId, eraNumber, roundNumber, intercept.playerId(), intercept.targetPlayerId(), revealed),
+                    clock));
         }
     }
 

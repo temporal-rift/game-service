@@ -39,6 +39,7 @@ import io.github.temporalrift.game.action.domain.activisterastate.ActivistEraSta
 import io.github.temporalrift.game.action.domain.event.ActionRoundStarted;
 import io.github.temporalrift.game.action.domain.event.ActionRoundTimerExpired;
 import io.github.temporalrift.game.action.domain.event.BandedProbabilityPublished;
+import io.github.temporalrift.game.action.domain.event.HandCardIntercepted;
 import io.github.temporalrift.game.action.domain.event.InfluenceTraced;
 import io.github.temporalrift.game.action.domain.event.PlayerJammed;
 import io.github.temporalrift.game.action.domain.event.RoundSummaryPublished;
@@ -1510,6 +1511,169 @@ class ActionRoundSagaImplTest {
                     .map(DomainEventEnvelope::payload)
                     .filter(InfluenceTraced.class::isInstance)
                     .map(InfluenceTraced.class::cast)
+                    .toList();
+        }
+    }
+
+    @Nested
+    @DisplayName("Intercept hand resolution")
+    class InterceptHandResolutionTests {
+
+        @Test
+        @DisplayName("grade I publishes one sampled card to the intercepting viewer after the round summary")
+        void gradeOnePublishesSampledCardAfterRoundSummary() {
+            var targetCard = new PlayerState.CardInstance(UUID.randomUUID(), CardType.SWING, CardGrade.III);
+            var currentRound = interceptRound(ERA_NUMBER, 1, PLAYER_1, CardGrade.I, PLAYER_2);
+
+            given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA_NUMBER, 1))
+                    .willReturn(Optional.of(currentRound));
+            given(playerStateRepository.findAllByGameId(GAME_ID))
+                    .willReturn(List.of(playerState(PLAYER_1, List.of()), playerState(PLAYER_2, List.of(targetCard))));
+            given(stateManager.markSubmitted(GAME_ID, ERA_NUMBER, 1, PLAYER_1)).willReturn(waitingState(1));
+
+            saga.handlePlayerSubmitted(GAME_ID, ERA_NUMBER, 1, PLAYER_1);
+
+            assertThat(interceptedEvents())
+                    .containsExactly(new HandCardIntercepted(
+                            GAME_ID,
+                            ERA_NUMBER,
+                            1,
+                            PLAYER_1,
+                            PLAYER_2,
+                            List.of(new HandCardIntercepted.RevealedCard(
+                                    targetCard.cardInstanceId(), targetCard.cardType(), targetCard.grade()))));
+            var ordered = inOrder(actionEventPublisher);
+            then(actionEventPublisher).should(ordered).publish(envelopeWithPayload(RoundSummaryPublished.class));
+            then(actionEventPublisher).should(ordered).publish(envelopeWithPayload(HandCardIntercepted.class));
+        }
+
+        @Test
+        @DisplayName("grade II reveals two distinct cards genuinely in the target hand")
+        void gradeTwoRevealsTwoDistinctCards() {
+            var first = new PlayerState.CardInstance(UUID.randomUUID(), CardType.PUSH, CardGrade.I);
+            var second = new PlayerState.CardInstance(UUID.randomUUID(), CardType.SCAN, CardGrade.II);
+            var third = new PlayerState.CardInstance(UUID.randomUUID(), CardType.JAM, CardGrade.I);
+            var hand = List.of(first, second, third);
+            var currentRound = interceptRound(ERA_NUMBER, 1, PLAYER_1, CardGrade.II, PLAYER_2);
+
+            given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA_NUMBER, 1))
+                    .willReturn(Optional.of(currentRound));
+            given(playerStateRepository.findAllByGameId(GAME_ID))
+                    .willReturn(List.of(playerState(PLAYER_1, List.of()), playerState(PLAYER_2, hand)));
+            given(stateManager.markSubmitted(GAME_ID, ERA_NUMBER, 1, PLAYER_1)).willReturn(waitingState(1));
+
+            saga.handlePlayerSubmitted(GAME_ID, ERA_NUMBER, 1, PLAYER_1);
+
+            var revealed = interceptedEvents();
+            assertThat(revealed).hasSize(1);
+            assertThat(revealed.getFirst().playerId()).isEqualTo(PLAYER_1);
+            assertThat(revealed.getFirst().targetPlayerId()).isEqualTo(PLAYER_2);
+            assertThat(revealed.getFirst().revealedCards()).hasSize(2);
+            assertThat(revealed.getFirst().revealedCards()).doesNotHaveDuplicates();
+            assertThat(hand.stream()
+                            .map(card -> new HandCardIntercepted.RevealedCard(
+                                    card.cardInstanceId(), card.cardType(), card.grade()))
+                            .toList())
+                    .containsAll(revealed.getFirst().revealedCards());
+        }
+
+        @Test
+        @DisplayName("empty target hand yields a reveal with no cards, not a failure")
+        void emptyTargetHandYieldsEmptyReveal() {
+            var currentRound = interceptRound(ERA_NUMBER, 1, PLAYER_1, CardGrade.I, PLAYER_2);
+
+            given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA_NUMBER, 1))
+                    .willReturn(Optional.of(currentRound));
+            given(playerStateRepository.findAllByGameId(GAME_ID))
+                    .willReturn(List.of(playerState(PLAYER_1, List.of()), playerState(PLAYER_2, List.of())));
+            given(stateManager.markSubmitted(GAME_ID, ERA_NUMBER, 1, PLAYER_1)).willReturn(waitingState(1));
+
+            saga.handlePlayerSubmitted(GAME_ID, ERA_NUMBER, 1, PLAYER_1);
+
+            assertThat(interceptedEvents())
+                    .containsExactly(new HandCardIntercepted(GAME_ID, ERA_NUMBER, 1, PLAYER_1, PLAYER_2, List.of()));
+        }
+
+        @Test
+        @DisplayName("missing target state is treated as an empty hand")
+        void missingTargetStateYieldsEmptyReveal() {
+            var currentRound = interceptRound(ERA_NUMBER, 1, PLAYER_1, CardGrade.II, PLAYER_2);
+
+            given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA_NUMBER, 1))
+                    .willReturn(Optional.of(currentRound));
+            given(playerStateRepository.findAllByGameId(GAME_ID)).willReturn(List.of(playerState(PLAYER_1, List.of())));
+            given(stateManager.markSubmitted(GAME_ID, ERA_NUMBER, 1, PLAYER_1)).willReturn(waitingState(1));
+
+            saga.handlePlayerSubmitted(GAME_ID, ERA_NUMBER, 1, PLAYER_1);
+
+            assertThat(interceptedEvents())
+                    .containsExactly(new HandCardIntercepted(GAME_ID, ERA_NUMBER, 1, PLAYER_1, PLAYER_2, List.of()));
+        }
+
+        @Test
+        @DisplayName("the target is never addressed, even when both players intercept each other")
+        void targetReceivesNoInterceptionNotification() {
+            var cardOfOne = new PlayerState.CardInstance(UUID.randomUUID(), CardType.PUSH, CardGrade.I);
+            var cardOfTwo = new PlayerState.CardInstance(UUID.randomUUID(), CardType.SUPPRESS, CardGrade.II);
+            var currentRound = new ActionRound(
+                    UUID.randomUUID(),
+                    new ActionRoundConfig(GAME_ID, ERA_NUMBER, 1, TIMER_SECONDS),
+                    List.of(PLAYER_1, PLAYER_2));
+            currentRound.submit(new SubmittedAction.CardAction(
+                    PLAYER_1, UUID.randomUUID(), CardType.INTERCEPT, CardGrade.I, null, null, null, PLAYER_2));
+            currentRound.submit(new SubmittedAction.CardAction(
+                    PLAYER_2, UUID.randomUUID(), CardType.INTERCEPT, CardGrade.I, null, null, null, PLAYER_1));
+
+            given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA_NUMBER, 1))
+                    .willReturn(Optional.of(currentRound));
+            given(playerStateRepository.findAllByGameId(GAME_ID))
+                    .willReturn(List.of(
+                            playerState(PLAYER_1, List.of(cardOfOne)), playerState(PLAYER_2, List.of(cardOfTwo))));
+            given(stateManager.markSubmitted(GAME_ID, ERA_NUMBER, 1, PLAYER_2)).willReturn(waitingState(1));
+
+            saga.handlePlayerSubmitted(GAME_ID, ERA_NUMBER, 1, PLAYER_2);
+
+            var revealed = interceptedEvents();
+            assertThat(revealed).hasSize(2);
+            assertThat(revealed)
+                    .allSatisfy(event -> assertThat(event.playerId()).isNotEqualTo(event.targetPlayerId()));
+            assertThat(revealed.stream().map(HandCardIntercepted::playerId).toList())
+                    .containsExactlyInAnyOrder(PLAYER_1, PLAYER_2);
+        }
+
+        private ActionRound interceptRound(
+                int eraNumber, int roundNumber, UUID interceptor, CardGrade grade, UUID target) {
+            var round = new ActionRound(
+                    UUID.randomUUID(),
+                    new ActionRoundConfig(GAME_ID, eraNumber, roundNumber, TIMER_SECONDS),
+                    List.of(interceptor));
+            round.submit(new SubmittedAction.CardAction(
+                    interceptor, UUID.randomUUID(), CardType.INTERCEPT, grade, null, null, null, target));
+            return round;
+        }
+
+        private PlayerState playerState(UUID playerId, List<PlayerState.CardInstance> hand) {
+            return PlayerState.reconstitute(UUID.randomUUID(), GAME_ID, playerId, Faction.ERASERS, hand, false);
+        }
+
+        private Optional<ActionRoundSagaState> waitingState(int roundNumber) {
+            return Optional.of(new ActionRoundSagaState(
+                    UUID.randomUUID(),
+                    GAME_ID,
+                    ERA_NUMBER,
+                    roundNumber,
+                    ActionRoundSagaStatus.WAITING,
+                    List.of(),
+                    TIMER_EXPIRES_AT));
+        }
+
+        private List<HandCardIntercepted> interceptedEvents() {
+            var published = ArgumentCaptor.<DomainEventEnvelope>captor();
+            then(actionEventPublisher).should(atLeastOnce()).publish(published.capture());
+            return published.getAllValues().stream()
+                    .map(DomainEventEnvelope::payload)
+                    .filter(HandCardIntercepted.class::isInstance)
+                    .map(HandCardIntercepted.class::cast)
                     .toList();
         }
     }
