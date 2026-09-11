@@ -82,4 +82,8 @@ public class InvalidActionTargetException extends RuntimeException {
     public static InvalidActionTargetException scanRequiresCompleteCurrentEra() {
         return new InvalidActionTargetException("SCAN grade III requires the complete current-era event set");
     }
+
+    public static InvalidActionTargetException traceUnsupportedGrade(CardGrade grade) {
+        return new InvalidActionTargetException("TRACE grade " + grade + " is not supported");
+    }
 }

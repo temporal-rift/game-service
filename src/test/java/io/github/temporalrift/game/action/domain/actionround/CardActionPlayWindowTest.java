@@ -57,6 +57,33 @@ class CardActionPlayWindowTest {
     }
 
     @Test
+    void traceWithUnsupportedGradeIsRejected() {
+        var action = new SubmittedAction.CardAction(
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                CardType.TRACE,
+                CardGrade.III,
+                UUID.randomUUID(),
+                null,
+                null,
+                null);
+
+        assertThatExceptionOfType(InvalidActionTargetException.class)
+                .isThrownBy(() -> action.validate(1, 2))
+                .withMessageContaining("TRACE");
+    }
+
+    @Test
+    void traceWithSupportedGradesIsAccepted() {
+        for (var grade : new CardGrade[] {CardGrade.I, CardGrade.II}) {
+            var action = new SubmittedAction.CardAction(
+                    UUID.randomUUID(), UUID.randomUUID(), CardType.TRACE, grade, UUID.randomUUID(), null, null, null);
+
+            assertThatCode(() -> action.validate(1, 2)).doesNotThrowAnyException();
+        }
+    }
+
+    @Test
     void traceIsAcceptedInEraOneRoundTwoAndThree() {
         var action = cardAction(CardType.TRACE);
 

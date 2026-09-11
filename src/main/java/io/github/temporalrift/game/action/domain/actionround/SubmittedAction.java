@@ -123,6 +123,9 @@ public sealed interface SubmittedAction permits SubmittedAction.CardAction, Subm
             if (cardType == CardType.TRACE && eraNumber == 1 && roundNumber == 1) {
                 throw new CardNotEligibleForRoundException(cardType, eraNumber, roundNumber);
             }
+            if (cardType == CardType.TRACE && !cardType.supportedGrades().contains(grade)) {
+                throw InvalidActionTargetException.traceUnsupportedGrade(grade);
+            }
             if (ROUND_THREE_INELIGIBLE_CARD_TYPES.contains(cardType) && roundNumber == 3) {
                 throw new CardNotEligibleForRoundException(cardType, eraNumber, roundNumber);
             }
