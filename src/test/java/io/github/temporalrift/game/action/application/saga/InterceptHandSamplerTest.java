@@ -51,8 +51,7 @@ class InterceptHandSamplerTest {
 
         var selected = InterceptHandSampler.select(cards, CardGrade.II, new Random(7));
 
-        assertThat(selected).hasSize(2);
-        assertThat(selected).doesNotHaveDuplicates();
+        assertThat(selected).hasSize(2).doesNotHaveDuplicates();
         assertThat(cards).containsAll(selected);
     }
 

@@ -1568,8 +1568,7 @@ class ActionRoundSagaImplTest {
             assertThat(revealed).hasSize(1);
             assertThat(revealed.getFirst().playerId()).isEqualTo(PLAYER_1);
             assertThat(revealed.getFirst().targetPlayerId()).isEqualTo(PLAYER_2);
-            assertThat(revealed.getFirst().revealedCards()).hasSize(2);
-            assertThat(revealed.getFirst().revealedCards()).doesNotHaveDuplicates();
+            assertThat(revealed.getFirst().revealedCards()).hasSize(2).doesNotHaveDuplicates();
             assertThat(hand.stream()
                             .map(card -> new HandCardIntercepted.RevealedCard(
                                     card.cardInstanceId(), card.cardType(), card.grade()))
@@ -1634,8 +1633,8 @@ class ActionRoundSagaImplTest {
             saga.handlePlayerSubmitted(GAME_ID, ERA_NUMBER, 1, PLAYER_2);
 
             var revealed = interceptedEvents();
-            assertThat(revealed).hasSize(2);
             assertThat(revealed)
+                    .hasSize(2)
                     .allSatisfy(event -> assertThat(event.playerId()).isNotEqualTo(event.targetPlayerId()));
             assertThat(revealed.stream().map(HandCardIntercepted::playerId).toList())
                     .containsExactlyInAnyOrder(PLAYER_1, PLAYER_2);
