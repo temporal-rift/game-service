@@ -334,7 +334,9 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
                                         .map(FutureEventDefinitionPort.EventDefinition::eventId)
                                         .toList())
                         .orElseGet(List::of);
-            case III -> throw new IllegalStateException("TRACE does not support Grade III");
+            // Submission validation rejects unsupported TRACE grades; yielding no targets here
+            // keeps a stray record from rolling back the round close.
+            case III -> List.of();
         };
     }
 
