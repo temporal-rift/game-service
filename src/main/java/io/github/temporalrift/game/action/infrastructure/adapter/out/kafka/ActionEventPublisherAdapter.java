@@ -1,5 +1,6 @@
 package io.github.temporalrift.game.action.infrastructure.adapter.out.kafka;
 
+import jakarta.validation.Validator;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
@@ -37,10 +38,11 @@ class ActionEventPublisherAdapter implements ActionEventPublisher {
     ActionEventPublisherAdapter(
             ApplicationEventPublisher applicationEventPublisher,
             ActionEventWireMapper mapper,
-            ObjectMapper objectMapper) {
+            ObjectMapper objectMapper,
+            Validator validator) {
         this.applicationEventPublisher = applicationEventPublisher;
         this.mapper = mapper;
-        this.outboundEvents = new OutboundIntegrationEventPublisher(applicationEventPublisher, objectMapper);
+        this.outboundEvents = new OutboundIntegrationEventPublisher(applicationEventPublisher, objectMapper, validator);
     }
 
     ActionEventPublisherAdapter(

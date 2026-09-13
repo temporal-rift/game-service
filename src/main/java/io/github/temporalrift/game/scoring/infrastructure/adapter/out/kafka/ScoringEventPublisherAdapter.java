@@ -1,5 +1,6 @@
 package io.github.temporalrift.game.scoring.infrastructure.adapter.out.kafka;
 
+import jakarta.validation.Validator;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
@@ -21,9 +22,10 @@ class ScoringEventPublisherAdapter implements ScoringEventPublisher {
     ScoringEventPublisherAdapter(
             ScoringEventWireMapper mapper,
             ApplicationEventPublisher applicationEventPublisher,
-            ObjectMapper objectMapper) {
+            ObjectMapper objectMapper,
+            Validator validator) {
         this.mapper = mapper;
-        this.outboundEvents = new OutboundIntegrationEventPublisher(applicationEventPublisher, objectMapper);
+        this.outboundEvents = new OutboundIntegrationEventPublisher(applicationEventPublisher, objectMapper, validator);
     }
 
     ScoringEventPublisherAdapter(ScoringEventWireMapper mapper, OutboundIntegrationEventPublisher outboundEvents) {
