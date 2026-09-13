@@ -81,7 +81,8 @@ class OutboundIntegrationEventPublisherTest {
                 null,
                 null);
 
-        assertThatThrownBy(() -> outboundEvents.publish("CardPlayed", payload, envelope(gameId)))
+        var envelope = envelope(gameId);
+        assertThatThrownBy(() -> outboundEvents.publish("CardPlayed", payload, envelope))
                 .isInstanceOf(ConstraintViolationException.class)
                 .hasMessageContaining("CardPlayed")
                 .hasMessageContaining("targetEventIds");
@@ -95,7 +96,8 @@ class OutboundIntegrationEventPublisherTest {
         var payload = new ScoresUpdatedPayload(
                 gameId, 1, List.of(new ScoreUpdate(null, Faction.PROPHETS, 4, "EVENT_RESOLVED_AS_WRITTEN", 12)));
 
-        assertThatThrownBy(() -> outboundEvents.publish("ScoresUpdated", payload, envelope(gameId)))
+        var envelope = envelope(gameId);
+        assertThatThrownBy(() -> outboundEvents.publish("ScoresUpdated", payload, envelope))
                 .isInstanceOf(ConstraintViolationException.class)
                 .hasMessageContaining("ScoresUpdated")
                 .hasMessageContaining("updates[0].playerId");
@@ -108,9 +110,9 @@ class OutboundIntegrationEventPublisherTest {
         var gameId = UUID.randomUUID();
         var payload = new GameStartedPayload(null, UUID.randomUUID(), List.of(), 3, 30);
 
+        var envelope = envelope(gameId);
         var thrown = org.junit.jupiter.api.Assertions.assertThrows(
-                ConstraintViolationException.class,
-                () -> outboundEvents.publish("GameStarted", payload, envelope(gameId)));
+                ConstraintViolationException.class, () -> outboundEvents.publish("GameStarted", payload, envelope));
 
         assertThat(thrown.getMessage()).contains("gameId");
         assertThat(thrown.getMessage()).doesNotContain(gameId.toString());
