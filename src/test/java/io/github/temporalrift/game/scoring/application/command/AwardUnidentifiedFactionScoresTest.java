@@ -1,5 +1,6 @@
 package io.github.temporalrift.game.scoring.application.command;
 
+import static io.github.temporalrift.game.scoring.ScoreRulesTestValues.pointsDelta;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
@@ -10,10 +11,10 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import io.github.temporalrift.game.scoring.ScoreRulesTestValues;
 import io.github.temporalrift.game.scoring.domain.playerscore.PlayerScore;
 import io.github.temporalrift.game.scoring.domain.playerscore.ScoreReason;
 import io.github.temporalrift.game.scoring.domain.port.out.EndGameScoreFactRepository;
@@ -34,8 +35,16 @@ class AwardUnidentifiedFactionScoresTest {
     @Mock
     EndGameScoreFactRepository endGameScoreFactRepository;
 
-    @InjectMocks
     AwardUnidentifiedFactionScores handler;
+
+    @org.junit.jupiter.api.BeforeEach
+    void setUp() {
+        handler = new AwardUnidentifiedFactionScores(
+                playerScoreRepository,
+                factionIdentificationRepository,
+                endGameScoreFactRepository,
+                ScoreRulesTestValues::pointsDelta);
+    }
 
     @Test
     void award_eligibleRevisionistCreatesReservedEndGameScoreEntry() {
@@ -97,7 +106,7 @@ class AwardUnidentifiedFactionScoresTest {
         var gameId = UUID.randomUUID();
         var playerId = UUID.randomUUID();
         var existing = new PlayerScore(UUID.randomUUID(), gameId, playerId, Faction.REVISIONISTS);
-        existing.apply(1, ScoreReason.SECRET_OUTCOME_WON);
+        existing.apply(1, ScoreReason.SECRET_OUTCOME_WON, pointsDelta(ScoreReason.SECRET_OUTCOME_WON));
         given(playerScoreRepository.findAllByGameIdWithLock(gameId)).willReturn(List.of(existing));
         given(factionIdentificationRepository.wasIdentifiedBeforeGameEnd(gameId, playerId))
                 .willReturn(false);

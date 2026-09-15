@@ -19,6 +19,7 @@ import io.github.temporalrift.game.scoring.domain.playerscore.PlayerScore;
 import io.github.temporalrift.game.scoring.domain.playerscore.ScoreReason;
 import io.github.temporalrift.game.scoring.domain.port.out.EraScoringContextRepository;
 import io.github.temporalrift.game.scoring.domain.port.out.PlayerScoreRepository;
+import io.github.temporalrift.game.scoring.domain.port.out.ScoreRulesPort;
 import io.github.temporalrift.game.scoring.domain.port.out.ScoringEventPublisher;
 import io.github.temporalrift.game.shared.ActivistDeclarationRecorded;
 import io.github.temporalrift.game.shared.ActivistDeclarationResolved;
@@ -50,7 +51,13 @@ class UpdateScoresCommandHandlerTest {
         EraScoringContextRepository ctxRepo = new FakeEraScoringContextRepository(context);
 
         var handler = new UpdateScoresCommandHandler(
-                repo, ctxRepo, new EraScoreEvaluator(), scoringPublisher, appPublisher, java.time.Clock.systemUTC());
+                repo,
+                ctxRepo,
+                new EraScoreEvaluator(),
+                scoreRules(),
+                scoringPublisher,
+                appPublisher,
+                java.time.Clock.systemUTC());
         handler.handle(new UpdateEraScoresCommand(GAME_ID, ERA, List.of()));
 
         assertThat(savedScores).hasSize(1);
@@ -164,13 +171,49 @@ class UpdateScoresCommandHandlerTest {
         EraScoringContextRepository ctxRepo = new FakeEraScoringContextRepository(context);
 
         var handler = new UpdateScoresCommandHandler(
-                repo, ctxRepo, new EraScoreEvaluator(), scoringPublisher, appPublisher, java.time.Clock.systemUTC());
+                repo,
+                ctxRepo,
+                new EraScoreEvaluator(),
+                scoreRules(),
+                scoringPublisher,
+                appPublisher,
+                java.time.Clock.systemUTC());
         handler.handle(new UpdateEraScoresCommand(GAME_ID, ERA, List.of()));
 
         var event = (ScoresUpdated) internalEvents.get(0);
         var update = event.updates().get(0);
         assertThat(update.newTotal()).isEqualTo(8); // 4 + 4 (DECLARED_OUTCOME_WON)
         assertThat(update.pointsDelta()).isEqualTo(4);
+    }
+
+    @Test
+    @DisplayName("uses the configured score delta for a scoring decision")
+    void usesConfiguredScoreDelta() {
+        var weaverId = UUID.randomUUID();
+        var context = new EraScoringContext(
+                GAME_ID,
+                ERA,
+                List.of(new PlayerFaction(weaverId, Faction.WEAVERS)),
+                List.of(),
+                List.of(),
+                List.of(new ChainScoringFact(weaverId, UUID.randomUUID(), ScoreReason.CHAIN_COMPLETED, ERA)),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of());
+
+        var savedScores = new ArrayList<PlayerScore>();
+        var handler =
+                handler(context, List.of(), reason -> reason == ScoreReason.CHAIN_COMPLETED ? 12 : 0, savedScores);
+
+        handler.handle(new UpdateEraScoresCommand(GAME_ID, ERA, List.of()));
+
+        assertThat(savedScores).singleElement().satisfies(score -> {
+            assertThat(score.totalScore()).isEqualTo(12);
+            assertThat(score.history())
+                    .singleElement()
+                    .satisfies(entry -> assertThat(entry.pointsDelta()).isEqualTo(12));
+        });
     }
 
     @Test
@@ -198,7 +241,13 @@ class UpdateScoresCommandHandlerTest {
         EraScoringContextRepository ctxRepo = new FakeEraScoringContextRepository(context);
 
         var handler = new UpdateScoresCommandHandler(
-                repo, ctxRepo, new EraScoreEvaluator(), scoringPublisher, appPublisher, java.time.Clock.systemUTC());
+                repo,
+                ctxRepo,
+                new EraScoreEvaluator(),
+                scoreRules(),
+                scoringPublisher,
+                appPublisher,
+                java.time.Clock.systemUTC());
         handler.handle(new UpdateEraScoresCommand(GAME_ID, scoringPassEra, List.of()));
 
         assertThat(savedScores).hasSize(1);
@@ -221,10 +270,28 @@ class UpdateScoresCommandHandlerTest {
     }
 
     private UpdateScoresCommandHandler handler(EraScoringContext context, List<PlayerScore> existingScores) {
-        PlayerScoreRepository repo = new FakePlayerScoreRepository(existingScores, new ArrayList<>());
+        return handler(context, existingScores, scoreRules(), new ArrayList<>());
+    }
+
+    private UpdateScoresCommandHandler handler(
+            EraScoringContext context,
+            List<PlayerScore> existingScores,
+            ScoreRulesPort scoreRules,
+            List<PlayerScore> savedScores) {
+        PlayerScoreRepository repo = new FakePlayerScoreRepository(existingScores, savedScores);
         EraScoringContextRepository ctxRepo = new FakeEraScoringContextRepository(context);
         return new UpdateScoresCommandHandler(
-                repo, ctxRepo, new EraScoreEvaluator(), scoringPublisher, appPublisher, java.time.Clock.systemUTC());
+                repo,
+                ctxRepo,
+                new EraScoreEvaluator(),
+                scoreRules,
+                scoringPublisher,
+                appPublisher,
+                java.time.Clock.systemUTC());
+    }
+
+    private ScoreRulesPort scoreRules() {
+        return io.github.temporalrift.game.scoring.ScoreRulesTestValues::pointsDelta;
     }
 
     static class FakePlayerScoreRepository implements PlayerScoreRepository {

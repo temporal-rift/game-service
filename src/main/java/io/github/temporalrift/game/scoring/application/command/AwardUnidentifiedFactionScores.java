@@ -12,6 +12,7 @@ import io.github.temporalrift.game.scoring.domain.playerscore.ScoreReason;
 import io.github.temporalrift.game.scoring.domain.port.out.EndGameScoreFactRepository;
 import io.github.temporalrift.game.scoring.domain.port.out.FactionIdentificationRepository;
 import io.github.temporalrift.game.scoring.domain.port.out.PlayerScoreRepository;
+import io.github.temporalrift.game.scoring.domain.port.out.ScoreRulesPort;
 import io.github.temporalrift.game.shared.Faction;
 import io.github.temporalrift.game.shared.FactionRevealed;
 
@@ -28,14 +29,17 @@ public class AwardUnidentifiedFactionScores {
     private final PlayerScoreRepository playerScoreRepository;
     private final FactionIdentificationRepository factionIdentificationRepository;
     private final EndGameScoreFactRepository endGameScoreFactRepository;
+    private final ScoreRulesPort scoreRulesPort;
 
     AwardUnidentifiedFactionScores(
             PlayerScoreRepository playerScoreRepository,
             FactionIdentificationRepository factionIdentificationRepository,
-            EndGameScoreFactRepository endGameScoreFactRepository) {
+            EndGameScoreFactRepository endGameScoreFactRepository,
+            ScoreRulesPort scoreRulesPort) {
         this.playerScoreRepository = playerScoreRepository;
         this.factionIdentificationRepository = factionIdentificationRepository;
         this.endGameScoreFactRepository = endGameScoreFactRepository;
+        this.scoreRulesPort = scoreRulesPort;
     }
 
     @Transactional
@@ -55,7 +59,9 @@ public class AwardUnidentifiedFactionScores {
                         playerId ->
                                 new PlayerScore(UUID.randomUUID(), reveal.gameId(), playerId, Faction.REVISIONISTS)))
                 .map(score -> {
-                    score.applyEndGame(ScoreReason.FACTION_UNIDENTIFIED);
+                    score.applyEndGame(
+                            ScoreReason.FACTION_UNIDENTIFIED,
+                            scoreRulesPort.pointsDelta(ScoreReason.FACTION_UNIDENTIFIED));
                     return score;
                 })
                 .toList();
