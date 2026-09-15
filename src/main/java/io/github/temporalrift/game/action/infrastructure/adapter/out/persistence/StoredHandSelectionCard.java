@@ -2,9 +2,9 @@ package io.github.temporalrift.game.action.infrastructure.adapter.out.persistenc
 
 import java.util.UUID;
 
-import io.github.temporalrift.game.shared.CardGrade;
-import io.github.temporalrift.game.shared.CardType;
-import io.github.temporalrift.game.shared.HandDealt;
+import io.github.temporalrift.game.shared.domain.event.HandDealt;
+import io.github.temporalrift.game.shared.domain.model.CardGrade;
+import io.github.temporalrift.game.shared.domain.model.CardType;
 
 record StoredHandSelectionCard(UUID cardInstanceId, String cardType, String cardGrade, int dealSlot) {
     static StoredHandSelectionCard fromDomain(HandDealt.CardInstance card) {

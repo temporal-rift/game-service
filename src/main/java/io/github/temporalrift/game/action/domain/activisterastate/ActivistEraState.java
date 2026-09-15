@@ -3,7 +3,7 @@ package io.github.temporalrift.game.action.domain.activisterastate;
 import java.util.Objects;
 import java.util.UUID;
 
-import io.github.temporalrift.game.shared.AggregateRoot;
+import io.github.temporalrift.game.shared.domain.AggregateRoot;
 
 /**
  * The era-scoped action state that owns an Activist's declaration and eligibility independently of an individual

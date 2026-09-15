@@ -3,7 +3,7 @@ package io.github.temporalrift.game.session.domain.game;
 import java.util.Objects;
 import java.util.UUID;
 
-import io.github.temporalrift.game.shared.CarryOverState;
+import io.github.temporalrift.game.shared.domain.model.CarryOverState;
 
 /** A terminal event retained in reveal order for the following era. */
 public record PendingCarryOverEvent(UUID eventId, CarryOverState carryOverState) {

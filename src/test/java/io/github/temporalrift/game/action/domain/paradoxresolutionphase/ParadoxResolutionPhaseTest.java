@@ -10,7 +10,7 @@ import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
 
-import io.github.temporalrift.game.shared.CardType;
+import io.github.temporalrift.game.shared.domain.model.CardType;
 
 class ParadoxResolutionPhaseTest {
 

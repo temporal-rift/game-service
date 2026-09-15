@@ -13,7 +13,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
-import io.github.temporalrift.game.shared.Faction;
+import io.github.temporalrift.game.shared.domain.model.Faction;
 
 @DisplayName("PlayerScore")
 class PlayerScoreTest {
@@ -137,7 +137,7 @@ class PlayerScoreTest {
 
     @ParameterizedTest
     @DisplayName("apply accepts a faction-agnostic reason for a player of any faction")
-    @MethodSource("io.github.temporalrift.game.shared.Faction#values")
+    @MethodSource("io.github.temporalrift.game.shared.domain.model.Faction#values")
     void applyAcceptsFactionAgnosticReasonForAnyFaction(Faction faction) {
         var score = new PlayerScore(UUID.randomUUID(), GAME_ID, PLAYER_ID, faction);
 

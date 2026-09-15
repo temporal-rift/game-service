@@ -35,7 +35,7 @@ import io.github.temporalrift.game.session.domain.port.out.SessionEventPublisher
 import io.github.temporalrift.game.session.domain.port.out.SessionGameRulesPort;
 import io.github.temporalrift.game.session.domain.saga.PlayerReconnectSagaState;
 import io.github.temporalrift.game.session.domain.saga.PlayerReconnectSagaStatus;
-import io.github.temporalrift.game.shared.DomainEventEnvelope;
+import io.github.temporalrift.game.shared.domain.messaging.DomainEventEnvelope;
 
 @ExtendWith(MockitoExtension.class)
 class PlayerReconnectSagaImplTest {

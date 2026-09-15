@@ -27,7 +27,7 @@ import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.P
 import io.github.temporalrift.game.action.domain.paradoxresolutionphase.ParadoxResolutionPhase;
 import io.github.temporalrift.game.action.domain.paradoxresolutionphase.ParadoxResolutionPhaseStatus;
 import io.github.temporalrift.game.action.domain.port.out.ParadoxResolutionPhaseRepository;
-import io.github.temporalrift.game.shared.ProcessedEventRepository;
+import io.github.temporalrift.game.shared.domain.port.out.ProcessedEventRepository;
 
 @ExtendWith(MockitoExtension.class)
 class ParadoxResolutionPhaseKafkaConsumerTest {

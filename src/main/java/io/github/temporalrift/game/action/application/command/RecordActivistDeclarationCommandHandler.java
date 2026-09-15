@@ -21,9 +21,9 @@ import io.github.temporalrift.game.action.domain.port.out.ActionEventPublisher;
 import io.github.temporalrift.game.action.domain.port.out.ActionRoundRepository;
 import io.github.temporalrift.game.action.domain.port.out.ActivistEraStateRepository;
 import io.github.temporalrift.game.action.domain.port.out.PlayerStateRepository;
-import io.github.temporalrift.game.shared.DomainEventEnvelope;
-import io.github.temporalrift.game.shared.Faction;
-import io.github.temporalrift.game.shared.SagaHandoffPublisher;
+import io.github.temporalrift.game.shared.application.SagaHandoffPublisher;
+import io.github.temporalrift.game.shared.domain.messaging.DomainEventEnvelope;
+import io.github.temporalrift.game.shared.domain.model.Faction;
 
 @Service
 class RecordActivistDeclarationCommandHandler implements RecordActivistDeclarationUseCase {
@@ -119,7 +119,7 @@ class RecordActivistDeclarationCommandHandler implements RecordActivistDeclarati
         sagaHandoffPublisher.publish(
                 actionEventPublisher::publish,
                 envelope,
-                new io.github.temporalrift.game.shared.ActivistDeclarationRecorded(
+                new io.github.temporalrift.game.shared.domain.event.ActivistDeclarationRecorded(
                         state.gameId(),
                         state.eraNumber(),
                         DECLARATION_ROUND_NUMBER,

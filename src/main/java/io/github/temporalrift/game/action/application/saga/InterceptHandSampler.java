@@ -6,7 +6,7 @@ import java.util.List;
 import java.util.Random;
 
 import io.github.temporalrift.game.action.domain.playerstate.PlayerState;
-import io.github.temporalrift.game.shared.CardGrade;
+import io.github.temporalrift.game.shared.domain.model.CardGrade;
 
 /**
  * Uniformly samples distinct cards from a target hand for INTERCEPT resolution. Grade I

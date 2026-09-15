@@ -17,7 +17,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import io.github.temporalrift.game.shared.SpecialAction;
+import io.github.temporalrift.game.shared.domain.model.SpecialAction;
 
 @ExtendWith(MockitoExtension.class)
 class SessionActivistDeclarationRepositoryAdapterTest {

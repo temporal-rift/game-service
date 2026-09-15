@@ -8,7 +8,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 
-import io.github.temporalrift.game.shared.AggregateRoot;
+import io.github.temporalrift.game.shared.domain.AggregateRoot;
 
 public class Game extends AggregateRoot {
 

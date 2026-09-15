@@ -1,6 +1,8 @@
 package io.github.temporalrift.game;
 
+import static com.tngtech.archunit.base.DescribedPredicate.not;
 import static com.tngtech.archunit.core.domain.JavaClass.Predicates.resideInAPackage;
+import static com.tngtech.archunit.core.domain.JavaClass.Predicates.simpleNameEndingWith;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noFields;
@@ -17,7 +19,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.annotation.Order;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-import io.github.temporalrift.game.shared.RestAdviceOrder;
+import io.github.temporalrift.game.shared.infrastructure.adapter.in.rest.RestAdviceOrder;
 
 @AnalyzeClasses(packages = "io.github.temporalrift.game", importOptions = ImportOption.DoNotIncludeTests.class)
 public class ArchitectureTest {
@@ -26,6 +28,8 @@ public class ArchitectureTest {
     static final ArchRule domain_must_not_depend_on_spring_or_persistence = noClasses()
             .that()
             .resideInAPackage("..domain..")
+            // package-info carries only Modulith named-interface metadata, no domain logic.
+            .and(not(simpleNameEndingWith("package-info")))
             .should()
             .dependOnClassesThat()
             .resideInAnyPackage("org.springframework..", "jakarta.persistence..", "lombok..")

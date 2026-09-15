@@ -13,8 +13,8 @@ import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.ObjectMapper;
 
 import io.github.temporalrift.game.session.application.saga.PlayerReconnectedApplicationEvent;
-import io.github.temporalrift.game.shared.InboundEnvelope;
-import io.github.temporalrift.game.shared.ProcessedEventRepository;
+import io.github.temporalrift.game.shared.domain.port.out.ProcessedEventRepository;
+import io.github.temporalrift.game.shared.infrastructure.adapter.in.kafka.InboundEnvelope;
 
 @Component
 class PlayerReconnectKafkaConsumer {

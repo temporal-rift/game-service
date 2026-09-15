@@ -8,8 +8,6 @@ import org.springframework.security.authentication.AbstractAuthenticationToken;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.InvalidBearerTokenException;
 
-import io.github.temporalrift.game.shared.PlayerPrincipal;
-
 public class PlayerAuthenticationConverter implements Converter<Jwt, AbstractAuthenticationToken> {
 
     @Override

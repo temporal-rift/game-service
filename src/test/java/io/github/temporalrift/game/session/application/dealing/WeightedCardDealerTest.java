@@ -14,10 +14,10 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import io.github.temporalrift.game.session.domain.port.out.SessionGameRulesPort;
-import io.github.temporalrift.game.shared.CardCategory;
-import io.github.temporalrift.game.shared.CardGrade;
-import io.github.temporalrift.game.shared.CardType;
-import io.github.temporalrift.game.shared.HandDealt;
+import io.github.temporalrift.game.shared.domain.event.HandDealt;
+import io.github.temporalrift.game.shared.domain.model.CardCategory;
+import io.github.temporalrift.game.shared.domain.model.CardGrade;
+import io.github.temporalrift.game.shared.domain.model.CardType;
 
 @ExtendWith(MockitoExtension.class)
 class WeightedCardDealerTest {

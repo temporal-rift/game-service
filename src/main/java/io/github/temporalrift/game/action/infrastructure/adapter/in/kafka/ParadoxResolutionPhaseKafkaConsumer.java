@@ -16,10 +16,10 @@ import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.E
 import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.ParadoxResolutionPhaseStartedPayload;
 import io.github.temporalrift.game.action.domain.paradoxresolutionphase.ParadoxResolutionPhase;
 import io.github.temporalrift.game.action.domain.port.out.ParadoxResolutionPhaseRepository;
-import io.github.temporalrift.game.shared.DomainEventEnvelope;
-import io.github.temporalrift.game.shared.MessagePayloads;
-import io.github.temporalrift.game.shared.ProcessedEventRepository;
-import io.github.temporalrift.game.shared.TimelineEventEnvelope;
+import io.github.temporalrift.game.shared.domain.messaging.DomainEventEnvelope;
+import io.github.temporalrift.game.shared.domain.port.out.ProcessedEventRepository;
+import io.github.temporalrift.game.shared.infrastructure.adapter.in.kafka.MessagePayloads;
+import io.github.temporalrift.game.shared.infrastructure.adapter.in.kafka.TimelineEventEnvelope;
 
 @Component
 class ParadoxResolutionPhaseKafkaConsumer {

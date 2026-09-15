@@ -7,7 +7,7 @@ import org.springframework.stereotype.Component;
 import tools.jackson.databind.ObjectMapper;
 
 import io.github.temporalrift.game.session.domain.port.out.EraSagaScoresUpdatedInboxRepository;
-import io.github.temporalrift.game.shared.ScoresUpdated;
+import io.github.temporalrift.game.shared.domain.event.ScoresUpdated;
 
 @Component
 class EraSagaScoresUpdatedInboxRepositoryAdapter implements EraSagaScoresUpdatedInboxRepository {

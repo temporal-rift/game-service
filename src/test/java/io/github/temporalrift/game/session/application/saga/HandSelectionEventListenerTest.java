@@ -22,9 +22,9 @@ import io.github.temporalrift.game.session.domain.port.out.EraSagaRepository;
 import io.github.temporalrift.game.session.domain.port.out.SessionEventPublisher;
 import io.github.temporalrift.game.session.domain.saga.EraSagaState;
 import io.github.temporalrift.game.session.domain.saga.EraSagaStatus;
-import io.github.temporalrift.game.shared.DomainEventEnvelope;
-import io.github.temporalrift.game.shared.HandSelected;
-import io.github.temporalrift.game.shared.StartActionRoundRequested;
+import io.github.temporalrift.game.shared.domain.event.HandSelected;
+import io.github.temporalrift.game.shared.domain.event.StartActionRoundRequested;
+import io.github.temporalrift.game.shared.domain.messaging.DomainEventEnvelope;
 
 @ExtendWith(MockitoExtension.class)
 class HandSelectionEventListenerTest {

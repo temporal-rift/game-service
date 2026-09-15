@@ -3,7 +3,7 @@ package io.github.temporalrift.game.action.domain.event;
 import java.util.List;
 import java.util.UUID;
 
-import io.github.temporalrift.game.shared.ProbabilityBand;
+import io.github.temporalrift.game.shared.domain.model.ProbabilityBand;
 
 public record BandedProbabilityPublished(UUID gameId, int eraNumber, List<EventBandState> eventStates)
         implements ActionEventPayload {

@@ -19,7 +19,7 @@ import io.github.temporalrift.game.scoring.domain.playerscore.ScoringGameNotFoun
 import io.github.temporalrift.game.scoring.domain.port.out.ScoringGameVisibilityRepository;
 import io.github.temporalrift.game.scoring.domain.port.out.ScoringReadRepository;
 import io.github.temporalrift.game.scoring.domain.port.out.ScoringReadRepository.CurrentScoreRow;
-import io.github.temporalrift.game.shared.Faction;
+import io.github.temporalrift.game.shared.domain.model.Faction;
 
 @ExtendWith(MockitoExtension.class)
 class GetScoresQueryHandlerTest {

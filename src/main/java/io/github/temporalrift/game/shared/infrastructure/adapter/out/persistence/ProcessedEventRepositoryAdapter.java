@@ -7,7 +7,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
-import io.github.temporalrift.game.shared.ProcessedEventRepository;
+import io.github.temporalrift.game.shared.domain.port.out.ProcessedEventRepository;
 
 @Component
 class ProcessedEventRepositoryAdapter implements ProcessedEventRepository {

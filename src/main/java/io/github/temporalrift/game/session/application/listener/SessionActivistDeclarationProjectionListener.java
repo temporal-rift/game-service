@@ -4,7 +4,7 @@ import org.springframework.modulith.events.ApplicationModuleListener;
 import org.springframework.stereotype.Component;
 
 import io.github.temporalrift.game.session.domain.port.out.SessionActivistDeclarationRepository;
-import io.github.temporalrift.game.shared.ActivistDeclarationRecorded;
+import io.github.temporalrift.game.shared.domain.event.ActivistDeclarationRecorded;
 
 @Component
 class SessionActivistDeclarationProjectionListener {

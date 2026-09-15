@@ -7,7 +7,7 @@ import org.springframework.transaction.annotation.Transactional;
 import io.github.temporalrift.game.session.application.port.in.JoinLobbyUseCase;
 import io.github.temporalrift.game.session.domain.lobby.LobbyNotFoundException;
 import io.github.temporalrift.game.session.domain.port.out.LobbyRepository;
-import io.github.temporalrift.game.shared.PlayerJoinedLobby;
+import io.github.temporalrift.game.shared.domain.event.PlayerJoinedLobby;
 
 @Service
 class JoinLobbyCommandHandler implements JoinLobbyUseCase {

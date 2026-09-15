@@ -6,8 +6,8 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Embeddable;
 
 import io.github.temporalrift.game.action.domain.playerstate.PlayerState;
-import io.github.temporalrift.game.shared.CardGrade;
-import io.github.temporalrift.game.shared.CardType;
+import io.github.temporalrift.game.shared.domain.model.CardGrade;
+import io.github.temporalrift.game.shared.domain.model.CardType;
 
 @Embeddable
 record PlayerHandCardValue(

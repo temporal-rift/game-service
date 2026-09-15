@@ -10,7 +10,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.validation.annotation.Validated;
 
 import io.github.temporalrift.game.action.domain.port.out.BandRulesPort;
-import io.github.temporalrift.game.shared.CardGrade;
+import io.github.temporalrift.game.shared.domain.model.CardGrade;
 
 @ConfigurationProperties("game.rules.probability")
 @Validated

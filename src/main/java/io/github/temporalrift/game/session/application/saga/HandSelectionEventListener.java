@@ -12,9 +12,9 @@ import io.github.temporalrift.game.session.domain.game.Game;
 import io.github.temporalrift.game.session.domain.port.out.EraSagaRepository;
 import io.github.temporalrift.game.session.domain.port.out.SessionEventPublisher;
 import io.github.temporalrift.game.session.domain.saga.EraSagaStatus;
-import io.github.temporalrift.game.shared.DomainEventEnvelope;
-import io.github.temporalrift.game.shared.HandSelected;
-import io.github.temporalrift.game.shared.StartActionRoundRequested;
+import io.github.temporalrift.game.shared.domain.event.HandSelected;
+import io.github.temporalrift.game.shared.domain.event.StartActionRoundRequested;
+import io.github.temporalrift.game.shared.domain.messaging.DomainEventEnvelope;
 
 /** Advances the era only after every player has a terminal five-card hand. */
 @Component

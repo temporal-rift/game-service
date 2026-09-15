@@ -2,7 +2,7 @@ package io.github.temporalrift.game.action.application.port.in;
 
 import java.util.UUID;
 
-import io.github.temporalrift.game.shared.SpecialAction;
+import io.github.temporalrift.game.shared.domain.model.SpecialAction;
 
 /**
  * Accepts a player's faction special submission for an open action round.

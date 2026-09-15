@@ -31,9 +31,9 @@ import io.github.temporalrift.game.scoring.domain.context.PlayerFaction;
 import io.github.temporalrift.game.scoring.domain.event.EraResolutionCompleted;
 import io.github.temporalrift.game.scoring.domain.event.OutcomeApplied;
 import io.github.temporalrift.game.scoring.domain.playerscore.ScoreReason;
-import io.github.temporalrift.game.shared.ActivistDeclarationRecorded;
-import io.github.temporalrift.game.shared.Faction;
-import io.github.temporalrift.game.shared.SpecialAction;
+import io.github.temporalrift.game.shared.domain.event.ActivistDeclarationRecorded;
+import io.github.temporalrift.game.shared.domain.model.Faction;
+import io.github.temporalrift.game.shared.domain.model.SpecialAction;
 
 @ExtendWith(MockitoExtension.class)
 class EraScoringContextRepositoryAdapterTest {
@@ -412,8 +412,8 @@ class EraScoringContextRepositoryAdapterTest {
         var resolutions = adapter.resolveActivistDeclarations(gameId, 2);
 
         assertThat(resolutions)
-                .containsExactly(
-                        new io.github.temporalrift.game.shared.ActivistDeclarationResolved(gameId, 2, playerId, false));
+                .containsExactly(new io.github.temporalrift.game.shared.domain.event.ActivistDeclarationResolved(
+                        gameId, 2, playerId, false));
         assertThat(declaration.getResolutionSucceeded()).isFalse();
         then(outcomeInboxJpaRepository).should(never()).findByGameIdAndEraNumberAndEventId(any(), anyInt(), any());
         then(actionFactJpaRepository).shouldHaveNoInteractions();
@@ -445,8 +445,8 @@ class EraScoringContextRepositoryAdapterTest {
         var resolutions = adapter.resolveActivistDeclarations(gameId, 2);
 
         assertThat(resolutions)
-                .containsExactly(
-                        new io.github.temporalrift.game.shared.ActivistDeclarationResolved(gameId, 2, playerId, false));
+                .containsExactly(new io.github.temporalrift.game.shared.domain.event.ActivistDeclarationResolved(
+                        gameId, 2, playerId, false));
         assertThat(declaration.getResolutionSucceeded()).isFalse();
         then(outcomeInboxJpaRepository).should(never()).findByGameIdAndEraNumberAndEventId(any(), anyInt(), any());
         then(actionFactJpaRepository).shouldHaveNoInteractions();
@@ -480,8 +480,8 @@ class EraScoringContextRepositoryAdapterTest {
                         new OutcomeApplied(gameId, 2, eventId, winningOutcomeId, List.of()))));
 
         assertThat(adapter.resolveActivistDeclarations(gameId, 2))
-                .containsExactly(
-                        new io.github.temporalrift.game.shared.ActivistDeclarationResolved(gameId, 2, playerId, true));
+                .containsExactly(new io.github.temporalrift.game.shared.domain.event.ActivistDeclarationResolved(
+                        gameId, 2, playerId, true));
         assertThat(declaration.getResolutionSucceeded()).isTrue();
         then(actionFactJpaRepository)
                 .should()
@@ -503,7 +503,7 @@ class EraScoringContextRepositoryAdapterTest {
                 2,
                 1,
                 playerId,
-                io.github.temporalrift.game.shared.SpecialAction.MOMENTUM,
+                io.github.temporalrift.game.shared.domain.model.SpecialAction.MOMENTUM,
                 UUID.randomUUID(),
                 UUID.randomUUID());
 

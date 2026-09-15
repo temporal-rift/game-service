@@ -6,8 +6,8 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 
-import io.github.temporalrift.game.shared.AggregateRoot;
-import io.github.temporalrift.game.shared.SpecialAction;
+import io.github.temporalrift.game.shared.domain.AggregateRoot;
+import io.github.temporalrift.game.shared.domain.model.SpecialAction;
 
 /**
  * The era-scoped record of which once-per-era-budgeted specials a player has already used, independently of any

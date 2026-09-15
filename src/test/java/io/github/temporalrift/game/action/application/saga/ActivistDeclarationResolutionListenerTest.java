@@ -18,7 +18,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import io.github.temporalrift.game.action.domain.activisterastate.ActivistDeclarationMode;
 import io.github.temporalrift.game.action.domain.activisterastate.ActivistEraState;
 import io.github.temporalrift.game.action.domain.port.out.ActivistEraStateRepository;
-import io.github.temporalrift.game.shared.ActivistDeclarationResolved;
+import io.github.temporalrift.game.shared.domain.event.ActivistDeclarationResolved;
 
 @ExtendWith(MockitoExtension.class)
 class ActivistDeclarationResolutionListenerTest {

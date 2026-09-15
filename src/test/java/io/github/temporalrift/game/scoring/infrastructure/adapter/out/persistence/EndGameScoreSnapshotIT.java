@@ -15,8 +15,8 @@ import io.github.temporalrift.game.scoring.application.command.AwardUnidentified
 import io.github.temporalrift.game.scoring.domain.playerscore.PlayerScore;
 import io.github.temporalrift.game.scoring.domain.playerscore.ScoreReason;
 import io.github.temporalrift.game.scoring.domain.port.out.PlayerScoreRepository;
-import io.github.temporalrift.game.shared.Faction;
-import io.github.temporalrift.game.shared.FactionRevealed;
+import io.github.temporalrift.game.shared.domain.event.FactionRevealed;
+import io.github.temporalrift.game.shared.domain.model.Faction;
 
 /**
  * The end-game saga awards the unidentified-faction bonus and then snapshots the final scores for
@@ -59,7 +59,7 @@ class EndGameScoreSnapshotIT {
 
         assertThat(snapshot)
                 .singleElement()
-                .extracting(io.github.temporalrift.game.shared.GameEnded.PlayerScoreResult::score)
+                .extracting(io.github.temporalrift.game.shared.domain.event.GameEnded.PlayerScoreResult::score)
                 .as("the published final score carries the end-game bonus, not the pre-award total")
                 .isEqualTo(10);
     }

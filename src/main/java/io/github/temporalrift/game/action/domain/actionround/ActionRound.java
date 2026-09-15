@@ -8,8 +8,8 @@ import java.util.UUID;
 
 import io.github.temporalrift.game.action.domain.event.ActionRoundStarted;
 import io.github.temporalrift.game.action.domain.event.PlayerSkipped;
-import io.github.temporalrift.game.shared.ActionRoundClosed;
-import io.github.temporalrift.game.shared.AggregateRoot;
+import io.github.temporalrift.game.shared.domain.AggregateRoot;
+import io.github.temporalrift.game.shared.domain.event.ActionRoundClosed;
 
 public class ActionRound extends AggregateRoot {
 

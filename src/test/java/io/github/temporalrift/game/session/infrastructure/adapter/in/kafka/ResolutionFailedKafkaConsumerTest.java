@@ -27,7 +27,7 @@ import tools.jackson.databind.json.JsonMapper;
 
 import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.ResolutionFailedPayload;
 import io.github.temporalrift.game.session.application.saga.ResolutionFailedApplicationEvent;
-import io.github.temporalrift.game.shared.ProcessedEventRepository;
+import io.github.temporalrift.game.shared.domain.port.out.ProcessedEventRepository;
 
 @ExtendWith(MockitoExtension.class)
 class ResolutionFailedKafkaConsumerTest {

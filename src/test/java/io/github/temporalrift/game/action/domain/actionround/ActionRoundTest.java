@@ -13,12 +13,12 @@ import io.github.temporalrift.game.action.domain.event.ActionRoundStarted;
 import io.github.temporalrift.game.action.domain.event.CardPlayed;
 import io.github.temporalrift.game.action.domain.event.PlayerSkipped;
 import io.github.temporalrift.game.action.domain.event.SpecialActionPlayed;
-import io.github.temporalrift.game.shared.ActionRoundClosed;
-import io.github.temporalrift.game.shared.CardType;
-import io.github.temporalrift.game.shared.Faction;
-import io.github.temporalrift.game.shared.ForesightDeclared;
-import io.github.temporalrift.game.shared.OutcomeAnnihilated;
-import io.github.temporalrift.game.shared.SpecialAction;
+import io.github.temporalrift.game.shared.domain.event.ActionRoundClosed;
+import io.github.temporalrift.game.shared.domain.event.ForesightDeclared;
+import io.github.temporalrift.game.shared.domain.event.OutcomeAnnihilated;
+import io.github.temporalrift.game.shared.domain.model.CardType;
+import io.github.temporalrift.game.shared.domain.model.Faction;
+import io.github.temporalrift.game.shared.domain.model.SpecialAction;
 
 @DisplayName("ActionRound")
 class ActionRoundTest {

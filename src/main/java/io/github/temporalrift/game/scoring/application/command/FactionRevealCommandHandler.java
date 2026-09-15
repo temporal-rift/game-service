@@ -5,7 +5,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import io.github.temporalrift.game.scoring.FactionRevealCommand;
 import io.github.temporalrift.game.scoring.domain.port.out.ScoringGameVisibilityRepository;
-import io.github.temporalrift.game.shared.FactionRevealed;
+import io.github.temporalrift.game.shared.domain.event.FactionRevealed;
 
 /** Called synchronously from {@code EndGameSagaImpl}'s own transaction, not via an async listener. */
 @Service

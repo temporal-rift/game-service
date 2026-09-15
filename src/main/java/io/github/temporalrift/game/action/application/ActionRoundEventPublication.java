@@ -5,10 +5,10 @@ import java.time.Clock;
 import io.github.temporalrift.game.action.domain.actionround.ActionRound;
 import io.github.temporalrift.game.action.domain.event.ActionEventPayload;
 import io.github.temporalrift.game.action.domain.port.out.ActionEventPublisher;
-import io.github.temporalrift.game.shared.ActionRoundClosed;
-import io.github.temporalrift.game.shared.DomainEventEnvelope;
-import io.github.temporalrift.game.shared.ForesightDeclared;
-import io.github.temporalrift.game.shared.OutcomeAnnihilated;
+import io.github.temporalrift.game.shared.domain.event.ActionRoundClosed;
+import io.github.temporalrift.game.shared.domain.event.ForesightDeclared;
+import io.github.temporalrift.game.shared.domain.event.OutcomeAnnihilated;
+import io.github.temporalrift.game.shared.domain.messaging.DomainEventEnvelope;
 
 /** Publishes all events pulled from an action round through both delivery paths. */
 public final class ActionRoundEventPublication {

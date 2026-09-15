@@ -37,7 +37,7 @@ import io.github.temporalrift.game.action.domain.event.PlayerJammed;
 import io.github.temporalrift.game.action.domain.event.PlayerSkipped;
 import io.github.temporalrift.game.action.domain.event.RoundSummaryPublished;
 import io.github.temporalrift.game.action.domain.event.SpecialActionPlayed;
-import io.github.temporalrift.game.shared.ActionRoundClosed;
+import io.github.temporalrift.game.shared.domain.event.ActionRoundClosed;
 
 @Mapper(componentModel = "spring")
 interface ActionEventWireMapper {
@@ -49,7 +49,7 @@ interface ActionEventWireMapper {
     ExposeInfluenceSignature toWire(
             io.github.temporalrift.game.action.domain.activisterastate.ProbabilityInfluenceSignature signature);
 
-    default InfluenceSignatureType toWire(io.github.temporalrift.game.shared.CardType type) {
+    default InfluenceSignatureType toWire(io.github.temporalrift.game.shared.domain.model.CardType type) {
         return switch (type) {
             case PUSH -> InfluenceSignatureType.PUSH;
             case SUPPRESS -> InfluenceSignatureType.SUPPRESS;

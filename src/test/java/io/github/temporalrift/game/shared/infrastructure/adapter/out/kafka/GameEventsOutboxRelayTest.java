@@ -23,9 +23,6 @@ import org.springframework.cloud.stream.function.StreamBridge;
 import org.springframework.messaging.Message;
 import tools.jackson.databind.node.JsonNodeFactory;
 
-import io.github.temporalrift.game.shared.OutboundIntegrationEvent;
-import io.github.temporalrift.game.shared.OutboundIntegrationEventPublisher;
-
 @ExtendWith(MockitoExtension.class)
 class GameEventsOutboxRelayTest {
 

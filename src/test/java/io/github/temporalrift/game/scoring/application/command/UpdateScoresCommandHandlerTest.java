@@ -21,12 +21,12 @@ import io.github.temporalrift.game.scoring.domain.port.out.EraScoringContextRepo
 import io.github.temporalrift.game.scoring.domain.port.out.PlayerScoreRepository;
 import io.github.temporalrift.game.scoring.domain.port.out.ScoreRulesPort;
 import io.github.temporalrift.game.scoring.domain.port.out.ScoringEventPublisher;
-import io.github.temporalrift.game.shared.ActivistDeclarationRecorded;
-import io.github.temporalrift.game.shared.ActivistDeclarationResolved;
-import io.github.temporalrift.game.shared.DomainEventEnvelope;
-import io.github.temporalrift.game.shared.Faction;
-import io.github.temporalrift.game.shared.ScoresUpdated;
-import io.github.temporalrift.game.shared.SpecialAction;
+import io.github.temporalrift.game.shared.domain.event.ActivistDeclarationRecorded;
+import io.github.temporalrift.game.shared.domain.event.ActivistDeclarationResolved;
+import io.github.temporalrift.game.shared.domain.event.ScoresUpdated;
+import io.github.temporalrift.game.shared.domain.messaging.DomainEventEnvelope;
+import io.github.temporalrift.game.shared.domain.model.Faction;
+import io.github.temporalrift.game.shared.domain.model.SpecialAction;
 
 @DisplayName("UpdateScoresCommandHandler")
 class UpdateScoresCommandHandlerTest {

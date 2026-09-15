@@ -9,7 +9,7 @@ import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
 
-import io.github.temporalrift.game.shared.SpecialAction;
+import io.github.temporalrift.game.shared.domain.model.SpecialAction;
 
 class SpecialActionEraUsageTest {
 

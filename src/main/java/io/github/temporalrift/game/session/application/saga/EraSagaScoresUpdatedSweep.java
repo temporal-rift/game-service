@@ -6,7 +6,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import io.github.temporalrift.game.session.domain.port.out.EraSagaScoresUpdatedInboxRepository;
-import io.github.temporalrift.game.shared.ScoresUpdated;
+import io.github.temporalrift.game.shared.domain.event.ScoresUpdated;
 
 /**
  * Database-driven safety net for the era saga's {@code WAITING_SCORES} transition. {@code

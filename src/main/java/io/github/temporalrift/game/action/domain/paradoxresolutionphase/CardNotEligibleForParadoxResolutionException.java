@@ -1,6 +1,6 @@
 package io.github.temporalrift.game.action.domain.paradoxresolutionphase;
 
-import io.github.temporalrift.game.shared.CardType;
+import io.github.temporalrift.game.shared.domain.model.CardType;
 
 public class CardNotEligibleForParadoxResolutionException extends RuntimeException {
 

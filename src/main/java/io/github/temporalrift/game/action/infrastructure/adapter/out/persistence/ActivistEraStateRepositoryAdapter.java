@@ -10,7 +10,7 @@ import io.github.temporalrift.game.action.domain.activisterastate.ActivistDeclar
 import io.github.temporalrift.game.action.domain.activisterastate.ActivistEraState;
 import io.github.temporalrift.game.action.domain.activisterastate.ProbabilityInfluenceSignature;
 import io.github.temporalrift.game.action.domain.port.out.ActivistEraStateRepository;
-import io.github.temporalrift.game.shared.CardType;
+import io.github.temporalrift.game.shared.domain.model.CardType;
 
 @Component
 class ActivistEraStateRepositoryAdapter implements ActivistEraStateRepository {

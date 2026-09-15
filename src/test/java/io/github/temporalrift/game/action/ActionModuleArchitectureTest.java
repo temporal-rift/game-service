@@ -68,9 +68,10 @@ public class ActionModuleArchitectureTest {
                     "io.github.temporalrift.game.session.infrastructure..",
                     "io.github.temporalrift.game.scoring.application..",
                     "io.github.temporalrift.game.scoring.domain..",
-                    "io.github.temporalrift.game.scoring.infrastructure..",
-                    "io.github.temporalrift.game.shared.infrastructure..")
-            .as("Action module must not depend on session, scoring, or shared internals — use published API only");
+                    "io.github.temporalrift.game.scoring.infrastructure..")
+            .as("Action module must not depend on session or scoring internals — use published API only"
+                    + " (game.shared is the neutral shared kernel every module may depend on, including its"
+                    + " infrastructure helpers such as messaging envelopes and REST/security cross-cutting types)");
 
     @ArchTest
     static final ArchRule no_bare_event_listener_annotations = methods()

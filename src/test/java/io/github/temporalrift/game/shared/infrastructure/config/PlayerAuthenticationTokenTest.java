@@ -7,8 +7,6 @@ import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import io.github.temporalrift.game.shared.PlayerPrincipal;
-
 class PlayerAuthenticationTokenTest {
 
     static PlayerPrincipal principal() {

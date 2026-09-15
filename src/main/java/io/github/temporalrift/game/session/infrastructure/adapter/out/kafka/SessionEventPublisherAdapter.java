@@ -25,15 +25,15 @@ import io.github.temporalrift.game.session.domain.event.TimelineCollapsed;
 import io.github.temporalrift.game.session.domain.event.TimelineStabilized;
 import io.github.temporalrift.game.session.domain.event.WinConditionMet;
 import io.github.temporalrift.game.session.domain.port.out.SessionEventPublisher;
-import io.github.temporalrift.game.shared.DomainEventEnvelope;
-import io.github.temporalrift.game.shared.EventsDrawn;
-import io.github.temporalrift.game.shared.FactionAssigned;
-import io.github.temporalrift.game.shared.FactionRevealed;
-import io.github.temporalrift.game.shared.GameEnded;
-import io.github.temporalrift.game.shared.HandDealt;
-import io.github.temporalrift.game.shared.HandSelected;
-import io.github.temporalrift.game.shared.OutboundIntegrationEventPublisher;
-import io.github.temporalrift.game.shared.PlayerJoinedLobby;
+import io.github.temporalrift.game.shared.domain.event.EventsDrawn;
+import io.github.temporalrift.game.shared.domain.event.FactionAssigned;
+import io.github.temporalrift.game.shared.domain.event.FactionRevealed;
+import io.github.temporalrift.game.shared.domain.event.GameEnded;
+import io.github.temporalrift.game.shared.domain.event.HandDealt;
+import io.github.temporalrift.game.shared.domain.event.HandSelected;
+import io.github.temporalrift.game.shared.domain.event.PlayerJoinedLobby;
+import io.github.temporalrift.game.shared.domain.messaging.DomainEventEnvelope;
+import io.github.temporalrift.game.shared.infrastructure.adapter.out.kafka.OutboundIntegrationEventPublisher;
 
 /** Publishes session events through the single durable {@code gameEvents} AsyncAPI channel. */
 @Component

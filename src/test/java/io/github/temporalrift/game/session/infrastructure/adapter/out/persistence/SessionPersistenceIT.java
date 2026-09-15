@@ -22,7 +22,7 @@ import io.github.temporalrift.game.session.domain.lobby.LobbyPlayer;
 import io.github.temporalrift.game.session.domain.lobby.LobbyStatus;
 import io.github.temporalrift.game.session.domain.port.out.GameRepository;
 import io.github.temporalrift.game.session.domain.port.out.LobbyRepository;
-import io.github.temporalrift.game.shared.Faction;
+import io.github.temporalrift.game.shared.domain.model.Faction;
 
 @PersistenceIntegrationTest
 class SessionPersistenceIT {
@@ -146,9 +146,10 @@ class SessionPersistenceIT {
         var game = new Game(id, UUID.randomUUID(), new ArrayList<>());
         game.recordPendingCarryOverEvents(List.of(
                 new io.github.temporalrift.game.session.domain.game.PendingCarryOverEvent(
-                        firstCarryOverEvent, io.github.temporalrift.game.shared.CarryOverState.STALLED),
+                        firstCarryOverEvent, io.github.temporalrift.game.shared.domain.model.CarryOverState.STALLED),
                 new io.github.temporalrift.game.session.domain.game.PendingCarryOverEvent(
-                        secondCarryOverEvent, io.github.temporalrift.game.shared.CarryOverState.CASCADED)));
+                        secondCarryOverEvent,
+                        io.github.temporalrift.game.shared.domain.model.CarryOverState.CASCADED)));
         gameRepository.save(game);
 
         var loaded = gameRepository.findById(id).orElseThrow();
@@ -156,8 +157,10 @@ class SessionPersistenceIT {
         assertThat(loaded.pendingCarryOverEvents())
                 .containsExactly(
                         new io.github.temporalrift.game.session.domain.game.PendingCarryOverEvent(
-                                firstCarryOverEvent, io.github.temporalrift.game.shared.CarryOverState.STALLED),
+                                firstCarryOverEvent,
+                                io.github.temporalrift.game.shared.domain.model.CarryOverState.STALLED),
                         new io.github.temporalrift.game.session.domain.game.PendingCarryOverEvent(
-                                secondCarryOverEvent, io.github.temporalrift.game.shared.CarryOverState.CASCADED));
+                                secondCarryOverEvent,
+                                io.github.temporalrift.game.shared.domain.model.CarryOverState.CASCADED));
     }
 }

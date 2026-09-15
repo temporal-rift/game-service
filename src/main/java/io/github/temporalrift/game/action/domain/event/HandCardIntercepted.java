@@ -3,8 +3,8 @@ package io.github.temporalrift.game.action.domain.event;
 import java.util.List;
 import java.util.UUID;
 
-import io.github.temporalrift.game.shared.CardGrade;
-import io.github.temporalrift.game.shared.CardType;
+import io.github.temporalrift.game.shared.domain.model.CardGrade;
+import io.github.temporalrift.game.shared.domain.model.CardType;
 
 /** Private INTERCEPT result revealing sampled hand cards to the intercepting viewer only. */
 public record HandCardIntercepted(

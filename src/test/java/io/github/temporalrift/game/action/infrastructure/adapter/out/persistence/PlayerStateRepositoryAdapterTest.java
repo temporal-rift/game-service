@@ -16,8 +16,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import io.github.temporalrift.game.action.domain.playerstate.PlayerState;
-import io.github.temporalrift.game.shared.CardType;
-import io.github.temporalrift.game.shared.Faction;
+import io.github.temporalrift.game.shared.domain.model.CardType;
+import io.github.temporalrift.game.shared.domain.model.Faction;
 
 @ExtendWith(MockitoExtension.class)
 class PlayerStateRepositoryAdapterTest {

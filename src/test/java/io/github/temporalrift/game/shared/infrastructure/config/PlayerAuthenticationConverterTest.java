@@ -17,8 +17,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.InvalidBearerTokenException;
 
-import io.github.temporalrift.game.shared.PlayerPrincipal;
-
 @ExtendWith(MockitoExtension.class)
 class PlayerAuthenticationConverterTest {
 

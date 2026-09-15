@@ -12,7 +12,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import io.github.temporalrift.game.scoring.domain.port.out.ScoringPlayerRepository;
-import io.github.temporalrift.game.shared.PlayerJoinedLobby;
+import io.github.temporalrift.game.shared.domain.event.PlayerJoinedLobby;
 
 @ExtendWith(MockitoExtension.class)
 class ScoringReadProjectionEventListenerTest {

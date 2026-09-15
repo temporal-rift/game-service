@@ -9,8 +9,6 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
-import io.github.temporalrift.game.shared.RestAdviceOrder;
-
 /**
  * Last-resort advice: anything not mapped by a module advice becomes a sanitized 500 instead of the
  * container default, so internal exception details never depend on framework configuration.

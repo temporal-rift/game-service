@@ -18,8 +18,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import io.github.temporalrift.game.session.domain.port.out.EraSagaScoresUpdatedInboxRepository;
-import io.github.temporalrift.game.shared.Faction;
-import io.github.temporalrift.game.shared.ScoresUpdated;
+import io.github.temporalrift.game.shared.domain.event.ScoresUpdated;
+import io.github.temporalrift.game.shared.domain.model.Faction;
 
 @ExtendWith(MockitoExtension.class)
 class EraSagaScoresUpdatedSweepTest {

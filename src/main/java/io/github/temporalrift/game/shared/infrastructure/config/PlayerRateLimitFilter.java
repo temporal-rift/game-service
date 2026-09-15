@@ -12,8 +12,6 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.filter.OncePerRequestFilter;
 import tools.jackson.databind.ObjectMapper;
 
-import io.github.temporalrift.game.shared.PlayerPrincipal;
-
 /**
  * Runs after authentication so the limit key is the verified {@code playerId} from the JWT, not a
  * spoofable request attribute. Unauthenticated requests are left to the entry point.

@@ -35,7 +35,7 @@ import io.github.temporalrift.game.scoring.domain.event.OutcomeApplied;
 import io.github.temporalrift.game.scoring.domain.playerscore.ScoreReason;
 import io.github.temporalrift.game.scoring.domain.port.out.EraScoringContextRepository;
 import io.github.temporalrift.game.scoring.domain.port.out.TimelineOutcomeInboxRepository;
-import io.github.temporalrift.game.shared.ProcessedEventRepository;
+import io.github.temporalrift.game.shared.domain.port.out.ProcessedEventRepository;
 
 /**
  * Exercises the published {@code timeline.events} wire shape: envelope metadata in Kafka headers, the typed payload

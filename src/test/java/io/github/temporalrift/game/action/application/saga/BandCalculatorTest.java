@@ -17,11 +17,11 @@ import io.github.temporalrift.game.action.domain.event.BandedProbabilityPublishe
 import io.github.temporalrift.game.action.domain.event.BandedProbabilityPublished.OutcomeBandState;
 import io.github.temporalrift.game.action.domain.port.out.BandRulesPort;
 import io.github.temporalrift.game.action.domain.port.out.FutureEventDefinitionPort;
-import io.github.temporalrift.game.shared.CardGrade;
-import io.github.temporalrift.game.shared.CardType;
-import io.github.temporalrift.game.shared.Faction;
-import io.github.temporalrift.game.shared.ProbabilityBand;
-import io.github.temporalrift.game.shared.SpecialAction;
+import io.github.temporalrift.game.shared.domain.model.CardGrade;
+import io.github.temporalrift.game.shared.domain.model.CardType;
+import io.github.temporalrift.game.shared.domain.model.Faction;
+import io.github.temporalrift.game.shared.domain.model.ProbabilityBand;
+import io.github.temporalrift.game.shared.domain.model.SpecialAction;
 
 class BandCalculatorTest {
 

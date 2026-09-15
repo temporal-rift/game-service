@@ -4,7 +4,7 @@ import org.springframework.modulith.events.ApplicationModuleListener;
 import org.springframework.stereotype.Component;
 
 import io.github.temporalrift.game.scoring.domain.port.out.ScoringPlayerRepository;
-import io.github.temporalrift.game.shared.PlayerJoinedLobby;
+import io.github.temporalrift.game.shared.domain.event.PlayerJoinedLobby;
 
 /**
  * Projects public session events into the scoring-owned read model backing the score REST API:

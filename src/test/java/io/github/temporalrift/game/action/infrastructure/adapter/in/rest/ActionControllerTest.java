@@ -45,10 +45,10 @@ import io.github.temporalrift.game.action.domain.paradoxresolutionphase.CardNotE
 import io.github.temporalrift.game.action.domain.paradoxresolutionphase.DuplicateParadoxResolutionSubmissionException;
 import io.github.temporalrift.game.action.domain.paradoxresolutionphase.ParadoxResolutionPhaseNotOpenException;
 import io.github.temporalrift.game.action.domain.specialactionerausage.SpecialActionEraBudgetExhaustedException;
-import io.github.temporalrift.game.shared.CardType;
-import io.github.temporalrift.game.shared.PlayerPrincipal;
-import io.github.temporalrift.game.shared.SpecialAction;
+import io.github.temporalrift.game.shared.domain.model.CardType;
+import io.github.temporalrift.game.shared.domain.model.SpecialAction;
 import io.github.temporalrift.game.shared.infrastructure.config.PlayerAuthenticationToken;
+import io.github.temporalrift.game.shared.infrastructure.config.PlayerPrincipal;
 import io.github.temporalrift.game.shared.infrastructure.config.SecurityConfig;
 
 @WebMvcTest(ActionController.class)
@@ -143,7 +143,8 @@ class ActionControllerTest {
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("409-07"));
 
-        willThrow(new CardNotEligibleForParadoxResolutionException(io.github.temporalrift.game.shared.CardType.COLLIDE))
+        willThrow(new CardNotEligibleForParadoxResolutionException(
+                        io.github.temporalrift.game.shared.domain.model.CardType.COLLIDE))
                 .given(playParadoxResolutionCardUseCase)
                 .handle(any());
         mockMvc.perform(post("/api/v1/games/{gameId}/eras/{eraNumber}/paradox-resolution/actions", GAME_ID, ERA)
@@ -271,7 +272,7 @@ class ActionControllerTest {
         assertThat(captor.getValue().roundNumber()).isEqualTo(ROUND);
         assertThat(captor.getValue().playerId()).isEqualTo(PLAYER_ID);
         assertThat(captor.getValue().specialAction())
-                .isEqualTo(io.github.temporalrift.game.shared.SpecialAction.CORRUPT);
+                .isEqualTo(io.github.temporalrift.game.shared.domain.model.SpecialAction.CORRUPT);
         assertThat(captor.getValue().targetEventId()).isNull();
         assertThat(captor.getValue().targetOutcomeId()).isNull();
         assertThat(captor.getValue().targetPlayerId()).isEqualTo(TARGET_PLAYER_ID);

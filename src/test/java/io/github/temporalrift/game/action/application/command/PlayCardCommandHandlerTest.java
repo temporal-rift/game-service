@@ -41,8 +41,8 @@ import io.github.temporalrift.game.action.domain.playerstate.PlayerStateNotFound
 import io.github.temporalrift.game.action.domain.port.out.ActionEventPublisher;
 import io.github.temporalrift.game.action.domain.port.out.ActionRoundRepository;
 import io.github.temporalrift.game.action.domain.port.out.PlayerStateRepository;
-import io.github.temporalrift.game.shared.CardGrade;
-import io.github.temporalrift.game.shared.CardType;
+import io.github.temporalrift.game.shared.domain.model.CardGrade;
+import io.github.temporalrift.game.shared.domain.model.CardType;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("PlayCardCommandHandler")

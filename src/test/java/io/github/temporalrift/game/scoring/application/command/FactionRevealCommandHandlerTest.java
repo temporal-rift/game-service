@@ -13,7 +13,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import io.github.temporalrift.game.scoring.domain.port.out.ScoringGameVisibilityRepository;
-import io.github.temporalrift.game.shared.FactionRevealed;
+import io.github.temporalrift.game.shared.domain.event.FactionRevealed;
 
 @ExtendWith(MockitoExtension.class)
 class FactionRevealCommandHandlerTest {

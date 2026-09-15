@@ -7,9 +7,9 @@ import org.springframework.stereotype.Component;
 import tools.jackson.databind.ObjectMapper;
 
 import io.github.temporalrift.game.scoring.domain.port.out.ScoringEventPublisher;
-import io.github.temporalrift.game.shared.DomainEventEnvelope;
-import io.github.temporalrift.game.shared.OutboundIntegrationEventPublisher;
-import io.github.temporalrift.game.shared.ScoresUpdated;
+import io.github.temporalrift.game.shared.domain.event.ScoresUpdated;
+import io.github.temporalrift.game.shared.domain.messaging.DomainEventEnvelope;
+import io.github.temporalrift.game.shared.infrastructure.adapter.out.kafka.OutboundIntegrationEventPublisher;
 
 /** Publishes scoring events through the single durable {@code gameEvents} AsyncAPI channel. */
 @Component

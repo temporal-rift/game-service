@@ -32,8 +32,8 @@ import io.github.temporalrift.game.session.domain.port.out.GameRepository;
 import io.github.temporalrift.game.session.domain.port.out.SessionGameRulesPort;
 import io.github.temporalrift.game.session.domain.saga.EraSagaState;
 import io.github.temporalrift.game.session.domain.saga.EraSagaStatus;
-import io.github.temporalrift.game.shared.GameRulesPort;
-import io.github.temporalrift.game.shared.HandSelected;
+import io.github.temporalrift.game.shared.domain.event.HandSelected;
+import io.github.temporalrift.game.shared.domain.port.out.GameRulesPort;
 
 @GameServiceIntegrationTest
 class EraStartedToRoundStartIT {

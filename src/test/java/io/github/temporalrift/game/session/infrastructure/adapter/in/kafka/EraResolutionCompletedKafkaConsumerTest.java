@@ -41,8 +41,8 @@ import io.github.temporalrift.game.session.domain.port.out.LobbyRepository;
 import io.github.temporalrift.game.session.domain.port.out.SessionActivistDeclarationRepository;
 import io.github.temporalrift.game.session.domain.port.out.SessionEventPublisher;
 import io.github.temporalrift.game.session.domain.port.out.SessionGameRulesPort;
-import io.github.temporalrift.game.shared.Faction;
-import io.github.temporalrift.game.shared.ProcessedEventRepository;
+import io.github.temporalrift.game.shared.domain.model.Faction;
+import io.github.temporalrift.game.shared.domain.port.out.ProcessedEventRepository;
 
 @ExtendWith(MockitoExtension.class)
 class EraResolutionCompletedKafkaConsumerTest {
@@ -109,7 +109,7 @@ class EraResolutionCompletedKafkaConsumerTest {
         then(gameRepository).should().save(game);
         assertThat(game.pendingCarryOverEvents())
                 .containsExactly(new io.github.temporalrift.game.session.domain.game.PendingCarryOverEvent(
-                        cascadedEventId, io.github.temporalrift.game.shared.CarryOverState.CASCADED));
+                        cascadedEventId, io.github.temporalrift.game.shared.domain.model.CarryOverState.CASCADED));
         then(eventPublisher).should(never()).publish(any());
         then(applicationEventPublisher).should(never()).publishEvent(any());
     }
@@ -132,11 +132,12 @@ class EraResolutionCompletedKafkaConsumerTest {
         assertThat(game.pendingCarryOverEvents())
                 .containsExactly(
                         new io.github.temporalrift.game.session.domain.game.PendingCarryOverEvent(
-                                firstStalledId, io.github.temporalrift.game.shared.CarryOverState.STALLED),
+                                firstStalledId, io.github.temporalrift.game.shared.domain.model.CarryOverState.STALLED),
                         new io.github.temporalrift.game.session.domain.game.PendingCarryOverEvent(
-                                cascadedId, io.github.temporalrift.game.shared.CarryOverState.CASCADED),
+                                cascadedId, io.github.temporalrift.game.shared.domain.model.CarryOverState.CASCADED),
                         new io.github.temporalrift.game.session.domain.game.PendingCarryOverEvent(
-                                secondStalledId, io.github.temporalrift.game.shared.CarryOverState.STALLED));
+                                secondStalledId,
+                                io.github.temporalrift.game.shared.domain.model.CarryOverState.STALLED));
         assertThat(game.cascadedParadoxCounter()).isEqualTo(2);
         then(eventPublisher).should(never()).publish(any());
     }
@@ -155,7 +156,7 @@ class EraResolutionCompletedKafkaConsumerTest {
 
         assertThat(game.pendingCarryOverEvents())
                 .containsExactly(new io.github.temporalrift.game.session.domain.game.PendingCarryOverEvent(
-                        stalledId, io.github.temporalrift.game.shared.CarryOverState.STALLED));
+                        stalledId, io.github.temporalrift.game.shared.domain.model.CarryOverState.STALLED));
         assertThat(game.cascadedParadoxCounter()).isEqualTo(initialCascadeCount);
         then(eventPublisher).should(never()).publish(any());
         then(applicationEventPublisher).should(never()).publishEvent(any());

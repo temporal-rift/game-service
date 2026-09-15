@@ -20,7 +20,7 @@ import io.github.temporalrift.game.session.domain.lobby.LobbyConfig;
 import io.github.temporalrift.game.session.domain.lobby.LobbyStatus;
 import io.github.temporalrift.game.session.domain.port.out.LobbyRepository;
 import io.github.temporalrift.game.session.domain.port.out.SessionEventPublisher;
-import io.github.temporalrift.game.shared.DomainEventEnvelope;
+import io.github.temporalrift.game.shared.domain.messaging.DomainEventEnvelope;
 
 @GameServiceIntegrationTest
 class SessionEventPublisherAdapterIT {

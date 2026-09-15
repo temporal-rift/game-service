@@ -15,7 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import io.github.temporalrift.game.PersistenceIntegrationTest;
-import io.github.temporalrift.game.shared.ProcessedEventRepository;
+import io.github.temporalrift.game.shared.domain.port.out.ProcessedEventRepository;
 
 @PersistenceIntegrationTest
 class ProcessedEventPersistenceIT {

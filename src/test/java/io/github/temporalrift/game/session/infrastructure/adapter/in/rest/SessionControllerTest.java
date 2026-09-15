@@ -38,8 +38,8 @@ import io.github.temporalrift.game.session.domain.lobby.NotEnoughPlayersExceptio
 import io.github.temporalrift.game.session.domain.lobby.NotLobbyHostException;
 import io.github.temporalrift.game.session.domain.lobby.PlayerAlreadyInLobbyException;
 import io.github.temporalrift.game.session.domain.lobby.PlayerNotInLobbyException;
-import io.github.temporalrift.game.shared.PlayerPrincipal;
 import io.github.temporalrift.game.shared.infrastructure.config.PlayerAuthenticationToken;
+import io.github.temporalrift.game.shared.infrastructure.config.PlayerPrincipal;
 import io.github.temporalrift.game.shared.infrastructure.config.SecurityConfig;
 
 @WebMvcTest(SessionController.class)

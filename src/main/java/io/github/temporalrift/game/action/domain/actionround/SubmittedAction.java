@@ -7,12 +7,12 @@ import java.util.UUID;
 
 import io.github.temporalrift.game.action.domain.event.CardPlayed;
 import io.github.temporalrift.game.action.domain.event.SpecialActionPlayed;
-import io.github.temporalrift.game.shared.CardGrade;
-import io.github.temporalrift.game.shared.CardType;
-import io.github.temporalrift.game.shared.Faction;
-import io.github.temporalrift.game.shared.ForesightDeclared;
-import io.github.temporalrift.game.shared.OutcomeAnnihilated;
-import io.github.temporalrift.game.shared.SpecialAction;
+import io.github.temporalrift.game.shared.domain.event.ForesightDeclared;
+import io.github.temporalrift.game.shared.domain.event.OutcomeAnnihilated;
+import io.github.temporalrift.game.shared.domain.model.CardGrade;
+import io.github.temporalrift.game.shared.domain.model.CardType;
+import io.github.temporalrift.game.shared.domain.model.Faction;
+import io.github.temporalrift.game.shared.domain.model.SpecialAction;
 
 /**
  * One player's submission for a round. Each variant owns its own structural validation and knows how

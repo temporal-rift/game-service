@@ -4,7 +4,7 @@ import org.springframework.stereotype.Component;
 
 import io.github.temporalrift.game.scoring.FactionRevealCommand;
 import io.github.temporalrift.game.session.domain.port.out.FactionRevealPort;
-import io.github.temporalrift.game.shared.FactionRevealed;
+import io.github.temporalrift.game.shared.domain.event.FactionRevealed;
 
 @Component
 class FactionRevealAdapter implements FactionRevealPort {

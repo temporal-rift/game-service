@@ -33,10 +33,10 @@ import io.github.temporalrift.game.session.domain.port.out.GameRepository;
 import io.github.temporalrift.game.session.domain.port.out.LobbyRepository;
 import io.github.temporalrift.game.session.domain.port.out.SessionEventPublisher;
 import io.github.temporalrift.game.session.domain.saga.FactionAssignment;
-import io.github.temporalrift.game.shared.DomainEventEnvelope;
-import io.github.temporalrift.game.shared.Faction;
-import io.github.temporalrift.game.shared.FactionAssigned;
-import io.github.temporalrift.game.shared.SagaHandoffPublisher;
+import io.github.temporalrift.game.shared.application.SagaHandoffPublisher;
+import io.github.temporalrift.game.shared.domain.event.FactionAssigned;
+import io.github.temporalrift.game.shared.domain.messaging.DomainEventEnvelope;
+import io.github.temporalrift.game.shared.domain.model.Faction;
 
 @Service
 class StartGameSagaImpl implements StartGameSaga {

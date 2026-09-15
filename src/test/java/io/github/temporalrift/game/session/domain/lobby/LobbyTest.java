@@ -18,8 +18,8 @@ import io.github.temporalrift.game.session.domain.event.HostTransferred;
 import io.github.temporalrift.game.session.domain.event.LobbyClosed;
 import io.github.temporalrift.game.session.domain.event.LobbyCreated;
 import io.github.temporalrift.game.session.domain.event.PlayerLeftLobby;
-import io.github.temporalrift.game.shared.Faction;
-import io.github.temporalrift.game.shared.PlayerJoinedLobby;
+import io.github.temporalrift.game.shared.domain.event.PlayerJoinedLobby;
+import io.github.temporalrift.game.shared.domain.model.Faction;
 
 class LobbyTest {
 

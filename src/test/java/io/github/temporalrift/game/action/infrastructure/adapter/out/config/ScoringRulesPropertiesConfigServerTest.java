@@ -21,7 +21,7 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.Configuration;
 
-import io.github.temporalrift.game.shared.CardGrade;
+import io.github.temporalrift.game.shared.domain.model.CardGrade;
 
 /**
  * Exercises spring.config.import=configserver:... end to end against an in-process HTTP stub serving the

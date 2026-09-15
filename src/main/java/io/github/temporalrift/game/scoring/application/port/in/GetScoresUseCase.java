@@ -4,7 +4,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 
-import io.github.temporalrift.game.shared.Faction;
+import io.github.temporalrift.game.shared.domain.model.Faction;
 
 public interface GetScoresUseCase {
 

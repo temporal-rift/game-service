@@ -13,8 +13,8 @@ import io.github.temporalrift.game.action.domain.actionround.SubmittedAction;
 import io.github.temporalrift.game.action.domain.event.BandedProbabilityPublished;
 import io.github.temporalrift.game.action.domain.port.out.BandRulesPort;
 import io.github.temporalrift.game.action.domain.port.out.FutureEventDefinitionPort;
-import io.github.temporalrift.game.shared.CardType;
-import io.github.temporalrift.game.shared.ProbabilityBand;
+import io.github.temporalrift.game.shared.domain.model.CardType;
+import io.github.temporalrift.game.shared.domain.model.ProbabilityBand;
 
 @Component
 class BandCalculator {
