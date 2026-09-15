@@ -45,7 +45,7 @@ class EndGameScoreSnapshotIT {
         var gameId = UUID.randomUUID();
         var playerId = UUID.randomUUID();
         var score = new PlayerScore(UUID.randomUUID(), gameId, playerId, Faction.REVISIONISTS);
-        score.apply(1, ScoreReason.SECRET_OUTCOME_WON);
+        score.apply(1, ScoreReason.SECRET_OUTCOME_WON, 4);
         transactionTemplate.executeWithoutResult(_ -> playerScoreRepository.saveAll(List.of(score)));
 
         var reveal = new FactionRevealed(
@@ -61,7 +61,6 @@ class EndGameScoreSnapshotIT {
                 .singleElement()
                 .extracting(io.github.temporalrift.game.shared.domain.event.GameEnded.PlayerScoreResult::score)
                 .as("the published final score carries the end-game bonus, not the pre-award total")
-                .isEqualTo(
-                        ScoreReason.SECRET_OUTCOME_WON.pointsDelta() + ScoreReason.FACTION_UNIDENTIFIED.pointsDelta());
+                .isEqualTo(10);
     }
 }

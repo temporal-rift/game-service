@@ -68,7 +68,7 @@ class PlayerScoreTest {
     void appliesDocumentedScoringRules(Faction faction, ScoreReason reason, int pointsDelta) {
         var score = new PlayerScore(UUID.randomUUID(), GAME_ID, PLAYER_ID, faction);
 
-        var entry = score.apply(ERA, reason);
+        var entry = score.apply(ERA, reason, pointsDelta);
 
         assertThat(entry.pointsDelta()).isEqualTo(pointsDelta);
         assertThat(entry.newTotal()).isEqualTo(pointsDelta);
@@ -82,7 +82,7 @@ class PlayerScoreTest {
         var score = new PlayerScore(UUID.randomUUID(), GAME_ID, PLAYER_ID, Faction.ERASERS);
 
         assertThatExceptionOfType(InvalidScoreReasonException.class)
-                .isThrownBy(() -> score.apply(ERA, ScoreReason.EVENT_RESOLVED_AS_WRITTEN));
+                .isThrownBy(() -> score.apply(ERA, ScoreReason.EVENT_RESOLVED_AS_WRITTEN, 4));
 
         assertThat(score.totalScore()).isZero();
         assertThat(score.history()).isEmpty();
@@ -93,7 +93,7 @@ class PlayerScoreTest {
     void applyAllowsNegativeAdjustments() {
         var score = new PlayerScore(UUID.randomUUID(), GAME_ID, PLAYER_ID, Faction.WEAVERS);
 
-        score.apply(ERA, ScoreReason.CHAIN_BROKEN);
+        score.apply(ERA, ScoreReason.CHAIN_BROKEN, -3);
 
         assertThat(score.totalScore()).isEqualTo(-3);
     }
@@ -108,13 +108,13 @@ class PlayerScoreTest {
         var b = new PlayerScore(UUID.randomUUID(), GAME_ID, UUID.randomUUID(), Faction.WEAVERS);
 
         for (int i = 0; i < 8; i++) {
-            a.apply(ERA, ScoreReason.CHAIN_BROKEN);
+            a.apply(ERA, ScoreReason.CHAIN_BROKEN, -3);
         }
-        a.apply(ERA, ScoreReason.CHAIN_COMPLETED);
-        a.apply(ERA, ScoreReason.CHAIN_COMPLETED);
+        a.apply(ERA, ScoreReason.CHAIN_COMPLETED, 10);
+        a.apply(ERA, ScoreReason.CHAIN_COMPLETED, 10);
 
-        b.apply(ERA, ScoreReason.CHAIN_BROKEN);
-        b.apply(ERA, ScoreReason.CHAIN_LINK_ADDED);
+        b.apply(ERA, ScoreReason.CHAIN_BROKEN, -3);
+        b.apply(ERA, ScoreReason.CHAIN_LINK_ADDED, 2);
 
         assertThat(a.totalScore()).isEqualTo(-4);
         assertThat(b.totalScore()).isEqualTo(-1);
@@ -126,8 +126,8 @@ class PlayerScoreTest {
     void applyAccumulatesScoreAndHistory() {
         var score = new PlayerScore(UUID.randomUUID(), GAME_ID, PLAYER_ID, Faction.ERASERS);
 
-        var first = score.apply(ERA, ScoreReason.ANNIHILATED_OUTCOME);
-        var second = score.apply(ERA, ScoreReason.CORRUPTED_OPPONENT_CARD);
+        var first = score.apply(ERA, ScoreReason.ANNIHILATED_OUTCOME, 3);
+        var second = score.apply(ERA, ScoreReason.CORRUPTED_OPPONENT_CARD, 2);
 
         assertThat(score.totalScore()).isEqualTo(5);
         assertThat(first.newTotal()).isEqualTo(3);
@@ -141,18 +141,18 @@ class PlayerScoreTest {
     void applyAcceptsFactionAgnosticReasonForAnyFaction(Faction faction) {
         var score = new PlayerScore(UUID.randomUUID(), GAME_ID, PLAYER_ID, faction);
 
-        var entry = score.apply(ERA, ScoreReason.PARADOX_CASCADE_PENALTY);
+        var entry = score.apply(ERA, ScoreReason.PARADOX_CASCADE_PENALTY, -2);
 
         assertThat(entry.pointsDelta()).isEqualTo(-2);
         assertThat(score.totalScore()).isEqualTo(-2);
     }
 
     @Test
-    @DisplayName("apply with a multiplier scales the reason's base points delta")
-    void applyWithMultiplierScalesPointsDelta() {
+    @DisplayName("apply records the supplied points delta")
+    void applyRecordsSuppliedPointsDelta() {
         var score = new PlayerScore(UUID.randomUUID(), GAME_ID, PLAYER_ID, Faction.ERASERS);
 
-        var entry = score.apply(ERA, ScoreReason.PARADOX_CASCADE_PENALTY, 2);
+        var entry = score.apply(ERA, ScoreReason.PARADOX_CASCADE_PENALTY, -4);
 
         assertThat(entry.pointsDelta()).isEqualTo(-4);
         assertThat(entry.newTotal()).isEqualTo(-4);
@@ -160,15 +160,15 @@ class PlayerScoreTest {
     }
 
     @Test
-    @DisplayName("apply without an explicit multiplier defaults to 1")
-    void applyDefaultsToMultiplierOne() {
+    @DisplayName("apply keeps each supplied points delta in score history")
+    void applyKeepsSuppliedPointsDeltaInHistory() {
         var score = new PlayerScore(UUID.randomUUID(), GAME_ID, PLAYER_ID, Faction.ERASERS);
 
-        var entry = score.apply(ERA, ScoreReason.PARADOX_CASCADE_PENALTY);
+        var entry = score.apply(ERA, ScoreReason.PARADOX_CASCADE_PENALTY, -2);
 
         assertThat(entry.pointsDelta())
-                .isEqualTo(
-                        score.apply(ERA, ScoreReason.PARADOX_CASCADE_PENALTY, 1).pointsDelta());
+                .isEqualTo(score.apply(ERA, ScoreReason.PARADOX_CASCADE_PENALTY, -2)
+                        .pointsDelta());
         assertThat(entry.pointsDelta()).isEqualTo(-2);
     }
 
@@ -178,7 +178,7 @@ class PlayerScoreTest {
         var score = new PlayerScore(UUID.randomUUID(), GAME_ID, PLAYER_ID, Faction.ACTIVISTS);
 
         assertThatExceptionOfType(InvalidScoreEraException.class)
-                .isThrownBy(() -> score.apply(0, ScoreReason.DECLARED_OUTCOME_WON));
+                .isThrownBy(() -> score.apply(0, ScoreReason.DECLARED_OUTCOME_WON, 4));
     }
 
     @Test
@@ -186,7 +186,7 @@ class PlayerScoreTest {
     void applyEndGame_recordsUnidentifiedFactionBonus() {
         var score = new PlayerScore(UUID.randomUUID(), GAME_ID, PLAYER_ID, Faction.REVISIONISTS);
 
-        var entry = score.applyEndGame(ScoreReason.FACTION_UNIDENTIFIED);
+        var entry = score.applyEndGame(ScoreReason.FACTION_UNIDENTIFIED, 6);
 
         assertThat(entry.eraNumber()).isZero();
         assertThat(entry.pointsDelta()).isEqualTo(6);
@@ -199,7 +199,7 @@ class PlayerScoreTest {
         var score = new PlayerScore(UUID.randomUUID(), GAME_ID, PLAYER_ID, Faction.REVISIONISTS);
 
         assertThatExceptionOfType(IllegalArgumentException.class)
-                .isThrownBy(() -> score.applyEndGame(ScoreReason.SECRET_OUTCOME_WON))
+                .isThrownBy(() -> score.applyEndGame(ScoreReason.SECRET_OUTCOME_WON, 4))
                 .withMessage("only FACTION_UNIDENTIFIED may be applied at game end");
     }
 
@@ -222,7 +222,7 @@ class PlayerScoreTest {
     @DisplayName("history is immutable to callers")
     void historyIsImmutable() {
         var score = new PlayerScore(UUID.randomUUID(), GAME_ID, PLAYER_ID, Faction.ACTIVISTS);
-        score.apply(ERA, ScoreReason.DECLARED_OUTCOME_WON);
+        score.apply(ERA, ScoreReason.DECLARED_OUTCOME_WON, 4);
         var history = score.history();
         var entry = new ScoreEntry(ERA, ScoreReason.DECLARED_OUTCOME_WON, 4, 8);
 

@@ -33,7 +33,7 @@ class PlayerScorePersistenceIT {
     @Test
     void saveAll_insertsNewPlayerScoreViaNativeUpsert() {
         var score = new PlayerScore(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), Faction.WEAVERS);
-        score.apply(1, ScoreReason.CHAIN_LINK_ADDED);
+        score.apply(1, ScoreReason.CHAIN_LINK_ADDED, 2);
 
         transactionTemplate.executeWithoutResult(_ -> playerScoreRepository.saveAll(List.of(score)));
 
@@ -58,7 +58,7 @@ class PlayerScorePersistenceIT {
         var gameId = UUID.randomUUID();
         var playerId = UUID.randomUUID();
         var score = new PlayerScore(UUID.randomUUID(), gameId, playerId, Faction.ERASERS);
-        score.apply(1, ScoreReason.ANNIHILATED_OUTCOME);
+        score.apply(1, ScoreReason.ANNIHILATED_OUTCOME, 3);
         transactionTemplate.executeWithoutResult(_ -> playerScoreRepository.saveAll(List.of(score)));
         var firstLoad = transactionTemplate
                 .execute(_ -> playerScoreRepository.findAllByGameId(gameId))
@@ -66,7 +66,7 @@ class PlayerScorePersistenceIT {
 
         var reloaded = PlayerScore.reconstitute(
                 firstLoad.id(), gameId, playerId, Faction.ERASERS, firstLoad.totalScore(), firstLoad.history());
-        reloaded.apply(2, ScoreReason.ERA_ENDED_WITH_FEWER_OUTCOMES);
+        reloaded.apply(2, ScoreReason.ERA_ENDED_WITH_FEWER_OUTCOMES, 5);
         assertThat(reloaded.totalScore()).isEqualTo(8);
         transactionTemplate.executeWithoutResult(_ -> playerScoreRepository.saveAll(List.of(reloaded)));
 

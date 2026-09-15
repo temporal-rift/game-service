@@ -38,43 +38,33 @@ public class PlayerScore {
         return new PlayerScore(id, gameId, playerId, faction, totalScore, history);
     }
 
-    public ScoreEntry apply(int eraNumber, ScoreReason reason) {
-        return apply(eraNumber, reason, 1);
-    }
-
-    /**
-     * Applies {@code reason} at {@code multiplier} times its base {@link ScoreReason#pointsDelta()}.
-     * Used by DETONATE's "double the negative score effect" rule; every other caller
-     * passes multiplier 1 via {@link #apply(int, ScoreReason)}.
-     */
-    public ScoreEntry apply(int eraNumber, ScoreReason reason, int multiplier) {
+    public ScoreEntry apply(int eraNumber, ScoreReason reason, int pointsDelta) {
         validateEra(eraNumber);
-        return applyScore(eraNumber, reason, multiplier);
+        return applyScore(eraNumber, reason, pointsDelta);
     }
 
     /**
      * Applies the one-time game-end score entry outside the numbered-era scoring loop.
      *
      * <p>The history records this entry with era {@code 0}, which is reserved exclusively for
-     * {@link ScoreReason#FACTION_UNIDENTIFIED}; callers must use {@link #apply(int, ScoreReason)}
+     * {@link ScoreReason#FACTION_UNIDENTIFIED}; callers must use {@link #apply(int, ScoreReason, int)}
      * for ordinary era scoring.
      */
-    public ScoreEntry applyEndGame(ScoreReason reason) {
+    public ScoreEntry applyEndGame(ScoreReason reason, int pointsDelta) {
         if (reason != ScoreReason.FACTION_UNIDENTIFIED) {
             throw new IllegalArgumentException("only FACTION_UNIDENTIFIED may be applied at game end");
         }
-        return applyScore(0, reason, 1);
+        return applyScore(0, reason, pointsDelta);
     }
 
-    private ScoreEntry applyScore(int eraNumber, ScoreReason reason, int multiplier) {
+    private ScoreEntry applyScore(int eraNumber, ScoreReason reason, int pointsDelta) {
         Objects.requireNonNull(reason, "reason must not be null");
         if (!reason.belongsTo(faction)) {
             throw new InvalidScoreReasonException(faction, reason);
         }
 
-        int delta = reason.pointsDelta() * multiplier;
-        totalScore += delta;
-        var entry = new ScoreEntry(eraNumber, reason, delta, totalScore);
+        totalScore += pointsDelta;
+        var entry = new ScoreEntry(eraNumber, reason, pointsDelta, totalScore);
         history.add(entry);
         return entry;
     }

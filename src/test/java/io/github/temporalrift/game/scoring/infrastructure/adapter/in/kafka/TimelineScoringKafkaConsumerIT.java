@@ -70,7 +70,7 @@ class TimelineScoringKafkaConsumerIT {
         var scores = playerScoreRepository.findAllByGameId(gameId);
         assertThat(scores).singleElement().satisfies(score -> {
             assertThat(score.playerId()).isEqualTo(playerId);
-            assertThat(score.totalScore()).isEqualTo(ScoreReason.CHAIN_LINK_ADDED.pointsDelta());
+            assertThat(score.totalScore()).isEqualTo(2);
             assertThat(score.history()).singleElement().satisfies(entry -> {
                 assertThat(entry.reason()).isEqualTo(ScoreReason.CHAIN_LINK_ADDED);
                 assertThat(entry.eraNumber()).isEqualTo(eraNumber);
@@ -129,8 +129,7 @@ class TimelineScoringKafkaConsumerIT {
                         .singleElement()
                         .satisfies(score -> {
                             assertThat(score.playerId()).isEqualTo(playerId);
-                            assertThat(score.totalScore())
-                                    .isEqualTo(ScoreReason.DECLARED_OUTCOME_WON_WITH_RALLY.pointsDelta());
+                            assertThat(score.totalScore()).isEqualTo(8);
                             assertThat(score.history())
                                     .singleElement()
                                     .satisfies(entry -> assertThat(entry.reason())
@@ -159,8 +158,7 @@ class TimelineScoringKafkaConsumerIT {
         await().atMost(Duration.ofSeconds(10))
                 .untilAsserted(() -> assertThat(playerScoreRepository.findAllByGameId(gameId))
                         .singleElement()
-                        .satisfies(score -> assertThat(score.totalScore())
-                                .isEqualTo(ScoreReason.DECLARED_OUTCOME_WON.pointsDelta())));
+                        .satisfies(score -> assertThat(score.totalScore()).isEqualTo(4)));
     }
 
     @Test
@@ -196,7 +194,7 @@ class TimelineScoringKafkaConsumerIT {
                 .untilAsserted(() -> assertThat(playerScoreRepository.findAllByGameId(gameId))
                         .singleElement()
                         .satisfies(score -> {
-                            assertThat(score.totalScore()).isEqualTo(ScoreReason.SECRET_OUTCOME_WON.pointsDelta());
+                            assertThat(score.totalScore()).isEqualTo(4);
                             assertThat(score.history())
                                     .extracting(ScoreEntry::reason)
                                     .containsExactly(ScoreReason.SECRET_OUTCOME_WON);

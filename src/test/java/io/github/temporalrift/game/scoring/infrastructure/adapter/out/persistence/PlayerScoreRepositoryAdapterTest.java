@@ -73,7 +73,7 @@ class PlayerScoreRepositoryAdapterTest {
     @Test
     void saveAll_upsertsScoreAndPersistsFullHistoryForNewAggregate() {
         var score = new PlayerScore(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), Faction.ACTIVISTS);
-        score.apply(1, ScoreReason.DECLARED_OUTCOME_WON);
+        score.apply(1, ScoreReason.DECLARED_OUTCOME_WON, 4);
         var persistedRow = rowWithId(score.id());
         given(jpaRepository.findByGameIdAndPlayerId(score.gameId(), score.playerId()))
                 .willReturn(Optional.of(persistedRow));
@@ -100,7 +100,7 @@ class PlayerScoreRepositoryAdapterTest {
                 Faction.WEAVERS,
                 2,
                 List.of(new ScoreEntry(1, ScoreReason.CHAIN_LINK_ADDED, 2, 2)));
-        score.apply(2, ScoreReason.CHAIN_COMPLETED);
+        score.apply(2, ScoreReason.CHAIN_COMPLETED, 10);
         var persistedRow = rowWithId(scoreId);
         given(jpaRepository.findByGameIdAndPlayerId(gameId, playerId)).willReturn(Optional.of(persistedRow));
         given(historyJpaRepository.countByPlayerScoreId(scoreId)).willReturn(1L);
@@ -123,7 +123,7 @@ class PlayerScoreRepositoryAdapterTest {
         var gameId = UUID.randomUUID();
         var playerId = UUID.randomUUID();
         var score = PlayerScore.reconstitute(inMemoryId, gameId, playerId, Faction.ERASERS, 0, List.of());
-        score.apply(1, ScoreReason.ANNIHILATED_OUTCOME);
+        score.apply(1, ScoreReason.ANNIHILATED_OUTCOME, 3);
         var persistedRow = rowWithId(winningId);
         given(jpaRepository.findByGameIdAndPlayerId(gameId, playerId)).willReturn(Optional.of(persistedRow));
         given(historyJpaRepository.countByPlayerScoreId(winningId)).willReturn(0L);
@@ -146,7 +146,7 @@ class PlayerScoreRepositoryAdapterTest {
         var gameId = UUID.randomUUID();
         var playerId = UUID.randomUUID();
         var score = PlayerScore.reconstitute(inMemoryId, gameId, playerId, Faction.ERASERS, 0, List.of());
-        score.apply(1, ScoreReason.ANNIHILATED_OUTCOME);
+        score.apply(1, ScoreReason.ANNIHILATED_OUTCOME, 3);
         var persistedRow = rowWithId(winningId);
         given(jpaRepository.findByGameIdAndPlayerId(gameId, playerId)).willReturn(Optional.of(persistedRow));
         given(historyJpaRepository.countByPlayerScoreId(winningId)).willReturn(5L);
