@@ -2,7 +2,7 @@ package io.github.temporalrift.game.shared.infrastructure.adapter.out.kafka;
 
 import java.util.Map;
 
-import io.github.temporalrift.game.shared.domain.DomainEventEnvelope;
+import io.github.temporalrift.game.shared.domain.messaging.DomainEventEnvelope;
 
 /**
  * Adds the common event-envelope metadata to generated producer header maps.

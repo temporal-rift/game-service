@@ -4,7 +4,7 @@ import java.util.function.Consumer;
 
 import org.springframework.context.ApplicationEventPublisher;
 
-import io.github.temporalrift.game.shared.domain.DomainEventEnvelope;
+import io.github.temporalrift.game.shared.domain.messaging.DomainEventEnvelope;
 
 /**
  * Publishes a saga-triggering domain fact through both the Kafka outbox path and the in-process

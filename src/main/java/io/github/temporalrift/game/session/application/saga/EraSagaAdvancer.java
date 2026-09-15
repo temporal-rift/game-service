@@ -30,10 +30,10 @@ import io.github.temporalrift.game.session.domain.port.out.SessionGameRulesPort;
 import io.github.temporalrift.game.session.domain.saga.EraSagaState;
 import io.github.temporalrift.game.session.domain.saga.EraSagaStatus;
 import io.github.temporalrift.game.shared.application.SagaHandoffPublisher;
-import io.github.temporalrift.game.shared.domain.DomainEventEnvelope;
 import io.github.temporalrift.game.shared.domain.event.ActionRoundClosed;
 import io.github.temporalrift.game.shared.domain.event.ScoresUpdated;
 import io.github.temporalrift.game.shared.domain.event.StartActionRoundRequested;
+import io.github.temporalrift.game.shared.domain.messaging.DomainEventEnvelope;
 
 @Component
 class EraSagaAdvancer {

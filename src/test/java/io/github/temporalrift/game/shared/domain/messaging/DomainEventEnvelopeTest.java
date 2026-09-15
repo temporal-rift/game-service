@@ -1,4 +1,4 @@
-package io.github.temporalrift.game.shared.domain;
+package io.github.temporalrift.game.shared.domain.messaging;
 
 import static org.assertj.core.api.Assertions.assertThat;
 

@@ -1,4 +1,4 @@
-package io.github.temporalrift.game.shared.domain;
+package io.github.temporalrift.game.shared.domain.messaging;
 
 import java.time.Clock;
 import java.time.Instant;

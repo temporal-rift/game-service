@@ -14,7 +14,7 @@ import tools.jackson.databind.ObjectMapper;
 import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract;
 import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.ResolutionFailedPayload;
 import io.github.temporalrift.game.session.application.saga.ResolutionFailedApplicationEvent;
-import io.github.temporalrift.game.shared.domain.DomainEventEnvelope;
+import io.github.temporalrift.game.shared.domain.messaging.DomainEventEnvelope;
 import io.github.temporalrift.game.shared.domain.port.out.ProcessedEventRepository;
 import io.github.temporalrift.game.shared.infrastructure.adapter.in.kafka.MessagePayloads;
 import io.github.temporalrift.game.shared.infrastructure.adapter.in.kafka.TimelineEventEnvelope;

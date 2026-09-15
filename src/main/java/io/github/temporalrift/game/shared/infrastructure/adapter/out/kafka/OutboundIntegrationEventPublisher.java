@@ -8,7 +8,7 @@ import jakarta.validation.Validator;
 import org.springframework.context.ApplicationEventPublisher;
 import tools.jackson.databind.ObjectMapper;
 
-import io.github.temporalrift.game.shared.domain.DomainEventEnvelope;
+import io.github.temporalrift.game.shared.domain.messaging.DomainEventEnvelope;
 
 /** Publishes an outbound event for durable delivery by Spring Modulith. */
 public class OutboundIntegrationEventPublisher {

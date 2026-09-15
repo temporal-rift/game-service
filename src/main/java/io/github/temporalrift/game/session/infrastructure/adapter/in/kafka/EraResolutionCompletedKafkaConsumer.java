@@ -34,7 +34,7 @@ import io.github.temporalrift.game.session.domain.port.out.SessionActivistDeclar
 import io.github.temporalrift.game.session.domain.port.out.SessionEventPublisher;
 import io.github.temporalrift.game.session.domain.port.out.SessionGameRulesPort;
 import io.github.temporalrift.game.shared.application.SagaHandoffPublisher;
-import io.github.temporalrift.game.shared.domain.DomainEventEnvelope;
+import io.github.temporalrift.game.shared.domain.messaging.DomainEventEnvelope;
 import io.github.temporalrift.game.shared.domain.model.CarryOverState;
 import io.github.temporalrift.game.shared.domain.port.out.ProcessedEventRepository;
 import io.github.temporalrift.game.shared.infrastructure.adapter.in.kafka.MessagePayloads;

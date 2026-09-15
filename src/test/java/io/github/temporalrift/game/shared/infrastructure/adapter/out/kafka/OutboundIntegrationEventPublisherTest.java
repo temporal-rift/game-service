@@ -31,7 +31,7 @@ import io.github.temporalrift.asyncapi.scoringevents.GeneratedChannelContract.Fa
 import io.github.temporalrift.asyncapi.scoringevents.GeneratedChannelContract.ScoreUpdate;
 import io.github.temporalrift.asyncapi.scoringevents.GeneratedChannelContract.ScoresUpdatedPayload;
 import io.github.temporalrift.asyncapi.sessionevents.GeneratedChannelContract.GameStartedPayload;
-import io.github.temporalrift.game.shared.domain.DomainEventEnvelope;
+import io.github.temporalrift.game.shared.domain.messaging.DomainEventEnvelope;
 
 @ExtendWith(MockitoExtension.class)
 class OutboundIntegrationEventPublisherTest {
