@@ -17,7 +17,8 @@ import io.github.temporalrift.game.shared.ScoresUpdated;
  * against the shared tables, guarantees a scored-but-not-advanced era is always eventually retried.
  *
  * <p>Every instance sweeps concurrently without coordination: {@code handleScoresUpdated}'s own {@code
- * WAITING_SCORES} filter makes a duplicate transition attempt a no-op.
+ * WAITING_SCORES} filter makes a duplicate transition attempt a no-op. Each processed item increments
+ * {@link EraSagaRecoveryMetrics}, distinguishing this fallback path from the direct listener.
  */
 @Component
 class EraSagaScoresUpdatedSweep {
@@ -26,10 +27,15 @@ class EraSagaScoresUpdatedSweep {
 
     private final EraSagaScoresUpdatedInboxRepository scoresUpdatedInbox;
     private final EraSagaAdvancer eraSagaAdvancer;
+    private final EraSagaRecoveryMetrics recoveryMetrics;
 
-    EraSagaScoresUpdatedSweep(EraSagaScoresUpdatedInboxRepository scoresUpdatedInbox, EraSagaAdvancer eraSagaAdvancer) {
+    EraSagaScoresUpdatedSweep(
+            EraSagaScoresUpdatedInboxRepository scoresUpdatedInbox,
+            EraSagaAdvancer eraSagaAdvancer,
+            EraSagaRecoveryMetrics recoveryMetrics) {
         this.scoresUpdatedInbox = scoresUpdatedInbox;
         this.eraSagaAdvancer = eraSagaAdvancer;
+        this.recoveryMetrics = recoveryMetrics;
     }
 
     @Scheduled(fixedDelayString = "${game.timers.era-saga-scores-updated-sweep-interval}")
@@ -41,6 +47,7 @@ class EraSagaScoresUpdatedSweep {
         // One failing era must not starve the rest of the sweep batch.
         try {
             eraSagaAdvancer.handleScoresUpdated(pending.gameId(), pending);
+            recoveryMetrics.recordScoresUpdatedRecovery();
         } catch (RuntimeException ex) {
             log.error(
                     "Era saga scores-updated sweep failed for game {} era {}",

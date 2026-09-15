@@ -30,11 +30,14 @@ class EraSagaScoresUpdatedSweepTest {
     @Mock
     EraSagaAdvancer eraSagaAdvancer;
 
+    @Mock
+    EraSagaRecoveryMetrics recoveryMetrics;
+
     @InjectMocks
     EraSagaScoresUpdatedSweep sweep;
 
     @Test
-    @DisplayName("recorded-but-not-advanced eras are retried")
+    @DisplayName("recorded-but-not-advanced eras are retried and recorded as recovered")
     void sweep_retriesPendingEras() {
         var pending = scoresUpdated(UUID.randomUUID(), 2);
         given(scoresUpdatedInbox.findRecordedButNotAdvanced()).willReturn(List.of(pending));
@@ -42,20 +45,22 @@ class EraSagaScoresUpdatedSweepTest {
         sweep.sweep();
 
         then(eraSagaAdvancer).should().handleScoresUpdated(pending.gameId(), pending);
+        then(recoveryMetrics).should().recordScoresUpdatedRecovery();
     }
 
     @Test
-    @DisplayName("nothing pending — advancer untouched")
+    @DisplayName("nothing pending — advancer and metric untouched")
     void sweep_nothingPending_noRetry() {
         given(scoresUpdatedInbox.findRecordedButNotAdvanced()).willReturn(List.of());
 
         sweep.sweep();
 
         then(eraSagaAdvancer).should(never()).handleScoresUpdated(any(), any());
+        then(recoveryMetrics).should(never()).recordScoresUpdatedRecovery();
     }
 
     @Test
-    @DisplayName("one failing era does not starve the rest of the batch")
+    @DisplayName("one failing era does not starve the rest of the batch, and only the recovered era is metered")
     void sweep_failureDoesNotStarveBatch() {
         var failing = scoresUpdated(UUID.randomUUID(), 1);
         var healthy = scoresUpdated(UUID.randomUUID(), 1);
@@ -67,6 +72,7 @@ class EraSagaScoresUpdatedSweepTest {
         sweep.sweep();
 
         then(eraSagaAdvancer).should().handleScoresUpdated(healthy.gameId(), healthy);
+        then(recoveryMetrics).should().recordScoresUpdatedRecovery();
     }
 
     private ScoresUpdated scoresUpdated(UUID gameId, int eraNumber) {
