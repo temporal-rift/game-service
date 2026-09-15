@@ -3,6 +3,7 @@ package io.github.temporalrift.game;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.context.annotation.Bean;
+import org.springframework.test.context.DynamicPropertyRegistrar;
 import org.testcontainers.kafka.KafkaContainer;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 
@@ -31,5 +32,13 @@ public class TestcontainersConfiguration {
     @ServiceConnection
     KafkaContainer kafkaContainer() {
         return new KafkaContainer("apache/kafka:3.7.0");
+    }
+
+    // The Kafka binder reads its own brokers property from the Environment; it has no ConnectionDetails
+    // integration, so @ServiceConnection's bean-patching never reaches it.
+    @Bean
+    DynamicPropertyRegistrar kafkaBinderBrokersRegistrar(KafkaContainer kafkaContainer) {
+        return registry ->
+                registry.add("spring.cloud.stream.kafka.binder.brokers", kafkaContainer::getBootstrapServers);
     }
 }
