@@ -56,7 +56,6 @@ class EraSagaAdvancer {
             GameRepository gameRepository,
             SessionEventPublisher eventPublisher,
             ApplicationEventPublisher applicationEventPublisher,
-            SagaHandoffPublisher sagaHandoffPublisher,
             SessionGameRulesPort gameRules,
             Clock clock) {
         this.eraSagaRepository = eraSagaRepository;
@@ -64,7 +63,7 @@ class EraSagaAdvancer {
         this.gameRepository = gameRepository;
         this.eventPublisher = eventPublisher;
         this.applicationEventPublisher = applicationEventPublisher;
-        this.sagaHandoffPublisher = sagaHandoffPublisher;
+        this.sagaHandoffPublisher = new SagaHandoffPublisher(applicationEventPublisher);
         this.gameRules = gameRules;
         this.clock = clock;
     }

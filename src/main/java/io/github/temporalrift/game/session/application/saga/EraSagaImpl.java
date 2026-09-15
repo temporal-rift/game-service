@@ -15,6 +15,7 @@ import java.util.stream.Stream;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -54,7 +55,7 @@ class EraSagaImpl implements EraSaga {
             GameRepository gameRepository,
             FutureEventCatalogPort futureEventCatalog,
             SessionEventPublisher eventPublisher,
-            SagaHandoffPublisher sagaHandoffPublisher,
+            ApplicationEventPublisher applicationEventPublisher,
             EraSagaStateManager stateManager,
             SessionGameRulesPort gameRules,
             WeightedCardDealer cardDealer,
@@ -62,7 +63,7 @@ class EraSagaImpl implements EraSaga {
         this.gameRepository = gameRepository;
         this.futureEventCatalog = futureEventCatalog;
         this.eventPublisher = eventPublisher;
-        this.sagaHandoffPublisher = sagaHandoffPublisher;
+        this.sagaHandoffPublisher = new SagaHandoffPublisher(applicationEventPublisher);
         this.stateManager = stateManager;
         this.gameRules = gameRules;
         this.cardDealer = cardDealer;

@@ -10,6 +10,7 @@ import java.util.UUID;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.messaging.Message;
 import org.springframework.stereotype.Component;
@@ -63,7 +64,7 @@ class EraResolutionCompletedKafkaConsumer {
             LobbyRepository lobbyRepository,
             SessionActivistDeclarationRepository declarationRepository,
             SessionEventPublisher eventPublisher,
-            SagaHandoffPublisher sagaHandoffPublisher,
+            ApplicationEventPublisher applicationEventPublisher,
             SessionGameRulesPort gameRules,
             TimelineSessionWireMapper wireMapper,
             ObjectMapper objectMapper,
@@ -73,7 +74,7 @@ class EraResolutionCompletedKafkaConsumer {
         this.lobbyRepository = lobbyRepository;
         this.declarationRepository = declarationRepository;
         this.eventPublisher = eventPublisher;
-        this.sagaHandoffPublisher = sagaHandoffPublisher;
+        this.sagaHandoffPublisher = new SagaHandoffPublisher(applicationEventPublisher);
         this.gameRules = gameRules;
         this.wireMapper = wireMapper;
         this.objectMapper = objectMapper;

@@ -48,7 +48,6 @@ import io.github.temporalrift.game.session.domain.port.out.LobbyRepository;
 import io.github.temporalrift.game.session.domain.port.out.SessionEventPublisher;
 import io.github.temporalrift.game.shared.DomainEventEnvelope;
 import io.github.temporalrift.game.shared.FactionAssigned;
-import io.github.temporalrift.game.shared.SagaHandoffPublisher;
 
 @ExtendWith(MockitoExtension.class)
 class StartGameSagaImplTest {
@@ -102,7 +101,7 @@ class StartGameSagaImplTest {
                 lobbyRepository,
                 gameRepository,
                 eventPublisher,
-                new SagaHandoffPublisher(applicationEventPublisher),
+                applicationEventPublisher,
                 stateManager,
                 compensator,
                 futureEventCatalog,

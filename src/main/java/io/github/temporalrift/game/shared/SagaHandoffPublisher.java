@@ -3,13 +3,16 @@ package io.github.temporalrift.game.shared;
 import java.util.function.Consumer;
 
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.stereotype.Component;
 
 /**
  * Publishes a saga-triggering domain fact through both the Kafka outbox path and the in-process
  * {@code @ApplicationModuleListener} path in one call, so a publish site can never emit one without the other.
+ *
+ * <p>Deliberately not a Spring bean — like {@link OutboundIntegrationEventPublisher}, each caller constructs its
+ * own instance. Spring Modulith's module-entry observability wraps every bean in a CGLIB proxy and cannot resolve
+ * the owning module for a call routed through a shared cross-module component, throwing a {@link
+ * NullPointerException} from its tracing interceptor; a plain, unproxied instance avoids that entirely.
  */
-@Component
 public class SagaHandoffPublisher {
 
     private final ApplicationEventPublisher applicationEventPublisher;

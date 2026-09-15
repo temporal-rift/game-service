@@ -43,7 +43,6 @@ import io.github.temporalrift.game.session.domain.port.out.SessionEventPublisher
 import io.github.temporalrift.game.session.domain.port.out.SessionGameRulesPort;
 import io.github.temporalrift.game.shared.Faction;
 import io.github.temporalrift.game.shared.ProcessedEventRepository;
-import io.github.temporalrift.game.shared.SagaHandoffPublisher;
 
 @ExtendWith(MockitoExtension.class)
 class EraResolutionCompletedKafkaConsumerTest {
@@ -88,7 +87,7 @@ class EraResolutionCompletedKafkaConsumerTest {
                 lobbyRepository,
                 declarationRepository,
                 eventPublisher,
-                new SagaHandoffPublisher(applicationEventPublisher),
+                applicationEventPublisher,
                 gameRules,
                 new TimelineSessionWireMapperImpl(),
                 JSON_MAPPER,
