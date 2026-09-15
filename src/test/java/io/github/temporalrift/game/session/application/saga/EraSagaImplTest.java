@@ -26,7 +26,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -49,6 +48,7 @@ import io.github.temporalrift.game.shared.CarryOverState;
 import io.github.temporalrift.game.shared.DomainEventEnvelope;
 import io.github.temporalrift.game.shared.EventsDrawn;
 import io.github.temporalrift.game.shared.HandDealt;
+import io.github.temporalrift.game.shared.SagaHandoffPublisher;
 
 @ExtendWith(MockitoExtension.class)
 class EraSagaImplTest {
@@ -85,11 +85,19 @@ class EraSagaImplTest {
     @Spy
     Clock clock = Clock.systemUTC();
 
-    @InjectMocks
     EraSagaImpl eraSaga;
 
     @BeforeEach
     void defaultDeal() {
+        eraSaga = new EraSagaImpl(
+                gameRepository,
+                futureEventCatalog,
+                eventPublisher,
+                new SagaHandoffPublisher(applicationEventPublisher),
+                stateManager,
+                gameRules,
+                cardDealer,
+                clock);
         lenient().when(gameRules.cardsPerDeal()).thenReturn(7);
         lenient().when(gameRules.handSelectionTimerSeconds(anyInt())).thenReturn(60);
         lenient()

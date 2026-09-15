@@ -16,13 +16,15 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 
 import io.github.temporalrift.game.action.application.ActionTargetValidator;
 import io.github.temporalrift.game.action.application.port.in.RecordActivistDeclarationUseCase;
@@ -36,6 +38,7 @@ import io.github.temporalrift.game.action.domain.port.out.ActionRoundRepository;
 import io.github.temporalrift.game.action.domain.port.out.ActivistEraStateRepository;
 import io.github.temporalrift.game.action.domain.port.out.PlayerStateRepository;
 import io.github.temporalrift.game.shared.Faction;
+import io.github.temporalrift.game.shared.SagaHandoffPublisher;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("RecordActivistDeclarationCommandHandler")
@@ -64,13 +67,27 @@ class RecordActivistDeclarationCommandHandlerTest {
     ActionEventPublisher actionEventPublisher;
 
     @Mock
+    ApplicationEventPublisher applicationEventPublisher;
+
+    @Mock
     PlayerState playerState;
 
     @Spy
     Clock clock = CLOCK;
 
-    @InjectMocks
     RecordActivistDeclarationCommandHandler handler;
+
+    @BeforeEach
+    void setUp() {
+        handler = new RecordActivistDeclarationCommandHandler(
+                activistEraStateRepository,
+                actionRoundRepository,
+                playerStateRepository,
+                actionTargetValidator,
+                actionEventPublisher,
+                new SagaHandoffPublisher(applicationEventPublisher),
+                clock);
+    }
 
     @Test
     @DisplayName("handle — Rally declaration — publishes the round-one timeline request metadata")
@@ -106,17 +123,17 @@ class RecordActivistDeclarationCommandHandlerTest {
             return true;
         }));
         then(activistEraStateRepository).should().save(any(ActivistEraState.class));
-        then(actionEventPublisher)
-                .should()
-                .publishInternally(argThat(
-                        event -> event.equals(new io.github.temporalrift.game.shared.ActivistDeclarationRecorded(
-                                GAME_ID,
-                                ERA_NUMBER,
-                                1,
-                                PLAYER_ID,
-                                io.github.temporalrift.game.shared.SpecialAction.RALLY,
-                                TARGET_EVENT_ID,
-                                TARGET_OUTCOME_ID))));
+        var internalEventCaptor = ArgumentCaptor.forClass(Object.class);
+        then(applicationEventPublisher).should().publishEvent(internalEventCaptor.capture());
+        assertThat(internalEventCaptor.getValue())
+                .isEqualTo(new io.github.temporalrift.game.shared.ActivistDeclarationRecorded(
+                        GAME_ID,
+                        ERA_NUMBER,
+                        1,
+                        PLAYER_ID,
+                        io.github.temporalrift.game.shared.SpecialAction.RALLY,
+                        TARGET_EVENT_ID,
+                        TARGET_OUTCOME_ID));
     }
 
     @Test

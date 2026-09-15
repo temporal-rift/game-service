@@ -25,6 +25,7 @@ import io.github.temporalrift.game.action.domain.actionround.ActionRoundParticip
 import io.github.temporalrift.game.action.domain.actionround.CloseOutcome;
 import io.github.temporalrift.game.action.domain.actionround.SubmittedAction;
 import io.github.temporalrift.game.action.domain.activisterastate.ProbabilityInfluenceSignature;
+import io.github.temporalrift.game.action.domain.event.ActionEventPayload;
 import io.github.temporalrift.game.action.domain.event.ActionRoundTimerExpired;
 import io.github.temporalrift.game.action.domain.event.BandedProbabilityPublished;
 import io.github.temporalrift.game.action.domain.event.ExposeBehaviorChanged;
@@ -46,6 +47,7 @@ import io.github.temporalrift.game.shared.CardType;
 import io.github.temporalrift.game.shared.DomainEventEnvelope;
 import io.github.temporalrift.game.shared.EraActionFactsFinalized;
 import io.github.temporalrift.game.shared.GameRulesPort;
+import io.github.temporalrift.game.shared.SagaHandoffPublisher;
 
 @Service
 @ConditionalOnBean({ActionRoundRepository.class, PlayerStateRepository.class})
@@ -68,6 +70,7 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
     private final ActivistEraStateRepository activistEraStateRepository;
     private final PlayerStateRepository playerStateRepository;
     private final ActionEventPublisher actionEventPublisher;
+    private final SagaHandoffPublisher sagaHandoffPublisher;
     private final ActionRoundSagaStateManager stateManager;
     private final GameRulesPort gameRules;
     private final FutureEventDefinitionPort futureEventDefinitionPort;
@@ -80,6 +83,7 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
             ActivistEraStateRepository activistEraStateRepository,
             PlayerStateRepository playerStateRepository,
             ActionEventPublisher actionEventPublisher,
+            SagaHandoffPublisher sagaHandoffPublisher,
             ActionRoundSagaStateManager stateManager,
             GameRulesPort gameRules,
             FutureEventDefinitionPort futureEventDefinitionPort,
@@ -90,6 +94,7 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
         this.activistEraStateRepository = activistEraStateRepository;
         this.playerStateRepository = playerStateRepository;
         this.actionEventPublisher = actionEventPublisher;
+        this.sagaHandoffPublisher = sagaHandoffPublisher;
         this.stateManager = stateManager;
         this.gameRules = gameRules;
         this.futureEventDefinitionPort = futureEventDefinitionPort;
@@ -457,7 +462,7 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
                             .flatMap(ProbabilityInfluenceSignature::from);
                     if (responseSignature.isPresent() && state.recordExposeBehaviorChanged(responseSignature.get())) {
                         activistEraStateRepository.save(state);
-                        actionEventPublisher.publish(DomainEventEnvelope.create(
+                        DomainEventEnvelope<ActionEventPayload> envelope = DomainEventEnvelope.create(
                                 state.id(),
                                 io.github.temporalrift.game.action.domain.activisterastate.ActivistEraState
                                         .AGGREGATE_TYPE,
@@ -469,8 +474,10 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
                                         FINAL_ROUND_NUMBER,
                                         state.activistPlayerId(),
                                         state.exposedPlayerId()),
-                                clock));
-                        actionEventPublisher.publishInternally(
+                                clock);
+                        sagaHandoffPublisher.publish(
+                                actionEventPublisher::publish,
+                                envelope,
                                 new io.github.temporalrift.game.shared.ExposeBehaviorChanged(
                                         gameId, eraNumber, state.activistPlayerId(), state.exposedPlayerId()));
                     }

@@ -10,7 +10,6 @@ import java.util.UUID;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.messaging.Message;
 import org.springframework.stereotype.Component;
@@ -37,6 +36,7 @@ import io.github.temporalrift.game.shared.CarryOverState;
 import io.github.temporalrift.game.shared.DomainEventEnvelope;
 import io.github.temporalrift.game.shared.MessagePayloads;
 import io.github.temporalrift.game.shared.ProcessedEventRepository;
+import io.github.temporalrift.game.shared.SagaHandoffPublisher;
 import io.github.temporalrift.game.shared.TimelineEventEnvelope;
 
 @Component
@@ -51,7 +51,7 @@ class EraResolutionCompletedKafkaConsumer {
     private final LobbyRepository lobbyRepository;
     private final SessionActivistDeclarationRepository declarationRepository;
     private final SessionEventPublisher eventPublisher;
-    private final ApplicationEventPublisher applicationEventPublisher;
+    private final SagaHandoffPublisher sagaHandoffPublisher;
     private final SessionGameRulesPort gameRules;
     private final TimelineSessionWireMapper wireMapper;
     private final ObjectMapper objectMapper;
@@ -63,7 +63,7 @@ class EraResolutionCompletedKafkaConsumer {
             LobbyRepository lobbyRepository,
             SessionActivistDeclarationRepository declarationRepository,
             SessionEventPublisher eventPublisher,
-            ApplicationEventPublisher applicationEventPublisher,
+            SagaHandoffPublisher sagaHandoffPublisher,
             SessionGameRulesPort gameRules,
             TimelineSessionWireMapper wireMapper,
             ObjectMapper objectMapper,
@@ -73,7 +73,7 @@ class EraResolutionCompletedKafkaConsumer {
         this.lobbyRepository = lobbyRepository;
         this.declarationRepository = declarationRepository;
         this.eventPublisher = eventPublisher;
-        this.applicationEventPublisher = applicationEventPublisher;
+        this.sagaHandoffPublisher = sagaHandoffPublisher;
         this.gameRules = gameRules;
         this.wireMapper = wireMapper;
         this.objectMapper = objectMapper;
@@ -158,9 +158,15 @@ class EraResolutionCompletedKafkaConsumer {
                 .currentPlayers();
         var winnerIds = declarationRepository.findPlayerIdsTargeting(game.id(), eraNumber, collapsingEventId);
         var collapsed = buildTimelineCollapsed(game.id(), eraNumber, players, winnerIds);
-        eventPublisher.publish(DomainEventEnvelope.create(
-                game.id(), Game.AGGREGATE_TYPE, game.id(), DomainEventEnvelope.SCHEMA_VERSION_V1, collapsed, clock));
-        applicationEventPublisher.publishEvent(collapsed);
+        sagaHandoffPublisher.publish(
+                eventPublisher::publish,
+                DomainEventEnvelope.create(
+                        game.id(),
+                        Game.AGGREGATE_TYPE,
+                        game.id(),
+                        DomainEventEnvelope.SCHEMA_VERSION_V1,
+                        collapsed,
+                        clock));
     }
 
     private TimelineCollapsed buildTimelineCollapsed(

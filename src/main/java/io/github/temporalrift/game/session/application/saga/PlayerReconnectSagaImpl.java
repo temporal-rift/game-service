@@ -7,7 +7,6 @@ import java.util.UUID;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -34,7 +33,6 @@ class PlayerReconnectSagaImpl implements PlayerReconnectSaga {
     private final LobbyRepository lobbyRepository;
     private final GameRepository gameRepository;
     private final SessionEventPublisher eventPublisher;
-    private final ApplicationEventPublisher applicationEventPublisher;
     private final PlayerReconnectSagaStateManager stateManager;
     private final SessionGameRulesPort gameRules;
     private final PlayerReconnectTimerRegistry timerRegistry;
@@ -44,7 +42,6 @@ class PlayerReconnectSagaImpl implements PlayerReconnectSaga {
             LobbyRepository lobbyRepository,
             GameRepository gameRepository,
             SessionEventPublisher eventPublisher,
-            ApplicationEventPublisher applicationEventPublisher,
             PlayerReconnectSagaStateManager stateManager,
             SessionGameRulesPort gameRules,
             PlayerReconnectTimerRegistry timerRegistry,
@@ -52,7 +49,6 @@ class PlayerReconnectSagaImpl implements PlayerReconnectSaga {
         this.lobbyRepository = lobbyRepository;
         this.gameRepository = gameRepository;
         this.eventPublisher = eventPublisher;
-        this.applicationEventPublisher = applicationEventPublisher;
         this.stateManager = stateManager;
         this.gameRules = gameRules;
         this.timerRegistry = timerRegistry;
@@ -157,15 +153,13 @@ class PlayerReconnectSagaImpl implements PlayerReconnectSaga {
         var gracePeriodCount = stateManager.countActiveGracePeriodForGame(saga.gameId());
 
         if (connectedCount == 0 && gracePeriodCount == 0) {
-            var payload = new GameEndedAbnormally(saga.gameId(), "all-players-abandoned");
             eventPublisher.publish(DomainEventEnvelope.create(
                     saga.gameId(),
                     Game.AGGREGATE_TYPE,
                     saga.gameId(),
                     DomainEventEnvelope.SCHEMA_VERSION_V1,
-                    payload,
+                    new GameEndedAbnormally(saga.gameId(), "all-players-abandoned"),
                     clock));
-            applicationEventPublisher.publishEvent(payload);
         }
     }
 }

@@ -3,8 +3,10 @@ package io.github.temporalrift.game.session.application.saga;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.isA;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -16,11 +18,11 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -48,6 +50,7 @@ import io.github.temporalrift.game.shared.ActionRoundClosed;
 import io.github.temporalrift.game.shared.CarryOverState;
 import io.github.temporalrift.game.shared.DomainEventEnvelope;
 import io.github.temporalrift.game.shared.Faction;
+import io.github.temporalrift.game.shared.SagaHandoffPublisher;
 import io.github.temporalrift.game.shared.ScoresUpdated;
 import io.github.temporalrift.game.shared.StartActionRoundRequested;
 
@@ -83,8 +86,20 @@ class EraSagaAdvancerTest {
     @Spy
     Clock clock = Clock.systemUTC();
 
-    @InjectMocks
     EraSagaAdvancer advancer;
+
+    @BeforeEach
+    void setUp() {
+        advancer = new EraSagaAdvancer(
+                eraSagaRepository,
+                scoresUpdatedInbox,
+                gameRepository,
+                eventPublisher,
+                applicationEventPublisher,
+                new SagaHandoffPublisher(applicationEventPublisher),
+                gameRules,
+                clock);
+    }
 
     // ─── handleRoundClosed ───────────────────────────────────────────────────
 
@@ -419,6 +434,30 @@ class EraSagaAdvancerTest {
         assertThat(captor.getValue()).isInstanceOf(TimelineStabilized.class);
         var event = (TimelineStabilized) captor.getValue();
         assertThat(event.gameId()).isEqualTo(GAME_ID);
+    }
+
+    @Test
+    @DisplayName("no winner and not final era — EraEnded relays before EraStarted's Kafka and in-process publishes")
+    void handleScoresUpdated_noWinnerNotFinalEra_relaysEraEndedBeforeEraStartedOnBothPaths() {
+        // given — EraEnded is Kafka-only (no in-process listener today) and EraStarted is dual-published
+        // through the helper; this proves the state-before-terminal-fact ordering sagas.md requires holds
+        // across both the Kafka relay and the in-process path, matching the helper's own kafka-then-internal
+        // contract per call.
+        var state = new EraSagaState(GAME_ID, 1, EraSagaStatus.WAITING_SCORES, PLAYER_IDS);
+        given(eraSagaRepository.findByGameIdWithLock(GAME_ID)).willReturn(Optional.of(state));
+        given(gameRules.winScoreThreshold()).willReturn(WIN_THRESHOLD);
+        given(gameRules.maxEras()).willReturn(MAX_ERAS);
+        var game = Game.reconstitute(GAME_ID, LOBBY_ID, List.of(), 1, 0, GameStatus.IN_PROGRESS);
+        given(gameRepository.findByIdWithLock(GAME_ID)).willReturn(Optional.of(game));
+
+        // when
+        advancer.handleScoresUpdated(GAME_ID, noWinnerScores());
+
+        // then
+        var ordered = inOrder(eventPublisher, applicationEventPublisher);
+        ordered.verify(eventPublisher).publish(envelopeWithPayload(EraEnded.class));
+        ordered.verify(eventPublisher).publish(envelopeWithPayload(EraStarted.class));
+        ordered.verify(applicationEventPublisher).publishEvent(isA(EraStarted.class));
     }
 
     // ─── handleResolutionFailed ──────────────────────────────────────────────
