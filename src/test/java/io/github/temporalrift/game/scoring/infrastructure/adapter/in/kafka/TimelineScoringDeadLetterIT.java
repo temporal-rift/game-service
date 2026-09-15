@@ -50,7 +50,8 @@ class TimelineScoringDeadLetterIT {
             var parked = await().atMost(Duration.ofSeconds(30))
                     .until(() -> pollForValue(consumer, payload), Objects::nonNull);
 
-            assertThat(new String((byte[]) parked.value(), StandardCharsets.UTF_8)).contains(payload);
+            assertThat(new String((byte[]) parked.value(), StandardCharsets.UTF_8))
+                    .contains(payload);
             assertThat(parked.partition()).isZero();
         }
     }
