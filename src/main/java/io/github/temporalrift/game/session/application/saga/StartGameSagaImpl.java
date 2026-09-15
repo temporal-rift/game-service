@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.UUID;
 import java.util.stream.IntStream;
 
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -54,7 +55,7 @@ class StartGameSagaImpl implements StartGameSaga {
             LobbyRepository lobbyRepository,
             GameRepository gameRepository,
             SessionEventPublisher eventPublisher,
-            SagaHandoffPublisher sagaHandoffPublisher,
+            ApplicationEventPublisher applicationEventPublisher,
             StartGameSagaStateManager stateManager,
             StartGameSagaCompensator compensator,
             FutureEventCatalogPort futureEventCatalog,
@@ -62,7 +63,7 @@ class StartGameSagaImpl implements StartGameSaga {
         this.lobbyRepository = lobbyRepository;
         this.gameRepository = gameRepository;
         this.eventPublisher = eventPublisher;
-        this.sagaHandoffPublisher = sagaHandoffPublisher;
+        this.sagaHandoffPublisher = new SagaHandoffPublisher(applicationEventPublisher);
         this.stateManager = stateManager;
         this.compensator = compensator;
         this.futureEventCatalog = futureEventCatalog;

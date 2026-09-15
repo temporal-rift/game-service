@@ -38,7 +38,6 @@ import io.github.temporalrift.game.action.domain.port.out.ActionRoundRepository;
 import io.github.temporalrift.game.action.domain.port.out.ActivistEraStateRepository;
 import io.github.temporalrift.game.action.domain.port.out.PlayerStateRepository;
 import io.github.temporalrift.game.shared.Faction;
-import io.github.temporalrift.game.shared.SagaHandoffPublisher;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("RecordActivistDeclarationCommandHandler")
@@ -85,7 +84,7 @@ class RecordActivistDeclarationCommandHandlerTest {
                 playerStateRepository,
                 actionTargetValidator,
                 actionEventPublisher,
-                new SagaHandoffPublisher(applicationEventPublisher),
+                applicationEventPublisher,
                 clock);
     }
 

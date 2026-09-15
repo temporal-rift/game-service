@@ -10,6 +10,7 @@ import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 
 import io.github.temporalrift.game.scoring.domain.playerscore.PlayerScore;
@@ -36,13 +37,13 @@ public class UpdateScoresCommandHandler {
             EraScoringContextRepository contextRepository,
             EraScoreEvaluator eraScoreEvaluator,
             ScoringEventPublisher scoringEventPublisher,
-            SagaHandoffPublisher sagaHandoffPublisher,
+            ApplicationEventPublisher applicationEventPublisher,
             Clock clock) {
         this.playerScoreRepository = Objects.requireNonNull(playerScoreRepository);
         this.contextRepository = Objects.requireNonNull(contextRepository);
         this.eraScoreEvaluator = Objects.requireNonNull(eraScoreEvaluator);
         this.scoringEventPublisher = Objects.requireNonNull(scoringEventPublisher);
-        this.sagaHandoffPublisher = Objects.requireNonNull(sagaHandoffPublisher);
+        this.sagaHandoffPublisher = new SagaHandoffPublisher(Objects.requireNonNull(applicationEventPublisher));
         this.clock = Objects.requireNonNull(clock);
     }
 

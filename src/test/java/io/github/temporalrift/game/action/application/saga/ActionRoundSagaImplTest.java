@@ -60,7 +60,6 @@ import io.github.temporalrift.game.shared.DomainEventEnvelope;
 import io.github.temporalrift.game.shared.EraActionFactsFinalized;
 import io.github.temporalrift.game.shared.Faction;
 import io.github.temporalrift.game.shared.GameRulesPort;
-import io.github.temporalrift.game.shared.SagaHandoffPublisher;
 import io.github.temporalrift.game.shared.SpecialAction;
 
 @ExtendWith(MockitoExtension.class)
@@ -117,7 +116,7 @@ class ActionRoundSagaImplTest {
                 activistEraStateRepository,
                 playerStateRepository,
                 actionEventPublisher,
-                new SagaHandoffPublisher(applicationEventPublisher),
+                applicationEventPublisher,
                 stateManager,
                 gameRules,
                 futureEventDefinitionPort,

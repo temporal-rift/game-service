@@ -50,7 +50,6 @@ import io.github.temporalrift.game.shared.ActionRoundClosed;
 import io.github.temporalrift.game.shared.CarryOverState;
 import io.github.temporalrift.game.shared.DomainEventEnvelope;
 import io.github.temporalrift.game.shared.Faction;
-import io.github.temporalrift.game.shared.SagaHandoffPublisher;
 import io.github.temporalrift.game.shared.ScoresUpdated;
 import io.github.temporalrift.game.shared.StartActionRoundRequested;
 
@@ -96,7 +95,6 @@ class EraSagaAdvancerTest {
                 gameRepository,
                 eventPublisher,
                 applicationEventPublisher,
-                new SagaHandoffPublisher(applicationEventPublisher),
                 gameRules,
                 clock);
     }

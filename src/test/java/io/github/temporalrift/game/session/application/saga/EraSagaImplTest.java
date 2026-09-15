@@ -48,7 +48,6 @@ import io.github.temporalrift.game.shared.CarryOverState;
 import io.github.temporalrift.game.shared.DomainEventEnvelope;
 import io.github.temporalrift.game.shared.EventsDrawn;
 import io.github.temporalrift.game.shared.HandDealt;
-import io.github.temporalrift.game.shared.SagaHandoffPublisher;
 
 @ExtendWith(MockitoExtension.class)
 class EraSagaImplTest {
@@ -93,7 +92,7 @@ class EraSagaImplTest {
                 gameRepository,
                 futureEventCatalog,
                 eventPublisher,
-                new SagaHandoffPublisher(applicationEventPublisher),
+                applicationEventPublisher,
                 stateManager,
                 gameRules,
                 cardDealer,

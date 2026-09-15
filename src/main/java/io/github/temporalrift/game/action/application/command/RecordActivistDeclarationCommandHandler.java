@@ -3,6 +3,7 @@ package io.github.temporalrift.game.action.application.command;
 import java.time.Clock;
 import java.util.UUID;
 
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -43,14 +44,14 @@ class RecordActivistDeclarationCommandHandler implements RecordActivistDeclarati
             PlayerStateRepository playerStateRepository,
             ActionTargetValidator actionTargetValidator,
             ActionEventPublisher actionEventPublisher,
-            SagaHandoffPublisher sagaHandoffPublisher,
+            ApplicationEventPublisher applicationEventPublisher,
             Clock clock) {
         this.activistEraStateRepository = activistEraStateRepository;
         this.actionRoundRepository = actionRoundRepository;
         this.playerStateRepository = playerStateRepository;
         this.actionTargetValidator = actionTargetValidator;
         this.actionEventPublisher = actionEventPublisher;
-        this.sagaHandoffPublisher = sagaHandoffPublisher;
+        this.sagaHandoffPublisher = new SagaHandoffPublisher(applicationEventPublisher);
         this.clock = clock;
     }
 

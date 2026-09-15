@@ -15,6 +15,7 @@ import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -83,7 +84,7 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
             ActivistEraStateRepository activistEraStateRepository,
             PlayerStateRepository playerStateRepository,
             ActionEventPublisher actionEventPublisher,
-            SagaHandoffPublisher sagaHandoffPublisher,
+            ApplicationEventPublisher applicationEventPublisher,
             ActionRoundSagaStateManager stateManager,
             GameRulesPort gameRules,
             FutureEventDefinitionPort futureEventDefinitionPort,
@@ -94,7 +95,7 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
         this.activistEraStateRepository = activistEraStateRepository;
         this.playerStateRepository = playerStateRepository;
         this.actionEventPublisher = actionEventPublisher;
-        this.sagaHandoffPublisher = sagaHandoffPublisher;
+        this.sagaHandoffPublisher = new SagaHandoffPublisher(applicationEventPublisher);
         this.stateManager = stateManager;
         this.gameRules = gameRules;
         this.futureEventDefinitionPort = futureEventDefinitionPort;
