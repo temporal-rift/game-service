@@ -15,10 +15,10 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import io.github.temporalrift.game.action.domain.event.CardPlayed;
 import io.github.temporalrift.game.action.domain.event.SpecialActionPlayed;
-import io.github.temporalrift.game.shared.CardType;
-import io.github.temporalrift.game.shared.Faction;
-import io.github.temporalrift.game.shared.SpecialAction;
-import io.github.temporalrift.game.shared.StartActionRoundRequested;
+import io.github.temporalrift.game.shared.domain.event.StartActionRoundRequested;
+import io.github.temporalrift.game.shared.domain.model.CardType;
+import io.github.temporalrift.game.shared.domain.model.Faction;
+import io.github.temporalrift.game.shared.domain.model.SpecialAction;
 
 @ExtendWith(MockitoExtension.class)
 class ActionRoundSagaEventListenerTest {

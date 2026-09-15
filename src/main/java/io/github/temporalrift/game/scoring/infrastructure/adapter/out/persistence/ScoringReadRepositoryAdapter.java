@@ -10,7 +10,7 @@ import org.springframework.stereotype.Component;
 
 import io.github.temporalrift.game.scoring.domain.playerscore.ScoreReason;
 import io.github.temporalrift.game.scoring.domain.port.out.ScoringReadRepository;
-import io.github.temporalrift.game.shared.Faction;
+import io.github.temporalrift.game.shared.domain.model.Faction;
 
 @Component
 class ScoringReadRepositoryAdapter implements ScoringReadRepository {

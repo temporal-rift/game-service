@@ -44,11 +44,11 @@ import io.github.temporalrift.game.action.domain.port.out.FutureEventDefinitionP
 import io.github.temporalrift.game.action.domain.port.out.PlayerStateRepository;
 import io.github.temporalrift.game.action.domain.saga.ActionRoundSagaState;
 import io.github.temporalrift.game.action.domain.saga.ActionRoundSagaStatus;
-import io.github.temporalrift.game.shared.CardType;
-import io.github.temporalrift.game.shared.DomainEventEnvelope;
-import io.github.temporalrift.game.shared.EraActionFactsFinalized;
-import io.github.temporalrift.game.shared.GameRulesPort;
-import io.github.temporalrift.game.shared.SagaHandoffPublisher;
+import io.github.temporalrift.game.shared.application.SagaHandoffPublisher;
+import io.github.temporalrift.game.shared.domain.DomainEventEnvelope;
+import io.github.temporalrift.game.shared.domain.event.EraActionFactsFinalized;
+import io.github.temporalrift.game.shared.domain.model.CardType;
+import io.github.temporalrift.game.shared.domain.port.out.GameRulesPort;
 
 @Service
 @ConditionalOnBean({ActionRoundRepository.class, PlayerStateRepository.class})
@@ -119,7 +119,7 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
                 ? activistEraStateRepository.findDeclaredByGameIdAndEraNumber(gameId, eraNumber).stream()
                         .<SubmittedAction>map(state -> new SubmittedAction.SpecialActionSubmission(
                                 state.activistPlayerId(),
-                                io.github.temporalrift.game.shared.Faction.ACTIVISTS,
+                                io.github.temporalrift.game.shared.domain.model.Faction.ACTIVISTS,
                                 state.declarationMode().toSpecialAction(),
                                 state.targetEventId(),
                                 state.targetOutcomeId(),
@@ -402,7 +402,8 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
         round.submittedActions().stream()
                 .filter(SubmittedAction.SpecialActionSubmission.class::isInstance)
                 .map(SubmittedAction.SpecialActionSubmission.class::cast)
-                .filter(special -> special.specialAction() == io.github.temporalrift.game.shared.SpecialAction.CORRUPT)
+                .filter(special -> special.specialAction()
+                        == io.github.temporalrift.game.shared.domain.model.SpecialAction.CORRUPT)
                 .forEach(corrupt -> {
                     var targetCard = shiftCardsByPlayer.get(corrupt.targetPlayerId());
                     if (targetCard != null) {
@@ -479,7 +480,7 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
                         sagaHandoffPublisher.publish(
                                 actionEventPublisher::publish,
                                 envelope,
-                                new io.github.temporalrift.game.shared.ExposeBehaviorChanged(
+                                new io.github.temporalrift.game.shared.domain.event.ExposeBehaviorChanged(
                                         gameId, eraNumber, state.activistPlayerId(), state.exposedPlayerId()));
                     }
                 });

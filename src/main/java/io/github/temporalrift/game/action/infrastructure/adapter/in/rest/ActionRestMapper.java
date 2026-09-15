@@ -7,23 +7,23 @@ final class ActionRestMapper {
 
     private ActionRestMapper() {}
 
-    static io.github.temporalrift.game.shared.SpecialAction toDomain(SpecialAction action) {
+    static io.github.temporalrift.game.shared.domain.model.SpecialAction toDomain(SpecialAction action) {
         return switch (action) {
-            case ANNIHILATE -> io.github.temporalrift.game.shared.SpecialAction.ANNIHILATE;
-            case CORRUPT -> io.github.temporalrift.game.shared.SpecialAction.CORRUPT;
-            case CASCADE -> io.github.temporalrift.game.shared.SpecialAction.CASCADE;
-            case FORESIGHT -> io.github.temporalrift.game.shared.SpecialAction.FORESIGHT;
-            case SEAL -> io.github.temporalrift.game.shared.SpecialAction.SEAL;
-            case FULFILLMENT -> io.github.temporalrift.game.shared.SpecialAction.FULFILLMENT;
-            case REWRITE -> io.github.temporalrift.game.shared.SpecialAction.REWRITE;
-            case MIMIC -> io.github.temporalrift.game.shared.SpecialAction.MIMIC;
-            case OBSCURE -> io.github.temporalrift.game.shared.SpecialAction.OBSCURE;
-            case THREAD -> io.github.temporalrift.game.shared.SpecialAction.THREAD;
-            case TAPESTRY -> io.github.temporalrift.game.shared.SpecialAction.TAPESTRY;
-            case UNRAVEL -> io.github.temporalrift.game.shared.SpecialAction.UNRAVEL;
-            case RALLY -> io.github.temporalrift.game.shared.SpecialAction.RALLY;
-            case EXPOSE -> io.github.temporalrift.game.shared.SpecialAction.EXPOSE;
-            case MOMENTUM -> io.github.temporalrift.game.shared.SpecialAction.MOMENTUM;
+            case ANNIHILATE -> io.github.temporalrift.game.shared.domain.model.SpecialAction.ANNIHILATE;
+            case CORRUPT -> io.github.temporalrift.game.shared.domain.model.SpecialAction.CORRUPT;
+            case CASCADE -> io.github.temporalrift.game.shared.domain.model.SpecialAction.CASCADE;
+            case FORESIGHT -> io.github.temporalrift.game.shared.domain.model.SpecialAction.FORESIGHT;
+            case SEAL -> io.github.temporalrift.game.shared.domain.model.SpecialAction.SEAL;
+            case FULFILLMENT -> io.github.temporalrift.game.shared.domain.model.SpecialAction.FULFILLMENT;
+            case REWRITE -> io.github.temporalrift.game.shared.domain.model.SpecialAction.REWRITE;
+            case MIMIC -> io.github.temporalrift.game.shared.domain.model.SpecialAction.MIMIC;
+            case OBSCURE -> io.github.temporalrift.game.shared.domain.model.SpecialAction.OBSCURE;
+            case THREAD -> io.github.temporalrift.game.shared.domain.model.SpecialAction.THREAD;
+            case TAPESTRY -> io.github.temporalrift.game.shared.domain.model.SpecialAction.TAPESTRY;
+            case UNRAVEL -> io.github.temporalrift.game.shared.domain.model.SpecialAction.UNRAVEL;
+            case RALLY -> io.github.temporalrift.game.shared.domain.model.SpecialAction.RALLY;
+            case EXPOSE -> io.github.temporalrift.game.shared.domain.model.SpecialAction.EXPOSE;
+            case MOMENTUM -> io.github.temporalrift.game.shared.domain.model.SpecialAction.MOMENTUM;
         };
     }
 

@@ -7,8 +7,8 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import io.github.temporalrift.game.scoring.domain.playerscore.ScoringGameNotFoundException;
-import io.github.temporalrift.game.shared.ProblemDetails;
-import io.github.temporalrift.game.shared.RestAdviceOrder;
+import io.github.temporalrift.game.shared.infrastructure.adapter.in.rest.ProblemDetails;
+import io.github.temporalrift.game.shared.infrastructure.adapter.in.rest.RestAdviceOrder;
 
 @Order(RestAdviceOrder.MODULE)
 @RestControllerAdvice(basePackageClasses = ScoringController.class)

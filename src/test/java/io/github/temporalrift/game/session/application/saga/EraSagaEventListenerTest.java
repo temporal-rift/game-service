@@ -14,10 +14,10 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import io.github.temporalrift.game.session.domain.event.EraStarted;
 import io.github.temporalrift.game.session.domain.game.PendingCarryOverEvent;
-import io.github.temporalrift.game.shared.ActionRoundClosed;
-import io.github.temporalrift.game.shared.CarryOverState;
-import io.github.temporalrift.game.shared.Faction;
-import io.github.temporalrift.game.shared.ScoresUpdated;
+import io.github.temporalrift.game.shared.domain.event.ActionRoundClosed;
+import io.github.temporalrift.game.shared.domain.event.ScoresUpdated;
+import io.github.temporalrift.game.shared.domain.model.CarryOverState;
+import io.github.temporalrift.game.shared.domain.model.Faction;
 
 @ExtendWith(MockitoExtension.class)
 class EraSagaEventListenerTest {

@@ -8,7 +8,7 @@ import io.github.temporalrift.game.action.domain.event.CardPlayed;
 import io.github.temporalrift.game.action.domain.event.SpecialActionPlayed;
 import io.github.temporalrift.game.action.domain.port.out.ActionRoundRepository;
 import io.github.temporalrift.game.action.domain.port.out.PlayerStateRepository;
-import io.github.temporalrift.game.shared.StartActionRoundRequested;
+import io.github.temporalrift.game.shared.domain.event.StartActionRoundRequested;
 
 /**
  * Bridges typed Spring events into the action-round saga.

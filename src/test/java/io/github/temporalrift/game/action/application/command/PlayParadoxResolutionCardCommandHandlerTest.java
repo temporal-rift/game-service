@@ -33,8 +33,8 @@ import io.github.temporalrift.game.action.domain.playerstate.PlayerState;
 import io.github.temporalrift.game.action.domain.port.out.ActionEventPublisher;
 import io.github.temporalrift.game.action.domain.port.out.ParadoxResolutionPhaseRepository;
 import io.github.temporalrift.game.action.domain.port.out.PlayerStateRepository;
-import io.github.temporalrift.game.shared.CardType;
-import io.github.temporalrift.game.shared.DomainEventEnvelope;
+import io.github.temporalrift.game.shared.domain.DomainEventEnvelope;
+import io.github.temporalrift.game.shared.domain.model.CardType;
 
 @ExtendWith(MockitoExtension.class)
 class PlayParadoxResolutionCardCommandHandlerTest {

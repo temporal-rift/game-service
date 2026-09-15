@@ -17,7 +17,7 @@ import io.github.temporalrift.game.session.domain.port.out.SessionEventPublisher
 import io.github.temporalrift.game.session.domain.port.out.StartGameSagaRepository;
 import io.github.temporalrift.game.session.domain.saga.StartGameSagaState;
 import io.github.temporalrift.game.session.domain.saga.StartGameSagaStatus;
-import io.github.temporalrift.game.shared.DomainEventEnvelope;
+import io.github.temporalrift.game.shared.domain.DomainEventEnvelope;
 
 @Component
 class StartGameSagaCompensator {

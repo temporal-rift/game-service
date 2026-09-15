@@ -14,7 +14,7 @@ class ActionRestMapperTest {
     @EnumSource(SpecialAction.class)
     void toDomain_mapsEveryGeneratedApiAction(SpecialAction apiAction) {
         assertThat(ActionRestMapper.toDomain(apiAction))
-                .isEqualTo(io.github.temporalrift.game.shared.SpecialAction.valueOf(apiAction.name()));
+                .isEqualTo(io.github.temporalrift.game.shared.domain.model.SpecialAction.valueOf(apiAction.name()));
     }
 
     @ParameterizedTest

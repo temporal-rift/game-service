@@ -10,10 +10,10 @@ import org.springframework.stereotype.Component;
 import io.github.temporalrift.game.action.domain.playerstate.PlayerState;
 import io.github.temporalrift.game.action.domain.port.out.FutureEventDefinitionPort;
 import io.github.temporalrift.game.action.domain.port.out.PlayerStateRepository;
-import io.github.temporalrift.game.shared.EventsDrawn;
-import io.github.temporalrift.game.shared.Faction;
-import io.github.temporalrift.game.shared.FactionAssigned;
-import io.github.temporalrift.game.shared.HandSelected;
+import io.github.temporalrift.game.shared.domain.event.EventsDrawn;
+import io.github.temporalrift.game.shared.domain.event.FactionAssigned;
+import io.github.temporalrift.game.shared.domain.event.HandSelected;
+import io.github.temporalrift.game.shared.domain.model.Faction;
 
 @Component
 class ActionStateProjectionEventListener {

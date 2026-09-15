@@ -1,6 +1,6 @@
 package io.github.temporalrift.game.action.domain.activisterastate;
 
-import io.github.temporalrift.game.shared.SpecialAction;
+import io.github.temporalrift.game.shared.domain.model.SpecialAction;
 
 /** The mutually exclusive modes for an Activist's declaration of record. */
 public enum ActivistDeclarationMode {

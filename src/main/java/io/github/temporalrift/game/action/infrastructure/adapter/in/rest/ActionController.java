@@ -26,7 +26,7 @@ import io.github.temporalrift.game.action.infrastructure.adapter.in.rest.v1.mode
 import io.github.temporalrift.game.action.infrastructure.adapter.in.rest.v1.model.SpecialActionRequest;
 import io.github.temporalrift.game.action.infrastructure.adapter.in.rest.v1.model.SubmitActionRequest;
 import io.github.temporalrift.game.action.infrastructure.adapter.in.rest.v1.model.SubmitActionResponse;
-import io.github.temporalrift.game.shared.CurrentPlayer;
+import io.github.temporalrift.game.shared.infrastructure.config.CurrentPlayer;
 
 @RestController
 class ActionController implements ActionApi {

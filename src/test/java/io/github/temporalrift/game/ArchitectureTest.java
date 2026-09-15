@@ -17,7 +17,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.annotation.Order;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-import io.github.temporalrift.game.shared.RestAdviceOrder;
+import io.github.temporalrift.game.shared.infrastructure.adapter.in.rest.RestAdviceOrder;
 
 @AnalyzeClasses(packages = "io.github.temporalrift.game", importOptions = ImportOption.DoNotIncludeTests.class)
 public class ArchitectureTest {

@@ -7,8 +7,8 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.random.RandomGenerator;
 
-import io.github.temporalrift.game.shared.HandDealt;
-import io.github.temporalrift.game.shared.HandSelected;
+import io.github.temporalrift.game.shared.domain.event.HandDealt;
+import io.github.temporalrift.game.shared.domain.event.HandSelected;
 
 public record HandSelection(
         UUID id,

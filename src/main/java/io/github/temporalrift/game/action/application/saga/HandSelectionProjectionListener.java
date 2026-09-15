@@ -8,7 +8,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import io.github.temporalrift.game.action.domain.handselection.HandSelection;
 import io.github.temporalrift.game.action.domain.port.out.HandSelectionRepository;
-import io.github.temporalrift.game.shared.HandDealt;
+import io.github.temporalrift.game.shared.domain.event.HandDealt;
 
 @Component
 class HandSelectionProjectionListener {

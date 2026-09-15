@@ -4,7 +4,7 @@ import org.mapstruct.Mapper;
 
 import io.github.temporalrift.asyncapi.scoringevents.GeneratedChannelContract.ScoreUpdate;
 import io.github.temporalrift.asyncapi.scoringevents.GeneratedChannelContract.ScoresUpdatedPayload;
-import io.github.temporalrift.game.shared.ScoresUpdated;
+import io.github.temporalrift.game.shared.domain.event.ScoresUpdated;
 
 @Mapper(componentModel = "spring")
 interface ScoringEventWireMapper {

@@ -13,9 +13,9 @@ import org.springframework.transaction.support.TransactionTemplate;
 import io.github.temporalrift.game.PersistenceIntegrationTest;
 import io.github.temporalrift.game.action.domain.handselection.HandSelection;
 import io.github.temporalrift.game.action.domain.port.out.HandSelectionRepository;
-import io.github.temporalrift.game.shared.CardGrade;
-import io.github.temporalrift.game.shared.CardType;
-import io.github.temporalrift.game.shared.HandDealt;
+import io.github.temporalrift.game.shared.domain.event.HandDealt;
+import io.github.temporalrift.game.shared.domain.model.CardGrade;
+import io.github.temporalrift.game.shared.domain.model.CardType;
 
 @PersistenceIntegrationTest
 class HandSelectionRepositoryAdapterIT {

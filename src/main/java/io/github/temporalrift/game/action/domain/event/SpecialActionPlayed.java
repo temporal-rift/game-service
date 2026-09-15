@@ -2,8 +2,8 @@ package io.github.temporalrift.game.action.domain.event;
 
 import java.util.UUID;
 
-import io.github.temporalrift.game.shared.Faction;
-import io.github.temporalrift.game.shared.SpecialAction;
+import io.github.temporalrift.game.shared.domain.model.Faction;
+import io.github.temporalrift.game.shared.domain.model.SpecialAction;
 
 public record SpecialActionPlayed(
         UUID gameId,

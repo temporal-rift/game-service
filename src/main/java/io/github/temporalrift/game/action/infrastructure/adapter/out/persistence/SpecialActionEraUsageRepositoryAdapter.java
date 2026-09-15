@@ -8,7 +8,7 @@ import org.springframework.stereotype.Component;
 
 import io.github.temporalrift.game.action.domain.port.out.SpecialActionEraUsageRepository;
 import io.github.temporalrift.game.action.domain.specialactionerausage.SpecialActionEraUsage;
-import io.github.temporalrift.game.shared.SpecialAction;
+import io.github.temporalrift.game.shared.domain.model.SpecialAction;
 
 @Component
 class SpecialActionEraUsageRepositoryAdapter implements SpecialActionEraUsageRepository {

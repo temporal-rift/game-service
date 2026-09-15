@@ -27,10 +27,10 @@ import io.github.temporalrift.game.scoring.application.command.EraScoringComplet
 import io.github.temporalrift.game.scoring.domain.playerscore.ScoreReason;
 import io.github.temporalrift.game.scoring.domain.port.out.EraScoringContextRepository;
 import io.github.temporalrift.game.scoring.domain.port.out.TimelineOutcomeInboxRepository;
-import io.github.temporalrift.game.shared.DomainEventEnvelope;
-import io.github.temporalrift.game.shared.MessagePayloads;
-import io.github.temporalrift.game.shared.ProcessedEventRepository;
-import io.github.temporalrift.game.shared.TimelineEventEnvelope;
+import io.github.temporalrift.game.shared.domain.DomainEventEnvelope;
+import io.github.temporalrift.game.shared.domain.port.out.ProcessedEventRepository;
+import io.github.temporalrift.game.shared.infrastructure.adapter.in.kafka.MessagePayloads;
+import io.github.temporalrift.game.shared.infrastructure.adapter.in.kafka.TimelineEventEnvelope;
 
 @Component
 class TimelineScoringKafkaConsumer {

@@ -4,8 +4,8 @@ import org.springframework.modulith.events.ApplicationModuleListener;
 import org.springframework.stereotype.Component;
 
 import io.github.temporalrift.game.session.domain.event.EraStarted;
-import io.github.temporalrift.game.shared.ActionRoundClosed;
-import io.github.temporalrift.game.shared.ScoresUpdated;
+import io.github.temporalrift.game.shared.domain.event.ActionRoundClosed;
+import io.github.temporalrift.game.shared.domain.event.ScoresUpdated;
 
 @Component
 class EraSagaEventListener {

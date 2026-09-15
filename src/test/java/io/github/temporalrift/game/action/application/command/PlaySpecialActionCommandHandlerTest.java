@@ -51,10 +51,10 @@ import io.github.temporalrift.game.action.domain.port.out.PlayerStateRepository;
 import io.github.temporalrift.game.action.domain.port.out.SpecialActionEraUsageRepository;
 import io.github.temporalrift.game.action.domain.specialactionerausage.SpecialActionEraBudgetExhaustedException;
 import io.github.temporalrift.game.action.domain.specialactionerausage.SpecialActionEraUsage;
-import io.github.temporalrift.game.shared.CardType;
-import io.github.temporalrift.game.shared.Faction;
-import io.github.temporalrift.game.shared.GameRulesPort;
-import io.github.temporalrift.game.shared.SpecialAction;
+import io.github.temporalrift.game.shared.domain.model.CardType;
+import io.github.temporalrift.game.shared.domain.model.Faction;
+import io.github.temporalrift.game.shared.domain.model.SpecialAction;
+import io.github.temporalrift.game.shared.domain.port.out.GameRulesPort;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("PlaySpecialActionCommandHandler")

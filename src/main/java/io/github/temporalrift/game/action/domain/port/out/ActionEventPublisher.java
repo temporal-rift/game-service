@@ -1,8 +1,8 @@
 package io.github.temporalrift.game.action.domain.port.out;
 
 import io.github.temporalrift.game.action.domain.event.ActionEventPayload;
-import io.github.temporalrift.game.shared.ActionRoundClosed;
-import io.github.temporalrift.game.shared.DomainEventEnvelope;
+import io.github.temporalrift.game.shared.domain.DomainEventEnvelope;
+import io.github.temporalrift.game.shared.domain.event.ActionRoundClosed;
 
 /**
  * Publishes action-module events to both integration and in-process consumers.

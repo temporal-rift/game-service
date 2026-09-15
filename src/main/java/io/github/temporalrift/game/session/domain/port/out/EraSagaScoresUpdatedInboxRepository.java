@@ -2,7 +2,7 @@ package io.github.temporalrift.game.session.domain.port.out;
 
 import java.util.List;
 
-import io.github.temporalrift.game.shared.ScoresUpdated;
+import io.github.temporalrift.game.shared.domain.event.ScoresUpdated;
 
 public interface EraSagaScoresUpdatedInboxRepository {
 

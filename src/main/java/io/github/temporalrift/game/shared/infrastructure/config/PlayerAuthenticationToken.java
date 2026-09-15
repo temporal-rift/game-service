@@ -5,8 +5,6 @@ import java.util.Objects;
 
 import org.springframework.security.authentication.AbstractAuthenticationToken;
 
-import io.github.temporalrift.game.shared.PlayerPrincipal;
-
 public class PlayerAuthenticationToken extends AbstractAuthenticationToken {
 
     private final PlayerPrincipal principal;

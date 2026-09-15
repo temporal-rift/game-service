@@ -8,7 +8,7 @@ import java.util.Map;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import io.github.temporalrift.game.shared.CardGrade;
+import io.github.temporalrift.game.shared.domain.model.CardGrade;
 
 class ScoringRulesPropertiesTest {
 

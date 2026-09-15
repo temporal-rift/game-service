@@ -2,8 +2,8 @@ package io.github.temporalrift.game.action.domain.event;
 
 import java.util.UUID;
 
-import io.github.temporalrift.game.shared.CardGrade;
-import io.github.temporalrift.game.shared.CardType;
+import io.github.temporalrift.game.shared.domain.model.CardGrade;
+import io.github.temporalrift.game.shared.domain.model.CardType;
 
 public record ParadoxResolutionCardPlayed(
         UUID gameId,

@@ -4,7 +4,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 import io.github.temporalrift.game.action.domain.actionround.SubmittedAction;
-import io.github.temporalrift.game.shared.CardType;
+import io.github.temporalrift.game.shared.domain.model.CardType;
 
 /** Observable shape of a probability-influence card used by the Activist's Expose action. */
 public record ProbabilityInfluenceSignature(

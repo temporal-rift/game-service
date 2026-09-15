@@ -31,11 +31,11 @@ import io.github.temporalrift.game.session.domain.port.out.GameRepository;
 import io.github.temporalrift.game.session.domain.port.out.SessionEventPublisher;
 import io.github.temporalrift.game.session.domain.port.out.SessionGameRulesPort;
 import io.github.temporalrift.game.session.domain.saga.EraSagaStatus;
-import io.github.temporalrift.game.shared.CarryOverState;
-import io.github.temporalrift.game.shared.DomainEventEnvelope;
-import io.github.temporalrift.game.shared.EventsDrawn;
-import io.github.temporalrift.game.shared.HandDealt;
-import io.github.temporalrift.game.shared.SagaHandoffPublisher;
+import io.github.temporalrift.game.shared.application.SagaHandoffPublisher;
+import io.github.temporalrift.game.shared.domain.DomainEventEnvelope;
+import io.github.temporalrift.game.shared.domain.event.EventsDrawn;
+import io.github.temporalrift.game.shared.domain.event.HandDealt;
+import io.github.temporalrift.game.shared.domain.model.CarryOverState;
 
 @Service
 class EraSagaImpl implements EraSaga {

@@ -13,8 +13,8 @@ import io.github.temporalrift.game.session.domain.port.out.EraSagaRepository;
 import io.github.temporalrift.game.session.domain.port.out.EraSagaScoresUpdatedInboxRepository;
 import io.github.temporalrift.game.session.domain.saga.EraSagaState;
 import io.github.temporalrift.game.session.domain.saga.EraSagaStatus;
-import io.github.temporalrift.game.shared.Faction;
-import io.github.temporalrift.game.shared.ScoresUpdated;
+import io.github.temporalrift.game.shared.domain.event.ScoresUpdated;
+import io.github.temporalrift.game.shared.domain.model.Faction;
 
 @PersistenceIntegrationTest
 class EraSagaScoresUpdatedInboxRepositoryAdapterIT {

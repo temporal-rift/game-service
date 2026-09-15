@@ -9,7 +9,7 @@ import org.springframework.stereotype.Component;
 
 import io.github.temporalrift.game.action.domain.playerstate.PlayerState;
 import io.github.temporalrift.game.action.domain.port.out.PlayerStateRepository;
-import io.github.temporalrift.game.shared.Faction;
+import io.github.temporalrift.game.shared.domain.model.Faction;
 
 @Component
 class PlayerStateRepositoryAdapter implements PlayerStateRepository {

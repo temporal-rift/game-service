@@ -37,7 +37,7 @@ import io.github.temporalrift.game.action.domain.port.out.ActionEventPublisher;
 import io.github.temporalrift.game.action.domain.port.out.ActionRoundRepository;
 import io.github.temporalrift.game.action.domain.port.out.ActivistEraStateRepository;
 import io.github.temporalrift.game.action.domain.port.out.PlayerStateRepository;
-import io.github.temporalrift.game.shared.Faction;
+import io.github.temporalrift.game.shared.domain.model.Faction;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("RecordActivistDeclarationCommandHandler")
@@ -125,12 +125,12 @@ class RecordActivistDeclarationCommandHandlerTest {
         var internalEventCaptor = ArgumentCaptor.forClass(Object.class);
         then(applicationEventPublisher).should().publishEvent(internalEventCaptor.capture());
         assertThat(internalEventCaptor.getValue())
-                .isEqualTo(new io.github.temporalrift.game.shared.ActivistDeclarationRecorded(
+                .isEqualTo(new io.github.temporalrift.game.shared.domain.event.ActivistDeclarationRecorded(
                         GAME_ID,
                         ERA_NUMBER,
                         1,
                         PLAYER_ID,
-                        io.github.temporalrift.game.shared.SpecialAction.RALLY,
+                        io.github.temporalrift.game.shared.domain.model.SpecialAction.RALLY,
                         TARGET_EVENT_ID,
                         TARGET_OUTCOME_ID));
     }

@@ -19,7 +19,7 @@ import io.github.temporalrift.game.session.infrastructure.adapter.in.rest.v1.mod
 import io.github.temporalrift.game.session.infrastructure.adapter.in.rest.v1.model.JoinLobbyResponse;
 import io.github.temporalrift.game.session.infrastructure.adapter.in.rest.v1.model.PlayerInLobby;
 import io.github.temporalrift.game.session.infrastructure.adapter.in.rest.v1.model.StartGameResponse;
-import io.github.temporalrift.game.shared.CurrentPlayer;
+import io.github.temporalrift.game.shared.infrastructure.config.CurrentPlayer;
 
 @RestController
 class SessionController implements SessionApi {

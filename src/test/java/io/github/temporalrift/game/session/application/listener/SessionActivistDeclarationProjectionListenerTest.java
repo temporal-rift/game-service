@@ -11,8 +11,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import io.github.temporalrift.game.session.domain.port.out.SessionActivistDeclarationRepository;
-import io.github.temporalrift.game.shared.ActivistDeclarationRecorded;
-import io.github.temporalrift.game.shared.SpecialAction;
+import io.github.temporalrift.game.shared.domain.event.ActivistDeclarationRecorded;
+import io.github.temporalrift.game.shared.domain.model.SpecialAction;
 
 @ExtendWith(MockitoExtension.class)
 class SessionActivistDeclarationProjectionListenerTest {

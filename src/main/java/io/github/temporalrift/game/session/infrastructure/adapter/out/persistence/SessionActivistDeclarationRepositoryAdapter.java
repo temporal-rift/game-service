@@ -7,7 +7,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import io.github.temporalrift.game.session.domain.port.out.SessionActivistDeclarationRepository;
-import io.github.temporalrift.game.shared.SpecialAction;
+import io.github.temporalrift.game.shared.domain.model.SpecialAction;
 
 @Component
 class SessionActivistDeclarationRepositoryAdapter implements SessionActivistDeclarationRepository {

@@ -46,8 +46,8 @@ import io.github.temporalrift.game.session.domain.port.out.FutureEventCatalogPor
 import io.github.temporalrift.game.session.domain.port.out.GameRepository;
 import io.github.temporalrift.game.session.domain.port.out.LobbyRepository;
 import io.github.temporalrift.game.session.domain.port.out.SessionEventPublisher;
-import io.github.temporalrift.game.shared.DomainEventEnvelope;
-import io.github.temporalrift.game.shared.FactionAssigned;
+import io.github.temporalrift.game.shared.domain.DomainEventEnvelope;
+import io.github.temporalrift.game.shared.domain.event.FactionAssigned;
 
 @ExtendWith(MockitoExtension.class)
 class StartGameSagaImplTest {

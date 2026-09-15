@@ -6,8 +6,8 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 
-import io.github.temporalrift.game.shared.AggregateRoot;
-import io.github.temporalrift.game.shared.CardType;
+import io.github.temporalrift.game.shared.domain.AggregateRoot;
+import io.github.temporalrift.game.shared.domain.model.CardType;
 
 public class ParadoxResolutionPhase extends AggregateRoot {
 

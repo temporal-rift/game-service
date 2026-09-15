@@ -20,8 +20,8 @@ import org.springframework.context.ApplicationEventPublisher;
 import tools.jackson.databind.ObjectMapper;
 
 import io.github.temporalrift.game.session.application.saga.PlayerReconnectedApplicationEvent;
-import io.github.temporalrift.game.shared.InboundEnvelope;
-import io.github.temporalrift.game.shared.ProcessedEventRepository;
+import io.github.temporalrift.game.shared.domain.port.out.ProcessedEventRepository;
+import io.github.temporalrift.game.shared.infrastructure.adapter.in.kafka.InboundEnvelope;
 
 @ExtendWith(MockitoExtension.class)
 class PlayerReconnectKafkaConsumerTest {

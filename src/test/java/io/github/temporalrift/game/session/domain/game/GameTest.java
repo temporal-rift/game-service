@@ -144,8 +144,10 @@ class GameTest {
         var second = UUID.randomUUID();
 
         var carryOvers = List.of(
-                new PendingCarryOverEvent(first, io.github.temporalrift.game.shared.CarryOverState.STALLED),
-                new PendingCarryOverEvent(second, io.github.temporalrift.game.shared.CarryOverState.CASCADED));
+                new PendingCarryOverEvent(
+                        first, io.github.temporalrift.game.shared.domain.model.CarryOverState.STALLED),
+                new PendingCarryOverEvent(
+                        second, io.github.temporalrift.game.shared.domain.model.CarryOverState.CASCADED));
         game.recordPendingCarryOverEvents(carryOvers);
 
         assertThat(game.drainPendingCarryOverEvents()).containsExactlyElementsOf(carryOvers);

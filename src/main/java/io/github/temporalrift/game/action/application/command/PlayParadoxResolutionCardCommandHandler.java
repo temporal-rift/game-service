@@ -16,7 +16,7 @@ import io.github.temporalrift.game.action.domain.playerstate.PlayerStateNotFound
 import io.github.temporalrift.game.action.domain.port.out.ActionEventPublisher;
 import io.github.temporalrift.game.action.domain.port.out.ParadoxResolutionPhaseRepository;
 import io.github.temporalrift.game.action.domain.port.out.PlayerStateRepository;
-import io.github.temporalrift.game.shared.DomainEventEnvelope;
+import io.github.temporalrift.game.shared.domain.DomainEventEnvelope;
 
 @Service
 @ConditionalOnBean({ParadoxResolutionPhaseRepository.class, PlayerStateRepository.class})
@@ -71,8 +71,8 @@ class PlayParadoxResolutionCardCommandHandler implements PlayParadoxResolutionCa
     private void publish(
             Command command,
             ParadoxResolutionPhase phase,
-            io.github.temporalrift.game.shared.CardType cardType,
-            io.github.temporalrift.game.shared.CardGrade grade) {
+            io.github.temporalrift.game.shared.domain.model.CardType cardType,
+            io.github.temporalrift.game.shared.domain.model.CardGrade grade) {
         var payload = new ParadoxResolutionCardPlayed(
                 command.gameId(),
                 command.eraNumber(),

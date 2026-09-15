@@ -2,7 +2,7 @@ package io.github.temporalrift.game.action.domain.specialactionerausage;
 
 import java.util.UUID;
 
-import io.github.temporalrift.game.shared.SpecialAction;
+import io.github.temporalrift.game.shared.domain.model.SpecialAction;
 
 /** Raised when a player attempts to use a once-per-era-budgeted special more than once in the same era. */
 public final class SpecialActionEraBudgetExhaustedException extends RuntimeException {

@@ -23,8 +23,8 @@ import io.github.temporalrift.game.TestSecurityConfig;
 import io.github.temporalrift.game.scoring.application.port.in.GetScoresUseCase;
 import io.github.temporalrift.game.scoring.application.port.in.GetScoringHistoryUseCase;
 import io.github.temporalrift.game.scoring.domain.playerscore.ScoringGameNotFoundException;
-import io.github.temporalrift.game.shared.PlayerPrincipal;
 import io.github.temporalrift.game.shared.infrastructure.config.PlayerAuthenticationToken;
+import io.github.temporalrift.game.shared.infrastructure.config.PlayerPrincipal;
 import io.github.temporalrift.game.shared.infrastructure.config.SecurityConfig;
 
 @WebMvcTest(ScoringController.class)

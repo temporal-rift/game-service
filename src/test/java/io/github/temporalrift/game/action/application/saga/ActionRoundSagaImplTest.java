@@ -54,14 +54,15 @@ import io.github.temporalrift.game.action.domain.port.out.FutureEventDefinitionP
 import io.github.temporalrift.game.action.domain.port.out.PlayerStateRepository;
 import io.github.temporalrift.game.action.domain.saga.ActionRoundSagaState;
 import io.github.temporalrift.game.action.domain.saga.ActionRoundSagaStatus;
-import io.github.temporalrift.game.shared.ActionRoundClosed;
-import io.github.temporalrift.game.shared.CardGrade;
-import io.github.temporalrift.game.shared.CardType;
-import io.github.temporalrift.game.shared.DomainEventEnvelope;
-import io.github.temporalrift.game.shared.EraActionFactsFinalized;
-import io.github.temporalrift.game.shared.Faction;
-import io.github.temporalrift.game.shared.GameRulesPort;
-import io.github.temporalrift.game.shared.SpecialAction;
+import io.github.temporalrift.game.shared.domain.DomainEventEnvelope;
+import io.github.temporalrift.game.shared.domain.event.ActionRoundClosed;
+import io.github.temporalrift.game.shared.domain.event.EraActionFactsFinalized;
+import io.github.temporalrift.game.shared.domain.event.ExposeBehaviorChanged;
+import io.github.temporalrift.game.shared.domain.model.CardGrade;
+import io.github.temporalrift.game.shared.domain.model.CardType;
+import io.github.temporalrift.game.shared.domain.model.Faction;
+import io.github.temporalrift.game.shared.domain.model.SpecialAction;
+import io.github.temporalrift.game.shared.domain.port.out.GameRulesPort;
 
 @ExtendWith(MockitoExtension.class)
 class ActionRoundSagaImplTest {
@@ -867,8 +868,7 @@ class ActionRoundSagaImplTest {
             var internalCaptor = ArgumentCaptor.forClass(Object.class);
             then(applicationEventPublisher).should().publishEvent(internalCaptor.capture());
             assertThat(internalCaptor.getValue())
-                    .isEqualTo(new io.github.temporalrift.game.shared.ExposeBehaviorChanged(
-                            GAME_ID, ERA_NUMBER, PLAYER_1, PLAYER_2));
+                    .isEqualTo(new ExposeBehaviorChanged(GAME_ID, ERA_NUMBER, PLAYER_1, PLAYER_2));
 
             then(activistEraStateRepository).should().save(activistState);
         }
@@ -911,9 +911,7 @@ class ActionRoundSagaImplTest {
                     .should(never())
                     .publish(envelopeWithPayload(
                             io.github.temporalrift.game.action.domain.event.ExposeBehaviorChanged.class));
-            then(applicationEventPublisher)
-                    .should(never())
-                    .publishEvent(any(io.github.temporalrift.game.shared.ExposeBehaviorChanged.class));
+            then(applicationEventPublisher).should(never()).publishEvent(any(ExposeBehaviorChanged.class));
         }
     }
 

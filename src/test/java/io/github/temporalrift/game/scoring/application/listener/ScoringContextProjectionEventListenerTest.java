@@ -18,17 +18,17 @@ import org.springframework.context.ApplicationEventPublisher;
 
 import io.github.temporalrift.game.scoring.application.command.EraScoringCompletionChecker;
 import io.github.temporalrift.game.scoring.domain.port.out.EraScoringContextRepository;
-import io.github.temporalrift.game.shared.ActivistDeclarationRecorded;
-import io.github.temporalrift.game.shared.ActivistDeclarationResolved;
-import io.github.temporalrift.game.shared.CarryOverState;
-import io.github.temporalrift.game.shared.EraActionFactsFinalized;
-import io.github.temporalrift.game.shared.EventsDrawn;
-import io.github.temporalrift.game.shared.ExposeBehaviorChanged;
-import io.github.temporalrift.game.shared.Faction;
-import io.github.temporalrift.game.shared.FactionAssigned;
-import io.github.temporalrift.game.shared.ForesightDeclared;
-import io.github.temporalrift.game.shared.OutcomeAnnihilated;
-import io.github.temporalrift.game.shared.SpecialAction;
+import io.github.temporalrift.game.shared.domain.event.ActivistDeclarationRecorded;
+import io.github.temporalrift.game.shared.domain.event.ActivistDeclarationResolved;
+import io.github.temporalrift.game.shared.domain.event.EraActionFactsFinalized;
+import io.github.temporalrift.game.shared.domain.event.EventsDrawn;
+import io.github.temporalrift.game.shared.domain.event.ExposeBehaviorChanged;
+import io.github.temporalrift.game.shared.domain.event.FactionAssigned;
+import io.github.temporalrift.game.shared.domain.event.ForesightDeclared;
+import io.github.temporalrift.game.shared.domain.event.OutcomeAnnihilated;
+import io.github.temporalrift.game.shared.domain.model.CarryOverState;
+import io.github.temporalrift.game.shared.domain.model.Faction;
+import io.github.temporalrift.game.shared.domain.model.SpecialAction;
 
 @ExtendWith(MockitoExtension.class)
 class ScoringContextProjectionEventListenerTest {

@@ -19,7 +19,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import io.github.temporalrift.game.session.domain.saga.FactionAssignment;
 import io.github.temporalrift.game.session.domain.saga.StartGameSagaState;
 import io.github.temporalrift.game.session.domain.saga.StartGameSagaStatus;
-import io.github.temporalrift.game.shared.Faction;
+import io.github.temporalrift.game.shared.domain.model.Faction;
 
 @ExtendWith(MockitoExtension.class)
 class StartGameSagaAdapterTest {

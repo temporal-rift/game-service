@@ -1,8 +1,8 @@
 package io.github.temporalrift.game.action.domain.actionround;
 
-import io.github.temporalrift.game.shared.CardGrade;
-import io.github.temporalrift.game.shared.CardType;
-import io.github.temporalrift.game.shared.SpecialAction;
+import io.github.temporalrift.game.shared.domain.model.CardGrade;
+import io.github.temporalrift.game.shared.domain.model.CardType;
+import io.github.temporalrift.game.shared.domain.model.SpecialAction;
 
 public class InvalidActionTargetException extends RuntimeException {
 

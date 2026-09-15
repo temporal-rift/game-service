@@ -4,7 +4,7 @@ import java.util.List;
 import java.util.UUID;
 
 import io.github.temporalrift.game.scoring.domain.playerscore.ScoreReason;
-import io.github.temporalrift.game.shared.Faction;
+import io.github.temporalrift.game.shared.domain.model.Faction;
 
 /**
  * Read-only projection of scoring-owned persisted state for the score REST API. {@code faction} is the

@@ -6,7 +6,7 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Embeddable;
 
 import io.github.temporalrift.game.session.domain.game.PendingCarryOverEvent;
-import io.github.temporalrift.game.shared.CarryOverState;
+import io.github.temporalrift.game.shared.domain.model.CarryOverState;
 
 @Embeddable
 class PendingCarryOverEventEmbeddable {

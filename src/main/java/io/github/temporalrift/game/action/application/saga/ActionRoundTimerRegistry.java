@@ -5,7 +5,7 @@ import java.util.concurrent.ScheduledFuture;
 
 import org.springframework.stereotype.Component;
 
-import io.github.temporalrift.game.shared.ScheduledTaskRegistry;
+import io.github.temporalrift.game.shared.domain.ScheduledTaskRegistry;
 
 /**
  * Module-scoped instance of {@link ScheduledTaskRegistry}. A shared Spring bean would mix this
