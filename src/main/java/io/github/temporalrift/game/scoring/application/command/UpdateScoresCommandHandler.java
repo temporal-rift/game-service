@@ -16,6 +16,7 @@ import org.springframework.stereotype.Component;
 import io.github.temporalrift.game.scoring.domain.playerscore.PlayerScore;
 import io.github.temporalrift.game.scoring.domain.port.out.EraScoringContextRepository;
 import io.github.temporalrift.game.scoring.domain.port.out.PlayerScoreRepository;
+import io.github.temporalrift.game.scoring.domain.port.out.ScoreRulesPort;
 import io.github.temporalrift.game.scoring.domain.port.out.ScoringEventPublisher;
 import io.github.temporalrift.game.shared.DomainEventEnvelope;
 import io.github.temporalrift.game.shared.Faction;
@@ -28,6 +29,7 @@ public class UpdateScoresCommandHandler {
     private final PlayerScoreRepository playerScoreRepository;
     private final EraScoringContextRepository contextRepository;
     private final EraScoreEvaluator eraScoreEvaluator;
+    private final ScoreRulesPort scoreRulesPort;
     private final ScoringEventPublisher scoringEventPublisher;
     private final SagaHandoffPublisher sagaHandoffPublisher;
     private final Clock clock;
@@ -36,12 +38,14 @@ public class UpdateScoresCommandHandler {
             PlayerScoreRepository playerScoreRepository,
             EraScoringContextRepository contextRepository,
             EraScoreEvaluator eraScoreEvaluator,
+            ScoreRulesPort scoreRulesPort,
             ScoringEventPublisher scoringEventPublisher,
             ApplicationEventPublisher applicationEventPublisher,
             Clock clock) {
         this.playerScoreRepository = Objects.requireNonNull(playerScoreRepository);
         this.contextRepository = Objects.requireNonNull(contextRepository);
         this.eraScoreEvaluator = Objects.requireNonNull(eraScoreEvaluator);
+        this.scoreRulesPort = Objects.requireNonNull(scoreRulesPort);
         this.scoringEventPublisher = Objects.requireNonNull(scoringEventPublisher);
         this.sagaHandoffPublisher = new SagaHandoffPublisher(Objects.requireNonNull(applicationEventPublisher));
         this.clock = Objects.requireNonNull(clock);
@@ -68,7 +72,10 @@ public class UpdateScoresCommandHandler {
         for (var decision : decisions) {
             var score = scoresByPlayer.get(decision.playerId());
             if (score != null) {
-                score.apply(decision.eraNumber(), decision.reason(), decision.multiplier());
+                score.apply(
+                        decision.eraNumber(),
+                        decision.reason(),
+                        scoreRulesPort.pointsDelta(decision.reason()) * decision.multiplier());
             }
         }
 
