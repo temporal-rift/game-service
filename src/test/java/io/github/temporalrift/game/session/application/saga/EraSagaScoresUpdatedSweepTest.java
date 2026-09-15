@@ -37,10 +37,11 @@ class EraSagaScoresUpdatedSweepTest {
     EraSagaScoresUpdatedSweep sweep;
 
     @Test
-    @DisplayName("recorded-but-not-advanced eras are retried and recorded as recovered")
+    @DisplayName("recorded-but-not-advanced era that actually advances is recorded as recovered")
     void sweep_retriesPendingEras() {
         var pending = scoresUpdated(UUID.randomUUID(), 2);
         given(scoresUpdatedInbox.findRecordedButNotAdvanced()).willReturn(List.of(pending));
+        given(eraSagaAdvancer.handleScoresUpdated(pending.gameId(), pending)).willReturn(true);
 
         sweep.sweep();
 
@@ -60,6 +61,20 @@ class EraSagaScoresUpdatedSweepTest {
     }
 
     @Test
+    @DisplayName("a swept item that turns out to be a no-op is not counted as a recovery")
+    void sweep_advancerNoOps_metricNotIncremented() {
+        // A concurrent sweep pass or a redelivered ScoresUpdated can claim this same era first, so
+        // handleScoresUpdated returns normally without throwing but reports no real transition.
+        var pending = scoresUpdated(UUID.randomUUID(), 2);
+        given(scoresUpdatedInbox.findRecordedButNotAdvanced()).willReturn(List.of(pending));
+        given(eraSagaAdvancer.handleScoresUpdated(pending.gameId(), pending)).willReturn(false);
+
+        sweep.sweep();
+
+        then(recoveryMetrics).should(never()).recordScoresUpdatedRecovery();
+    }
+
+    @Test
     @DisplayName("one failing era does not starve the rest of the batch, and only the recovered era is metered")
     void sweep_failureDoesNotStarveBatch() {
         var failing = scoresUpdated(UUID.randomUUID(), 1);
@@ -68,6 +83,7 @@ class EraSagaScoresUpdatedSweepTest {
         willThrow(new IllegalStateException("saga not found"))
                 .given(eraSagaAdvancer)
                 .handleScoresUpdated(eq(failing.gameId()), any());
+        given(eraSagaAdvancer.handleScoresUpdated(healthy.gameId(), healthy)).willReturn(true);
 
         sweep.sweep();
 

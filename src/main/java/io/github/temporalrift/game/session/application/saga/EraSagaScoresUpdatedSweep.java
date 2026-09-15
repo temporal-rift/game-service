@@ -17,8 +17,9 @@ import io.github.temporalrift.game.shared.ScoresUpdated;
  * against the shared tables, guarantees a scored-but-not-advanced era is always eventually retried.
  *
  * <p>Every instance sweeps concurrently without coordination: {@code handleScoresUpdated}'s own {@code
- * WAITING_SCORES} filter makes a duplicate transition attempt a no-op. Each processed item increments
- * {@link EraSagaRecoveryMetrics}, distinguishing this fallback path from the direct listener.
+ * WAITING_SCORES} filter makes a duplicate transition attempt a no-op. Only an item that {@code
+ * handleScoresUpdated} reports as actually advanced increments {@link EraSagaRecoveryMetrics} — a no-op
+ * caused by a concurrent sweep pass or listener redelivery already having claimed the same era does not.
  */
 @Component
 class EraSagaScoresUpdatedSweep {
@@ -46,8 +47,9 @@ class EraSagaScoresUpdatedSweep {
     private void process(ScoresUpdated pending) {
         // One failing era must not starve the rest of the sweep batch.
         try {
-            eraSagaAdvancer.handleScoresUpdated(pending.gameId(), pending);
-            recoveryMetrics.recordScoresUpdatedRecovery();
+            if (eraSagaAdvancer.handleScoresUpdated(pending.gameId(), pending)) {
+                recoveryMetrics.recordScoresUpdatedRecovery();
+            }
         } catch (RuntimeException ex) {
             log.error(
                     "Era saga scores-updated sweep failed for game {} era {}",
