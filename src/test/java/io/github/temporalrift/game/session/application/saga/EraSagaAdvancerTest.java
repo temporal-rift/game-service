@@ -253,9 +253,10 @@ class EraSagaAdvancerTest {
         var su = noWinnerScores();
 
         // when
-        advancer.handleScoresUpdated(GAME_ID, su);
+        var advanced = advancer.handleScoresUpdated(GAME_ID, su);
 
         // then
+        assertThat(advanced).isTrue();
         then(eventPublisher).should().publish(envelopeWithPayload(EraEnded.class));
         then(eventPublisher).should().publish(envelopeWithPayload(EraStarted.class));
         then(eventPublisher).should(never()).publish(envelopeWithPayload(TimelineStabilized.class));
@@ -469,9 +470,10 @@ class EraSagaAdvancerTest {
         var su = noWinnerScores();
 
         // when
-        advancer.handleScoresUpdated(GAME_ID, su);
+        var advanced = advancer.handleScoresUpdated(GAME_ID, su);
 
         // then — no immediate transition, but the fact is durably recorded for EraSagaScoresUpdatedSweep
+        assertThat(advanced).isFalse();
         then(eraSagaRepository).should(never()).save(any());
         then(eventPublisher).should(never()).publish(any());
         then(scoresUpdatedInbox).should().save(su);
@@ -488,9 +490,10 @@ class EraSagaAdvancerTest {
         var staleEraOneScores = noWinnerScores();
 
         // when
-        advancer.handleScoresUpdated(GAME_ID, staleEraOneScores);
+        var advanced = advancer.handleScoresUpdated(GAME_ID, staleEraOneScores);
 
         // then
+        assertThat(advanced).isFalse();
         then(eraSagaRepository).should(never()).save(any());
         then(eventPublisher).should(never()).publish(any());
         then(scoresUpdatedInbox).should().save(staleEraOneScores);

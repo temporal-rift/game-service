@@ -83,17 +83,24 @@ class EraSagaAdvancer {
                         .ifPresent(state -> advanceRound(state, arc)));
     }
 
+    // Returns whether this call actually advanced the saga, so EraSagaScoresUpdatedSweep can tell a
+    // real recovery apart from a no-op caused by a concurrent sweep pass or listener redelivery
+    // already having advanced (or claimed) this same era first.
     @Transactional(propagation = REQUIRES_NEW)
-    void handleScoresUpdated(UUID gameId, ScoresUpdated su) {
+    boolean handleScoresUpdated(UUID gameId, ScoresUpdated su) {
         // Recorded durably before the status check below: ActionRoundClosed (round 3) sets
         // WAITING_SCORES and ScoresUpdated fires from an independent async chain (timeline-service
         // resolution -> scoring), so either can arrive first. If this one loses the race, the record
         // lets EraSagaScoresUpdatedSweep complete the transition later without a second delivery.
         scoresUpdatedInbox.save(su);
-        eraSagaRepository
+        return eraSagaRepository
                 .findByGameIdWithLock(gameId)
                 .filter(s -> s.status() == EraSagaStatus.WAITING_SCORES && s.eraNumber() == su.eraNumber())
-                .ifPresent(state -> processScoresUpdated(gameId, state, su));
+                .map(state -> {
+                    processScoresUpdated(gameId, state, su);
+                    return true;
+                })
+                .orElse(false);
     }
 
     @Transactional(propagation = REQUIRES_NEW)
