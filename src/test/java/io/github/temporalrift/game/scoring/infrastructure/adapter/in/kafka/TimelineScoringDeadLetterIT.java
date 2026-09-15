@@ -20,8 +20,8 @@ import org.springframework.kafka.listener.DeadLetterPublishingRecoverer;
 import io.github.temporalrift.game.GameServiceIntegrationTest;
 
 /**
- * Verifies that the configured dead-letter recoverer parks an unprocessable record on {@code game.dlq}
- * rather than dropping it. The recoverer is exercised directly, the way {@code DefaultErrorHandler}
+ * Verifies that the configured dead-letter recoverer parks an unprocessable record on the matching source topic's
+ * dead-letter channel rather than dropping it. The recoverer is exercised directly, the way {@code DefaultErrorHandler}
  * invokes it once retries are exhausted; the end-to-end listener path is covered by
  * {@code TimelineEventsConsumerGroupsIT}.
  */
@@ -29,7 +29,7 @@ import io.github.temporalrift.game.GameServiceIntegrationTest;
 class TimelineScoringDeadLetterIT {
 
     private static final String TIMELINE_TOPIC = "timeline.events";
-    private static final String DEAD_LETTER_TOPIC = "game.dlq";
+    private static final String DEAD_LETTER_TOPIC = TIMELINE_TOPIC + ".dlq";
 
     @Autowired
     DeadLetterPublishingRecoverer recoverer;
@@ -50,17 +50,16 @@ class TimelineScoringDeadLetterIT {
             var parked = await().atMost(Duration.ofSeconds(30))
                     .until(() -> pollForValue(consumer, payload), Objects::nonNull);
 
-            assertThat(parked).contains(payload);
+            assertThat(parked.value()).contains(payload);
+            assertThat(parked.partition()).isZero();
         }
     }
 
-    private String pollForValue(Consumer<Object, Object> consumer, String expected) {
+    private ConsumerRecord<Object, Object> pollForValue(Consumer<Object, Object> consumer, String expected) {
         var records = consumer.poll(Duration.ofMillis(500));
         return StreamSupport.stream(records.spliterator(), false)
-                .map(ConsumerRecord::value)
-                .filter(byte[].class::isInstance)
-                .map(value -> new String((byte[]) value, StandardCharsets.UTF_8))
-                .filter(value -> value.contains(expected))
+                .filter(record -> record.value() instanceof byte[])
+                .filter(record -> new String((byte[]) record.value(), StandardCharsets.UTF_8).contains(expected))
                 .findFirst()
                 .orElse(null);
     }
