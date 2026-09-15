@@ -19,7 +19,7 @@ public class SecurityConfig {
             HttpSecurity http, ObjectMapper objectMapper, PlayerRateLimiter rateLimiter) {
         return http.csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .authorizeHttpRequests(auth -> auth.requestMatchers("/actuator/health/**")
+                .authorizeHttpRequests(auth -> auth.requestMatchers("/actuator/health/**", "/actuator/prometheus")
                         .permitAll()
                         .anyRequest()
                         .authenticated())
