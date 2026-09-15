@@ -1,4 +1,4 @@
-package io.github.temporalrift.game.shared.domain;
+package io.github.temporalrift.game.shared.application.scheduling;
 
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.never;

@@ -1,4 +1,4 @@
-package io.github.temporalrift.game.shared.domain;
+package io.github.temporalrift.game.shared.application.scheduling;
 
 import java.util.Map;
 import java.util.UUID;
