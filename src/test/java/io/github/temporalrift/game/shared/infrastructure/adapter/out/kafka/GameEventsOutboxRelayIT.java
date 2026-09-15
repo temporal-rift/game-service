@@ -80,9 +80,9 @@ class GameEventsOutboxRelayIT {
 
             await().atMost(Duration.ofSeconds(30)).untilAsserted(() -> {
                 consumer.poll(Duration.ofMillis(200)).forEach(received::add);
-                assertThat(received).anySatisfy(record -> {
-                    assertThat(record.key()).isEqualTo(gameId.toString());
-                    assertThat(record.value()).contains(hostId.toString());
+                assertThat(received).anySatisfy(consumedRecord -> {
+                    assertThat(consumedRecord.key()).isEqualTo(gameId.toString());
+                    assertThat(consumedRecord.value()).contains(hostId.toString());
                 });
             });
         }
