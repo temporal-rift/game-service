@@ -59,8 +59,8 @@ class TimelineScoringDeadLetterIT {
     private ConsumerRecord<Object, Object> pollForValue(Consumer<Object, Object> consumer, String expected) {
         var records = consumer.poll(Duration.ofMillis(500));
         return StreamSupport.stream(records.spliterator(), false)
-                .filter(record -> record.value() instanceof byte[])
-                .filter(record -> new String((byte[]) record.value(), StandardCharsets.UTF_8).contains(expected))
+                .filter(candidate -> candidate.value() instanceof byte[])
+                .filter(candidate -> new String((byte[]) candidate.value(), StandardCharsets.UTF_8).contains(expected))
                 .findFirst()
                 .orElse(null);
     }
