@@ -20,11 +20,11 @@ import java.util.UUID;
 import java.util.stream.IntStream;
 
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -48,6 +48,7 @@ import io.github.temporalrift.game.session.domain.port.out.LobbyRepository;
 import io.github.temporalrift.game.session.domain.port.out.SessionEventPublisher;
 import io.github.temporalrift.game.shared.DomainEventEnvelope;
 import io.github.temporalrift.game.shared.FactionAssigned;
+import io.github.temporalrift.game.shared.SagaHandoffPublisher;
 
 @ExtendWith(MockitoExtension.class)
 class StartGameSagaImplTest {
@@ -89,11 +90,23 @@ class StartGameSagaImplTest {
     @Spy
     Clock clock = Clock.systemUTC();
 
-    @InjectMocks
     StartGameSagaImpl saga;
 
     private static DomainEventEnvelope envelopeWithPayload(Class<?> payloadType) {
         return argThat(envelope -> payloadType.isInstance(envelope.payload()));
+    }
+
+    @BeforeEach
+    void setUp() {
+        saga = new StartGameSagaImpl(
+                lobbyRepository,
+                gameRepository,
+                eventPublisher,
+                new SagaHandoffPublisher(applicationEventPublisher),
+                stateManager,
+                compensator,
+                futureEventCatalog,
+                clock);
     }
 
     @AfterEach

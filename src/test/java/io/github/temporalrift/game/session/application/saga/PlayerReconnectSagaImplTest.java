@@ -20,7 +20,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.context.ApplicationEventPublisher;
 
 import io.github.temporalrift.game.session.domain.event.GameEndedAbnormally;
 import io.github.temporalrift.game.session.domain.event.PlayerAbandoned;
@@ -59,9 +58,6 @@ class PlayerReconnectSagaImplTest {
     SessionEventPublisher eventPublisher;
 
     @Mock
-    ApplicationEventPublisher applicationEventPublisher;
-
-    @Mock
     PlayerReconnectSagaStateManager stateManager;
 
     @Mock
@@ -75,14 +71,7 @@ class PlayerReconnectSagaImplTest {
     @BeforeEach
     void setUp() {
         saga = new PlayerReconnectSagaImpl(
-                lobbyRepository,
-                gameRepository,
-                eventPublisher,
-                applicationEventPublisher,
-                stateManager,
-                gameRules,
-                timerRegistry,
-                TEST_CLOCK);
+                lobbyRepository, gameRepository, eventPublisher, stateManager, gameRules, timerRegistry, TEST_CLOCK);
     }
 
     private static DomainEventEnvelope envelopeWithPayload(Class<?> payloadType) {
@@ -212,7 +201,7 @@ class PlayerReconnectSagaImplTest {
     }
 
     @Test
-    @DisplayName("handleTimerExpiry — last player abandoned triggers GameEndedAbnormally via outbox and Spring event")
+    @DisplayName("handleTimerExpiry — last player abandoned triggers GameEndedAbnormally via outbox")
     void handleTimerExpiry_lastPlayerAbandoned_publishesGameEndedAbnormally() {
         // given
         var gracePeriodState = new PlayerReconnectSagaState(
@@ -228,7 +217,6 @@ class PlayerReconnectSagaImplTest {
 
         // then
         then(eventPublisher).should().publish(envelopeWithPayload(GameEndedAbnormally.class));
-        then(applicationEventPublisher).should().publishEvent(any(GameEndedAbnormally.class));
     }
 
     @Test
@@ -262,6 +250,5 @@ class PlayerReconnectSagaImplTest {
         then(timerRegistry).should(never()).remove(any());
         then(eventPublisher).should(never()).publish(any());
         then(gameRepository).should(never()).findById(any());
-        then(applicationEventPublisher).should(never()).publishEvent(any());
     }
 }

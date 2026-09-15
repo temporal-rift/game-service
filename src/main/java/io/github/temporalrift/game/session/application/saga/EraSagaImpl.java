@@ -15,7 +15,6 @@ import java.util.stream.Stream;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,6 +34,7 @@ import io.github.temporalrift.game.shared.CarryOverState;
 import io.github.temporalrift.game.shared.DomainEventEnvelope;
 import io.github.temporalrift.game.shared.EventsDrawn;
 import io.github.temporalrift.game.shared.HandDealt;
+import io.github.temporalrift.game.shared.SagaHandoffPublisher;
 
 @Service
 class EraSagaImpl implements EraSaga {
@@ -44,7 +44,7 @@ class EraSagaImpl implements EraSaga {
     private final GameRepository gameRepository;
     private final FutureEventCatalogPort futureEventCatalog;
     private final SessionEventPublisher eventPublisher;
-    private final ApplicationEventPublisher applicationEventPublisher;
+    private final SagaHandoffPublisher sagaHandoffPublisher;
     private final EraSagaStateManager stateManager;
     private final SessionGameRulesPort gameRules;
     private final WeightedCardDealer cardDealer;
@@ -54,7 +54,7 @@ class EraSagaImpl implements EraSaga {
             GameRepository gameRepository,
             FutureEventCatalogPort futureEventCatalog,
             SessionEventPublisher eventPublisher,
-            ApplicationEventPublisher applicationEventPublisher,
+            SagaHandoffPublisher sagaHandoffPublisher,
             EraSagaStateManager stateManager,
             SessionGameRulesPort gameRules,
             WeightedCardDealer cardDealer,
@@ -62,7 +62,7 @@ class EraSagaImpl implements EraSaga {
         this.gameRepository = gameRepository;
         this.futureEventCatalog = futureEventCatalog;
         this.eventPublisher = eventPublisher;
-        this.applicationEventPublisher = applicationEventPublisher;
+        this.sagaHandoffPublisher = sagaHandoffPublisher;
         this.stateManager = stateManager;
         this.gameRules = gameRules;
         this.cardDealer = cardDealer;
@@ -108,9 +108,15 @@ class EraSagaImpl implements EraSaga {
         var events = Stream.concat(freshEvents.stream(), toCarryOverFutureEvents(game, carryOverEvents).stream())
                 .toList();
         var eventsDrawn = new EventsDrawn(gameId, eraNumber, events);
-        eventPublisher.publish(DomainEventEnvelope.create(
-                game.id(), Game.AGGREGATE_TYPE, gameId, DomainEventEnvelope.SCHEMA_VERSION_V1, eventsDrawn, clock));
-        applicationEventPublisher.publishEvent(eventsDrawn);
+        sagaHandoffPublisher.publish(
+                eventPublisher::publish,
+                DomainEventEnvelope.create(
+                        game.id(),
+                        Game.AGGREGATE_TYPE,
+                        gameId,
+                        DomainEventEnvelope.SCHEMA_VERSION_V1,
+                        eventsDrawn,
+                        clock));
     }
 
     /**
@@ -202,8 +208,14 @@ class EraSagaImpl implements EraSaga {
                 .toList();
         var expiresAt = clock.instant().plus(Duration.ofSeconds(gameRules.handSelectionTimerSeconds(playerCount)));
         var handDealt = new HandDealt(gameId, eraNumber, playerId, expiresAt, cards);
-        eventPublisher.publish(DomainEventEnvelope.create(
-                game.id(), Game.AGGREGATE_TYPE, gameId, DomainEventEnvelope.SCHEMA_VERSION_V1, handDealt, clock));
-        applicationEventPublisher.publishEvent(handDealt);
+        sagaHandoffPublisher.publish(
+                eventPublisher::publish,
+                DomainEventEnvelope.create(
+                        game.id(),
+                        Game.AGGREGATE_TYPE,
+                        gameId,
+                        DomainEventEnvelope.SCHEMA_VERSION_V1,
+                        handDealt,
+                        clock));
     }
 }

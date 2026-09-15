@@ -13,6 +13,7 @@ import io.github.temporalrift.game.action.domain.actionround.InvalidSpecialActio
 import io.github.temporalrift.game.action.domain.actionround.JammedPlayerException;
 import io.github.temporalrift.game.action.domain.activisterastate.ActivistEraState;
 import io.github.temporalrift.game.action.domain.activisterastate.DeclarationWindowClosedException;
+import io.github.temporalrift.game.action.domain.event.ActionEventPayload;
 import io.github.temporalrift.game.action.domain.event.ActivistDeclarationRecorded;
 import io.github.temporalrift.game.action.domain.playerstate.PlayerStateNotFoundException;
 import io.github.temporalrift.game.action.domain.port.out.ActionEventPublisher;
@@ -21,6 +22,7 @@ import io.github.temporalrift.game.action.domain.port.out.ActivistEraStateReposi
 import io.github.temporalrift.game.action.domain.port.out.PlayerStateRepository;
 import io.github.temporalrift.game.shared.DomainEventEnvelope;
 import io.github.temporalrift.game.shared.Faction;
+import io.github.temporalrift.game.shared.SagaHandoffPublisher;
 
 @Service
 class RecordActivistDeclarationCommandHandler implements RecordActivistDeclarationUseCase {
@@ -32,6 +34,7 @@ class RecordActivistDeclarationCommandHandler implements RecordActivistDeclarati
     private final PlayerStateRepository playerStateRepository;
     private final ActionTargetValidator actionTargetValidator;
     private final ActionEventPublisher actionEventPublisher;
+    private final SagaHandoffPublisher sagaHandoffPublisher;
     private final Clock clock;
 
     RecordActivistDeclarationCommandHandler(
@@ -40,12 +43,14 @@ class RecordActivistDeclarationCommandHandler implements RecordActivistDeclarati
             PlayerStateRepository playerStateRepository,
             ActionTargetValidator actionTargetValidator,
             ActionEventPublisher actionEventPublisher,
+            SagaHandoffPublisher sagaHandoffPublisher,
             Clock clock) {
         this.activistEraStateRepository = activistEraStateRepository;
         this.actionRoundRepository = actionRoundRepository;
         this.playerStateRepository = playerStateRepository;
         this.actionTargetValidator = actionTargetValidator;
         this.actionEventPublisher = actionEventPublisher;
+        this.sagaHandoffPublisher = sagaHandoffPublisher;
         this.clock = clock;
     }
 
@@ -103,21 +108,24 @@ class RecordActivistDeclarationCommandHandler implements RecordActivistDeclarati
                 state.declarationMode(),
                 state.targetEventId(),
                 state.targetOutcomeId());
-        actionEventPublisher.publish(DomainEventEnvelope.create(
+        DomainEventEnvelope<ActionEventPayload> envelope = DomainEventEnvelope.create(
                 state.id(),
                 ActivistEraState.AGGREGATE_TYPE,
                 state.gameId(),
                 DomainEventEnvelope.SCHEMA_VERSION_V1,
                 externalEvent,
-                clock));
-        actionEventPublisher.publishInternally(new io.github.temporalrift.game.shared.ActivistDeclarationRecorded(
-                state.gameId(),
-                state.eraNumber(),
-                DECLARATION_ROUND_NUMBER,
-                state.activistPlayerId(),
-                state.declarationMode().toSpecialAction(),
-                state.targetEventId(),
-                state.targetOutcomeId()));
+                clock);
+        sagaHandoffPublisher.publish(
+                actionEventPublisher::publish,
+                envelope,
+                new io.github.temporalrift.game.shared.ActivistDeclarationRecorded(
+                        state.gameId(),
+                        state.eraNumber(),
+                        DECLARATION_ROUND_NUMBER,
+                        state.activistPlayerId(),
+                        state.declarationMode().toSpecialAction(),
+                        state.targetEventId(),
+                        state.targetOutcomeId()));
     }
 
     private void validateActivist(

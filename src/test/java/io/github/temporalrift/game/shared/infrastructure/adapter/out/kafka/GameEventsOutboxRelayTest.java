@@ -7,6 +7,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
+import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.times;
 
 import java.time.Instant;
 import java.util.Map;
@@ -63,6 +65,34 @@ class GameEventsOutboxRelayTest {
                 .containsEntry("gameId", gameId)
                 .containsEntry("eventId", eventId)
                 .doesNotContainKey("notAllowed");
+    }
+
+    @Test
+    void relay_relaysAnOrderedPairInTheSameOrderTheyWereHandedToIt() {
+        // Modulith dispatches @ApplicationModuleListener invocations for events published in the same
+        // transaction strictly in publish order; this proves the relay itself does not reorder them
+        // on the way to StreamBridge — the part of the Kafka relay path this class owns.
+        var relay = new GameEventsOutboxRelay(streamBridge);
+        var gameId = UUID.randomUUID().toString();
+        var first = new OutboundIntegrationEvent(
+                OutboundIntegrationEventPublisher.GAME_EVENTS_CHANNEL, "EraFailed", gameId, payload(), Map.of());
+        var second = new OutboundIntegrationEvent(
+                OutboundIntegrationEventPublisher.GAME_EVENTS_CHANNEL,
+                "GameEndedAbnormally",
+                gameId,
+                payload(),
+                Map.of());
+        given(streamBridge.send(eq("game-events-out"), any())).willReturn(true);
+
+        relay.relay(first);
+        relay.relay(second);
+
+        var messageCaptor = ArgumentCaptor.forClass(Message.class);
+        var ordered = inOrder(streamBridge);
+        ordered.verify(streamBridge, times(2)).send(eq("game-events-out"), messageCaptor.capture());
+        assertThat(messageCaptor.getAllValues())
+                .extracting(message -> message.getHeaders().get("eventType"))
+                .containsExactly("EraFailed", "GameEndedAbnormally");
     }
 
     @Test

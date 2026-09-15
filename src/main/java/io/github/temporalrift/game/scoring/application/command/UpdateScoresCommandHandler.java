@@ -10,7 +10,6 @@ import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 
 import io.github.temporalrift.game.scoring.domain.playerscore.PlayerScore;
@@ -19,6 +18,7 @@ import io.github.temporalrift.game.scoring.domain.port.out.PlayerScoreRepository
 import io.github.temporalrift.game.scoring.domain.port.out.ScoringEventPublisher;
 import io.github.temporalrift.game.shared.DomainEventEnvelope;
 import io.github.temporalrift.game.shared.Faction;
+import io.github.temporalrift.game.shared.SagaHandoffPublisher;
 import io.github.temporalrift.game.shared.ScoresUpdated;
 
 @Component
@@ -28,7 +28,7 @@ public class UpdateScoresCommandHandler {
     private final EraScoringContextRepository contextRepository;
     private final EraScoreEvaluator eraScoreEvaluator;
     private final ScoringEventPublisher scoringEventPublisher;
-    private final ApplicationEventPublisher applicationEventPublisher;
+    private final SagaHandoffPublisher sagaHandoffPublisher;
     private final Clock clock;
 
     public UpdateScoresCommandHandler(
@@ -36,13 +36,13 @@ public class UpdateScoresCommandHandler {
             EraScoringContextRepository contextRepository,
             EraScoreEvaluator eraScoreEvaluator,
             ScoringEventPublisher scoringEventPublisher,
-            ApplicationEventPublisher applicationEventPublisher,
+            SagaHandoffPublisher sagaHandoffPublisher,
             Clock clock) {
         this.playerScoreRepository = Objects.requireNonNull(playerScoreRepository);
         this.contextRepository = Objects.requireNonNull(contextRepository);
         this.eraScoreEvaluator = Objects.requireNonNull(eraScoreEvaluator);
         this.scoringEventPublisher = Objects.requireNonNull(scoringEventPublisher);
-        this.applicationEventPublisher = Objects.requireNonNull(applicationEventPublisher);
+        this.sagaHandoffPublisher = Objects.requireNonNull(sagaHandoffPublisher);
         this.clock = Objects.requireNonNull(clock);
     }
 
@@ -86,14 +86,15 @@ public class UpdateScoresCommandHandler {
 
         var scoresUpdated = new ScoresUpdated(command.gameId(), command.eraNumber(), updates);
 
-        scoringEventPublisher.publish(DomainEventEnvelope.create(
-                command.gameId(),
-                PlayerScore.AGGREGATE_TYPE,
-                command.gameId(),
-                DomainEventEnvelope.SCHEMA_VERSION_V1,
-                scoresUpdated,
-                clock));
-        applicationEventPublisher.publishEvent(scoresUpdated);
+        sagaHandoffPublisher.publish(
+                scoringEventPublisher::publish,
+                DomainEventEnvelope.create(
+                        command.gameId(),
+                        PlayerScore.AGGREGATE_TYPE,
+                        command.gameId(),
+                        DomainEventEnvelope.SCHEMA_VERSION_V1,
+                        scoresUpdated,
+                        clock));
     }
 
     private ScoresUpdated.ScoreUpdate buildUpdate(

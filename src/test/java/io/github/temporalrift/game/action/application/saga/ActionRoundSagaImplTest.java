@@ -28,6 +28,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 
 import io.github.temporalrift.game.action.domain.actionround.ActionRound;
 import io.github.temporalrift.game.action.domain.actionround.ActionRoundConfig;
@@ -59,6 +60,7 @@ import io.github.temporalrift.game.shared.DomainEventEnvelope;
 import io.github.temporalrift.game.shared.EraActionFactsFinalized;
 import io.github.temporalrift.game.shared.Faction;
 import io.github.temporalrift.game.shared.GameRulesPort;
+import io.github.temporalrift.game.shared.SagaHandoffPublisher;
 import io.github.temporalrift.game.shared.SpecialAction;
 
 @ExtendWith(MockitoExtension.class)
@@ -89,6 +91,9 @@ class ActionRoundSagaImplTest {
     ActionEventPublisher actionEventPublisher;
 
     @Mock
+    ApplicationEventPublisher applicationEventPublisher;
+
+    @Mock
     ActionRoundSagaStateManager stateManager;
 
     @Mock
@@ -112,6 +117,7 @@ class ActionRoundSagaImplTest {
                 activistEraStateRepository,
                 playerStateRepository,
                 actionEventPublisher,
+                new SagaHandoffPublisher(applicationEventPublisher),
                 stateManager,
                 gameRules,
                 futureEventDefinitionPort,

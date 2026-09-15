@@ -31,6 +31,7 @@ import io.github.temporalrift.game.session.domain.saga.EraSagaState;
 import io.github.temporalrift.game.session.domain.saga.EraSagaStatus;
 import io.github.temporalrift.game.shared.ActionRoundClosed;
 import io.github.temporalrift.game.shared.DomainEventEnvelope;
+import io.github.temporalrift.game.shared.SagaHandoffPublisher;
 import io.github.temporalrift.game.shared.ScoresUpdated;
 import io.github.temporalrift.game.shared.StartActionRoundRequested;
 
@@ -45,6 +46,7 @@ class EraSagaAdvancer {
     private final GameRepository gameRepository;
     private final SessionEventPublisher eventPublisher;
     private final ApplicationEventPublisher applicationEventPublisher;
+    private final SagaHandoffPublisher sagaHandoffPublisher;
     private final SessionGameRulesPort gameRules;
     private final Clock clock;
 
@@ -54,6 +56,7 @@ class EraSagaAdvancer {
             GameRepository gameRepository,
             SessionEventPublisher eventPublisher,
             ApplicationEventPublisher applicationEventPublisher,
+            SagaHandoffPublisher sagaHandoffPublisher,
             SessionGameRulesPort gameRules,
             Clock clock) {
         this.eraSagaRepository = eraSagaRepository;
@@ -61,6 +64,7 @@ class EraSagaAdvancer {
         this.gameRepository = gameRepository;
         this.eventPublisher = eventPublisher;
         this.applicationEventPublisher = applicationEventPublisher;
+        this.sagaHandoffPublisher = sagaHandoffPublisher;
         this.gameRules = gameRules;
         this.clock = clock;
     }
@@ -156,8 +160,7 @@ class EraSagaAdvancer {
                                     winner.faction().name(),
                                     winner.newTotal(),
                                     "SCORE_THRESHOLD");
-                            publishEvent(gameId, winConditionMet);
-                            applicationEventPublisher.publishEvent(winConditionMet);
+                            sagaHandoffPublisher.publish(eventPublisher::publish, envelope(gameId, winConditionMet));
                         },
                         () -> {
                             var game = gameRepository
@@ -173,8 +176,7 @@ class EraSagaAdvancer {
 
                             if (game.status() == GameStatus.ENDED_BY_STABILIZATION) {
                                 var stabilized = buildTimelineStabilized(gameId, su);
-                                publishEvent(gameId, stabilized);
-                                applicationEventPublisher.publishEvent(stabilized);
+                                sagaHandoffPublisher.publish(eventPublisher::publish, envelope(gameId, stabilized));
                             } else {
                                 var carryOverEvents = game.drainPendingCarryOverEvents();
                                 gameRepository.save(game);
@@ -184,8 +186,7 @@ class EraSagaAdvancer {
                                         new EraEnded(
                                                 gameId, state.eraNumber(), game.cascadedParadoxCounter(), nextEra));
                                 var eraStarted = new EraStarted(gameId, nextEra, carryOverEvents, state.playerIds());
-                                publishEvent(gameId, eraStarted);
-                                applicationEventPublisher.publishEvent(eraStarted);
+                                sagaHandoffPublisher.publish(eventPublisher::publish, envelope(gameId, eraStarted));
                             }
                         });
     }
@@ -197,8 +198,12 @@ class EraSagaAdvancer {
     }
 
     private void publishEvent(UUID gameId, Object payload) {
-        eventPublisher.publish(DomainEventEnvelope.create(
-                gameId, Game.AGGREGATE_TYPE, gameId, DomainEventEnvelope.SCHEMA_VERSION_V1, payload, clock));
+        eventPublisher.publish(envelope(gameId, payload));
+    }
+
+    private <T> DomainEventEnvelope<T> envelope(UUID gameId, T payload) {
+        return DomainEventEnvelope.create(
+                gameId, Game.AGGREGATE_TYPE, gameId, DomainEventEnvelope.SCHEMA_VERSION_V1, payload, clock);
     }
 
     private TimelineStabilized buildTimelineStabilized(UUID gameId, ScoresUpdated su) {
