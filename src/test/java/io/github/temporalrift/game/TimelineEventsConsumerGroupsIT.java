@@ -24,6 +24,7 @@ import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.E
 import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.OutcomeAppliedPayload;
 import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.ParadoxCascadedPayload;
 import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.ParadoxResolutionPhaseStartedPayload;
+import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.ResolutionFailedPayload;
 import io.github.temporalrift.game.session.domain.game.Game;
 import io.github.temporalrift.game.session.domain.port.out.GameRepository;
 
@@ -88,20 +89,30 @@ class TimelineEventsConsumerGroupsIT {
                 "FutureEvent",
                 new ParadoxCascadedPayload(
                         gameId, ERA_NUMBER, paradoxId, cascadedEventId, List.of(), List.of(UUID.randomUUID())));
+        // The renamed band correction supersedes game-service's own preview for this game and era
+        // and no game-service consumer owns it, so it must be skipped without claiming.
         var bands = event(
                 gameId,
                 "AdjustedBandsPublished",
                 "FutureEvent",
                 new AdjustedBandsPublishedPayload(gameId, ERA_NUMBER, List.of()));
+        // A later record each group claims, proving it polled past the correction. The payload names a
+        // different game than the header, so the resolution-failed consumer claims it and then discards
+        // it before publishing — advancing its partition without touching saga state.
+        var resolutionFailed = event(
+                gameId,
+                "ResolutionFailed",
+                "FutureEvent",
+                new ResolutionFailedPayload(
+                        UUID.randomUUID(), ERA_NUMBER, UUID.randomUUID(), "PROBABILITY_SUM_INVALID"));
 
         // Same key — all records land in the same partition, which is exactly the case a shared
-        // consumer group could not deliver to every listener. Publish in resolution order so the barrier
-        // closes a phase that is actually open, rather than arriving before anything opened one.
+        // consumer group could not deliver to every listener. The correction rides first so every later
+        // claim proves its group already polled past it; phase and resolution records still publish in
+        // resolution order so the barrier closes a phase that is actually open.
+        send(gameId, bands);
         send(gameId, phaseStarted);
         send(gameId, resolution);
-        // The renamed band correction supersedes game-service's own preview for this game and era
-        // and no game-service consumer owns it, so it must be skipped without claiming.
-        send(gameId, bands);
         // The same cascade eventId twice. Cascade facts are inserted with a fresh primary key and no unique
         // constraint, so only the eventId claim stops a redelivery from recording a second fact.
         send(gameId, cascade);
@@ -109,6 +120,7 @@ class TimelineEventsConsumerGroupsIT {
         // Published last on the same key: one partition, consumed in order, so the scoring group having
         // claimed this record proves it already handled both cascade deliveries.
         send(gameId, outcome);
+        send(gameId, resolutionFailed);
 
         awaitProcessed(resolution, "session.era-resolution-completed");
         awaitProcessed(resolution, "scoring.timeline-events");
@@ -116,11 +128,12 @@ class TimelineEventsConsumerGroupsIT {
         awaitProcessed(phaseStarted, "action.paradox-resolution-phase");
         awaitProcessed(cascade, "scoring.timeline-events");
         awaitProcessed(outcome, "scoring.timeline-events");
+        awaitProcessed(resolutionFailed, "session.resolution-failed");
 
         assertThat(cascadeFactCount(gameId, paradoxId)).isEqualTo(1);
         assertThat(phaseStatus(gameId)).isEqualTo("CLOSED");
-        // The band correction sits between resolution and cascade on the same key, so every group that
-        // claimed the records around it has already polled past it — and none of them may claim it.
+        // Every group above claimed a record published after the correction on the same key, so each
+        // has polled past it — and none of them may have claimed it.
         assertNeverClaimed(
                 bands,
                 "session.era-resolution-completed",
