@@ -12,6 +12,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import io.github.temporalrift.game.action.application.port.in.GetParadoxResolutionStatusUseCase;
 import io.github.temporalrift.game.action.application.port.in.GetRoundStatusUseCase;
 import io.github.temporalrift.game.action.application.port.in.PlayCardUseCase;
 import io.github.temporalrift.game.action.application.port.in.PlayParadoxResolutionCardUseCase;
@@ -22,6 +23,7 @@ import io.github.temporalrift.game.scoring.application.port.in.GetScoresUseCase;
 import io.github.temporalrift.game.scoring.application.port.in.GetScoringHistoryUseCase;
 import io.github.temporalrift.game.session.application.port.in.CreateLobbyUseCase;
 import io.github.temporalrift.game.session.application.port.in.GetGameStateUseCase;
+import io.github.temporalrift.game.session.application.port.in.GetLobbyUseCase;
 import io.github.temporalrift.game.session.application.port.in.JoinLobbyUseCase;
 import io.github.temporalrift.game.session.application.port.in.LeaveLobbyUseCase;
 import io.github.temporalrift.game.session.application.port.in.StartGameUseCase;
@@ -50,6 +52,9 @@ class SecurityIT {
     private GetRoundStatusUseCase getRoundStatusUseCase;
 
     @MockitoBean
+    private GetParadoxResolutionStatusUseCase getParadoxResolutionStatusUseCase;
+
+    @MockitoBean
     private SelectHandUseCase selectHandUseCase;
 
     @MockitoBean
@@ -66,6 +71,9 @@ class SecurityIT {
 
     @MockitoBean
     private GetGameStateUseCase getGameStateUseCase;
+
+    @MockitoBean
+    private GetLobbyUseCase getLobbyUseCase;
 
     @MockitoBean
     private GetScoresUseCase getScoresUseCase;
