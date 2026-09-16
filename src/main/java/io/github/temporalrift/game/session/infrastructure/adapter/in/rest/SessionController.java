@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import io.github.temporalrift.game.session.application.port.in.CreateLobbyUseCase;
 import io.github.temporalrift.game.session.application.port.in.GetGameStateUseCase;
+import io.github.temporalrift.game.session.application.port.in.GetLobbyUseCase;
 import io.github.temporalrift.game.session.application.port.in.JoinLobbyUseCase;
 import io.github.temporalrift.game.session.application.port.in.LeaveLobbyUseCase;
 import io.github.temporalrift.game.session.application.port.in.StartGameUseCase;
@@ -17,6 +18,8 @@ import io.github.temporalrift.game.session.infrastructure.adapter.in.rest.v1.mod
 import io.github.temporalrift.game.session.infrastructure.adapter.in.rest.v1.model.GameSummaryResponse;
 import io.github.temporalrift.game.session.infrastructure.adapter.in.rest.v1.model.JoinLobbyRequest;
 import io.github.temporalrift.game.session.infrastructure.adapter.in.rest.v1.model.JoinLobbyResponse;
+import io.github.temporalrift.game.session.infrastructure.adapter.in.rest.v1.model.LobbyResponse;
+import io.github.temporalrift.game.session.infrastructure.adapter.in.rest.v1.model.LobbyStatus;
 import io.github.temporalrift.game.session.infrastructure.adapter.in.rest.v1.model.PlayerInLobby;
 import io.github.temporalrift.game.session.infrastructure.adapter.in.rest.v1.model.StartGameResponse;
 import io.github.temporalrift.game.shared.infrastructure.config.CurrentPlayer;
@@ -29,18 +32,21 @@ class SessionController implements SessionApi {
     private final LeaveLobbyUseCase leaveLobbyUseCase;
     private final StartGameUseCase startGameUseCase;
     private final GetGameStateUseCase getGameStateUseCase;
+    private final GetLobbyUseCase getLobbyUseCase;
 
     SessionController(
             CreateLobbyUseCase createLobbyUseCase,
             JoinLobbyUseCase joinLobbyUseCase,
             LeaveLobbyUseCase leaveLobbyUseCase,
             StartGameUseCase startGameUseCase,
-            GetGameStateUseCase getGameStateUseCase) {
+            GetGameStateUseCase getGameStateUseCase,
+            GetLobbyUseCase getLobbyUseCase) {
         this.createLobbyUseCase = createLobbyUseCase;
         this.joinLobbyUseCase = joinLobbyUseCase;
         this.leaveLobbyUseCase = leaveLobbyUseCase;
         this.startGameUseCase = startGameUseCase;
         this.getGameStateUseCase = getGameStateUseCase;
+        this.getLobbyUseCase = getLobbyUseCase;
     }
 
     @Override
@@ -83,5 +89,19 @@ class SessionController implements SessionApi {
                 };
         return ResponseEntity.ok(new GameSummaryResponse(
                 result.gameId(), apiStatus, result.eraNumber(), result.playerCount(), result.cascadedParadoxCount()));
+    }
+
+    @Override
+    public ResponseEntity<LobbyResponse> getLobby(UUID lobbyId) {
+        var result = getLobbyUseCase.handle(new GetLobbyUseCase.Query(lobbyId, CurrentPlayer.id()));
+        var members = result.members().stream()
+                .map(member -> new PlayerInLobby(member.playerId(), member.playerName(), member.isHost()))
+                .toList();
+        return ResponseEntity.ok(new LobbyResponse(
+                result.lobbyId(),
+                result.gameId(),
+                result.hostPlayerId(),
+                LobbyStatus.fromValue(result.status().name()),
+                members));
     }
 }
