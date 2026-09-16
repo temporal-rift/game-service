@@ -7,7 +7,9 @@ public enum Faction {
     ERASERS(Set.of(SpecialAction.ANNIHILATE, SpecialAction.CORRUPT, SpecialAction.CASCADE)),
     PROPHETS(Set.of(SpecialAction.FORESIGHT, SpecialAction.SEAL, SpecialAction.FULFILLMENT)),
     REVISIONISTS(Set.of(SpecialAction.REWRITE, SpecialAction.MIMIC, SpecialAction.OBSCURE)),
-    WEAVERS(Set.of(SpecialAction.THREAD, SpecialAction.TAPESTRY, SpecialAction.UNRAVEL)),
+    // UNRAVEL is retired (unreachable: at most one Weaver per game, so it can never name a legal target) and
+    // is not in any faction's roster; REWEAVE takes its place as the Weavers' third special.
+    WEAVERS(Set.of(SpecialAction.THREAD, SpecialAction.TAPESTRY, SpecialAction.REWEAVE)),
     ACTIVISTS(Set.of(SpecialAction.RALLY, SpecialAction.EXPOSE, SpecialAction.MOMENTUM));
 
     private final Set<SpecialAction> specialActions;

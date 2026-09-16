@@ -13,6 +13,7 @@ public enum SpecialAction {
     THREAD,
     TAPESTRY,
     UNRAVEL,
+    REWEAVE,
     RALLY,
     EXPOSE,
     MOMENTUM

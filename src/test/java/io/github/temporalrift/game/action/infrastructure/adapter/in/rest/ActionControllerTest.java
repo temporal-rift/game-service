@@ -25,6 +25,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
 import io.github.temporalrift.game.TestSecurityConfig;
+import io.github.temporalrift.game.action.application.port.in.GetParadoxResolutionStatusUseCase;
 import io.github.temporalrift.game.action.application.port.in.GetRoundStatusUseCase;
 import io.github.temporalrift.game.action.application.port.in.PlayCardUseCase;
 import io.github.temporalrift.game.action.application.port.in.PlayParadoxResolutionCardUseCase;
@@ -43,6 +44,7 @@ import io.github.temporalrift.game.action.domain.activisterastate.ExposeAlreadyR
 import io.github.temporalrift.game.action.domain.handselection.InvalidHandSelectionException;
 import io.github.temporalrift.game.action.domain.paradoxresolutionphase.CardNotEligibleForParadoxResolutionException;
 import io.github.temporalrift.game.action.domain.paradoxresolutionphase.DuplicateParadoxResolutionSubmissionException;
+import io.github.temporalrift.game.action.domain.paradoxresolutionphase.ParadoxResolutionPhaseNotFoundException;
 import io.github.temporalrift.game.action.domain.paradoxresolutionphase.ParadoxResolutionPhaseNotOpenException;
 import io.github.temporalrift.game.action.domain.specialactionerausage.SpecialActionEraBudgetExhaustedException;
 import io.github.temporalrift.game.shared.domain.model.CardType;
@@ -82,6 +84,9 @@ class ActionControllerTest {
 
     @MockitoBean
     GetRoundStatusUseCase getRoundStatusUseCase;
+
+    @MockitoBean
+    GetParadoxResolutionStatusUseCase getParadoxResolutionStatusUseCase;
 
     @MockitoBean
     SelectHandUseCase selectHandUseCase;
@@ -314,6 +319,66 @@ class ActionControllerTest {
 
         // when / then
         mockMvc.perform(get("/api/v1/games/{gameId}/eras/{eraNumber}/rounds/{roundNumber}/status", GAME_ID, ERA, ROUND)
+                        .with(auth()))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("404-01"));
+    }
+
+    @Test
+    @DisplayName("Given no JWT, when GET paradox-resolution status, then 401")
+    void getParadoxResolutionStatusNoJwt() throws Exception {
+        mockMvc.perform(get("/api/v1/games/{gameId}/eras/{eraNumber}/paradox-resolution/status", GAME_ID, ERA))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @DisplayName("Given an open phase, when GET paradox-resolution status, then returns caller-scoped recovery")
+    void getParadoxResolutionStatus() throws Exception {
+        // given
+        var pendingPlayerId = UUID.randomUUID();
+        given(getParadoxResolutionStatusUseCase.handle(any()))
+                .willReturn(new GetParadoxResolutionStatusUseCase.Result(
+                        ERA, true, 42, 2, 3, List.of(pendingPlayerId), false));
+
+        // when / then
+        mockMvc.perform(get("/api/v1/games/{gameId}/eras/{eraNumber}/paradox-resolution/status", GAME_ID, ERA)
+                        .with(auth()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.eraNumber").value(ERA))
+                .andExpect(jsonPath("$.phaseOpen").value(true))
+                .andExpect(jsonPath("$.timerRemainingSeconds").value(42))
+                .andExpect(jsonPath("$.submittedCount").value(2))
+                .andExpect(jsonPath("$.totalPlayers").value(3))
+                .andExpect(jsonPath("$.pendingPlayerIds[0]").value(pendingPlayerId.toString()))
+                .andExpect(jsonPath("$.mySubmitted").value(false));
+    }
+
+    @Test
+    @DisplayName("Given a closed phase, when GET paradox-resolution status, then omits timer and pending players")
+    void getParadoxResolutionStatusClosed() throws Exception {
+        // given
+        given(getParadoxResolutionStatusUseCase.handle(any()))
+                .willReturn(new GetParadoxResolutionStatusUseCase.Result(ERA, false, 0, 3, 3, List.of(), true));
+
+        // when / then
+        mockMvc.perform(get("/api/v1/games/{gameId}/eras/{eraNumber}/paradox-resolution/status", GAME_ID, ERA)
+                        .with(auth()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.phaseOpen").value(false))
+                .andExpect(jsonPath("$.timerRemainingSeconds").doesNotExist())
+                .andExpect(jsonPath("$.pendingPlayerIds").doesNotExist())
+                .andExpect(jsonPath("$.mySubmitted").value(true));
+    }
+
+    @Test
+    @DisplayName("Given no paradox-resolution phase, then returns 404")
+    void paradoxResolutionPhaseNotFound() throws Exception {
+        // given
+        given(getParadoxResolutionStatusUseCase.handle(any()))
+                .willThrow(new ParadoxResolutionPhaseNotFoundException(GAME_ID, ERA));
+
+        // when / then
+        mockMvc.perform(get("/api/v1/games/{gameId}/eras/{eraNumber}/paradox-resolution/status", GAME_ID, ERA)
                         .with(auth()))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("404-01"));

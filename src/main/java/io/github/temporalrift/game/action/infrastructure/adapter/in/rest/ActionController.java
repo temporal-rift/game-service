@@ -5,6 +5,7 @@ import java.util.UUID;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
 
+import io.github.temporalrift.game.action.application.port.in.GetParadoxResolutionStatusUseCase;
 import io.github.temporalrift.game.action.application.port.in.GetRoundStatusUseCase;
 import io.github.temporalrift.game.action.application.port.in.PlayCardUseCase;
 import io.github.temporalrift.game.action.application.port.in.PlayParadoxResolutionCardUseCase;
@@ -21,6 +22,7 @@ import io.github.temporalrift.game.action.infrastructure.adapter.in.rest.v1.mode
 import io.github.temporalrift.game.action.infrastructure.adapter.in.rest.v1.model.HandSelectionStatus;
 import io.github.temporalrift.game.action.infrastructure.adapter.in.rest.v1.model.ParadoxResolutionCardRequest;
 import io.github.temporalrift.game.action.infrastructure.adapter.in.rest.v1.model.ParadoxResolutionCardResponse;
+import io.github.temporalrift.game.action.infrastructure.adapter.in.rest.v1.model.ParadoxResolutionStatusResponse;
 import io.github.temporalrift.game.action.infrastructure.adapter.in.rest.v1.model.RoundStatus;
 import io.github.temporalrift.game.action.infrastructure.adapter.in.rest.v1.model.RoundStatusResponse;
 import io.github.temporalrift.game.action.infrastructure.adapter.in.rest.v1.model.SpecialActionRequest;
@@ -40,6 +42,7 @@ class ActionController implements ActionApi {
     private final RecordActivistDeclarationUseCase recordActivistDeclarationUseCase;
 
     private final GetRoundStatusUseCase getRoundStatusUseCase;
+    private final GetParadoxResolutionStatusUseCase getParadoxResolutionStatusUseCase;
     private final SelectHandUseCase selectHandUseCase;
 
     ActionController(
@@ -48,12 +51,14 @@ class ActionController implements ActionApi {
             PlayParadoxResolutionCardUseCase playParadoxResolutionCardUseCase,
             RecordActivistDeclarationUseCase recordActivistDeclarationUseCase,
             GetRoundStatusUseCase getRoundStatusUseCase,
+            GetParadoxResolutionStatusUseCase getParadoxResolutionStatusUseCase,
             SelectHandUseCase selectHandUseCase) {
         this.playCardUseCase = playCardUseCase;
         this.playSpecialActionUseCase = playSpecialActionUseCase;
         this.playParadoxResolutionCardUseCase = playParadoxResolutionCardUseCase;
         this.recordActivistDeclarationUseCase = recordActivistDeclarationUseCase;
         this.getRoundStatusUseCase = getRoundStatusUseCase;
+        this.getParadoxResolutionStatusUseCase = getParadoxResolutionStatusUseCase;
         this.selectHandUseCase = selectHandUseCase;
     }
 
@@ -140,6 +145,27 @@ class ActionController implements ActionApi {
                 result.pendingPlayerIds()));
     }
 
+    @Override
+    public ResponseEntity<ParadoxResolutionStatusResponse> getParadoxResolutionStatus(UUID gameId, Integer eraNumber) {
+        var result = getParadoxResolutionStatusUseCase.handle(
+                new GetParadoxResolutionStatusUseCase.Query(gameId, eraNumber, CurrentPlayer.id()));
+        var response = new ParadoxResolutionStatusResponse(
+                result.eraNumber(),
+                result.phaseOpen(),
+                result.submittedCount(),
+                result.totalPlayers(),
+                result.mySubmitted());
+        if (result.phaseOpen()) {
+            response.timerRemainingSeconds(result.timerRemainingSeconds());
+            response.pendingPlayerIds(result.pendingPlayerIds());
+        } else {
+            // The generated model defaults pendingPlayerIds to an empty (not null) list, which would
+            // otherwise serialize as [] instead of the contract's "absent once closed".
+            response.pendingPlayerIds(null);
+        }
+        return ResponseEntity.ok(response);
+    }
+
     private SubmissionResult submitCard(
             UUID gameId, int eraNumber, int roundNumber, UUID playerId, CardActionRequest request) {
         var result = playCardUseCase.handle(new PlayCardUseCase.Command(
@@ -165,6 +191,8 @@ class ActionController implements ActionApi {
                 roundNumber,
                 playerId,
                 ActionRestMapper.toDomain(request.getSpecialAction()),
+                request.getSourceEventId(),
+                request.getSourceOutcomeId(),
                 request.getTargetEventId(),
                 request.getTargetOutcomeId(),
                 request.getTargetPlayerId()));

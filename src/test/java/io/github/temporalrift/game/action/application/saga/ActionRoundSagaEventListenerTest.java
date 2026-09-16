@@ -81,6 +81,8 @@ class ActionRoundSagaEventListenerTest {
                 SpecialAction.ANNIHILATE,
                 null,
                 null,
+                null,
+                null,
                 null);
 
         // when

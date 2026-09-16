@@ -49,6 +49,7 @@ game:
       - SEAL
       - CORRUPT
       - MIMIC
+      - REWEAVE
     hand-deal-forced-types: []
     probability:
       # Same namespace timeline-service reads (shared-configuration-server capability) —

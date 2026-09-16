@@ -57,7 +57,7 @@ class ActionRoundTest {
             UUID targetOutcomeId,
             UUID targetPlayerId) {
         return new SubmittedAction.SpecialActionSubmission(
-                playerId, faction, specialAction, targetEventId, targetOutcomeId, targetPlayerId);
+                playerId, faction, specialAction, null, null, targetEventId, targetOutcomeId, targetPlayerId);
     }
 
     @Test

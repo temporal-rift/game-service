@@ -537,7 +537,14 @@ class ActionRoundSagaImplTest {
             var round = new ActionRound(
                     roundId, new ActionRoundConfig(GAME_ID, ERA_NUMBER, 3, TIMER_SECONDS), List.of(PLAYER_1));
             round.submit(new SubmittedAction.SpecialActionSubmission(
-                    PLAYER_1, Faction.PROPHETS, SpecialAction.FORESIGHT, targetEventId, targetOutcomeId, null));
+                    PLAYER_1,
+                    Faction.PROPHETS,
+                    SpecialAction.FORESIGHT,
+                    null,
+                    null,
+                    targetEventId,
+                    targetOutcomeId,
+                    null));
             given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA_NUMBER, 3))
                     .willReturn(Optional.of(round));
 
@@ -576,7 +583,14 @@ class ActionRoundSagaImplTest {
             var round = new ActionRound(
                     roundId, new ActionRoundConfig(GAME_ID, ERA_NUMBER, 3, TIMER_SECONDS), List.of(PLAYER_1));
             round.submit(new SubmittedAction.SpecialActionSubmission(
-                    PLAYER_1, Faction.ERASERS, SpecialAction.ANNIHILATE, targetEventId, targetOutcomeId, null));
+                    PLAYER_1,
+                    Faction.ERASERS,
+                    SpecialAction.ANNIHILATE,
+                    null,
+                    null,
+                    targetEventId,
+                    targetOutcomeId,
+                    null));
             given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA_NUMBER, 3))
                     .willReturn(Optional.of(round));
 
@@ -612,7 +626,7 @@ class ActionRoundSagaImplTest {
             var round = new ActionRound(
                     roundId, new ActionRoundConfig(GAME_ID, ERA_NUMBER, 3, TIMER_SECONDS), List.of(PLAYER_1));
             round.submit(new SubmittedAction.SpecialActionSubmission(
-                    PLAYER_1, Faction.PROPHETS, SpecialAction.FULFILLMENT, targetEventId, null, null));
+                    PLAYER_1, Faction.PROPHETS, SpecialAction.FULFILLMENT, null, null, targetEventId, null, null));
             given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA_NUMBER, 3))
                     .willReturn(Optional.of(round));
 
@@ -652,6 +666,8 @@ class ActionRoundSagaImplTest {
                     PLAYER_1,
                     Faction.REVISIONISTS,
                     SpecialAction.REWRITE,
+                    null,
+                    null,
                     firstRewriteEventId,
                     firstRewriteOutcomeId,
                     null));
@@ -661,13 +677,22 @@ class ActionRoundSagaImplTest {
                     PLAYER_1,
                     Faction.REVISIONISTS,
                     SpecialAction.REWRITE,
+                    null,
+                    null,
                     latestRewriteEventId,
                     latestRewriteOutcomeId,
                     null));
             var round3 = new ActionRound(
                     UUID.randomUUID(), new ActionRoundConfig(GAME_ID, ERA_NUMBER, 3, TIMER_SECONDS), List.of(PLAYER_1));
             round3.submit(new SubmittedAction.SpecialActionSubmission(
-                    PLAYER_1, Faction.REVISIONISTS, SpecialAction.MIMIC, mimicEventId, mimicOutcomeId, null));
+                    PLAYER_1,
+                    Faction.REVISIONISTS,
+                    SpecialAction.MIMIC,
+                    null,
+                    null,
+                    mimicEventId,
+                    mimicOutcomeId,
+                    null));
             given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA_NUMBER, 3))
                     .willReturn(Optional.of(round3));
             given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumber(GAME_ID, ERA_NUMBER, 1))
@@ -932,7 +957,7 @@ class ActionRoundSagaImplTest {
             round.submit(new SubmittedAction.CardAction(
                     PLAYER_2, cardInstanceId, CardType.PUSH, targetEventId, null, targetOutcomeId));
             round.submit(new SubmittedAction.SpecialActionSubmission(
-                    PLAYER_1, Faction.ERASERS, SpecialAction.CORRUPT, null, null, PLAYER_2));
+                    PLAYER_1, Faction.ERASERS, SpecialAction.CORRUPT, null, null, null, null, PLAYER_2));
             given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA_NUMBER, 3))
                     .willReturn(Optional.of(round));
 
@@ -970,7 +995,7 @@ class ActionRoundSagaImplTest {
             round1.submit(new SubmittedAction.CardAction(
                     PLAYER_2, cardInstanceId, CardType.PUSH, targetEventId, null, targetOutcomeId));
             round1.submit(new SubmittedAction.SpecialActionSubmission(
-                    PLAYER_1, Faction.ERASERS, SpecialAction.CORRUPT, null, null, PLAYER_2));
+                    PLAYER_1, Faction.ERASERS, SpecialAction.CORRUPT, null, null, null, null, PLAYER_2));
             var round3 = new ActionRound(
                     UUID.randomUUID(), new ActionRoundConfig(GAME_ID, ERA_NUMBER, 3, TIMER_SECONDS), List.of(PLAYER_1));
             given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA_NUMBER, 3))
@@ -1005,7 +1030,7 @@ class ActionRoundSagaImplTest {
             var round = new ActionRound(
                     roundId, new ActionRoundConfig(GAME_ID, ERA_NUMBER, 3, TIMER_SECONDS), List.of(PLAYER_1, PLAYER_2));
             round.submit(new SubmittedAction.SpecialActionSubmission(
-                    PLAYER_1, Faction.ERASERS, SpecialAction.CORRUPT, null, null, PLAYER_2));
+                    PLAYER_1, Faction.ERASERS, SpecialAction.CORRUPT, null, null, null, null, PLAYER_2));
             given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA_NUMBER, 3))
                     .willReturn(Optional.of(round));
 
@@ -1036,9 +1061,16 @@ class ActionRoundSagaImplTest {
             var round = new ActionRound(
                     roundId, new ActionRoundConfig(GAME_ID, ERA_NUMBER, 3, TIMER_SECONDS), List.of(PLAYER_1, PLAYER_2));
             round.submit(new SubmittedAction.SpecialActionSubmission(
-                    PLAYER_2, Faction.PROPHETS, SpecialAction.FORESIGHT, UUID.randomUUID(), UUID.randomUUID(), null));
+                    PLAYER_2,
+                    Faction.PROPHETS,
+                    SpecialAction.FORESIGHT,
+                    null,
+                    null,
+                    UUID.randomUUID(),
+                    UUID.randomUUID(),
+                    null));
             round.submit(new SubmittedAction.SpecialActionSubmission(
-                    PLAYER_1, Faction.ERASERS, SpecialAction.CORRUPT, null, null, PLAYER_2));
+                    PLAYER_1, Faction.ERASERS, SpecialAction.CORRUPT, null, null, null, null, PLAYER_2));
             given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA_NUMBER, 3))
                     .willReturn(Optional.of(round));
 
@@ -1218,7 +1250,14 @@ class ActionRoundSagaImplTest {
                     new ActionRoundConfig(GAME_ID, ERA_NUMBER, ROUND_NUMBER, TIMER_SECONDS),
                     List.of(PLAYER_1, PLAYER_2, PLAYER_3));
             round.submit(new SubmittedAction.SpecialActionSubmission(
-                    PLAYER_1, Faction.ERASERS, SpecialAction.ANNIHILATE, targetEventId, targetOutcomeId, null));
+                    PLAYER_1,
+                    Faction.ERASERS,
+                    SpecialAction.ANNIHILATE,
+                    null,
+                    null,
+                    targetEventId,
+                    targetOutcomeId,
+                    null));
 
             given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(
                             GAME_ID, ERA_NUMBER, ROUND_NUMBER))

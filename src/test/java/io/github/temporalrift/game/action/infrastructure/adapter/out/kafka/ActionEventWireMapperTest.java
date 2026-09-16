@@ -14,8 +14,11 @@ import io.github.temporalrift.game.action.domain.event.HandCardIntercepted;
 import io.github.temporalrift.game.action.domain.event.InfluenceTraced;
 import io.github.temporalrift.game.action.domain.event.ParadoxResolutionCardPlayed;
 import io.github.temporalrift.game.action.domain.event.PlayerJammed;
+import io.github.temporalrift.game.action.domain.event.SpecialActionPlayed;
 import io.github.temporalrift.game.shared.domain.model.CardGrade;
 import io.github.temporalrift.game.shared.domain.model.CardType;
+import io.github.temporalrift.game.shared.domain.model.Faction;
+import io.github.temporalrift.game.shared.domain.model.SpecialAction;
 
 class ActionEventWireMapperTest {
 
@@ -127,5 +130,34 @@ class ActionEventWireMapperTest {
         assertThat(wire.playerId()).isEqualTo(domain.playerId());
         assertThat(wire.targetEventId()).isEqualTo(domain.targetEventId());
         assertThat(wire.influencerPlayerIds()).containsExactlyElementsOf(domain.influencerPlayerIds());
+    }
+
+    @Test
+    void specialActionPlayed_mapsThreadsCurrentEraSource() {
+        var domain = new SpecialActionPlayed(
+                UUID.randomUUID(),
+                2,
+                1,
+                UUID.randomUUID(),
+                Faction.WEAVERS,
+                SpecialAction.THREAD,
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                null);
+
+        var wire = mapper.toWire(domain);
+
+        assertThat(wire.gameId()).isEqualTo(domain.gameId());
+        assertThat(wire.eraNumber()).isEqualTo(domain.eraNumber());
+        assertThat(wire.roundNumber()).isEqualTo(domain.roundNumber());
+        assertThat(wire.playerId()).isEqualTo(domain.playerId());
+        assertThat(wire.faction().name()).isEqualTo("WEAVERS");
+        assertThat(wire.specialAction().name()).isEqualTo("THREAD");
+        assertThat(wire.sourceEventId()).isEqualTo(domain.sourceEventId());
+        assertThat(wire.sourceOutcomeId()).isEqualTo(domain.sourceOutcomeId());
+        assertThat(wire.targetEventId()).isEqualTo(domain.targetEventId());
+        assertThat(wire.targetOutcomeId()).isEqualTo(domain.targetOutcomeId());
     }
 }

@@ -98,7 +98,14 @@ class ActionPersistenceIT {
         round.submit(new SubmittedAction.CardAction(
                 player1, cardInstanceId, CardType.SWING, targetEventId, sourceOutcomeId, targetOutcomeId));
         round.submit(new SubmittedAction.SpecialActionSubmission(
-                player2, Faction.PROPHETS, SpecialAction.SEAL, targetEventId, targetOutcomeId, targetPlayerId));
+                player2,
+                Faction.PROPHETS,
+                SpecialAction.SEAL,
+                null,
+                null,
+                targetEventId,
+                targetOutcomeId,
+                targetPlayerId));
         round.close("ALL_SUBMITTED");
         actionRoundRepository.save(round);
 

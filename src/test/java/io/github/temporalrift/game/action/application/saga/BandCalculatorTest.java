@@ -111,7 +111,7 @@ class BandCalculatorTest {
                 new SubmittedAction.CardAction(
                         PLAYER_ID, UUID.randomUUID(), CardType.PUSH, UUID.randomUUID(), null, OUTCOME_1));
         List<SubmittedAction> round2 = List.of(new SubmittedAction.SpecialActionSubmission(
-                PLAYER_ID, Faction.ERASERS, SpecialAction.ANNIHILATE, unknownEventId, OUTCOME_1, null));
+                PLAYER_ID, Faction.ERASERS, SpecialAction.ANNIHILATE, null, null, unknownEventId, OUTCOME_1, null));
 
         // when
         var result = calculator.computeBands(round1, round2, definitions);
@@ -399,7 +399,7 @@ class BandCalculatorTest {
         var definitions = List.of(new FutureEventDefinitionPort.EventDefinition(
                 EVENT_ID, List.of(new FutureEventDefinitionPort.OutcomeDefinition(OUTCOME_1, 55))));
         List<SubmittedAction> actions = List.of(new SubmittedAction.SpecialActionSubmission(
-                PLAYER_ID, Faction.ERASERS, specialAction, EVENT_ID, OUTCOME_1, PLAYER_ID));
+                PLAYER_ID, Faction.ERASERS, specialAction, null, null, EVENT_ID, OUTCOME_1, PLAYER_ID));
 
         // when
         var result = calculator.computeBands(List.of(), actions, definitions);
@@ -422,9 +422,9 @@ class BandCalculatorTest {
                 new SubmittedAction.CardAction(PLAYER_ID, UUID.randomUUID(), CardType.PUSH, EVENT_ID, null, null));
         List<SubmittedAction> round2 = List.of(
                 new SubmittedAction.SpecialActionSubmission(
-                        PLAYER_ID, Faction.ERASERS, SpecialAction.SEAL, null, OUTCOME_1, null),
+                        PLAYER_ID, Faction.ERASERS, SpecialAction.SEAL, null, null, null, OUTCOME_1, null),
                 new SubmittedAction.SpecialActionSubmission(
-                        PLAYER_ID, Faction.ERASERS, SpecialAction.SEAL, EVENT_ID, null, null));
+                        PLAYER_ID, Faction.ERASERS, SpecialAction.SEAL, null, null, EVENT_ID, null, null));
 
         // when
         var result = calculator.computeBands(round1, round2, definitions);
