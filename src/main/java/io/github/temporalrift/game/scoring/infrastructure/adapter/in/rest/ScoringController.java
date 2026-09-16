@@ -14,6 +14,7 @@ import io.github.temporalrift.game.scoring.infrastructure.adapter.in.rest.v1.mod
 import io.github.temporalrift.game.scoring.infrastructure.adapter.in.rest.v1.model.ScoreDelta;
 import io.github.temporalrift.game.scoring.infrastructure.adapter.in.rest.v1.model.ScoresHistoryResponse;
 import io.github.temporalrift.game.scoring.infrastructure.adapter.in.rest.v1.model.ScoresResponse;
+import io.github.temporalrift.game.shared.infrastructure.config.CurrentPlayer;
 
 @RestController
 class ScoringController implements ScoringApi {
@@ -28,7 +29,7 @@ class ScoringController implements ScoringApi {
 
     @Override
     public ResponseEntity<ScoresResponse> getScores(UUID gameId) {
-        var result = getScoresUseCase.handle(new GetScoresUseCase.Query(gameId));
+        var result = getScoresUseCase.handle(new GetScoresUseCase.Query(gameId, CurrentPlayer.id()));
         var scores =
                 result.scores().stream().map(ScoringController::toPlayerScore).toList();
         return ResponseEntity.ok(new ScoresResponse(result.gameId(), result.eraNumber(), scores));
@@ -36,12 +37,12 @@ class ScoringController implements ScoringApi {
 
     @Override
     public ResponseEntity<ScoresHistoryResponse> getScoresHistory(UUID gameId) {
-        var result = getScoringHistoryUseCase.handle(new GetScoringHistoryUseCase.Query(gameId));
+        var result = getScoringHistoryUseCase.handle(new GetScoringHistoryUseCase.Query(gameId, CurrentPlayer.id()));
         var history = result.history().stream()
                 .map(era -> new EraHistory(
                         era.eraNumber(),
                         era.deltas().stream()
-                                .map(delta -> new ScoreDelta(delta.playerId(), delta.pointsDelta(), delta.reason()))
+                                .map(ScoringController::toScoreDelta)
                                 .toList()))
                 .toList();
         return ResponseEntity.ok(new ScoresHistoryResponse(result.gameId(), history));
@@ -53,5 +54,13 @@ class ScoringController implements ScoringApi {
             playerScore.faction(Faction.fromValue(row.faction().name()));
         }
         return playerScore;
+    }
+
+    private static ScoreDelta toScoreDelta(GetScoringHistoryUseCase.ScoreDeltaRow row) {
+        var scoreDelta = new ScoreDelta(row.playerId(), row.pointsDelta());
+        if (row.reason() != null) {
+            scoreDelta.reason(row.reason());
+        }
+        return scoreDelta;
     }
 }

@@ -3,6 +3,8 @@ package io.github.temporalrift.game.scoring.application.query;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.then;
+import static org.mockito.Mockito.never;
 
 import java.util.List;
 import java.util.UUID;
@@ -17,6 +19,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import io.github.temporalrift.game.scoring.application.port.in.GetScoresUseCase;
 import io.github.temporalrift.game.scoring.domain.playerscore.ScoringGameNotFoundException;
 import io.github.temporalrift.game.scoring.domain.port.out.ScoringGameVisibilityRepository;
+import io.github.temporalrift.game.scoring.domain.port.out.ScoringPlayerRepository;
 import io.github.temporalrift.game.scoring.domain.port.out.ScoringReadRepository;
 import io.github.temporalrift.game.scoring.domain.port.out.ScoringReadRepository.CurrentScoreRow;
 import io.github.temporalrift.game.shared.domain.model.Faction;
@@ -35,16 +38,20 @@ class GetScoresQueryHandlerTest {
     @Mock
     ScoringGameVisibilityRepository visibilityRepository;
 
+    @Mock
+    ScoringPlayerRepository scoringPlayerRepository;
+
     @InjectMocks
     GetScoresQueryHandler handler;
 
     @Test
     @DisplayName("factions hidden — every score row returns faction null, in repository order")
     void handle_factionsHidden_returnsNullFactions() {
+        authorize(PLAYER_1);
         given(scoringReadRepository.findCurrentScores(GAME_ID)).willReturn(rows());
         given(visibilityRepository.areFactionsRevealed(GAME_ID)).willReturn(false);
 
-        var result = handler.handle(new GetScoresUseCase.Query(GAME_ID));
+        var result = handler.handle(new GetScoresUseCase.Query(GAME_ID, PLAYER_1));
 
         assertThat(result.gameId()).isEqualTo(GAME_ID);
         assertThat(result.eraNumber()).isEqualTo(2);
@@ -60,10 +67,11 @@ class GetScoresQueryHandlerTest {
     @Test
     @DisplayName("factions revealed — each row carries its stored faction")
     void handle_factionsRevealed_returnsStoredFactions() {
+        authorize(PLAYER_1);
         given(scoringReadRepository.findCurrentScores(GAME_ID)).willReturn(rows());
         given(visibilityRepository.areFactionsRevealed(GAME_ID)).willReturn(true);
 
-        var result = handler.handle(new GetScoresUseCase.Query(GAME_ID));
+        var result = handler.handle(new GetScoresUseCase.Query(GAME_ID, PLAYER_1));
 
         assertThat(result.scores())
                 .extracting(GetScoresUseCase.PlayerScoreRow::faction)
@@ -73,10 +81,26 @@ class GetScoresQueryHandlerTest {
     @Test
     @DisplayName("no scores persisted — throws ScoringGameNotFoundException")
     void handle_noScores_throws() {
+        authorize(PLAYER_1);
         given(scoringReadRepository.findCurrentScores(GAME_ID)).willReturn(List.of());
-        var query = new GetScoresUseCase.Query(GAME_ID);
+        var query = new GetScoresUseCase.Query(GAME_ID, PLAYER_1);
 
         assertThatExceptionOfType(ScoringGameNotFoundException.class).isThrownBy(() -> handler.handle(query));
+    }
+
+    @Test
+    @DisplayName("non-participant — returns the same not-found denial without reading scores")
+    void handle_nonParticipant_throwsWithoutReadingScores() {
+        given(scoringPlayerRepository.isParticipant(GAME_ID, PLAYER_3)).willReturn(false);
+
+        assertThatExceptionOfType(ScoringGameNotFoundException.class)
+                .isThrownBy(() -> handler.handle(new GetScoresUseCase.Query(GAME_ID, PLAYER_3)));
+
+        then(scoringReadRepository).should(never()).findCurrentScores(GAME_ID);
+    }
+
+    private void authorize(UUID playerId) {
+        given(scoringPlayerRepository.isParticipant(GAME_ID, playerId)).willReturn(true);
     }
 
     private static List<CurrentScoreRow> rows() {

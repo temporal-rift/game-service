@@ -10,6 +10,8 @@ import org.springframework.data.repository.query.Param;
 
 interface ScoringPlayerJpaRepository extends JpaRepository<ScoringPlayerJpaEntity, UUID> {
 
+    boolean existsByGameIdAndPlayerId(UUID gameId, UUID playerId);
+
     List<ScoringPlayerJpaEntity> findAllByGameId(UUID gameId);
 
     @Modifying
