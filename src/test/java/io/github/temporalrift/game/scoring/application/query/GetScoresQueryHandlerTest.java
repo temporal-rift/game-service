@@ -92,9 +92,9 @@ class GetScoresQueryHandlerTest {
     @DisplayName("non-participant — returns the same not-found denial without reading scores")
     void handle_nonParticipant_throwsWithoutReadingScores() {
         given(scoringPlayerRepository.isParticipant(GAME_ID, PLAYER_3)).willReturn(false);
+        var query = new GetScoresUseCase.Query(GAME_ID, PLAYER_3);
 
-        assertThatExceptionOfType(ScoringGameNotFoundException.class)
-                .isThrownBy(() -> handler.handle(new GetScoresUseCase.Query(GAME_ID, PLAYER_3)));
+        assertThatExceptionOfType(ScoringGameNotFoundException.class).isThrownBy(() -> handler.handle(query));
 
         then(scoringReadRepository).should(never()).findCurrentScores(GAME_ID);
     }

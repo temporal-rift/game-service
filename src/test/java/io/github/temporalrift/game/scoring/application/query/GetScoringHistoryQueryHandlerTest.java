@@ -108,9 +108,9 @@ class GetScoringHistoryQueryHandlerTest {
     @DisplayName("non-participant — returns the same not-found denial without reading history")
     void handle_nonParticipant_throwsWithoutReadingHistory() {
         given(scoringPlayerRepository.isParticipant(GAME_ID, PLAYER_2)).willReturn(false);
+        var query = new GetScoringHistoryUseCase.Query(GAME_ID, PLAYER_2);
 
-        assertThatExceptionOfType(ScoringGameNotFoundException.class)
-                .isThrownBy(() -> handler.handle(new GetScoringHistoryUseCase.Query(GAME_ID, PLAYER_2)));
+        assertThatExceptionOfType(ScoringGameNotFoundException.class).isThrownBy(() -> handler.handle(query));
 
         then(scoringReadRepository).should(never()).findScoreHistory(GAME_ID);
     }
