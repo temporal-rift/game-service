@@ -67,10 +67,11 @@ class GetParadoxResolutionStatusQueryHandlerTest {
     void handleCallerNotParticipant() {
         // given
         given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, CALLER)).willReturn(Optional.empty());
+        var underTest = handler();
+        var query = new GetParadoxResolutionStatusUseCase.Query(GAME_ID, ERA, CALLER);
 
         // when / then
-        assertThatThrownBy(() -> handler().handle(new GetParadoxResolutionStatusUseCase.Query(GAME_ID, ERA, CALLER)))
-                .isInstanceOf(ParadoxResolutionPhaseNotFoundException.class);
+        assertThatThrownBy(() -> underTest.handle(query)).isInstanceOf(ParadoxResolutionPhaseNotFoundException.class);
         then(phaseRepository).shouldHaveNoInteractions();
     }
 
@@ -80,10 +81,11 @@ class GetParadoxResolutionStatusQueryHandlerTest {
         // given
         stubCallerIsParticipant();
         given(phaseRepository.findByGameIdAndEraNumber(GAME_ID, ERA)).willReturn(Optional.empty());
+        var underTest = handler();
+        var query = new GetParadoxResolutionStatusUseCase.Query(GAME_ID, ERA, CALLER);
 
         // when / then
-        assertThatThrownBy(() -> handler().handle(new GetParadoxResolutionStatusUseCase.Query(GAME_ID, ERA, CALLER)))
-                .isInstanceOf(ParadoxResolutionPhaseNotFoundException.class);
+        assertThatThrownBy(() -> underTest.handle(query)).isInstanceOf(ParadoxResolutionPhaseNotFoundException.class);
     }
 
     @Test

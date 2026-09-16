@@ -73,10 +73,10 @@ class GetLobbyQueryHandlerTest {
     void handle_unknownLobby_throwsLobbyNotFoundException() {
         // given
         given(lobbyRepository.findById(LOBBY_ID)).willReturn(Optional.empty());
+        var query = new GetLobbyUseCase.Query(LOBBY_ID, CALLER);
 
         // when / then
-        assertThatThrownBy(() -> handler.handle(new GetLobbyUseCase.Query(LOBBY_ID, CALLER)))
-                .isInstanceOf(LobbyNotFoundException.class);
+        assertThatThrownBy(() -> handler.handle(query)).isInstanceOf(LobbyNotFoundException.class);
     }
 
     @Test
@@ -87,9 +87,9 @@ class GetLobbyQueryHandlerTest {
         given(lobby.currentPlayers())
                 .willReturn(List.of(
                         new LobbyPlayer(OTHER, "Bob", null, java.time.Instant.parse("2026-01-01T00:00:00Z"), true)));
+        var query = new GetLobbyUseCase.Query(LOBBY_ID, CALLER);
 
         // when / then
-        assertThatThrownBy(() -> handler.handle(new GetLobbyUseCase.Query(LOBBY_ID, CALLER)))
-                .isInstanceOf(LobbyAccessDeniedException.class);
+        assertThatThrownBy(() -> handler.handle(query)).isInstanceOf(LobbyAccessDeniedException.class);
     }
 }
