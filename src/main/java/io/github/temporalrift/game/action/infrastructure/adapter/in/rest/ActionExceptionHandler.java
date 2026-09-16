@@ -29,6 +29,7 @@ import io.github.temporalrift.game.action.domain.handselection.HandSelectionNotO
 import io.github.temporalrift.game.action.domain.handselection.InvalidHandSelectionException;
 import io.github.temporalrift.game.action.domain.paradoxresolutionphase.CardNotEligibleForParadoxResolutionException;
 import io.github.temporalrift.game.action.domain.paradoxresolutionphase.DuplicateParadoxResolutionSubmissionException;
+import io.github.temporalrift.game.action.domain.paradoxresolutionphase.ParadoxResolutionPhaseNotFoundException;
 import io.github.temporalrift.game.action.domain.paradoxresolutionphase.ParadoxResolutionPhaseNotOpenException;
 import io.github.temporalrift.game.action.domain.playerstate.PlayerStateNotFoundException;
 import io.github.temporalrift.game.action.domain.specialactionerausage.SpecialActionEraBudgetExhaustedException;
@@ -39,7 +40,11 @@ import io.github.temporalrift.game.shared.infrastructure.adapter.in.rest.RestAdv
 @RestControllerAdvice(basePackageClasses = ActionController.class)
 class ActionExceptionHandler {
 
-    @ExceptionHandler({RoundNotFoundException.class, PlayerStateNotFoundException.class})
+    @ExceptionHandler({
+        RoundNotFoundException.class,
+        PlayerStateNotFoundException.class,
+        ParadoxResolutionPhaseNotFoundException.class
+    })
     ProblemDetail handleNotFound(RuntimeException ex) {
         return ProblemDetails.of(HttpStatus.NOT_FOUND, ex.getMessage(), "404-01");
     }
