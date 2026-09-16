@@ -1,7 +1,7 @@
 package io.github.temporalrift.game.action.application.query;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 
@@ -69,8 +69,8 @@ class GetParadoxResolutionStatusQueryHandlerTest {
         given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, CALLER)).willReturn(Optional.empty());
 
         // when / then
-        assertThatExceptionOfType(ParadoxResolutionPhaseNotFoundException.class)
-                .isThrownBy(() -> handler().handle(new GetParadoxResolutionStatusUseCase.Query(GAME_ID, ERA, CALLER)));
+        assertThatThrownBy(() -> handler().handle(new GetParadoxResolutionStatusUseCase.Query(GAME_ID, ERA, CALLER)))
+                .isInstanceOf(ParadoxResolutionPhaseNotFoundException.class);
         then(phaseRepository).shouldHaveNoInteractions();
     }
 
@@ -82,8 +82,8 @@ class GetParadoxResolutionStatusQueryHandlerTest {
         given(phaseRepository.findByGameIdAndEraNumber(GAME_ID, ERA)).willReturn(Optional.empty());
 
         // when / then
-        assertThatExceptionOfType(ParadoxResolutionPhaseNotFoundException.class)
-                .isThrownBy(() -> handler().handle(new GetParadoxResolutionStatusUseCase.Query(GAME_ID, ERA, CALLER)));
+        assertThatThrownBy(() -> handler().handle(new GetParadoxResolutionStatusUseCase.Query(GAME_ID, ERA, CALLER)))
+                .isInstanceOf(ParadoxResolutionPhaseNotFoundException.class);
     }
 
     @Test

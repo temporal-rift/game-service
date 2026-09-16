@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 import io.github.temporalrift.game.action.application.port.in.GetParadoxResolutionStatusUseCase;
 import io.github.temporalrift.game.action.domain.paradoxresolutionphase.ParadoxResolutionPhaseNotFoundException;
 import io.github.temporalrift.game.action.domain.paradoxresolutionphase.ParadoxResolutionPhaseStatus;
+import io.github.temporalrift.game.action.domain.playerstate.PlayerState;
 import io.github.temporalrift.game.action.domain.port.out.ParadoxResolutionPhaseRepository;
 import io.github.temporalrift.game.action.domain.port.out.PlayerStateRepository;
 
@@ -46,7 +47,7 @@ class GetParadoxResolutionStatusQueryHandler implements GetParadoxResolutionStat
         var timerRemainingSeconds = phaseOpen ? timerRemainingSeconds(phase.expiresAt()) : null;
         var submittedPlayerIds = phase.submittedPlayerIds();
         var allPlayerIds = playerStateRepository.findAllByGameId(query.gameId()).stream()
-                .map(playerState -> playerState.playerId())
+                .map(PlayerState::playerId)
                 .distinct()
                 .toList();
         var totalPlayers = Math.max(allPlayerIds.size(), submittedPlayerIds.size());

@@ -1,7 +1,7 @@
 package io.github.temporalrift.game.session.application.query;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.BDDMockito.given;
 
 import java.util.List;
@@ -75,8 +75,8 @@ class GetLobbyQueryHandlerTest {
         given(lobbyRepository.findById(LOBBY_ID)).willReturn(Optional.empty());
 
         // when / then
-        assertThatExceptionOfType(LobbyNotFoundException.class)
-                .isThrownBy(() -> handler.handle(new GetLobbyUseCase.Query(LOBBY_ID, CALLER)));
+        assertThatThrownBy(() -> handler.handle(new GetLobbyUseCase.Query(LOBBY_ID, CALLER)))
+                .isInstanceOf(LobbyNotFoundException.class);
     }
 
     @Test
@@ -89,7 +89,7 @@ class GetLobbyQueryHandlerTest {
                         new LobbyPlayer(OTHER, "Bob", null, java.time.Instant.parse("2026-01-01T00:00:00Z"), true)));
 
         // when / then
-        assertThatExceptionOfType(LobbyAccessDeniedException.class)
-                .isThrownBy(() -> handler.handle(new GetLobbyUseCase.Query(LOBBY_ID, CALLER)));
+        assertThatThrownBy(() -> handler.handle(new GetLobbyUseCase.Query(LOBBY_ID, CALLER)))
+                .isInstanceOf(LobbyAccessDeniedException.class);
     }
 }
