@@ -99,8 +99,8 @@ class TimelineEventsConsumerGroupsIT {
         // closes a phase that is actually open, rather than arriving before anything opened one.
         send(gameId, phaseStarted);
         send(gameId, resolution);
-        // The renamed band correction supersedes game-service's own preview for this game and era;
-        // no game-service consumer owns it, so it must be skipped without claiming.
+        // The renamed band correction supersedes game-service's own preview for this game and era
+        // and no game-service consumer owns it, so it must be skipped without claiming.
         send(gameId, bands);
         // The same cascade eventId twice. Cascade facts are inserted with a fresh primary key and no unique
         // constraint, so only the eventId claim stops a redelivery from recording a second fact.
@@ -166,7 +166,7 @@ class TimelineEventsConsumerGroupsIT {
                             Integer.class,
                             eventId,
                             consumer))
-                    .isEqualTo(0);
+                    .isZero();
         }
     }
 
