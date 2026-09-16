@@ -8,6 +8,7 @@ import static org.mockito.Mockito.never;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 import java.util.stream.Stream;
 
@@ -25,6 +26,7 @@ import org.springframework.messaging.Message;
 import org.springframework.messaging.support.MessageBuilder;
 import tools.jackson.databind.json.JsonMapper;
 
+import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.AdjustedBandsPublishedPayload;
 import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.ResolutionFailedPayload;
 import io.github.temporalrift.game.session.application.saga.ResolutionFailedApplicationEvent;
 import io.github.temporalrift.game.shared.domain.port.out.ProcessedEventRepository;
@@ -74,6 +76,21 @@ class ResolutionFailedKafkaConsumerTest {
     void handle_unrelatedEvent_ignored() {
         // when
         consumer.handle(message("OutcomeApplied", 1, "{}"));
+
+        // then
+        then(processedEventRepository).should(never()).tryMarkProcessed(any(), any());
+        then(applicationEventPublisher).should(never()).publishEvent(any());
+    }
+
+    @Test
+    @DisplayName("renamed timeline band correction is ignored before claiming")
+    void handle_adjustedBandsPublished_ignored() {
+        // when
+        consumer.handle(message(
+                io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract
+                        .ADJUSTED_BANDS_PUBLISHED_EVENT_TYPE,
+                1,
+                new AdjustedBandsPublishedPayload(GAME_ID, 2, List.of())));
 
         // then
         then(processedEventRepository).should(never()).tryMarkProcessed(any(), any());

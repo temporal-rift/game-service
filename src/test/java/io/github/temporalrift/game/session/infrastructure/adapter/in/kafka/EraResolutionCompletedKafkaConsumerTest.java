@@ -27,6 +27,7 @@ import org.springframework.messaging.Message;
 import org.springframework.messaging.support.MessageBuilder;
 import tools.jackson.databind.json.JsonMapper;
 
+import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.AdjustedBandsPublishedPayload;
 import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.EraResolutionCompletedPayload;
 import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.EraTerminalResolution;
 import io.github.temporalrift.game.session.domain.event.TimelineCollapsed;
@@ -249,6 +250,32 @@ class EraResolutionCompletedKafkaConsumerTest {
 
         then(processedEventRepository).should(never()).tryMarkProcessed(any(), any());
         then(gameRepository).should(never()).findByIdWithLock(any());
+    }
+
+    @Test
+    @DisplayName("the renamed timeline band correction is skipped before claiming the event")
+    void handle_adjustedBandsPublished_skippedWithoutClaim() {
+        var body = JSON_MAPPER
+                .writeValueAsString(new AdjustedBandsPublishedPayload(GAME_ID, 1, List.of()))
+                .getBytes(StandardCharsets.UTF_8);
+        var message = MessageBuilder.withPayload((Object) body)
+                .setHeader(
+                        "eventType",
+                        io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract
+                                .ADJUSTED_BANDS_PUBLISHED_EVENT_TYPE)
+                .setHeader("eventId", UUID.randomUUID().toString())
+                .setHeader("aggregateId", GAME_ID.toString())
+                .setHeader("aggregateType", "Game")
+                .setHeader("gameId", GAME_ID.toString())
+                .setHeader("occurredAt", Instant.now().toString())
+                .setHeader("version", "1")
+                .build();
+
+        consumer.handle(message);
+
+        then(processedEventRepository).should(never()).tryMarkProcessed(any(), any());
+        then(gameRepository).should(never()).findByIdWithLock(any());
+        then(eventPublisher).should(never()).publish(any());
     }
 
     private void givenClaimedBarrier() {

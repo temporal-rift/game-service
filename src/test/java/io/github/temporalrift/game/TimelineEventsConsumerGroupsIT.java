@@ -18,6 +18,7 @@ import org.springframework.messaging.Message;
 import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.AdjustedBandsPublishedPayload;
 import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.EraResolutionCompletedPayload;
 import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.EraTerminalResolution;
 import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.OutcomeAppliedPayload;
@@ -34,6 +35,9 @@ import io.github.temporalrift.game.session.domain.port.out.GameRepository;
  * used to inherit the default {@code game-service} group, so Kafka split the topic's partitions between them and
  * each listener silently missed the records assigned to the other. Every logical timeline-event consumer now has its
  * own group and receives the same partition.
+ *
+ * <p>Compatible deployment set exercised here: the timeline producer's band correction in its renamed 3.0.0 form is
+ * published on the same key and claimed by no game-service consumer, while every other fact still reaches its owner.
  */
 @GameServiceIntegrationTest
 class TimelineEventsConsumerGroupsIT {
@@ -84,12 +88,20 @@ class TimelineEventsConsumerGroupsIT {
                 "FutureEvent",
                 new ParadoxCascadedPayload(
                         gameId, ERA_NUMBER, paradoxId, cascadedEventId, List.of(), List.of(UUID.randomUUID())));
+        var bands = event(
+                gameId,
+                "AdjustedBandsPublished",
+                "FutureEvent",
+                new AdjustedBandsPublishedPayload(gameId, ERA_NUMBER, List.of()));
 
         // Same key — all records land in the same partition, which is exactly the case a shared
         // consumer group could not deliver to every listener. Publish in resolution order so the barrier
         // closes a phase that is actually open, rather than arriving before anything opened one.
         send(gameId, phaseStarted);
         send(gameId, resolution);
+        // The renamed band correction supersedes game-service's own preview for this game and era;
+        // no game-service consumer owns it, so it must be skipped without claiming.
+        send(gameId, bands);
         // The same cascade eventId twice. Cascade facts are inserted with a fresh primary key and no unique
         // constraint, so only the eventId claim stops a redelivery from recording a second fact.
         send(gameId, cascade);
@@ -107,6 +119,14 @@ class TimelineEventsConsumerGroupsIT {
 
         assertThat(cascadeFactCount(gameId, paradoxId)).isEqualTo(1);
         assertThat(phaseStatus(gameId)).isEqualTo("CLOSED");
+        // The band correction sits between resolution and cascade on the same key, so every group that
+        // claimed the records around it has already polled past it — and none of them may claim it.
+        assertNeverClaimed(
+                bands,
+                "session.era-resolution-completed",
+                "session.resolution-failed",
+                "scoring.timeline-events",
+                "action.paradox-resolution-phase");
     }
 
     /**
@@ -132,6 +152,22 @@ class TimelineEventsConsumerGroupsIT {
                                 eventId,
                                 consumer))
                         .isEqualTo(1));
+    }
+
+    /**
+     * A record no consumer owns can never be claimed — the skip path returns before {@code tryMarkProcessed} —
+     * so its absence holds at any point in time, with no await needed.
+     */
+    private void assertNeverClaimed(Message<Object> event, String... consumers) {
+        var eventId = UUID.fromString((String) event.getHeaders().get("eventId"));
+        for (var consumer : consumers) {
+            assertThat(jdbcTemplate.queryForObject(
+                            "SELECT COUNT(*) FROM processed_events WHERE event_id = ? AND consumer = ?",
+                            Integer.class,
+                            eventId,
+                            consumer))
+                    .isEqualTo(0);
+        }
     }
 
     /** Proves the barrier closed the phase the earlier {@code ParadoxResolutionPhaseStarted} record opened. */

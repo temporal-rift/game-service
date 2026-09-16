@@ -30,6 +30,7 @@ import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.E
 import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.EraTerminalResolution;
 import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.OutcomeAppliedPayload;
 import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.ParadoxCascadedPayload;
+import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.ProbabilityStateRevealedPayload;
 import io.github.temporalrift.game.scoring.application.command.EraScoringCompletionChecker;
 import io.github.temporalrift.game.scoring.domain.event.EraResolutionCompleted;
 import io.github.temporalrift.game.scoring.domain.event.OutcomeApplied;
@@ -97,6 +98,21 @@ class TimelineScoringKafkaConsumerTest {
         consumer.handle(message(
                 io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract
                         .ADJUSTED_BANDS_PUBLISHED_EVENT_TYPE,
+                json(payload)));
+
+        then(processedEventRepository).should(never()).tryMarkProcessed(any(), any());
+        then(outcomeInboxRepository).should(never()).save(any());
+        then(contextRepository).should(never()).saveEraResolutionCompleted(any());
+    }
+
+    @Test
+    @DisplayName("private per-player reveal — ignored without claiming, visibility unchanged")
+    void handle_probabilityStateRevealed_ignoredWithoutClaiming() {
+        var payload = new ProbabilityStateRevealedPayload(
+                GAME_ID, ERA_NUMBER, 1, UUID.randomUUID(), UUID.randomUUID(), List.of());
+        consumer.handle(message(
+                io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract
+                        .PROBABILITY_STATE_REVEALED_EVENT_TYPE,
                 json(payload)));
 
         then(processedEventRepository).should(never()).tryMarkProcessed(any(), any());
