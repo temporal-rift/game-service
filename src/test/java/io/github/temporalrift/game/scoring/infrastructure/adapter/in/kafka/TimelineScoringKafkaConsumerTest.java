@@ -23,6 +23,7 @@ import org.springframework.messaging.Message;
 import org.springframework.messaging.support.MessageBuilder;
 import tools.jackson.databind.json.JsonMapper;
 
+import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.AdjustedBandsPublishedPayload;
 import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.ChainBrokenPayload;
 import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.ChainCompletedPayload;
 import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.EraResolutionCompletedPayload;
@@ -87,6 +88,20 @@ class TimelineScoringKafkaConsumerTest {
 
         then(processedEventRepository).should(never()).tryMarkProcessed(any(), any());
         then(outcomeInboxRepository).should(never()).save(any());
+    }
+
+    @Test
+    @DisplayName("renamed timeline band correction — ignored without claiming")
+    void handle_adjustedBandsPublished_ignoredWithoutClaiming() {
+        var payload = new AdjustedBandsPublishedPayload(GAME_ID, ERA_NUMBER, List.of());
+        consumer.handle(message(
+                io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract
+                        .ADJUSTED_BANDS_PUBLISHED_EVENT_TYPE,
+                json(payload)));
+
+        then(processedEventRepository).should(never()).tryMarkProcessed(any(), any());
+        then(outcomeInboxRepository).should(never()).save(any());
+        then(contextRepository).should(never()).saveEraResolutionCompleted(any());
     }
 
     @Test
