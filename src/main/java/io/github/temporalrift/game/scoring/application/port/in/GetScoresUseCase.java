@@ -10,10 +10,11 @@ public interface GetScoresUseCase {
 
     Result handle(Query query);
 
-    record Query(UUID gameId) {
+    record Query(UUID gameId, UUID playerId) {
 
         public Query {
             Objects.requireNonNull(gameId, "gameId must not be null");
+            Objects.requireNonNull(playerId, "playerId must not be null");
         }
     }
 
