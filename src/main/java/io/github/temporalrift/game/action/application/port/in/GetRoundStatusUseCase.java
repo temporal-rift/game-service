@@ -19,5 +19,9 @@ public interface GetRoundStatusUseCase {
             int timerRemainingSeconds,
             int submittedCount,
             int totalPlayers,
-            List<UUID> pendingPlayerIds) {}
+            List<UUID> pendingPlayerIds,
+            MySubmission mySubmission) {}
+
+    /** The caller's own accepted round decision; {@code actionType} is null unless {@code submitted} is true. */
+    record MySubmission(boolean submitted, String actionType) {}
 }
