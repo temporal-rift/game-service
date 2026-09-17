@@ -1,23 +1,19 @@
 package io.github.temporalrift.game.session.application.command;
 
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import io.github.temporalrift.game.session.application.port.in.JoinLobbyUseCase;
 import io.github.temporalrift.game.session.domain.lobby.LobbyNotFoundException;
 import io.github.temporalrift.game.session.domain.port.out.LobbyRepository;
-import io.github.temporalrift.game.shared.domain.event.PlayerJoinedLobby;
 
 @Service
 class JoinLobbyCommandHandler implements JoinLobbyUseCase {
 
     private final LobbyRepository lobbyRepository;
-    private final ApplicationEventPublisher applicationEventPublisher;
 
-    JoinLobbyCommandHandler(LobbyRepository lobbyRepository, ApplicationEventPublisher applicationEventPublisher) {
+    JoinLobbyCommandHandler(LobbyRepository lobbyRepository) {
         this.lobbyRepository = lobbyRepository;
-        this.applicationEventPublisher = applicationEventPublisher;
     }
 
     @Override
@@ -32,11 +28,6 @@ class JoinLobbyCommandHandler implements JoinLobbyUseCase {
         lobby.join(command.playerId(), command.playerName());
 
         lobbyRepository.save(lobby);
-
-        // In-process path for the scoring module's player-name projection (dual-publish pattern);
-        // the Kafka path is emitted by the lobby repository adapter.
-        applicationEventPublisher.publishEvent(
-                new PlayerJoinedLobby(lobby.gameId(), lobby.id(), command.playerId(), command.playerName()));
 
         var players = lobby.currentPlayers().stream()
                 .map(p -> new PlayerSummary(

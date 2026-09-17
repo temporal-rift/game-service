@@ -37,6 +37,8 @@ public class Lobby extends AggregateRoot {
                 new ArrayList<>(Objects.requireNonNull(currentPlayers, "currentPlayers must not be null"));
         this.status = LobbyStatus.WAITING;
         registerEvent(new LobbyCreated(id, hostPlayerId, config.clock().instant()));
+        currentPlayers.forEach(
+                member -> registerEvent(new PlayerJoinedLobby(gameId, id, member.playerId(), member.playerName())));
     }
 
     private Lobby(

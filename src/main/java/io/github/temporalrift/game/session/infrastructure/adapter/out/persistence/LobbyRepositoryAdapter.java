@@ -6,6 +6,7 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 
 import io.github.temporalrift.game.session.domain.lobby.Lobby;
@@ -14,6 +15,7 @@ import io.github.temporalrift.game.session.domain.lobby.LobbyPlayer;
 import io.github.temporalrift.game.session.domain.lobby.LobbyStatus;
 import io.github.temporalrift.game.session.domain.port.out.LobbyRepository;
 import io.github.temporalrift.game.session.domain.port.out.SessionEventPublisher;
+import io.github.temporalrift.game.shared.application.SagaHandoffPublisher;
 import io.github.temporalrift.game.shared.domain.messaging.DomainEventEnvelope;
 import io.github.temporalrift.game.shared.domain.model.Faction;
 
@@ -24,11 +26,18 @@ class LobbyRepositoryAdapter implements LobbyRepository {
 
     private final SessionEventPublisher eventPublisher;
 
+    private final SagaHandoffPublisher sagaHandoffPublisher;
+
     private final Clock clock;
 
-    LobbyRepositoryAdapter(LobbyJpaRepository jpaRepository, SessionEventPublisher eventPublisher, Clock clock) {
+    LobbyRepositoryAdapter(
+            LobbyJpaRepository jpaRepository,
+            SessionEventPublisher eventPublisher,
+            Clock clock,
+            ApplicationEventPublisher applicationEventPublisher) {
         this.jpaRepository = jpaRepository;
         this.eventPublisher = eventPublisher;
+        this.sagaHandoffPublisher = new SagaHandoffPublisher(applicationEventPublisher);
         this.clock = clock;
     }
 
@@ -36,13 +45,15 @@ class LobbyRepositoryAdapter implements LobbyRepository {
     public Lobby save(Lobby lobby) {
         jpaRepository.save(toEntity(lobby));
         lobby.pullEvents()
-                .forEach(event -> eventPublisher.publish(DomainEventEnvelope.create(
-                        lobby.id(),
-                        Lobby.AGGREGATE_TYPE,
-                        lobby.gameId(),
-                        DomainEventEnvelope.SCHEMA_VERSION_V1,
-                        event,
-                        clock)));
+                .forEach(event -> sagaHandoffPublisher.publish(
+                        eventPublisher::publish,
+                        DomainEventEnvelope.create(
+                                lobby.id(),
+                                Lobby.AGGREGATE_TYPE,
+                                lobby.gameId(),
+                                DomainEventEnvelope.SCHEMA_VERSION_V1,
+                                event,
+                                clock)));
         return lobby;
     }
 

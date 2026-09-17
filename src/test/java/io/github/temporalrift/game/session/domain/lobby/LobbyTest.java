@@ -135,6 +135,30 @@ class LobbyTest {
     }
 
     @Test
+    @DisplayName("constructor registers PlayerJoinedLobby for the initial host")
+    void constructor_registersPlayerJoinedLobbyForHost() {
+        // given
+        var id = UUID.randomUUID();
+        var gameId = UUID.randomUUID();
+        var hostId = UUID.randomUUID();
+        var host = new LobbyPlayer(hostId, "Alice", null, null, true);
+
+        // when
+        var lobby = new Lobby(id, gameId, hostId, List.of(host), CONFIG);
+
+        // then
+        var events = lobby.pullEvents();
+        assertThat(events).hasSize(2);
+        assertThat(events.getFirst()).isInstanceOf(LobbyCreated.class);
+        assertThat(events.get(1)).isInstanceOf(PlayerJoinedLobby.class);
+        var joined = (PlayerJoinedLobby) events.get(1);
+        assertThat(joined.gameId()).isEqualTo(gameId);
+        assertThat(joined.lobbyId()).isEqualTo(id);
+        assertThat(joined.playerId()).isEqualTo(hostId);
+        assertThat(joined.playerName()).isEqualTo("Alice");
+    }
+
+    @Test
     @DisplayName("reconstitute does not register any events")
     void reconstitute_doesNotRegisterEvents() {
         assertThat(lobbyWith(player()).pullEvents()).isEmpty();

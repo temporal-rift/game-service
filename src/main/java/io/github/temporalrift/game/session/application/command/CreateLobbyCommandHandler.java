@@ -4,7 +4,6 @@ import java.time.Clock;
 import java.util.List;
 import java.util.UUID;
 
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -15,7 +14,6 @@ import io.github.temporalrift.game.session.domain.lobby.LobbyPlayer;
 import io.github.temporalrift.game.session.domain.port.out.JoinCodePort;
 import io.github.temporalrift.game.session.domain.port.out.LobbyRepository;
 import io.github.temporalrift.game.session.domain.port.out.SessionGameRulesPort;
-import io.github.temporalrift.game.shared.domain.event.PlayerJoinedLobby;
 
 @Service
 class CreateLobbyCommandHandler implements CreateLobbyUseCase {
@@ -28,19 +26,12 @@ class CreateLobbyCommandHandler implements CreateLobbyUseCase {
 
     private final Clock clock;
 
-    private final ApplicationEventPublisher applicationEventPublisher;
-
     CreateLobbyCommandHandler(
-            LobbyRepository lobbyRepository,
-            SessionGameRulesPort gameRules,
-            JoinCodePort joinCodePort,
-            Clock clock,
-            ApplicationEventPublisher applicationEventPublisher) {
+            LobbyRepository lobbyRepository, SessionGameRulesPort gameRules, JoinCodePort joinCodePort, Clock clock) {
         this.lobbyRepository = lobbyRepository;
         this.gameRules = gameRules;
         this.joinCodePort = joinCodePort;
         this.clock = clock;
-        this.applicationEventPublisher = applicationEventPublisher;
     }
 
     @Override
@@ -60,12 +51,6 @@ class CreateLobbyCommandHandler implements CreateLobbyUseCase {
         var lobby = new Lobby(lobbyId, gameId, command.playerId(), List.of(host), config);
 
         lobbyRepository.save(lobby);
-
-        // In-process path for the scoring module's player-name projection (dual-publish pattern);
-        // the Kafka path is emitted by the lobby repository adapter. The host joins by creating,
-        // so without this the creator would never count as a scoring participant.
-        applicationEventPublisher.publishEvent(
-                new PlayerJoinedLobby(gameId, lobbyId, command.playerId(), command.playerName()));
 
         return new Result(lobbyId, command.playerId(), joinCode);
     }
