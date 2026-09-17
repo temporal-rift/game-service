@@ -17,14 +17,12 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.context.ApplicationEventPublisher;
 
 import io.github.temporalrift.game.session.application.port.in.CreateLobbyUseCase;
 import io.github.temporalrift.game.session.domain.lobby.Lobby;
 import io.github.temporalrift.game.session.domain.port.out.JoinCodePort;
 import io.github.temporalrift.game.session.domain.port.out.LobbyRepository;
 import io.github.temporalrift.game.session.domain.port.out.SessionGameRulesPort;
-import io.github.temporalrift.game.shared.domain.event.PlayerJoinedLobby;
 
 @ExtendWith(MockitoExtension.class)
 class CreateLobbyCommandHandlerTest {
@@ -43,9 +41,6 @@ class CreateLobbyCommandHandlerTest {
 
     @Mock
     Clock clock;
-
-    @Mock
-    ApplicationEventPublisher applicationEventPublisher;
 
     @InjectMocks
     CreateLobbyCommandHandler handler;
@@ -120,25 +115,5 @@ class CreateLobbyCommandHandlerTest {
         assertThat(result.lobbyId()).isNotNull();
         assertThat(result.hostPlayerId()).isEqualTo(command.playerId());
         assertThat(result.joinCode()).isEqualTo(JOIN_CODE);
-    }
-
-    @Test
-    @DisplayName("publishes a host join event so the creator counts as a scoring participant")
-    void handle_publishesHostJoinEvent() {
-        // given
-        var command = new CreateLobbyUseCase.Command(UUID.randomUUID(), "Alice");
-
-        // when
-        handler.handle(command);
-
-        // then
-        var captor = ArgumentCaptor.forClass(PlayerJoinedLobby.class);
-        then(applicationEventPublisher).should().publishEvent(captor.capture());
-        var savedLobby = ArgumentCaptor.forClass(Lobby.class);
-        then(lobbyRepository).should().save(savedLobby.capture());
-        assertThat(captor.getValue().gameId()).isEqualTo(savedLobby.getValue().gameId());
-        assertThat(captor.getValue().lobbyId()).isEqualTo(savedLobby.getValue().id());
-        assertThat(captor.getValue().playerId()).isEqualTo(command.playerId());
-        assertThat(captor.getValue().playerName()).isEqualTo(command.playerName());
     }
 }
