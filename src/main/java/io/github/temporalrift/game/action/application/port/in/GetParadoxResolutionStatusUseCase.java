@@ -4,9 +4,7 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * Reads participant-scoped status for an era's paradox-resolution phase: whether reactive offers
- * are open, the authoritative deadline, aggregate submission progress, and the caller's own
- * submission flag.
+ * Recovers paradox-resolution phase status for the caller's era.
  */
 public interface GetParadoxResolutionStatusUseCase {
 
@@ -17,7 +15,7 @@ public interface GetParadoxResolutionStatusUseCase {
     record Result(
             int eraNumber,
             boolean phaseOpen,
-            int timerRemainingSeconds,
+            Integer timerRemainingSeconds,
             int submittedCount,
             int totalPlayers,
             List<UUID> pendingPlayerIds,

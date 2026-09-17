@@ -358,7 +358,7 @@ class ActionControllerTest {
     void getParadoxResolutionStatusClosed() throws Exception {
         // given
         given(getParadoxResolutionStatusUseCase.handle(any()))
-                .willReturn(new GetParadoxResolutionStatusUseCase.Result(ERA, false, 0, 3, 3, List.of(), true));
+                .willReturn(new GetParadoxResolutionStatusUseCase.Result(ERA, false, null, 3, 3, null, true));
 
         // when / then
         mockMvc.perform(get("/api/v1/games/{gameId}/eras/{eraNumber}/paradox-resolution/status", GAME_ID, ERA)

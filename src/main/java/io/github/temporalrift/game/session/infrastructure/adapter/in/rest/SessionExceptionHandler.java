@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import io.github.temporalrift.game.session.domain.game.GameNotFoundException;
 import io.github.temporalrift.game.session.domain.lobby.DisconnectedPlayersException;
+import io.github.temporalrift.game.session.domain.lobby.LobbyAccessDeniedException;
 import io.github.temporalrift.game.session.domain.lobby.LobbyAlreadyStartedException;
 import io.github.temporalrift.game.session.domain.lobby.LobbyFullException;
 import io.github.temporalrift.game.session.domain.lobby.LobbyNotFoundException;
@@ -25,6 +26,11 @@ class SessionExceptionHandler {
     @ExceptionHandler(LobbyNotFoundException.class)
     ProblemDetail handleLobbyNotFound(LobbyNotFoundException ex) {
         return ProblemDetails.of(HttpStatus.NOT_FOUND, ex.getMessage(), "404-01");
+    }
+
+    @ExceptionHandler(LobbyAccessDeniedException.class)
+    ProblemDetail handleLobbyAccessDenied(LobbyAccessDeniedException ex) {
+        return ProblemDetails.of(HttpStatus.FORBIDDEN, ex.getMessage(), "403-01");
     }
 
     @ExceptionHandler(GameNotFoundException.class)

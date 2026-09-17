@@ -25,12 +25,14 @@ import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import io.github.temporalrift.game.TestSecurityConfig;
 import io.github.temporalrift.game.session.application.port.in.CreateLobbyUseCase;
 import io.github.temporalrift.game.session.application.port.in.GetGameStateUseCase;
+import io.github.temporalrift.game.session.application.port.in.GetLobbyUseCase;
 import io.github.temporalrift.game.session.application.port.in.JoinLobbyUseCase;
 import io.github.temporalrift.game.session.application.port.in.LeaveLobbyUseCase;
 import io.github.temporalrift.game.session.application.port.in.StartGameUseCase;
 import io.github.temporalrift.game.session.domain.game.GameNotFoundException;
 import io.github.temporalrift.game.session.domain.game.GameStatus;
 import io.github.temporalrift.game.session.domain.lobby.DisconnectedPlayersException;
+import io.github.temporalrift.game.session.domain.lobby.LobbyAccessDeniedException;
 import io.github.temporalrift.game.session.domain.lobby.LobbyAlreadyStartedException;
 import io.github.temporalrift.game.session.domain.lobby.LobbyFullException;
 import io.github.temporalrift.game.session.domain.lobby.LobbyNotFoundException;
@@ -63,6 +65,9 @@ class SessionControllerTest {
 
     @MockitoBean
     GetGameStateUseCase getGameStateUseCase;
+
+    @MockitoBean
+    GetLobbyUseCase getLobbyUseCase;
 
     static final UUID PLAYER_ID = UUID.randomUUID();
     static final UUID LOBBY_ID = UUID.randomUUID();
@@ -171,6 +176,31 @@ class SessionControllerTest {
                 .andExpect(jsonPath("$.status").value("IN_PROGRESS"))
                 .andExpect(jsonPath("$.eraNumber").value(2))
                 .andExpect(jsonPath("$.playerCount").value(3));
+    }
+
+    @Test
+    @DisplayName("Given lobby membership, when GET /lobbies/{lobbyId}, then 200 with members and start state")
+    void getLobby_member_returns200() throws Exception {
+        // given
+        var members = List.of(
+                new GetLobbyUseCase.MemberSummary(PLAYER_ID, "Alice", true),
+                new GetLobbyUseCase.MemberSummary(UUID.randomUUID(), "Bob", false));
+        given(getLobbyUseCase.handle(any()))
+                .willReturn(new GetLobbyUseCase.Result(
+                        LOBBY_ID,
+                        GAME_ID,
+                        PLAYER_ID,
+                        io.github.temporalrift.game.session.domain.lobby.LobbyStatus.WAITING,
+                        members));
+
+        // when / then
+        mockMvc.perform(get("/api/v1/lobbies/{lobbyId}", LOBBY_ID).with(auth()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.lobbyId").value(LOBBY_ID.toString()))
+                .andExpect(jsonPath("$.gameId").value(GAME_ID.toString()))
+                .andExpect(jsonPath("$.hostPlayerId").value(PLAYER_ID.toString()))
+                .andExpect(jsonPath("$.status").value("WAITING"))
+                .andExpect(jsonPath("$.members[0].playerName").value("Alice"));
     }
 
     // --- Exception mappings ---
@@ -303,6 +333,30 @@ class SessionControllerTest {
         mockMvc.perform(get("/api/v1/games/{gameId}", GAME_ID).with(auth()))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("404-02"));
+    }
+
+    @Test
+    @DisplayName("Given non-member, when GET /lobbies/{lobbyId}, then 403 with code 403-01")
+    void getLobby_nonMember_returns403() throws Exception {
+        // given
+        given(getLobbyUseCase.handle(any())).willThrow(new LobbyAccessDeniedException(LOBBY_ID));
+
+        // when / then
+        mockMvc.perform(get("/api/v1/lobbies/{lobbyId}", LOBBY_ID).with(auth()))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("403-01"));
+    }
+
+    @Test
+    @DisplayName("Given unknown lobby, when GET /lobbies/{lobbyId}, then 404 with code 404-01")
+    void getLobby_unknownLobby_returns404() throws Exception {
+        // given
+        given(getLobbyUseCase.handle(any())).willThrow(new LobbyNotFoundException(LOBBY_ID));
+
+        // when / then
+        mockMvc.perform(get("/api/v1/lobbies/{lobbyId}", LOBBY_ID).with(auth()))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("404-01"));
     }
 
     @Test

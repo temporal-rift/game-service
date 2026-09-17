@@ -2,8 +2,8 @@ package io.github.temporalrift.game.action.application.query;
 
 import java.time.Clock;
 import java.time.Duration;
-import java.time.Instant;
 import java.util.List;
+import java.util.UUID;
 
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.stereotype.Service;
@@ -20,17 +20,17 @@ import io.github.temporalrift.game.action.domain.port.out.PlayerStateRepository;
 @ConditionalOnBean({ParadoxResolutionPhaseRepository.class, PlayerStateRepository.class})
 class GetParadoxResolutionStatusQueryHandler implements GetParadoxResolutionStatusUseCase {
 
-    private final ParadoxResolutionPhaseRepository paradoxResolutionPhaseRepository;
+    private final ParadoxResolutionPhaseRepository phaseRepository;
 
     private final PlayerStateRepository playerStateRepository;
 
     private final Clock clock;
 
     GetParadoxResolutionStatusQueryHandler(
-            ParadoxResolutionPhaseRepository paradoxResolutionPhaseRepository,
+            ParadoxResolutionPhaseRepository phaseRepository,
             PlayerStateRepository playerStateRepository,
             Clock clock) {
-        this.paradoxResolutionPhaseRepository = paradoxResolutionPhaseRepository;
+        this.phaseRepository = phaseRepository;
         this.playerStateRepository = playerStateRepository;
         this.clock = clock;
     }
@@ -38,33 +38,43 @@ class GetParadoxResolutionStatusQueryHandler implements GetParadoxResolutionStat
     @Override
     @Transactional(readOnly = true)
     public Result handle(Query query) {
-        // Same 404 as a missing phase so outsiders cannot probe which games/eras exist.
-        playerStateRepository
-                .findByGameIdAndPlayerId(query.gameId(), query.callerPlayerId())
-                .orElseThrow(() -> new ParadoxResolutionPhaseNotFoundException(query.gameId(), query.eraNumber()));
-        var phase = paradoxResolutionPhaseRepository
+        requireParticipant(query);
+        var phase = phaseRepository
                 .findByGameIdAndEraNumber(query.gameId(), query.eraNumber())
                 .orElseThrow(() -> new ParadoxResolutionPhaseNotFoundException(query.gameId(), query.eraNumber()));
-        var open = phase.status() == ParadoxResolutionPhaseStatus.OPEN;
-        var players = playerStateRepository.findAllByGameId(query.gameId());
+        var now = clock.instant();
+        var phaseOpen = phase.status() == ParadoxResolutionPhaseStatus.OPEN && now.isBefore(phase.expiresAt());
+        var timerRemainingSeconds = phaseOpen ? timerRemainingSeconds(phase.expiresAt()) : null;
         var submittedPlayerIds = phase.submittedPlayerIds();
-        var pendingPlayerIds = open
-                ? players.stream()
-                        .map(PlayerState::playerId)
-                        .filter(playerId -> !submittedPlayerIds.contains(playerId))
-                        .toList()
-                : List.<java.util.UUID>of();
+        var allPlayerIds = playerStateRepository.findAllByGameId(query.gameId()).stream()
+                .map(PlayerState::playerId)
+                .distinct()
+                .toList();
+        var totalPlayers = Math.max(allPlayerIds.size(), submittedPlayerIds.size());
+        List<UUID> pendingPlayerIds = null;
+        if (phaseOpen) {
+            pendingPlayerIds = allPlayerIds.stream()
+                    .filter(playerId -> !submittedPlayerIds.contains(playerId))
+                    .toList();
+        }
         return new Result(
                 phase.eraNumber(),
-                open,
-                open ? timerRemainingSeconds(phase.expiresAt()) : 0,
+                phaseOpen,
+                timerRemainingSeconds,
                 submittedPlayerIds.size(),
-                players.size(),
+                totalPlayers,
                 pendingPlayerIds,
                 submittedPlayerIds.contains(query.callerPlayerId()));
     }
 
-    private int timerRemainingSeconds(Instant expiresAt) {
+    private void requireParticipant(Query query) {
+        // Same 404 as an unknown phase so outsiders cannot probe which games or eras exist.
+        playerStateRepository
+                .findByGameIdAndPlayerId(query.gameId(), query.callerPlayerId())
+                .orElseThrow(() -> new ParadoxResolutionPhaseNotFoundException(query.gameId(), query.eraNumber()));
+    }
+
+    private int timerRemainingSeconds(java.time.Instant expiresAt) {
         var remainingSeconds = Duration.between(clock.instant(), expiresAt).toSeconds();
         return Math.clamp(remainingSeconds, 0, Integer.MAX_VALUE);
     }

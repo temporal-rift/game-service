@@ -17,6 +17,13 @@ class ScoringPlayerRepositoryAdapter implements ScoringPlayerRepository {
     }
 
     @Override
+    public boolean isParticipant(UUID gameId, UUID playerId) {
+        Objects.requireNonNull(gameId, "gameId must not be null");
+        Objects.requireNonNull(playerId, "playerId must not be null");
+        return jpaRepository.existsByGameIdAndPlayerId(gameId, playerId);
+    }
+
+    @Override
     public void upsertPlayerName(UUID gameId, UUID playerId, String playerName) {
         Objects.requireNonNull(gameId, "gameId must not be null");
         Objects.requireNonNull(playerId, "playerId must not be null");

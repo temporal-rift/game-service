@@ -8,5 +8,7 @@ import java.util.UUID;
  */
 public interface ScoringPlayerRepository {
 
+    boolean isParticipant(UUID gameId, UUID playerId);
+
     void upsertPlayerName(UUID gameId, UUID playerId, String playerName);
 }

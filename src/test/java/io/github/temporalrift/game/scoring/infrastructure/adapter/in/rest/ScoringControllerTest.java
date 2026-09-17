@@ -2,6 +2,7 @@ package io.github.temporalrift.game.scoring.infrastructure.adapter.in.rest;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.then;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -68,18 +69,22 @@ class ScoringControllerTest {
                 .andExpect(jsonPath("$.scores[0].playerName").value("Ada"))
                 .andExpect(jsonPath("$.scores[0].score").value(12))
                 .andExpect(jsonPath("$.scores[0].faction").doesNotExist());
+
+        then(getScoresUseCase).should().handle(new GetScoresUseCase.Query(GAME_ID, PLAYER_ID));
     }
 
     @Test
-    @DisplayName("Given grouped history, when GET scores/history, then 200 with era deltas")
+    @DisplayName("Given hidden opponent reason, when GET scores/history, then it is omitted from JSON")
     void getScoresHistory() throws Exception {
         given(getScoringHistoryUseCase.handle(any()))
                 .willReturn(new GetScoringHistoryUseCase.Result(
                         GAME_ID,
                         List.of(new GetScoringHistoryUseCase.EraScoreHistory(
                                 1,
-                                List.of(new GetScoringHistoryUseCase.ScoreDeltaRow(
-                                        PLAYER_ID, 4, "EVENT_RESOLVED_AS_WRITTEN"))))));
+                                List.of(
+                                        new GetScoringHistoryUseCase.ScoreDeltaRow(
+                                                PLAYER_ID, 4, "EVENT_RESOLVED_AS_WRITTEN"),
+                                        new GetScoringHistoryUseCase.ScoreDeltaRow(UUID.randomUUID(), -3, null))))));
 
         mockMvc.perform(get("/api/v1/games/{gameId}/scores/history", GAME_ID).with(auth()))
                 .andExpect(status().isOk())
@@ -87,7 +92,11 @@ class ScoringControllerTest {
                 .andExpect(jsonPath("$.history[0].eraNumber").value(1))
                 .andExpect(jsonPath("$.history[0].deltas[0].playerId").value(PLAYER_ID.toString()))
                 .andExpect(jsonPath("$.history[0].deltas[0].pointsDelta").value(4))
-                .andExpect(jsonPath("$.history[0].deltas[0].reason").value("EVENT_RESOLVED_AS_WRITTEN"));
+                .andExpect(jsonPath("$.history[0].deltas[0].reason").value("EVENT_RESOLVED_AS_WRITTEN"))
+                .andExpect(jsonPath("$.history[0].deltas[1].pointsDelta").value(-3))
+                .andExpect(jsonPath("$.history[0].deltas[1].reason").doesNotExist());
+
+        then(getScoringHistoryUseCase).should().handle(new GetScoringHistoryUseCase.Query(GAME_ID, PLAYER_ID));
     }
 
     @Test

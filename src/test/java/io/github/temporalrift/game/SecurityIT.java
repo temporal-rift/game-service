@@ -23,6 +23,7 @@ import io.github.temporalrift.game.scoring.application.port.in.GetScoresUseCase;
 import io.github.temporalrift.game.scoring.application.port.in.GetScoringHistoryUseCase;
 import io.github.temporalrift.game.session.application.port.in.CreateLobbyUseCase;
 import io.github.temporalrift.game.session.application.port.in.GetGameStateUseCase;
+import io.github.temporalrift.game.session.application.port.in.GetLobbyUseCase;
 import io.github.temporalrift.game.session.application.port.in.JoinLobbyUseCase;
 import io.github.temporalrift.game.session.application.port.in.LeaveLobbyUseCase;
 import io.github.temporalrift.game.session.application.port.in.StartGameUseCase;
@@ -70,6 +71,9 @@ class SecurityIT {
 
     @MockitoBean
     private GetGameStateUseCase getGameStateUseCase;
+
+    @MockitoBean
+    private GetLobbyUseCase getLobbyUseCase;
 
     @MockitoBean
     private GetScoresUseCase getScoresUseCase;

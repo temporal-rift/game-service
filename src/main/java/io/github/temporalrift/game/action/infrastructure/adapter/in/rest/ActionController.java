@@ -155,14 +155,8 @@ class ActionController implements ActionApi {
                 result.submittedCount(),
                 result.totalPlayers(),
                 result.mySubmitted());
-        if (result.phaseOpen()) {
-            response.timerRemainingSeconds(result.timerRemainingSeconds());
-            response.pendingPlayerIds(result.pendingPlayerIds());
-        } else {
-            // The generated model defaults pendingPlayerIds to an empty (not null) list, which would
-            // otherwise serialize as [] instead of the contract's "absent once closed".
-            response.pendingPlayerIds(null);
-        }
+        response.setTimerRemainingSeconds(result.timerRemainingSeconds());
+        response.setPendingPlayerIds(result.pendingPlayerIds());
         return ResponseEntity.ok(response);
     }
 

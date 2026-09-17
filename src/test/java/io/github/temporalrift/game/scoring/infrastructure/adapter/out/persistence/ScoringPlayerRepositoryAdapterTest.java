@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatNullPointerException;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.never;
 
@@ -56,5 +57,14 @@ class ScoringPlayerRepositoryAdapterTest {
         var idCaptor = ArgumentCaptor.forClass(UUID.class);
         then(jpaRepository).should().upsert(idCaptor.capture(), eq(GAME_ID), eq(PLAYER_ID), eq("Ada"));
         assertThat(idCaptor.getValue()).isNotNull();
+    }
+
+    @Test
+    void isParticipant_delegatesToJpaRepository() {
+        given(jpaRepository.existsByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(true);
+
+        assertThat(adapter.isParticipant(GAME_ID, PLAYER_ID)).isTrue();
+
+        then(jpaRepository).should().existsByGameIdAndPlayerId(GAME_ID, PLAYER_ID);
     }
 }
