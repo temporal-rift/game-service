@@ -14,12 +14,14 @@ import io.github.temporalrift.game.action.application.port.in.RecordActivistDecl
 import io.github.temporalrift.game.action.application.port.in.SelectHandUseCase;
 import io.github.temporalrift.game.action.infrastructure.adapter.in.rest.v1.ActionApi;
 import io.github.temporalrift.game.action.infrastructure.adapter.in.rest.v1.model.ActionSubmissionStatus;
+import io.github.temporalrift.game.action.infrastructure.adapter.in.rest.v1.model.ActionType;
 import io.github.temporalrift.game.action.infrastructure.adapter.in.rest.v1.model.ActivistDeclarationRequest;
 import io.github.temporalrift.game.action.infrastructure.adapter.in.rest.v1.model.ActivistDeclarationResponse;
 import io.github.temporalrift.game.action.infrastructure.adapter.in.rest.v1.model.CardActionRequest;
 import io.github.temporalrift.game.action.infrastructure.adapter.in.rest.v1.model.HandSelectionRequest;
 import io.github.temporalrift.game.action.infrastructure.adapter.in.rest.v1.model.HandSelectionResponse;
 import io.github.temporalrift.game.action.infrastructure.adapter.in.rest.v1.model.HandSelectionStatus;
+import io.github.temporalrift.game.action.infrastructure.adapter.in.rest.v1.model.MyRoundSubmission;
 import io.github.temporalrift.game.action.infrastructure.adapter.in.rest.v1.model.ParadoxResolutionCardRequest;
 import io.github.temporalrift.game.action.infrastructure.adapter.in.rest.v1.model.ParadoxResolutionCardResponse;
 import io.github.temporalrift.game.action.infrastructure.adapter.in.rest.v1.model.ParadoxResolutionStatusResponse;
@@ -135,14 +137,24 @@ class ActionController implements ActionApi {
     public ResponseEntity<RoundStatusResponse> getRoundStatus(UUID gameId, Integer eraNumber, Integer roundNumber) {
         var result = getRoundStatusUseCase.handle(
                 new GetRoundStatusUseCase.Query(gameId, eraNumber, roundNumber, CurrentPlayer.id()));
-        return ResponseEntity.ok(new RoundStatusResponse(
+        var response = new RoundStatusResponse(
                 result.eraNumber(),
                 result.roundNumber(),
                 RoundStatus.fromValue(result.status()),
                 result.timerRemainingSeconds(),
                 result.submittedCount(),
                 result.totalPlayers(),
-                result.pendingPlayerIds()));
+                result.pendingPlayerIds());
+        response.setMySubmission(toMyRoundSubmission(result.mySubmission()));
+        return ResponseEntity.ok(response);
+    }
+
+    private MyRoundSubmission toMyRoundSubmission(GetRoundStatusUseCase.MySubmission mySubmission) {
+        var response = new MyRoundSubmission(mySubmission.submitted());
+        if (mySubmission.submitted()) {
+            response.setActionType(ActionType.fromValue(mySubmission.actionType()));
+        }
+        return response;
     }
 
     @Override

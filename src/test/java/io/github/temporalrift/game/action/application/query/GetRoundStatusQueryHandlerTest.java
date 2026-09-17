@@ -32,6 +32,8 @@ import io.github.temporalrift.game.action.domain.port.out.PlayerStateRepository;
 import io.github.temporalrift.game.action.domain.saga.ActionRoundSagaState;
 import io.github.temporalrift.game.action.domain.saga.ActionRoundSagaStatus;
 import io.github.temporalrift.game.shared.domain.model.CardType;
+import io.github.temporalrift.game.shared.domain.model.Faction;
+import io.github.temporalrift.game.shared.domain.model.SpecialAction;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("GetRoundStatusQueryHandler")
@@ -109,6 +111,55 @@ class GetRoundStatusQueryHandlerTest {
         assertThat(result.submittedCount()).isEqualTo(1);
         assertThat(result.totalPlayers()).isEqualTo(2);
         assertThat(result.pendingPlayerIds()).containsExactly(pendingPlayer);
+        assertThat(result.mySubmission()).isEqualTo(new GetRoundStatusUseCase.MySubmission(false, null));
+    }
+
+    @Test
+    @DisplayName("handle — caller submitted a card — returns mySubmission with CARD action type")
+    void handleCallerSubmittedCard() {
+        // given
+        var callerSubmission = new SubmittedAction.CardAction(
+                CALLER, UUID.randomUUID(), CardType.PUSH, UUID.randomUUID(), null, UUID.randomUUID());
+        given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumber(GAME_ID, ERA, ROUND))
+                .willReturn(Optional.of(round));
+        given(actionRoundSagaRepository.findByGameIdAndEraNumberAndRoundNumber(GAME_ID, ERA, ROUND))
+                .willReturn(Optional.of(sagaState(NOW.plusSeconds(42))));
+        given(round.eraNumber()).willReturn(ERA);
+        given(round.roundNumber()).willReturn(ROUND);
+        given(round.status()).willReturn(RoundStatus.OPEN);
+        given(round.submittedActions()).willReturn(List.of(callerSubmission, submittedAction()));
+        var handler = new GetRoundStatusQueryHandler(
+                actionRoundRepository, actionRoundSagaRepository, playerStateRepository, CLOCK);
+
+        // when
+        var result = handler.handle(new GetRoundStatusUseCase.Query(GAME_ID, ERA, ROUND, CALLER));
+
+        // then
+        assertThat(result.mySubmission()).isEqualTo(new GetRoundStatusUseCase.MySubmission(true, "CARD"));
+    }
+
+    @Test
+    @DisplayName("handle — caller submitted a special action — returns mySubmission with SPECIAL action type")
+    void handleCallerSubmittedSpecial() {
+        // given
+        var callerSubmission = new SubmittedAction.SpecialActionSubmission(
+                CALLER, Faction.ERASERS, SpecialAction.ANNIHILATE, UUID.randomUUID(), UUID.randomUUID(), null);
+        given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumber(GAME_ID, ERA, ROUND))
+                .willReturn(Optional.of(round));
+        given(actionRoundSagaRepository.findByGameIdAndEraNumberAndRoundNumber(GAME_ID, ERA, ROUND))
+                .willReturn(Optional.of(sagaState(NOW.plusSeconds(42))));
+        given(round.eraNumber()).willReturn(ERA);
+        given(round.roundNumber()).willReturn(ROUND);
+        given(round.status()).willReturn(RoundStatus.OPEN);
+        given(round.submittedActions()).willReturn(List.of(callerSubmission));
+        var handler = new GetRoundStatusQueryHandler(
+                actionRoundRepository, actionRoundSagaRepository, playerStateRepository, CLOCK);
+
+        // when
+        var result = handler.handle(new GetRoundStatusUseCase.Query(GAME_ID, ERA, ROUND, CALLER));
+
+        // then
+        assertThat(result.mySubmission()).isEqualTo(new GetRoundStatusUseCase.MySubmission(true, "SPECIAL"));
     }
 
     @Test
