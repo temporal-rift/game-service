@@ -90,8 +90,11 @@ class ActionPersistenceIT {
         var targetEventId = UUID.randomUUID();
         var sourceOutcomeId = UUID.randomUUID();
         var targetOutcomeId = UUID.randomUUID();
-        var targetPlayerId = UUID.randomUUID();
         var cardInstanceId = UUID.randomUUID();
+        var specialSourceEventId = UUID.randomUUID();
+        var specialSourceOutcomeId = UUID.randomUUID();
+        var specialTargetEventId = UUID.randomUUID();
+        var specialTargetOutcomeId = UUID.randomUUID();
 
         var round = new ActionRound(roundId, new ActionRoundConfig(gameId, 2, 3, 45), List.of(player1, player2));
         round.pullEvents();
@@ -99,13 +102,13 @@ class ActionPersistenceIT {
                 player1, cardInstanceId, CardType.SWING, targetEventId, sourceOutcomeId, targetOutcomeId));
         round.submit(new SubmittedAction.SpecialActionSubmission(
                 player2,
-                Faction.PROPHETS,
-                SpecialAction.SEAL,
-                null,
-                null,
-                targetEventId,
-                targetOutcomeId,
-                targetPlayerId));
+                Faction.WEAVERS,
+                SpecialAction.THREAD,
+                specialSourceEventId,
+                specialSourceOutcomeId,
+                specialTargetEventId,
+                specialTargetOutcomeId,
+                null));
         round.close("ALL_SUBMITTED");
         actionRoundRepository.save(round);
 
@@ -128,6 +131,18 @@ class ActionPersistenceIT {
                     assertThat(card.cardType()).isEqualTo(CardType.SWING);
                     assertThat(card.sourceOutcomeId()).isEqualTo(sourceOutcomeId);
                     assertThat(card.targetOutcomeId()).isEqualTo(targetOutcomeId);
+                });
+        assertThat(loaded.get().submittedActions())
+                .filteredOn(SubmittedAction.SpecialActionSubmission.class::isInstance)
+                .singleElement()
+                .isInstanceOfSatisfying(SubmittedAction.SpecialActionSubmission.class, special -> {
+                    assertThat(special.specialAction()).isEqualTo(SpecialAction.THREAD);
+                    assertThat(special.faction()).isEqualTo(Faction.WEAVERS);
+                    assertThat(special.sourceEventId()).isEqualTo(specialSourceEventId);
+                    assertThat(special.sourceOutcomeId()).isEqualTo(specialSourceOutcomeId);
+                    assertThat(special.targetEventId()).isEqualTo(specialTargetEventId);
+                    assertThat(special.targetOutcomeId()).isEqualTo(specialTargetOutcomeId);
+                    assertThat(special.targetPlayerId()).isNull();
                 });
     }
 
