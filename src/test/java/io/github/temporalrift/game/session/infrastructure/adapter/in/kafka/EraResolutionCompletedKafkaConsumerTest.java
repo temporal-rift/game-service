@@ -195,6 +195,32 @@ class EraResolutionCompletedKafkaConsumerTest {
     }
 
     @Test
+    @DisplayName("collapse winners are Activists targeting the collapsing event — other factions do not win")
+    void handle_thresholdCrossed_onlyTargetingActivistsWin() {
+        var collapsingEvent = UUID.randomUUID();
+        var resolution = resolution(2, cascaded(collapsingEvent, 0));
+        var game = Game.reconstitute(GAME_ID, LOBBY_ID, List.of(), 2, 2, GameStatus.IN_PROGRESS);
+        givenClaimedBarrier();
+        given(gameRepository.findByIdWithLock(GAME_ID)).willReturn(Optional.of(game));
+        given(gameRules.maxCascadedParadoxes()).willReturn(MAX_CASCADED);
+        // PLAYER_1 (Erasers) targets the collapsing event: the declaration matches the event but
+        // the faction does not qualify for the Activist collapse win.
+        given(declarationRepository.findPlayerIdsTargeting(GAME_ID, 2, collapsingEvent))
+                .willReturn(List.of(PLAYER_1));
+        given(lobbyRepository.findById(LOBBY_ID)).willReturn(Optional.of(startedLobby()));
+        var captor = ArgumentCaptor.forClass(Object.class);
+
+        consumer.handle(messageFor(resolution));
+
+        then(applicationEventPublisher).should().publishEvent(captor.capture());
+        var collapsed = (TimelineCollapsed) captor.getValue();
+        assertThat(collapsed.winners()).isEmpty();
+        assertThat(collapsed.losers())
+                .extracting(TimelineCollapsed.PlayerFactionResult::playerId)
+                .containsExactlyInAnyOrder(PLAYER_1, PLAYER_2, PLAYER_3);
+    }
+
+    @Test
     @DisplayName("a barrier without cascades does not lock or mutate the game")
     void handle_withoutCascades_noGameMutation() {
         var resolution = resolution(1, applied(UUID.randomUUID(), 0));

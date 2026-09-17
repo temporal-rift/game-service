@@ -10,6 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 import io.github.temporalrift.game.action.application.port.in.GetRoundStatusUseCase;
 import io.github.temporalrift.game.action.domain.actionround.RoundNotFoundException;
 import io.github.temporalrift.game.action.domain.actionround.RoundStatus;
+import io.github.temporalrift.game.action.domain.actionround.SubmittedAction;
 import io.github.temporalrift.game.action.domain.port.out.ActionRoundRepository;
 import io.github.temporalrift.game.action.domain.port.out.ActionRoundSagaRepository;
 import io.github.temporalrift.game.action.domain.port.out.PlayerStateRepository;
@@ -51,6 +52,11 @@ class GetRoundStatusQueryHandler implements GetRoundStatusUseCase {
         var pendingPlayerIds =
                 sagaState.map(ActionRoundSagaState::pendingPlayerIds).orElseGet(round::pendingPlayerIds);
         var submittedCount = round.submittedActions().size();
+        var mySubmission = round.submittedActions().stream()
+                .filter(action -> action.playerId().equals(query.callerPlayerId()))
+                .findFirst()
+                .map(action -> new MySubmission(true, actionType(action)))
+                .orElseGet(() -> new MySubmission(false, null));
 
         return new Result(
                 round.eraNumber(),
@@ -59,7 +65,8 @@ class GetRoundStatusQueryHandler implements GetRoundStatusUseCase {
                 timerRemainingSeconds,
                 submittedCount,
                 pendingPlayerIds.size() + submittedCount,
-                pendingPlayerIds);
+                pendingPlayerIds,
+                mySubmission);
     }
 
     private void requireParticipant(Query query) {
@@ -79,6 +86,13 @@ class GetRoundStatusQueryHandler implements GetRoundStatusUseCase {
         return switch (status) {
             case OPEN -> "OPEN";
             case CLOSING, CLOSED -> "CLOSED";
+        };
+    }
+
+    private String actionType(SubmittedAction action) {
+        return switch (action) {
+            case SubmittedAction.CardAction _ -> "CARD";
+            case SubmittedAction.SpecialActionSubmission _ -> "SPECIAL";
         };
     }
 }
