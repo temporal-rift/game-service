@@ -244,6 +244,8 @@ public sealed interface SubmittedAction permits SubmittedAction.CardAction, Subm
             UUID playerId,
             Faction faction,
             SpecialAction specialAction,
+            UUID sourceEventId,
+            UUID sourceOutcomeId,
             UUID targetEventId,
             UUID targetOutcomeId,
             UUID targetPlayerId)
@@ -251,14 +253,20 @@ public sealed interface SubmittedAction permits SubmittedAction.CardAction, Subm
 
         @Override
         public void validate(int eraNumber, int roundNumber) {
+            if (specialAction != SpecialAction.THREAD && (sourceEventId != null || sourceOutcomeId != null)) {
+                throw InvalidActionTargetException.specialActionCannotHaveSource(specialAction);
+            }
             switch (specialAction) {
                 case RALLY, MOMENTUM -> throw new DeclarationSpecialActionRequiredException(specialAction);
-                case FORESIGHT, ANNIHILATE, SEAL, REWRITE, MIMIC -> requireEventAndOutcome();
+                case FORESIGHT, ANNIHILATE, SEAL, REWRITE, MIMIC, CASCADE -> requireEventAndOutcome();
                 case FULFILLMENT -> requireEvent();
                 case CORRUPT -> requireOpponent();
                 case EXPOSE -> requireExposeTarget();
-                case CASCADE, OBSCURE, THREAD, TAPESTRY, UNRAVEL -> {
-                    // No additional target requirement enforced yet for these special actions.
+                case THREAD -> requireSourceAndTarget();
+                case OBSCURE, TAPESTRY, REWEAVE -> {
+                    // No additional target requirement enforced at submission; TAPESTRY's prerequisites and
+                    // REWEAVE's re-anchor target are validated by timeline-service's chain saga, which alone
+                    // knows chain and resolution state.
                 }
             }
         }
@@ -266,6 +274,12 @@ public sealed interface SubmittedAction permits SubmittedAction.CardAction, Subm
         private void requireEventAndOutcome() {
             if (targetEventId == null || targetOutcomeId == null) {
                 throw InvalidActionTargetException.specialActionRequiresTarget(specialAction);
+            }
+        }
+
+        private void requireSourceAndTarget() {
+            if (sourceEventId == null || sourceOutcomeId == null || targetEventId == null || targetOutcomeId == null) {
+                throw InvalidActionTargetException.specialActionRequiresSourceAndTarget(specialAction);
             }
         }
 
@@ -305,6 +319,8 @@ public sealed interface SubmittedAction permits SubmittedAction.CardAction, Subm
                     playerId,
                     faction,
                     specialAction,
+                    sourceEventId,
+                    sourceOutcomeId,
                     targetEventId,
                     targetOutcomeId,
                     targetPlayerId);

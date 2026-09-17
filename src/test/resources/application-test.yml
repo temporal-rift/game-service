@@ -49,6 +49,7 @@ game:
       - SEAL
       - CORRUPT
       - MIMIC
+      - REWEAVE
     hand-deal-forced-types: []
     victory:
       eraser-annihilations: 4

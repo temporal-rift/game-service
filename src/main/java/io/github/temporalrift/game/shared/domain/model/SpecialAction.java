@@ -12,7 +12,7 @@ public enum SpecialAction {
     OBSCURE,
     THREAD,
     TAPESTRY,
-    UNRAVEL,
+    REWEAVE,
     RALLY,
     EXPOSE,
     MOMENTUM

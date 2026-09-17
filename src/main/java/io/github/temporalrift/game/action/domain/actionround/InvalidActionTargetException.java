@@ -26,6 +26,16 @@ public class InvalidActionTargetException extends RuntimeException {
         return new InvalidActionTargetException(specialAction + " requires a targetEventId and a targetOutcomeId");
     }
 
+    public static InvalidActionTargetException specialActionRequiresSourceAndTarget(SpecialAction specialAction) {
+        return new InvalidActionTargetException(specialAction
+                + " requires a sourceEventId and a sourceOutcomeId in addition to a targetEventId and a"
+                + " targetOutcomeId");
+    }
+
+    public static InvalidActionTargetException specialActionCannotHaveSource(SpecialAction specialAction) {
+        return new InvalidActionTargetException(specialAction + " cannot carry a sourceEventId or sourceOutcomeId");
+    }
+
     public static InvalidActionTargetException specialActionRequiresTargetEvent(SpecialAction specialAction) {
         return new InvalidActionTargetException(specialAction + " requires a targetEventId");
     }

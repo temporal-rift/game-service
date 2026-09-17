@@ -107,7 +107,16 @@ class PlaySpecialActionCommandHandlerTest {
     void handleHappyPath() {
         // given
         var command = new PlaySpecialActionUseCase.Command(
-                GAME_ID, ERA, ROUND, PLAYER_ID, SpecialAction.ANNIHILATE, UUID.randomUUID(), UUID.randomUUID(), null);
+                GAME_ID,
+                ERA,
+                ROUND,
+                PLAYER_ID,
+                SpecialAction.ANNIHILATE,
+                null,
+                null,
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                null);
         given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA, ROUND))
                 .willReturn(Optional.of(round));
         given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(playerState));
@@ -139,7 +148,16 @@ class PlaySpecialActionCommandHandlerTest {
     void handleAllSubmittedDoesNotCloseDirectly() {
         // given
         var command = new PlaySpecialActionUseCase.Command(
-                GAME_ID, ERA, ROUND, PLAYER_ID, SpecialAction.SEAL, UUID.randomUUID(), UUID.randomUUID(), null);
+                GAME_ID,
+                ERA,
+                ROUND,
+                PLAYER_ID,
+                SpecialAction.SEAL,
+                null,
+                null,
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                null);
         given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA, ROUND))
                 .willReturn(Optional.of(round));
         given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(playerState));
@@ -166,7 +184,7 @@ class PlaySpecialActionCommandHandlerTest {
         given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA, ROUND))
                 .willReturn(Optional.empty());
         var command = new PlaySpecialActionUseCase.Command(
-                GAME_ID, ERA, ROUND, PLAYER_ID, SpecialAction.SEAL, null, null, null);
+                GAME_ID, ERA, ROUND, PLAYER_ID, SpecialAction.SEAL, null, null, null, null, null);
 
         // when / then
         assertThatExceptionOfType(RoundNotFoundException.class).isThrownBy(() -> handler.handle(command));
@@ -180,7 +198,7 @@ class PlaySpecialActionCommandHandlerTest {
                 .willReturn(Optional.of(round));
         given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.empty());
         var command = new PlaySpecialActionUseCase.Command(
-                GAME_ID, ERA, ROUND, PLAYER_ID, SpecialAction.SEAL, null, null, null);
+                GAME_ID, ERA, ROUND, PLAYER_ID, SpecialAction.SEAL, null, null, null, null, null);
 
         // when / then
         assertThatExceptionOfType(PlayerStateNotFoundException.class).isThrownBy(() -> handler.handle(command));
@@ -191,7 +209,7 @@ class PlaySpecialActionCommandHandlerTest {
     void handlePlayerFactionMissing() {
         // given
         var command = new PlaySpecialActionUseCase.Command(
-                GAME_ID, ERA, ROUND, PLAYER_ID, SpecialAction.SEAL, null, null, null);
+                GAME_ID, ERA, ROUND, PLAYER_ID, SpecialAction.SEAL, null, null, null, null, null);
         given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA, ROUND))
                 .willReturn(Optional.of(round));
         given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(playerState));
@@ -209,7 +227,7 @@ class PlaySpecialActionCommandHandlerTest {
     void handleJammedPlayer() {
         // given
         var command = new PlaySpecialActionUseCase.Command(
-                GAME_ID, ERA, ROUND, PLAYER_ID, SpecialAction.ANNIHILATE, null, null, null);
+                GAME_ID, ERA, ROUND, PLAYER_ID, SpecialAction.ANNIHILATE, null, null, null, null, null);
         given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA, ROUND))
                 .willReturn(Optional.of(round));
         given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(playerState));
@@ -227,7 +245,16 @@ class PlaySpecialActionCommandHandlerTest {
     void handleFactionDoesNotOwnSpecialAction() {
         // given
         var command = new PlaySpecialActionUseCase.Command(
-                GAME_ID, ERA, ROUND, PLAYER_ID, SpecialAction.SEAL, UUID.randomUUID(), UUID.randomUUID(), null);
+                GAME_ID,
+                ERA,
+                ROUND,
+                PLAYER_ID,
+                SpecialAction.SEAL,
+                null,
+                null,
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                null);
         given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA, ROUND))
                 .willReturn(Optional.of(round));
         given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(playerState));
@@ -236,6 +263,136 @@ class PlaySpecialActionCommandHandlerTest {
 
         // when / then
         assertThatExceptionOfType(InvalidSpecialActionException.class).isThrownBy(() -> handler.handle(command));
+        then(round).should(never()).submit(any());
+    }
+
+    @Test
+    @DisplayName("handle — THREAD — validates the current-era source coordinate and submits")
+    void handleThreadValidatesSourceCoordinatesAndSubmits() {
+        // given
+        var sourceEventId = UUID.randomUUID();
+        var sourceOutcomeId = UUID.randomUUID();
+        var targetEventId = UUID.randomUUID();
+        var targetOutcomeId = UUID.randomUUID();
+        var command = new PlaySpecialActionUseCase.Command(
+                GAME_ID,
+                ERA,
+                ROUND,
+                PLAYER_ID,
+                SpecialAction.THREAD,
+                sourceEventId,
+                sourceOutcomeId,
+                targetEventId,
+                targetOutcomeId,
+                null);
+        given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA, ROUND))
+                .willReturn(Optional.of(round));
+        given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(playerState));
+        given(playerState.faction()).willReturn(Faction.WEAVERS);
+        given(playerState.isJammed()).willReturn(false);
+        given(gameRules.onceEraBudgetedSpecials()).willReturn(Set.of());
+        given(round.submit(any())).willReturn(false);
+        given(round.id()).willReturn(UUID.randomUUID());
+        given(round.gameId()).willReturn(GAME_ID);
+        given(round.pullEvents()).willReturn(List.of(specialActionPlayedEvent()));
+
+        // when
+        handler.handle(command);
+
+        // then
+        then(actionTargetValidator).should().validate(GAME_ID, ERA, sourceEventId, sourceOutcomeId);
+        then(round)
+                .should()
+                .submit(eq(new SubmittedAction.SpecialActionSubmission(
+                        PLAYER_ID,
+                        Faction.WEAVERS,
+                        SpecialAction.THREAD,
+                        sourceEventId,
+                        sourceOutcomeId,
+                        targetEventId,
+                        targetOutcomeId,
+                        null)));
+    }
+
+    @Test
+    @DisplayName("handle — THREAD missing its source coordinate — throws InvalidActionTargetException before "
+            + "submitting")
+    void handleThreadMissingSourceRejectsBeforeSubmitting() {
+        // given
+        var command = new PlaySpecialActionUseCase.Command(
+                GAME_ID,
+                ERA,
+                ROUND,
+                PLAYER_ID,
+                SpecialAction.THREAD,
+                null,
+                null,
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                null);
+        given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA, ROUND))
+                .willReturn(Optional.of(round));
+        given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(playerState));
+        given(playerState.faction()).willReturn(Faction.WEAVERS);
+        given(playerState.isJammed()).willReturn(false);
+        given(gameRules.onceEraBudgetedSpecials()).willReturn(Set.of());
+
+        // when / then
+        assertThatExceptionOfType(InvalidActionTargetException.class).isThrownBy(() -> handler.handle(command));
+        then(round).should(never()).submit(any());
+    }
+
+    @Test
+    @DisplayName("handle — REWEAVE — carries no target coordinates and submits without additional validation")
+    void handleReweaveSubmitsWithoutAdditionalTargetValidation() {
+        // given
+        var command = new PlaySpecialActionUseCase.Command(
+                GAME_ID, ERA, ROUND, PLAYER_ID, SpecialAction.REWEAVE, null, null, null, null, null);
+        given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA, ROUND))
+                .willReturn(Optional.of(round));
+        given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(playerState));
+        given(playerState.faction()).willReturn(Faction.WEAVERS);
+        given(playerState.isJammed()).willReturn(false);
+        given(gameRules.onceEraBudgetedSpecials()).willReturn(Set.of());
+        given(round.submit(any())).willReturn(false);
+        given(round.id()).willReturn(UUID.randomUUID());
+        given(round.gameId()).willReturn(GAME_ID);
+        given(round.pullEvents()).willReturn(List.of(specialActionPlayedEvent()));
+
+        // when
+        handler.handle(command);
+
+        // then
+        then(round)
+                .should()
+                .submit(eq(new SubmittedAction.SpecialActionSubmission(
+                        PLAYER_ID, Faction.WEAVERS, SpecialAction.REWEAVE, null, null, null, null, null)));
+    }
+
+    @Test
+    @DisplayName("handle — non-THREAD special carrying a source coordinate — throws InvalidActionTargetException")
+    void handleNonThreadSpecialCarryingSourceRejectsBeforeSubmitting() {
+        // given
+        var command = new PlaySpecialActionUseCase.Command(
+                GAME_ID,
+                ERA,
+                ROUND,
+                PLAYER_ID,
+                SpecialAction.ANNIHILATE,
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                null);
+        given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA, ROUND))
+                .willReturn(Optional.of(round));
+        given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(playerState));
+        given(playerState.faction()).willReturn(Faction.ERASERS);
+        given(playerState.isJammed()).willReturn(false);
+        given(gameRules.onceEraBudgetedSpecials()).willReturn(Set.of());
+
+        // when / then
+        assertThatExceptionOfType(InvalidActionTargetException.class).isThrownBy(() -> handler.handle(command));
         then(round).should(never()).submit(any());
     }
 
@@ -251,7 +408,16 @@ class PlaySpecialActionCommandHandlerTest {
         given(gameRules.onceEraBudgetedSpecials()).willReturn(Set.of());
         willThrow(new ActionRoundClosedException()).given(round).submit(any());
         var command = new PlaySpecialActionUseCase.Command(
-                GAME_ID, ERA, ROUND, PLAYER_ID, SpecialAction.SEAL, UUID.randomUUID(), UUID.randomUUID(), null);
+                GAME_ID,
+                ERA,
+                ROUND,
+                PLAYER_ID,
+                SpecialAction.SEAL,
+                null,
+                null,
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                null);
 
         // when / then
         assertThatExceptionOfType(ActionRoundClosedException.class).isThrownBy(() -> handler.handle(command));
@@ -269,7 +435,16 @@ class PlaySpecialActionCommandHandlerTest {
         given(gameRules.onceEraBudgetedSpecials()).willReturn(Set.of());
         willThrow(new DuplicateSubmissionException(PLAYER_ID)).given(round).submit(any());
         var command = new PlaySpecialActionUseCase.Command(
-                GAME_ID, ERA, ROUND, PLAYER_ID, SpecialAction.SEAL, UUID.randomUUID(), UUID.randomUUID(), null);
+                GAME_ID,
+                ERA,
+                ROUND,
+                PLAYER_ID,
+                SpecialAction.SEAL,
+                null,
+                null,
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                null);
 
         // when / then
         assertThatExceptionOfType(DuplicateSubmissionException.class).isThrownBy(() -> handler.handle(command));
@@ -281,7 +456,7 @@ class PlaySpecialActionCommandHandlerTest {
         // given
         var targetPlayerId = UUID.randomUUID();
         var command = new PlaySpecialActionUseCase.Command(
-                GAME_ID, ERA, ROUND, PLAYER_ID, SpecialAction.CORRUPT, null, null, targetPlayerId);
+                GAME_ID, ERA, ROUND, PLAYER_ID, SpecialAction.CORRUPT, null, null, null, null, targetPlayerId);
         given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA, ROUND))
                 .willReturn(Optional.of(round));
         given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(playerState));
@@ -301,7 +476,7 @@ class PlaySpecialActionCommandHandlerTest {
         then(round)
                 .should()
                 .submit(eq(new SubmittedAction.SpecialActionSubmission(
-                        PLAYER_ID, Faction.ERASERS, SpecialAction.CORRUPT, null, null, targetPlayerId)));
+                        PLAYER_ID, Faction.ERASERS, SpecialAction.CORRUPT, null, null, null, null, targetPlayerId)));
     }
 
     @Test
@@ -311,7 +486,7 @@ class PlaySpecialActionCommandHandlerTest {
         // given
         var targetPlayerId = UUID.randomUUID();
         var command = new PlaySpecialActionUseCase.Command(
-                GAME_ID, ERA, ROUND, PLAYER_ID, SpecialAction.CORRUPT, null, null, targetPlayerId);
+                GAME_ID, ERA, ROUND, PLAYER_ID, SpecialAction.CORRUPT, null, null, null, null, targetPlayerId);
         given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA, ROUND))
                 .willReturn(Optional.of(round));
         given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(playerState));
@@ -332,7 +507,16 @@ class PlaySpecialActionCommandHandlerTest {
     void handleUnknownActionTargetPropagates() {
         // given
         var command = new PlaySpecialActionUseCase.Command(
-                GAME_ID, ERA, ROUND, PLAYER_ID, SpecialAction.SEAL, UUID.randomUUID(), UUID.randomUUID(), null);
+                GAME_ID,
+                ERA,
+                ROUND,
+                PLAYER_ID,
+                SpecialAction.SEAL,
+                null,
+                null,
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                null);
         willThrow(new UnknownActionTargetException(command.targetEventId()))
                 .given(actionTargetValidator)
                 .validate(any(), eq(ERA), any(), any());
@@ -346,7 +530,7 @@ class PlaySpecialActionCommandHandlerTest {
     @DisplayName("handle — Activist Expose outside Round 2 — rejects before submitting")
     void handleActivistExposeOutsideRoundTwoRejectsBeforeSubmitting() {
         var command = new PlaySpecialActionUseCase.Command(
-                GAME_ID, ERA, 1, PLAYER_ID, SpecialAction.EXPOSE, null, null, UUID.randomUUID());
+                GAME_ID, ERA, 1, PLAYER_ID, SpecialAction.EXPOSE, null, null, null, null, UUID.randomUUID());
         given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA, 1))
                 .willReturn(Optional.of(round));
         given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(playerState));
@@ -363,8 +547,8 @@ class PlaySpecialActionCommandHandlerTest {
     @Test
     @DisplayName("handle — Activist Expose missing targetPlayerId — rejected before recordExpose runs")
     void handleActivistExposeWithoutTargetPlayerRejectsBeforeRecordExpose() {
-        var command =
-                new PlaySpecialActionUseCase.Command(GAME_ID, 2, 2, PLAYER_ID, SpecialAction.EXPOSE, null, null, null);
+        var command = new PlaySpecialActionUseCase.Command(
+                GAME_ID, 2, 2, PLAYER_ID, SpecialAction.EXPOSE, null, null, null, null, null);
         given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, 2, 2))
                 .willReturn(Optional.of(round));
         given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(playerState));
@@ -384,7 +568,7 @@ class PlaySpecialActionCommandHandlerTest {
     void handleActivistExposeCarryingTargetEventRejectsBeforeRecordExpose() {
         var targetPlayerId = UUID.randomUUID();
         var command = new PlaySpecialActionUseCase.Command(
-                GAME_ID, 2, 2, PLAYER_ID, SpecialAction.EXPOSE, UUID.randomUUID(), null, targetPlayerId);
+                GAME_ID, 2, 2, PLAYER_ID, SpecialAction.EXPOSE, null, null, UUID.randomUUID(), null, targetPlayerId);
         given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, 2, 2))
                 .willReturn(Optional.of(round));
         given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(playerState));
@@ -407,7 +591,7 @@ class PlaySpecialActionCommandHandlerTest {
         var sourceOutcomeId = UUID.randomUUID();
         var targetOutcomeId = UUID.randomUUID();
         var command = new PlaySpecialActionUseCase.Command(
-                GAME_ID, 2, 2, PLAYER_ID, SpecialAction.EXPOSE, null, null, targetPlayerId);
+                GAME_ID, 2, 2, PLAYER_ID, SpecialAction.EXPOSE, null, null, null, null, targetPlayerId);
         var roundOne = mock(ActionRound.class);
         var roundOneCard = new SubmittedAction.CardAction(
                 targetPlayerId, UUID.randomUUID(), CardType.PUSH, targetEventId, sourceOutcomeId, targetOutcomeId);
@@ -444,7 +628,16 @@ class PlaySpecialActionCommandHandlerTest {
     void handleBudgetedSpecialFirstUseClaimsAndSubmits() {
         // given
         var command = new PlaySpecialActionUseCase.Command(
-                GAME_ID, ERA, ROUND, PLAYER_ID, SpecialAction.ANNIHILATE, UUID.randomUUID(), UUID.randomUUID(), null);
+                GAME_ID,
+                ERA,
+                ROUND,
+                PLAYER_ID,
+                SpecialAction.ANNIHILATE,
+                null,
+                null,
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                null);
         given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA, ROUND))
                 .willReturn(Optional.of(round));
         given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(playerState));
@@ -473,7 +666,16 @@ class PlaySpecialActionCommandHandlerTest {
     void handleBudgetedSpecialSecondUseRejectsBeforeSubmitting() {
         // given
         var command = new PlaySpecialActionUseCase.Command(
-                GAME_ID, ERA, ROUND, PLAYER_ID, SpecialAction.ANNIHILATE, UUID.randomUUID(), UUID.randomUUID(), null);
+                GAME_ID,
+                ERA,
+                ROUND,
+                PLAYER_ID,
+                SpecialAction.ANNIHILATE,
+                null,
+                null,
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                null);
         given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA, ROUND))
                 .willReturn(Optional.of(round));
         given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(playerState));
@@ -497,7 +699,7 @@ class PlaySpecialActionCommandHandlerTest {
     void handleBudgetedSpecialIndependentPerSpecialType() {
         // given
         var command = new PlaySpecialActionUseCase.Command(
-                GAME_ID, ERA, ROUND, PLAYER_ID, SpecialAction.CORRUPT, null, null, UUID.randomUUID());
+                GAME_ID, ERA, ROUND, PLAYER_ID, SpecialAction.CORRUPT, null, null, null, null, UUID.randomUUID());
         given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA, ROUND))
                 .willReturn(Optional.of(round));
         given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(playerState));
@@ -530,7 +732,16 @@ class PlaySpecialActionCommandHandlerTest {
     void handleNonBudgetedSpecialSkipsBudgetRepository() {
         // given
         var command = new PlaySpecialActionUseCase.Command(
-                GAME_ID, ERA, ROUND, PLAYER_ID, SpecialAction.SEAL, UUID.randomUUID(), UUID.randomUUID(), null);
+                GAME_ID,
+                ERA,
+                ROUND,
+                PLAYER_ID,
+                SpecialAction.SEAL,
+                null,
+                null,
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                null);
         given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA, ROUND))
                 .willReturn(Optional.of(round));
         given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(playerState));
@@ -557,6 +768,8 @@ class PlaySpecialActionCommandHandlerTest {
                 PLAYER_ID,
                 Faction.ERASERS,
                 SpecialAction.ANNIHILATE,
+                null,
+                null,
                 UUID.randomUUID(),
                 null,
                 null);

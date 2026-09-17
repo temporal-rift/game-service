@@ -27,6 +27,8 @@ public interface PlaySpecialActionUseCase {
             int roundNumber,
             UUID playerId,
             SpecialAction specialAction,
+            UUID sourceEventId,
+            UUID sourceOutcomeId,
             UUID targetEventId,
             UUID targetOutcomeId,
             UUID targetPlayerId) {}

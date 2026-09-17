@@ -197,6 +197,8 @@ class ActionController implements ActionApi {
                 roundNumber,
                 playerId,
                 ActionRestMapper.toDomain(request.getSpecialAction()),
+                request.getSourceEventId(),
+                request.getSourceOutcomeId(),
                 request.getTargetEventId(),
                 request.getTargetOutcomeId(),
                 request.getTargetPlayerId()));

@@ -159,6 +159,8 @@ class ActionEventPublisherAdapterTest {
                 playerId,
                 Faction.ERASERS,
                 SpecialAction.ANNIHILATE,
+                null,
+                null,
                 UUID.randomUUID(),
                 UUID.randomUUID(),
                 UUID.randomUUID());

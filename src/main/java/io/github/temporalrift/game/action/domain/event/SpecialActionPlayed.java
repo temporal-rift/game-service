@@ -12,6 +12,8 @@ public record SpecialActionPlayed(
         UUID playerId,
         Faction faction,
         SpecialAction specialAction,
+        UUID sourceEventId,
+        UUID sourceOutcomeId,
         UUID targetEventId,
         UUID targetOutcomeId,
         UUID targetPlayerId)

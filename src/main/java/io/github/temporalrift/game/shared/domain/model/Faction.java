@@ -7,7 +7,7 @@ public enum Faction {
     ERASERS(Set.of(SpecialAction.ANNIHILATE, SpecialAction.CORRUPT, SpecialAction.CASCADE)),
     PROPHETS(Set.of(SpecialAction.FORESIGHT, SpecialAction.SEAL, SpecialAction.FULFILLMENT)),
     REVISIONISTS(Set.of(SpecialAction.REWRITE, SpecialAction.MIMIC, SpecialAction.OBSCURE)),
-    WEAVERS(Set.of(SpecialAction.THREAD, SpecialAction.TAPESTRY, SpecialAction.UNRAVEL)),
+    WEAVERS(Set.of(SpecialAction.THREAD, SpecialAction.TAPESTRY, SpecialAction.REWEAVE)),
     ACTIVISTS(Set.of(SpecialAction.RALLY, SpecialAction.EXPOSE, SpecialAction.MOMENTUM));
 
     private final Set<SpecialAction> specialActions;

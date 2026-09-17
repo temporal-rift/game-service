@@ -121,6 +121,8 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
                                 state.activistPlayerId(),
                                 io.github.temporalrift.game.shared.domain.model.Faction.ACTIVISTS,
                                 state.declarationMode().toSpecialAction(),
+                                null,
+                                null,
                                 state.targetEventId(),
                                 state.targetOutcomeId(),
                                 null))
