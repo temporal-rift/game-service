@@ -77,6 +77,13 @@ class PlaySpecialActionCommandHandler implements PlaySpecialActionUseCase {
     @Override
     @Transactional
     public Result handle(Command command) {
+        if (command.specialAction() == SpecialAction.UNRAVEL) {
+            // Retired: at most one Weaver per game, so UNRAVEL can never name a legal target. Checked
+            // ahead of every other validation — including target-coordinate lookups below, which would
+            // otherwise surface an unrelated 404/422 depending on the caller's payload shape — so a
+            // retired-special submission always carries its own stable error identifier.
+            throw new RetiredSpecialActionException(command.specialAction());
+        }
         // THREAD's target is a resolved outcome from a past era — this validator only knows the current
         // era's own definitions, so only its current-era source coordinate is checked here. Its target is
         // verified against actual resolution state by timeline-service's chain saga instead.
@@ -103,12 +110,6 @@ class PlaySpecialActionCommandHandler implements PlaySpecialActionUseCase {
         // verify faction/jammed itself. Resolved here, in the same transaction as the round submission.
         if (playerState.isJammed()) {
             throw new JammedPlayerException(command.playerId());
-        }
-        if (command.specialAction() == SpecialAction.UNRAVEL) {
-            // Retired: at most one Weaver per game, so UNRAVEL can never name a legal target. Checked
-            // ahead of the ownership check below so its rejection carries its own error identifier
-            // rather than the generic "not your faction's special" one.
-            throw new RetiredSpecialActionException(command.specialAction());
         }
         if (!faction.hasSpecialAction(command.specialAction())) {
             throw new InvalidSpecialActionException(faction, command.specialAction());

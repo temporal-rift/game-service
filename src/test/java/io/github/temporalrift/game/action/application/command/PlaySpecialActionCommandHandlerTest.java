@@ -273,15 +273,34 @@ class PlaySpecialActionCommandHandlerTest {
         // given
         var command = new PlaySpecialActionUseCase.Command(
                 GAME_ID, ERA, ROUND, PLAYER_ID, SpecialAction.UNRAVEL, null, null, null, null, null);
-        given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA, ROUND))
-                .willReturn(Optional.of(round));
-        given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(playerState));
-        given(playerState.faction()).willReturn(Faction.WEAVERS);
-        given(playerState.isJammed()).willReturn(false);
 
         // when / then
         assertThatExceptionOfType(RetiredSpecialActionException.class).isThrownBy(() -> handler.handle(command));
-        then(round).should(never()).submit(any());
+        then(actionTargetValidator).shouldHaveNoInteractions();
+        then(actionRoundRepository).shouldHaveNoInteractions();
+        then(playerStateRepository).shouldHaveNoInteractions();
+    }
+
+    @Test
+    @DisplayName("handle — UNRAVEL carrying a bogus target — still throws RetiredSpecialActionException, not a "
+            + "target-lookup error")
+    void handleUnravelWithBogusTargetStillRejectsAsRetired() {
+        // given
+        var command = new PlaySpecialActionUseCase.Command(
+                GAME_ID,
+                ERA,
+                ROUND,
+                PLAYER_ID,
+                SpecialAction.UNRAVEL,
+                null,
+                null,
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                null);
+
+        // when / then
+        assertThatExceptionOfType(RetiredSpecialActionException.class).isThrownBy(() -> handler.handle(command));
+        then(actionTargetValidator).shouldHaveNoInteractions();
     }
 
     @Test
