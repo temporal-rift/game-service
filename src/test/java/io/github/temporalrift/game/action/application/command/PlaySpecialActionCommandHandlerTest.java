@@ -36,6 +36,7 @@ import io.github.temporalrift.game.action.domain.actionround.FactionRequiredExce
 import io.github.temporalrift.game.action.domain.actionround.InvalidActionTargetException;
 import io.github.temporalrift.game.action.domain.actionround.InvalidSpecialActionException;
 import io.github.temporalrift.game.action.domain.actionround.JammedPlayerException;
+import io.github.temporalrift.game.action.domain.actionround.RetiredSpecialActionException;
 import io.github.temporalrift.game.action.domain.actionround.RoundNotFoundException;
 import io.github.temporalrift.game.action.domain.actionround.SubmittedAction;
 import io.github.temporalrift.game.action.domain.actionround.UnknownActionTargetException;
@@ -263,6 +264,153 @@ class PlaySpecialActionCommandHandlerTest {
 
         // when / then
         assertThatExceptionOfType(InvalidSpecialActionException.class).isThrownBy(() -> handler.handle(command));
+        then(round).should(never()).submit(any());
+    }
+
+    @Test
+    @DisplayName("handle — UNRAVEL — throws RetiredSpecialActionException before checking faction ownership")
+    void handleUnravelRejectsAsRetired() {
+        // given
+        var command = new PlaySpecialActionUseCase.Command(
+                GAME_ID, ERA, ROUND, PLAYER_ID, SpecialAction.UNRAVEL, null, null, null, null, null);
+        given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA, ROUND))
+                .willReturn(Optional.of(round));
+        given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(playerState));
+        given(playerState.faction()).willReturn(Faction.WEAVERS);
+        given(playerState.isJammed()).willReturn(false);
+
+        // when / then
+        assertThatExceptionOfType(RetiredSpecialActionException.class).isThrownBy(() -> handler.handle(command));
+        then(round).should(never()).submit(any());
+    }
+
+    @Test
+    @DisplayName("handle — THREAD — validates the current-era source coordinate and submits")
+    void handleThreadValidatesSourceCoordinatesAndSubmits() {
+        // given
+        var sourceEventId = UUID.randomUUID();
+        var sourceOutcomeId = UUID.randomUUID();
+        var targetEventId = UUID.randomUUID();
+        var targetOutcomeId = UUID.randomUUID();
+        var command = new PlaySpecialActionUseCase.Command(
+                GAME_ID,
+                ERA,
+                ROUND,
+                PLAYER_ID,
+                SpecialAction.THREAD,
+                sourceEventId,
+                sourceOutcomeId,
+                targetEventId,
+                targetOutcomeId,
+                null);
+        given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA, ROUND))
+                .willReturn(Optional.of(round));
+        given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(playerState));
+        given(playerState.faction()).willReturn(Faction.WEAVERS);
+        given(playerState.isJammed()).willReturn(false);
+        given(gameRules.onceEraBudgetedSpecials()).willReturn(Set.of());
+        given(round.submit(any())).willReturn(false);
+        given(round.id()).willReturn(UUID.randomUUID());
+        given(round.gameId()).willReturn(GAME_ID);
+        given(round.pullEvents()).willReturn(List.of(specialActionPlayedEvent()));
+
+        // when
+        handler.handle(command);
+
+        // then
+        then(actionTargetValidator).should().validate(GAME_ID, ERA, sourceEventId, sourceOutcomeId);
+        then(round)
+                .should()
+                .submit(eq(new SubmittedAction.SpecialActionSubmission(
+                        PLAYER_ID,
+                        Faction.WEAVERS,
+                        SpecialAction.THREAD,
+                        sourceEventId,
+                        sourceOutcomeId,
+                        targetEventId,
+                        targetOutcomeId,
+                        null)));
+    }
+
+    @Test
+    @DisplayName("handle — THREAD missing its source coordinate — throws InvalidActionTargetException before "
+            + "submitting")
+    void handleThreadMissingSourceRejectsBeforeSubmitting() {
+        // given
+        var command = new PlaySpecialActionUseCase.Command(
+                GAME_ID,
+                ERA,
+                ROUND,
+                PLAYER_ID,
+                SpecialAction.THREAD,
+                null,
+                null,
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                null);
+        given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA, ROUND))
+                .willReturn(Optional.of(round));
+        given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(playerState));
+        given(playerState.faction()).willReturn(Faction.WEAVERS);
+        given(playerState.isJammed()).willReturn(false);
+        given(gameRules.onceEraBudgetedSpecials()).willReturn(Set.of());
+
+        // when / then
+        assertThatExceptionOfType(InvalidActionTargetException.class).isThrownBy(() -> handler.handle(command));
+        then(round).should(never()).submit(any());
+    }
+
+    @Test
+    @DisplayName("handle — REWEAVE — carries no target coordinates and submits without additional validation")
+    void handleReweaveSubmitsWithoutAdditionalTargetValidation() {
+        // given
+        var command = new PlaySpecialActionUseCase.Command(
+                GAME_ID, ERA, ROUND, PLAYER_ID, SpecialAction.REWEAVE, null, null, null, null, null);
+        given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA, ROUND))
+                .willReturn(Optional.of(round));
+        given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(playerState));
+        given(playerState.faction()).willReturn(Faction.WEAVERS);
+        given(playerState.isJammed()).willReturn(false);
+        given(gameRules.onceEraBudgetedSpecials()).willReturn(Set.of());
+        given(round.submit(any())).willReturn(false);
+        given(round.id()).willReturn(UUID.randomUUID());
+        given(round.gameId()).willReturn(GAME_ID);
+        given(round.pullEvents()).willReturn(List.of(specialActionPlayedEvent()));
+
+        // when
+        handler.handle(command);
+
+        // then
+        then(round)
+                .should()
+                .submit(eq(new SubmittedAction.SpecialActionSubmission(
+                        PLAYER_ID, Faction.WEAVERS, SpecialAction.REWEAVE, null, null, null, null, null)));
+    }
+
+    @Test
+    @DisplayName("handle — non-THREAD special carrying a source coordinate — throws InvalidActionTargetException")
+    void handleNonThreadSpecialCarryingSourceRejectsBeforeSubmitting() {
+        // given
+        var command = new PlaySpecialActionUseCase.Command(
+                GAME_ID,
+                ERA,
+                ROUND,
+                PLAYER_ID,
+                SpecialAction.ANNIHILATE,
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                null);
+        given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA, ROUND))
+                .willReturn(Optional.of(round));
+        given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(playerState));
+        given(playerState.faction()).willReturn(Faction.ERASERS);
+        given(playerState.isJammed()).willReturn(false);
+        given(gameRules.onceEraBudgetedSpecials()).willReturn(Set.of());
+
+        // when / then
+        assertThatExceptionOfType(InvalidActionTargetException.class).isThrownBy(() -> handler.handle(command));
         then(round).should(never()).submit(any());
     }
 
