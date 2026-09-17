@@ -143,7 +143,14 @@ class GetRoundStatusQueryHandlerTest {
     void handleCallerSubmittedSpecial() {
         // given
         var callerSubmission = new SubmittedAction.SpecialActionSubmission(
-                CALLER, Faction.ERASERS, SpecialAction.ANNIHILATE, UUID.randomUUID(), UUID.randomUUID(), null);
+                CALLER,
+                Faction.ERASERS,
+                SpecialAction.ANNIHILATE,
+                null,
+                null,
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                null);
         given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumber(GAME_ID, ERA, ROUND))
                 .willReturn(Optional.of(round));
         given(actionRoundSagaRepository.findByGameIdAndEraNumberAndRoundNumber(GAME_ID, ERA, ROUND))
