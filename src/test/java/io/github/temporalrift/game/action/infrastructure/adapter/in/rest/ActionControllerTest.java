@@ -291,12 +291,20 @@ class ActionControllerTest {
     }
 
     @Test
-    @DisplayName("Given round status, when GET status, then returns public status")
+    @DisplayName("Given round status, when GET status, then returns public status and caller's own unsubmitted state")
     void getRoundStatus() throws Exception {
         // given
         var pendingPlayerId = UUID.randomUUID();
         given(getRoundStatusUseCase.handle(any()))
-                .willReturn(new GetRoundStatusUseCase.Result(ERA, ROUND, "OPEN", 42, 2, 3, List.of(pendingPlayerId)));
+                .willReturn(new GetRoundStatusUseCase.Result(
+                        ERA,
+                        ROUND,
+                        "OPEN",
+                        42,
+                        2,
+                        3,
+                        List.of(pendingPlayerId),
+                        new GetRoundStatusUseCase.MySubmission(false, null)));
 
         // when / then
         mockMvc.perform(get("/api/v1/games/{gameId}/eras/{eraNumber}/rounds/{roundNumber}/status", GAME_ID, ERA, ROUND)
@@ -308,7 +316,25 @@ class ActionControllerTest {
                 .andExpect(jsonPath("$.timerRemainingSeconds").value(42))
                 .andExpect(jsonPath("$.submittedCount").value(2))
                 .andExpect(jsonPath("$.totalPlayers").value(3))
-                .andExpect(jsonPath("$.pendingPlayerIds[0]").value(pendingPlayerId.toString()));
+                .andExpect(jsonPath("$.pendingPlayerIds[0]").value(pendingPlayerId.toString()))
+                .andExpect(jsonPath("$.mySubmission.submitted").value(false))
+                .andExpect(jsonPath("$.mySubmission.actionType").doesNotExist());
+    }
+
+    @Test
+    @DisplayName("Given caller already submitted a card, when GET status, then reports mySubmission")
+    void getRoundStatusReportsMySubmission() throws Exception {
+        // given
+        given(getRoundStatusUseCase.handle(any()))
+                .willReturn(new GetRoundStatusUseCase.Result(
+                        ERA, ROUND, "OPEN", 42, 1, 2, List.of(), new GetRoundStatusUseCase.MySubmission(true, "CARD")));
+
+        // when / then
+        mockMvc.perform(get("/api/v1/games/{gameId}/eras/{eraNumber}/rounds/{roundNumber}/status", GAME_ID, ERA, ROUND)
+                        .with(auth()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.mySubmission.submitted").value(true))
+                .andExpect(jsonPath("$.mySubmission.actionType").value("CARD"));
     }
 
     @Test
