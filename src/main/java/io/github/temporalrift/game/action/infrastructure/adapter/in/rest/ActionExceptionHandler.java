@@ -16,7 +16,6 @@ import io.github.temporalrift.game.action.domain.actionround.FactionRequiredExce
 import io.github.temporalrift.game.action.domain.actionround.InvalidActionTargetException;
 import io.github.temporalrift.game.action.domain.actionround.InvalidSpecialActionException;
 import io.github.temporalrift.game.action.domain.actionround.JammedPlayerException;
-import io.github.temporalrift.game.action.domain.actionround.RetiredSpecialActionException;
 import io.github.temporalrift.game.action.domain.actionround.RoundNotFoundException;
 import io.github.temporalrift.game.action.domain.actionround.UnknownActionTargetException;
 import io.github.temporalrift.game.action.domain.activisterastate.ActivistDeclarationAlreadyRecordedException;
@@ -159,10 +158,5 @@ class ActionExceptionHandler {
     @ExceptionHandler(SpecialActionEraBudgetExhaustedException.class)
     ProblemDetail handleSpecialActionEraBudgetExhausted(SpecialActionEraBudgetExhaustedException ex) {
         return ProblemDetails.of(HttpStatus.CONFLICT, ex.getMessage(), "409-10");
-    }
-
-    @ExceptionHandler(RetiredSpecialActionException.class)
-    ProblemDetail handleRetiredSpecialAction(RetiredSpecialActionException ex) {
-        return ProblemDetails.of(HttpStatus.UNPROCESSABLE_CONTENT, ex.getMessage(), "422-13");
     }
 }

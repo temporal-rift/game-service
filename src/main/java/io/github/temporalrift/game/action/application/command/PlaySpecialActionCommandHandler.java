@@ -13,7 +13,6 @@ import io.github.temporalrift.game.action.application.port.in.PlaySpecialActionU
 import io.github.temporalrift.game.action.domain.actionround.FactionRequiredException;
 import io.github.temporalrift.game.action.domain.actionround.InvalidSpecialActionException;
 import io.github.temporalrift.game.action.domain.actionround.JammedPlayerException;
-import io.github.temporalrift.game.action.domain.actionround.RetiredSpecialActionException;
 import io.github.temporalrift.game.action.domain.actionround.RoundNotFoundException;
 import io.github.temporalrift.game.action.domain.actionround.SubmittedAction;
 import io.github.temporalrift.game.action.domain.activisterastate.ActivistEraState;
@@ -77,13 +76,6 @@ class PlaySpecialActionCommandHandler implements PlaySpecialActionUseCase {
     @Override
     @Transactional
     public Result handle(Command command) {
-        if (command.specialAction() == SpecialAction.UNRAVEL) {
-            // Retired: at most one Weaver per game, so UNRAVEL can never name a legal target. Checked
-            // ahead of every other validation — including target-coordinate lookups below, which would
-            // otherwise surface an unrelated 404/422 depending on the caller's payload shape — so a
-            // retired-special submission always carries its own stable error identifier.
-            throw new RetiredSpecialActionException(command.specialAction());
-        }
         // THREAD's target is a resolved outcome from a past era — this validator only knows the current
         // era's own definitions, so only its current-era source coordinate is checked here. Its target is
         // verified against actual resolution state by timeline-service's chain saga instead.

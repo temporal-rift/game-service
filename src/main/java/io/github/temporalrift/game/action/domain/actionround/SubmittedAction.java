@@ -268,11 +268,6 @@ public sealed interface SubmittedAction permits SubmittedAction.CardAction, Subm
                     // REWEAVE's re-anchor target are validated by timeline-service's chain saga, which alone
                     // knows chain and resolution state.
                 }
-                case UNRAVEL -> {
-                    // Unreachable via PlaySpecialActionCommandHandler, which rejects UNRAVEL with
-                    // RetiredSpecialActionException before constructing a submission. Kept here only to
-                    // keep this switch exhaustive over every SpecialAction constant.
-                }
             }
         }
 

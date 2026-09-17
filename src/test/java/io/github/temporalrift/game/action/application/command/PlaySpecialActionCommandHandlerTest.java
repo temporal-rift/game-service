@@ -36,7 +36,6 @@ import io.github.temporalrift.game.action.domain.actionround.FactionRequiredExce
 import io.github.temporalrift.game.action.domain.actionround.InvalidActionTargetException;
 import io.github.temporalrift.game.action.domain.actionround.InvalidSpecialActionException;
 import io.github.temporalrift.game.action.domain.actionround.JammedPlayerException;
-import io.github.temporalrift.game.action.domain.actionround.RetiredSpecialActionException;
 import io.github.temporalrift.game.action.domain.actionround.RoundNotFoundException;
 import io.github.temporalrift.game.action.domain.actionround.SubmittedAction;
 import io.github.temporalrift.game.action.domain.actionround.UnknownActionTargetException;
@@ -265,42 +264,6 @@ class PlaySpecialActionCommandHandlerTest {
         // when / then
         assertThatExceptionOfType(InvalidSpecialActionException.class).isThrownBy(() -> handler.handle(command));
         then(round).should(never()).submit(any());
-    }
-
-    @Test
-    @DisplayName("handle — UNRAVEL — throws RetiredSpecialActionException before checking faction ownership")
-    void handleUnravelRejectsAsRetired() {
-        // given
-        var command = new PlaySpecialActionUseCase.Command(
-                GAME_ID, ERA, ROUND, PLAYER_ID, SpecialAction.UNRAVEL, null, null, null, null, null);
-
-        // when / then
-        assertThatExceptionOfType(RetiredSpecialActionException.class).isThrownBy(() -> handler.handle(command));
-        then(actionTargetValidator).shouldHaveNoInteractions();
-        then(actionRoundRepository).shouldHaveNoInteractions();
-        then(playerStateRepository).shouldHaveNoInteractions();
-    }
-
-    @Test
-    @DisplayName("handle — UNRAVEL carrying a bogus target — still throws RetiredSpecialActionException, not a "
-            + "target-lookup error")
-    void handleUnravelWithBogusTargetStillRejectsAsRetired() {
-        // given
-        var command = new PlaySpecialActionUseCase.Command(
-                GAME_ID,
-                ERA,
-                ROUND,
-                PLAYER_ID,
-                SpecialAction.UNRAVEL,
-                null,
-                null,
-                UUID.randomUUID(),
-                UUID.randomUUID(),
-                null);
-
-        // when / then
-        assertThatExceptionOfType(RetiredSpecialActionException.class).isThrownBy(() -> handler.handle(command));
-        then(actionTargetValidator).shouldHaveNoInteractions();
     }
 
     @Test

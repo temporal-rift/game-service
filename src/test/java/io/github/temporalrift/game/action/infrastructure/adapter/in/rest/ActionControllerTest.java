@@ -39,7 +39,6 @@ import io.github.temporalrift.game.action.domain.actionround.DuplicateSubmission
 import io.github.temporalrift.game.action.domain.actionround.FactionRequiredException;
 import io.github.temporalrift.game.action.domain.actionround.InvalidActionTargetException;
 import io.github.temporalrift.game.action.domain.actionround.JammedPlayerException;
-import io.github.temporalrift.game.action.domain.actionround.RetiredSpecialActionException;
 import io.github.temporalrift.game.action.domain.actionround.RoundNotFoundException;
 import io.github.temporalrift.game.action.domain.activisterastate.ExposeAlreadyRecordedException;
 import io.github.temporalrift.game.action.domain.handselection.InvalidHandSelectionException;
@@ -580,24 +579,6 @@ class ActionControllerTest {
                         .content(specialJson()))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("409-10"));
-    }
-
-    @Test
-    @DisplayName("Given a retired special action, then submits a 422 distinguishable from an invalid one")
-    void retiredSpecialAction() throws Exception {
-        given(playSpecialActionUseCase.handle(any()))
-                .willThrow(new RetiredSpecialActionException(SpecialAction.UNRAVEL));
-
-        mockMvc.perform(post(
-                                "/api/v1/games/{gameId}/eras/{eraNumber}/rounds/{roundNumber}/actions",
-                                GAME_ID,
-                                ERA,
-                                ROUND)
-                        .with(auth())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(specialJson()))
-                .andExpect(status().is(422))
-                .andExpect(jsonPath("$.code").value("422-13"));
     }
 
     @Test

@@ -20,7 +20,6 @@ final class ActionRestMapper {
             case OBSCURE -> io.github.temporalrift.game.shared.domain.model.SpecialAction.OBSCURE;
             case THREAD -> io.github.temporalrift.game.shared.domain.model.SpecialAction.THREAD;
             case TAPESTRY -> io.github.temporalrift.game.shared.domain.model.SpecialAction.TAPESTRY;
-            case UNRAVEL -> io.github.temporalrift.game.shared.domain.model.SpecialAction.UNRAVEL;
             case REWEAVE -> io.github.temporalrift.game.shared.domain.model.SpecialAction.REWEAVE;
             case RALLY -> io.github.temporalrift.game.shared.domain.model.SpecialAction.RALLY;
             case EXPOSE -> io.github.temporalrift.game.shared.domain.model.SpecialAction.EXPOSE;
