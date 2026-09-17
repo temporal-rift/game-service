@@ -157,7 +157,15 @@ class EraResolutionCompletedKafkaConsumer {
                 .findById(game.lobbyId())
                 .orElseThrow(() -> new LobbyNotFoundException(game.lobbyId()))
                 .currentPlayers();
-        var winnerIds = declarationRepository.findPlayerIdsTargeting(game.id(), eraNumber, collapsingEventId);
+        var targeting = declarationRepository.findPlayerIdsTargeting(game.id(), eraNumber, collapsingEventId);
+        // Collapse is an Activist special ending: only Activists whose current-era declaration
+        // targets the collapsing event win. The declared outcome is irrelevant because a cascaded
+        // event has no resolved winner.
+        var winnerIds = players.stream()
+                .filter(player -> player.faction() == io.github.temporalrift.game.shared.domain.model.Faction.ACTIVISTS)
+                .map(LobbyPlayer::playerId)
+                .filter(targeting::contains)
+                .toList();
         var collapsed = buildTimelineCollapsed(game.id(), eraNumber, players, winnerIds);
         sagaHandoffPublisher.publish(
                 eventPublisher::publish,
