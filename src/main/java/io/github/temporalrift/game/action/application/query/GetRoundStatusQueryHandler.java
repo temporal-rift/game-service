@@ -91,8 +91,8 @@ class GetRoundStatusQueryHandler implements GetRoundStatusUseCase {
 
     private String actionType(SubmittedAction action) {
         return switch (action) {
-            case SubmittedAction.CardAction ignored -> "CARD";
-            case SubmittedAction.SpecialActionSubmission ignored -> "SPECIAL";
+            case SubmittedAction.CardAction _ -> "CARD";
+            case SubmittedAction.SpecialActionSubmission _ -> "SPECIAL";
         };
     }
 }
