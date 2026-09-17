@@ -240,9 +240,10 @@ class EraSagaAdvancer {
         var winners = new ArrayList<TimelineStabilized.PlayerFactionResult>();
         var losers = new ArrayList<TimelineStabilized.PlayerFactionResult>();
         for (var update : su.updates()) {
-            Integer activeChainLength = weaverChainLength.containsKey(update.playerId())
-                    ? (qualifiedWeavers.contains(update.playerId()) ? weaverChainLength.get(update.playerId()) : null)
-                    : null;
+            // qualifiedWeavers only ever holds Weaver ids already recorded in weaverChainLength,
+            // so membership alone decides the reported length.
+            Integer activeChainLength =
+                    qualifiedWeavers.contains(update.playerId()) ? weaverChainLength.get(update.playerId()) : null;
             var result = new TimelineStabilized.PlayerFactionResult(
                     update.playerId(), update.faction().name(), activeChainLength);
             if (isStabilizationWinner(update, qualifiedWeavers)) {
