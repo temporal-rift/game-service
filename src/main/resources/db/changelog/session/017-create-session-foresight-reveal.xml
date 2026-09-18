@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.29.xsd">
+    <changeSet id="session-017-create-session-foresight-reveal" author="game-service">
+        <createTable tableName="session_foresight_reveal">
+            <column name="id" type="UUID"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="game_id" type="UUID"><constraints nullable="false"/></column>
+            <column name="era_number" type="INT"><constraints nullable="false"/></column>
+            <column name="player_id" type="UUID"><constraints nullable="false"/></column>
+            <column name="next_era_number" type="INT"><constraints nullable="false"/></column>
+            <column name="empty_reason" type="VARCHAR(32)"/>
+        </createTable>
+        <addUniqueConstraint tableName="session_foresight_reveal" columnNames="game_id,era_number,player_id"
+                constraintName="uq_session_foresight_reveal_game_era_player"/>
+        <createTable tableName="session_foresight_reveal_entry">
+            <column name="reveal_id" type="UUID"><constraints nullable="false"/></column>
+            <column name="catalog_event_id" type="UUID"><constraints nullable="false"/></column>
+            <column name="list_order" type="INT"><constraints nullable="false"/></column>
+        </createTable>
+        <addForeignKeyConstraint baseTableName="session_foresight_reveal_entry" baseColumnNames="reveal_id"
+                referencedTableName="session_foresight_reveal" referencedColumnNames="id"
+                constraintName="fk_foresight_reveal_entry_reveal"/>
+    </changeSet>
+</databaseChangeLog>

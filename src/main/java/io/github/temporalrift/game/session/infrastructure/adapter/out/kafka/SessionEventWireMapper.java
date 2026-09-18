@@ -59,6 +59,7 @@ import io.github.temporalrift.game.session.domain.game.PendingCarryOverEvent;
 import io.github.temporalrift.game.shared.domain.event.EventsDrawn;
 import io.github.temporalrift.game.shared.domain.event.FactionAssigned;
 import io.github.temporalrift.game.shared.domain.event.FactionRevealed;
+import io.github.temporalrift.game.shared.domain.event.ForesightRevealed;
 import io.github.temporalrift.game.shared.domain.event.GameEnded;
 import io.github.temporalrift.game.shared.domain.event.HandDealt;
 import io.github.temporalrift.game.shared.domain.event.HandSelected;
@@ -135,4 +136,10 @@ interface SessionEventWireMapper {
     HandSelectedPayload toWire(HandSelected event);
 
     HandDealtCardInstance toWire(HandDealt.CardInstance cardInstance);
+
+    ForesightRevealedWirePayload toWire(ForesightRevealed event);
+
+    ForesightRevealedWirePayload.RevealedEvent toWire(ForesightRevealed.RevealedEvent event);
+
+    ForesightRevealedWirePayload.RevealedOutcome toWire(ForesightRevealed.RevealedOutcome outcome);
 }

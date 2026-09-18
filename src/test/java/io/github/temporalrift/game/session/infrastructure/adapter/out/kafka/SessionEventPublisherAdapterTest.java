@@ -59,6 +59,7 @@ import io.github.temporalrift.game.session.domain.event.WinConditionMet;
 import io.github.temporalrift.game.shared.domain.event.EventsDrawn;
 import io.github.temporalrift.game.shared.domain.event.FactionAssigned;
 import io.github.temporalrift.game.shared.domain.event.FactionRevealed;
+import io.github.temporalrift.game.shared.domain.event.ForesightRevealed;
 import io.github.temporalrift.game.shared.domain.event.GameEnded;
 import io.github.temporalrift.game.shared.domain.event.HandDealt;
 import io.github.temporalrift.game.shared.domain.event.PlayerJoinedLobby;
@@ -151,6 +152,12 @@ class SessionEventPublisherAdapterTest {
                 mock(ResolutionStarted.class),
                 mock(ResolutionStartedPayload.class),
                 "ResolutionStarted");
+        assertBranch(
+                adapter,
+                gameId,
+                mock(ForesightRevealed.class),
+                mock(ForesightRevealedWirePayload.class),
+                "ForesightRevealed");
     }
 
     private void assertBranch(
@@ -480,6 +487,20 @@ class SessionEventPublisherAdapterTest {
             UUID gameId,
             ResolutionStarted payload,
             ResolutionStartedPayload wirePayload,
+            String eventType) {
+        given(mapper.toWire(payload)).willReturn(wirePayload);
+        var event = envelope(gameId, payload);
+
+        adapter.publish(event);
+
+        then(outboundEvents).should().publish(eq(eventType), same(wirePayload), eq(event));
+    }
+
+    private void assertBranch(
+            SessionEventPublisherAdapter adapter,
+            UUID gameId,
+            ForesightRevealed payload,
+            ForesightRevealedWirePayload wirePayload,
             String eventType) {
         given(mapper.toWire(payload)).willReturn(wirePayload);
         var event = envelope(gameId, payload);
