@@ -1,5 +1,7 @@
 package io.github.temporalrift.game.session.application.listener;
 
+import static org.springframework.transaction.annotation.Propagation.REQUIRES_NEW;
+
 import java.time.Clock;
 import java.util.List;
 import java.util.UUID;
@@ -48,8 +50,10 @@ class ForesightRevealListener {
         this.clock = clock;
     }
 
+    // REQUIRES_NEW: a Modulith application-module listener must not join the publisher's transaction,
+    // and the reveal store write shares one transaction with the outbox publication below.
     @ApplicationModuleListener
-    @Transactional
+    @Transactional(propagation = REQUIRES_NEW)
     void onForesightDeclared(ForesightDeclared declared) {
         var gameId = declared.gameId();
         var eraNumber = declared.eraNumber();
@@ -61,6 +65,14 @@ class ForesightRevealListener {
         var game = gameRepository.findById(gameId).orElse(null);
         if (game == null) {
             log.info("Foresight reveal skipped for game {} — game not found", gameId);
+            return;
+        }
+        if (game.eraCounter() != eraNumber) {
+            log.info(
+                    "Foresight reveal skipped for game {} — declaration for era {} arrived while era {} is active",
+                    gameId,
+                    eraNumber,
+                    game.eraCounter());
             return;
         }
         // Read-only peek at the deck head: the deck is never consumed, reordered, or saved here.
