@@ -91,8 +91,6 @@ class ActionPersistenceIT {
         var sourceOutcomeId = UUID.randomUUID();
         var targetOutcomeId = UUID.randomUUID();
         var cardInstanceId = UUID.randomUUID();
-        var specialSourceEventId = UUID.randomUUID();
-        var specialSourceOutcomeId = UUID.randomUUID();
         var specialTargetEventId = UUID.randomUUID();
         var specialTargetOutcomeId = UUID.randomUUID();
 
@@ -104,8 +102,8 @@ class ActionPersistenceIT {
                 player2,
                 Faction.WEAVERS,
                 SpecialAction.THREAD,
-                specialSourceEventId,
-                specialSourceOutcomeId,
+                null,
+                null,
                 specialTargetEventId,
                 specialTargetOutcomeId,
                 null));
@@ -138,8 +136,8 @@ class ActionPersistenceIT {
                 .isInstanceOfSatisfying(SubmittedAction.SpecialActionSubmission.class, special -> {
                     assertThat(special.specialAction()).isEqualTo(SpecialAction.THREAD);
                     assertThat(special.faction()).isEqualTo(Faction.WEAVERS);
-                    assertThat(special.sourceEventId()).isEqualTo(specialSourceEventId);
-                    assertThat(special.sourceOutcomeId()).isEqualTo(specialSourceOutcomeId);
+                    assertThat(special.sourceEventId()).isNull();
+                    assertThat(special.sourceOutcomeId()).isNull();
                     assertThat(special.targetEventId()).isEqualTo(specialTargetEventId);
                     assertThat(special.targetOutcomeId()).isEqualTo(specialTargetOutcomeId);
                     assertThat(special.targetPlayerId()).isNull();
