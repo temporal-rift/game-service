@@ -38,7 +38,7 @@ class ForesightRevealRepositoryAdapter implements ForesightRevealRepository {
                     reveal.catalogEventIds(),
                     reveal.emptyReason()));
             return true;
-        } catch (DataIntegrityViolationException e) {
+        } catch (DataIntegrityViolationException _) {
             log.debug(
                     "Foresight reveal already stored for game {} era {} player {} — concurrent write won",
                     reveal.gameId(),

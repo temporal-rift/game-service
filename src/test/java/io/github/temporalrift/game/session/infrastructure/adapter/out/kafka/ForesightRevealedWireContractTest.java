@@ -31,8 +31,9 @@ class ForesightRevealedWireContractTest {
         assertThat(validator.validate(payload)).isEmpty();
         var json = objectMapper.writeValueAsString(payload);
 
-        assertThat(json).contains("gameId", "eraNumber", "playerId", "nextEraNumber", "revealedEvents");
-        assertThat(json).contains("catalogEventId", "title", "outcomes", "catalogOutcomeId", "description");
+        assertThat(json)
+                .contains("gameId", "eraNumber", "playerId", "nextEraNumber", "revealedEvents")
+                .contains("catalogEventId", "title", "outcomes", "catalogOutcomeId", "description");
         assertThat(json.toLowerCase())
                 .doesNotContain("actor", "probability", "band", "deck", "influencer", "jammer", "interceptor");
     }
