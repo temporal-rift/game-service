@@ -7,8 +7,8 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 
-// TODO: temporal-rift/apis#82 Replace with the generated session-event 2.1.0 type on adoption; the JSON
-// shape here is byte-identical to that contract so the swap changes no behavior.
+// Bridge until temporal-rift/apis#82 lands: replace with the generated session-event 2.1.0 type on
+// adoption. The JSON shape here is byte-identical to that contract so the swap changes no behavior.
 public record ForesightRevealedWirePayload(
         @NotNull UUID gameId,
         @Min(1) int eraNumber,

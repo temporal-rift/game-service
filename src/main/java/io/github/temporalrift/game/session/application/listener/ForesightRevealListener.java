@@ -77,7 +77,7 @@ class ForesightRevealListener {
         }
         // Read-only peek at the deck head: the deck is never consumed, reordered, or saved here.
         var previewIds = previewIds(game, eraNumber);
-        var emptyReason = previewIds.isEmpty() ? emptyReason(game, eraNumber) : null;
+        var emptyReason = previewIds.isEmpty() ? emptyReason(eraNumber) : null;
         var stored = new ForesightReveal(gameId, eraNumber, viewer, eraNumber + 1, previewIds, emptyReason);
         if (!reveals.saveIfAbsent(stored)) {
             return;
@@ -100,7 +100,7 @@ class ForesightRevealListener {
         return List.copyOf(deck.subList(0, Math.min(gameRules.eventsPerEra(), deck.size())));
     }
 
-    private String emptyReason(Game game, int eraNumber) {
+    private String emptyReason(int eraNumber) {
         if (eraNumber >= gameRules.maxEras()) {
             return "final-era";
         }

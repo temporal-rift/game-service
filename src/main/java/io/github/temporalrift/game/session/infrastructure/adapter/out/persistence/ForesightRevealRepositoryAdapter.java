@@ -3,6 +3,8 @@ package io.github.temporalrift.game.session.infrastructure.adapter.out.persisten
 import java.util.Optional;
 import java.util.UUID;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -12,6 +14,8 @@ import io.github.temporalrift.game.session.domain.port.out.ForesightRevealReposi
 
 @Component
 class ForesightRevealRepositoryAdapter implements ForesightRevealRepository {
+
+    private static final Logger log = LoggerFactory.getLogger(ForesightRevealRepositoryAdapter.class);
 
     private final ForesightRevealJpaRepository repository;
 
@@ -35,6 +39,11 @@ class ForesightRevealRepositoryAdapter implements ForesightRevealRepository {
                     reveal.emptyReason()));
             return true;
         } catch (DataIntegrityViolationException e) {
+            log.debug(
+                    "Foresight reveal already stored for game {} era {} player {} — concurrent write won",
+                    reveal.gameId(),
+                    reveal.eraNumber(),
+                    reveal.playerId());
             return false;
         }
     }
