@@ -125,7 +125,7 @@ class TimelineScoringKafkaConsumer {
     private void handleChainBroken(Message<Object> message) {
         var event = wireMapper.fromWire(read(message, ChainBrokenPayload.class));
         contextRepository.recordChainFact(
-                event.gameId(), event.targetPlayerId(), event.chainId(), ScoreReason.CHAIN_BROKEN, event.eraNumber());
+                event.gameId(), event.playerId(), event.chainId(), ScoreReason.CHAIN_BROKEN, event.eraNumber());
     }
 
     private void handleParadoxCascaded(Message<Object> message) {

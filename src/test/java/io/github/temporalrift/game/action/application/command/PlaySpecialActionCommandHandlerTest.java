@@ -267,24 +267,13 @@ class PlaySpecialActionCommandHandlerTest {
     }
 
     @Test
-    @DisplayName("handle — THREAD — validates the current-era source coordinate and submits")
-    void handleThreadValidatesSourceCoordinatesAndSubmits() {
+    @DisplayName("handle — THREAD — validates the current-era target coordinate like every other special and submits")
+    void handleThreadValidatesTargetCoordinatesAndSubmits() {
         // given
-        var sourceEventId = UUID.randomUUID();
-        var sourceOutcomeId = UUID.randomUUID();
         var targetEventId = UUID.randomUUID();
         var targetOutcomeId = UUID.randomUUID();
         var command = new PlaySpecialActionUseCase.Command(
-                GAME_ID,
-                ERA,
-                ROUND,
-                PLAYER_ID,
-                SpecialAction.THREAD,
-                sourceEventId,
-                sourceOutcomeId,
-                targetEventId,
-                targetOutcomeId,
-                null);
+                GAME_ID, ERA, ROUND, PLAYER_ID, SpecialAction.THREAD, null, null, targetEventId, targetOutcomeId, null);
         given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA, ROUND))
                 .willReturn(Optional.of(round));
         given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(playerState));
@@ -300,24 +289,43 @@ class PlaySpecialActionCommandHandlerTest {
         handler.handle(command);
 
         // then
-        then(actionTargetValidator).should().validate(GAME_ID, ERA, sourceEventId, sourceOutcomeId);
+        then(actionTargetValidator).should().validate(GAME_ID, ERA, targetEventId, targetOutcomeId);
         then(round)
                 .should()
                 .submit(eq(new SubmittedAction.SpecialActionSubmission(
                         PLAYER_ID,
                         Faction.WEAVERS,
                         SpecialAction.THREAD,
-                        sourceEventId,
-                        sourceOutcomeId,
+                        null,
+                        null,
                         targetEventId,
                         targetOutcomeId,
                         null)));
     }
 
     @Test
-    @DisplayName("handle — THREAD missing its source coordinate — throws InvalidActionTargetException before "
+    @DisplayName("handle — THREAD missing its target coordinate — throws InvalidActionTargetException before "
             + "submitting")
-    void handleThreadMissingSourceRejectsBeforeSubmitting() {
+    void handleThreadMissingTargetRejectsBeforeSubmitting() {
+        // given
+        var command = new PlaySpecialActionUseCase.Command(
+                GAME_ID, ERA, ROUND, PLAYER_ID, SpecialAction.THREAD, null, null, null, null, null);
+        given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA, ROUND))
+                .willReturn(Optional.of(round));
+        given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(playerState));
+        given(playerState.faction()).willReturn(Faction.WEAVERS);
+        given(playerState.isJammed()).willReturn(false);
+        given(gameRules.onceEraBudgetedSpecials()).willReturn(Set.of());
+
+        // when / then
+        assertThatExceptionOfType(InvalidActionTargetException.class).isThrownBy(() -> handler.handle(command));
+        then(round).should(never()).submit(any());
+    }
+
+    @Test
+    @DisplayName(
+            "handle — THREAD carrying a source coordinate — throws InvalidActionTargetException before " + "submitting")
+    void handleThreadCarryingSourceRejectsBeforeSubmitting() {
         // given
         var command = new PlaySpecialActionUseCase.Command(
                 GAME_ID,
@@ -325,8 +333,8 @@ class PlaySpecialActionCommandHandlerTest {
                 ROUND,
                 PLAYER_ID,
                 SpecialAction.THREAD,
-                null,
-                null,
+                UUID.randomUUID(),
+                UUID.randomUUID(),
                 UUID.randomUUID(),
                 UUID.randomUUID(),
                 null);
@@ -370,8 +378,8 @@ class PlaySpecialActionCommandHandlerTest {
     }
 
     @Test
-    @DisplayName("handle — non-THREAD special carrying a source coordinate — throws InvalidActionTargetException")
-    void handleNonThreadSpecialCarryingSourceRejectsBeforeSubmitting() {
+    @DisplayName("handle — special action carrying a source coordinate — throws InvalidActionTargetException")
+    void handleSpecialCarryingSourceRejectsBeforeSubmitting() {
         // given
         var command = new PlaySpecialActionUseCase.Command(
                 GAME_ID,

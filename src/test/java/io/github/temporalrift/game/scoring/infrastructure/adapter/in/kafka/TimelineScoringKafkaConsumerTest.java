@@ -241,18 +241,17 @@ class TimelineScoringKafkaConsumerTest {
 
     @Test
     @DisplayName(
-            "ChainBroken — records a chain fact for the chain owner, not the breaker, stamped with the event's own era")
-    void handle_chainBroken_recordsChainFactForTargetPlayer() {
-        var brokenByPlayerId = UUID.randomUUID();
-        var targetPlayerId = UUID.randomUUID();
+            "ChainBroken — records a chain fact for the Weaver whose chain broke, stamped with the event's own era")
+    void handle_chainBroken_recordsChainFactForChainOwner() {
+        var playerId = UUID.randomUUID();
+        var paradoxId = UUID.randomUUID();
         var chainId = UUID.randomUUID();
-        var message = message(
-                "ChainBroken", json(new ChainBrokenPayload(GAME_ID, 3, chainId, brokenByPlayerId, targetPlayerId, 2)));
+        var message = message("ChainBroken", json(new ChainBrokenPayload(GAME_ID, 3, chainId, playerId, paradoxId, 2)));
         givenClaim(message, true);
 
         consumer.handle(message);
 
-        then(contextRepository).should().recordChainFact(GAME_ID, targetPlayerId, chainId, ScoreReason.CHAIN_BROKEN, 3);
+        then(contextRepository).should().recordChainFact(GAME_ID, playerId, chainId, ScoreReason.CHAIN_BROKEN, 3);
     }
 
     @Test
