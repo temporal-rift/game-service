@@ -8,6 +8,7 @@ import org.springframework.context.annotation.Import;
 @Import({
     EraSagaAdapter.class,
     EraSagaScoresUpdatedInboxRepositoryAdapter.class,
+    ForesightRevealRepositoryAdapter.class,
     GameRepositoryAdapter.class,
     LobbyRepositoryAdapter.class
 })

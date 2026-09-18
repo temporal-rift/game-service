@@ -27,6 +27,7 @@
     <include file="db/changelog/session/013-create-game-drawn-event.xml"/>
     <include file="db/changelog/session/014-create-era-saga-scores-updated-inbox.xml"/>
     <include file="db/changelog/session/016-add-era-hand-selection-state.xml"/>
+    <include file="db/changelog/session/017-create-session-foresight-reveal.xml"/>
 
     <!-- Action module -->
     <include file="db/changelog/action/001-create-action-round.xml"/>
