@@ -16,8 +16,11 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import io.github.temporalrift.game.session.application.port.in.GetForesightRevealUseCase;
 import io.github.temporalrift.game.session.domain.foresight.ForesightReveal;
 import io.github.temporalrift.game.session.domain.futureevent.FutureEventDefinition;
+import io.github.temporalrift.game.session.domain.game.Game;
+import io.github.temporalrift.game.session.domain.game.GameStatus;
 import io.github.temporalrift.game.session.domain.port.out.ForesightRevealRepository;
 import io.github.temporalrift.game.session.domain.port.out.FutureEventCatalogPort;
+import io.github.temporalrift.game.session.domain.port.out.GameRepository;
 
 @ExtendWith(MockitoExtension.class)
 class GetForesightRevealQueryHandlerTest {
@@ -27,6 +30,9 @@ class GetForesightRevealQueryHandlerTest {
 
     @Mock
     FutureEventCatalogPort catalog;
+
+    @Mock
+    GameRepository gameRepository;
 
     @InjectMocks
     GetForesightRevealQueryHandler handler;
@@ -39,6 +45,9 @@ class GetForesightRevealQueryHandlerTest {
         var outcomeId = UUID.randomUUID();
         given(reveals.findByGameIdAndEraNumberAndPlayerId(gameId, 2, viewer))
                 .willReturn(Optional.of(new ForesightReveal(gameId, 2, viewer, 3, List.of(catalogEventId), null)));
+        given(gameRepository.findById(gameId))
+                .willReturn(Optional.of(
+                        Game.reconstitute(gameId, UUID.randomUUID(), List.of(), 2, 0, GameStatus.IN_PROGRESS)));
         given(catalog.findByEventIds(List.of(catalogEventId)))
                 .willReturn(List.of(new FutureEventDefinition(
                         catalogEventId,
@@ -67,6 +76,32 @@ class GetForesightRevealQueryHandlerTest {
         given(reveals.findByGameIdAndEraNumberAndPlayerId(gameId, 2, other)).willReturn(Optional.empty());
 
         assertThat(handler.handle(new GetForesightRevealUseCase.Query(gameId, 2, other)))
+                .isEmpty();
+    }
+
+    @Test
+    void handle_hidesThePreviewOnceTheNextEraHasStarted() {
+        var gameId = UUID.randomUUID();
+        var viewer = UUID.randomUUID();
+        given(reveals.findByGameIdAndEraNumberAndPlayerId(gameId, 2, viewer))
+                .willReturn(Optional.of(new ForesightReveal(gameId, 2, viewer, 3, List.of(UUID.randomUUID()), null)));
+        given(gameRepository.findById(gameId))
+                .willReturn(Optional.of(
+                        Game.reconstitute(gameId, UUID.randomUUID(), List.of(), 3, 0, GameStatus.IN_PROGRESS)));
+
+        assertThat(handler.handle(new GetForesightRevealUseCase.Query(gameId, 2, viewer)))
+                .isEmpty();
+    }
+
+    @Test
+    void handle_hidesThePreviewWhenTheGameIsGone() {
+        var gameId = UUID.randomUUID();
+        var viewer = UUID.randomUUID();
+        given(reveals.findByGameIdAndEraNumberAndPlayerId(gameId, 2, viewer))
+                .willReturn(Optional.of(new ForesightReveal(gameId, 2, viewer, 3, List.of(UUID.randomUUID()), null)));
+        given(gameRepository.findById(gameId)).willReturn(Optional.empty());
+
+        assertThat(handler.handle(new GetForesightRevealUseCase.Query(gameId, 2, viewer)))
                 .isEmpty();
     }
 }

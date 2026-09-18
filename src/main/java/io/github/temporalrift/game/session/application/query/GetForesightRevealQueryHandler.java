@@ -9,16 +9,20 @@ import org.springframework.transaction.annotation.Transactional;
 import io.github.temporalrift.game.session.application.port.in.GetForesightRevealUseCase;
 import io.github.temporalrift.game.session.domain.port.out.ForesightRevealRepository;
 import io.github.temporalrift.game.session.domain.port.out.FutureEventCatalogPort;
+import io.github.temporalrift.game.session.domain.port.out.GameRepository;
 
 @Service
 class GetForesightRevealQueryHandler implements GetForesightRevealUseCase {
 
     private final ForesightRevealRepository reveals;
     private final FutureEventCatalogPort catalog;
+    private final GameRepository gameRepository;
 
-    GetForesightRevealQueryHandler(ForesightRevealRepository reveals, FutureEventCatalogPort catalog) {
+    GetForesightRevealQueryHandler(
+            ForesightRevealRepository reveals, FutureEventCatalogPort catalog, GameRepository gameRepository) {
         this.reveals = reveals;
         this.catalog = catalog;
+        this.gameRepository = gameRepository;
     }
 
     @Override
@@ -28,6 +32,15 @@ class GetForesightRevealQueryHandler implements GetForesightRevealUseCase {
                         query.gameId(), query.eraNumber(), query.callerPlayerId())
                 .orElse(null);
         if (stored == null) {
+            return Optional.empty();
+        }
+        // The preview expires with its era: once the next era starts it is public draw history,
+        // not private foresight.
+        var currentEra = gameRepository
+                .findById(query.gameId())
+                .map(game -> game.eraCounter())
+                .orElse(null);
+        if (currentEra == null || currentEra != stored.eraNumber()) {
             return Optional.empty();
         }
         var events = stored.catalogEventIds().isEmpty()

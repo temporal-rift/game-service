@@ -25,6 +25,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import io.github.temporalrift.game.session.domain.foresight.ForesightReveal;
 import io.github.temporalrift.game.session.domain.futureevent.FutureEventDefinition;
 import io.github.temporalrift.game.session.domain.game.Game;
+import io.github.temporalrift.game.session.domain.game.GameStatus;
 import io.github.temporalrift.game.session.domain.port.out.ForesightRevealRepository;
 import io.github.temporalrift.game.session.domain.port.out.FutureEventCatalogPort;
 import io.github.temporalrift.game.session.domain.port.out.GameRepository;
@@ -76,7 +77,7 @@ class ForesightRevealListenerTest {
         var gameId = UUID.randomUUID();
         var viewer = UUID.randomUUID();
         var deck = deck(6);
-        var game = new Game(gameId, UUID.randomUUID(), new ArrayList<>(deck));
+        var game = gameAtEra(gameId, deck, 2);
         given(gameRepository.findById(gameId)).willReturn(Optional.of(game));
         given(reveals.findByGameIdAndEraNumberAndPlayerId(gameId, 2, viewer)).willReturn(Optional.empty());
         given(reveals.saveIfAbsent(any())).willReturn(true);
@@ -110,7 +111,7 @@ class ForesightRevealListenerTest {
         givenStandardRules();
         var gameId = UUID.randomUUID();
         var viewer = UUID.randomUUID();
-        var game = new Game(gameId, UUID.randomUUID(), new ArrayList<>(deck(3)));
+        var game = gameAtEra(gameId, deck(3), 5);
         given(gameRepository.findById(gameId)).willReturn(Optional.of(game));
         given(reveals.findByGameIdAndEraNumberAndPlayerId(gameId, 5, viewer)).willReturn(Optional.empty());
         given(reveals.saveIfAbsent(any())).willReturn(true);
@@ -163,7 +164,7 @@ class ForesightRevealListenerTest {
         var gameId = UUID.randomUUID();
         var viewer = UUID.randomUUID();
         var deck = deck(6);
-        var game = new Game(gameId, UUID.randomUUID(), new ArrayList<>(deck));
+        var game = gameAtEra(gameId, deck, 2);
         given(gameRepository.findById(gameId)).willReturn(Optional.of(game));
         given(reveals.findByGameIdAndEraNumberAndPlayerId(gameId, 2, viewer)).willReturn(Optional.empty());
         given(reveals.saveIfAbsent(any())).willReturn(true);
@@ -175,6 +176,46 @@ class ForesightRevealListenerTest {
         then(reveals).should().saveIfAbsent(reveal.capture());
         var drawn = game.startEra(0, 3);
         assertThat(drawn).containsExactlyElementsOf(reveal.getValue().catalogEventIds());
+    }
+
+    @Test
+    void onForesightDeclared_staleDeclarationForAPastEra_publishesNothing() {
+        var gameId = UUID.randomUUID();
+        var viewer = UUID.randomUUID();
+        var game = gameAtEra(gameId, deck(6), 3);
+        given(gameRepository.findById(gameId)).willReturn(Optional.of(game));
+
+        listener.onForesightDeclared(new ForesightDeclared(gameId, 2, UUID.randomUUID(), UUID.randomUUID(), viewer));
+
+        then(reveals).should(never()).saveIfAbsent(any());
+        then(eventPublisher).should(never()).publish(any());
+    }
+
+    @Test
+    void revealedPreview_matchesTheFreshPrefixWhenTheNextEraCarriesOver() {
+        givenStandardRules();
+        givenDealRules();
+        var gameId = UUID.randomUUID();
+        var viewer = UUID.randomUUID();
+        var deck = deck(6);
+        var game = gameAtEra(gameId, deck, 2);
+        given(gameRepository.findById(gameId)).willReturn(Optional.of(game));
+        given(reveals.findByGameIdAndEraNumberAndPlayerId(gameId, 2, viewer)).willReturn(Optional.empty());
+        given(reveals.saveIfAbsent(any())).willReturn(true);
+        given(catalog.findByEventIds(deck.subList(0, 3))).willReturn(definitions(deck.subList(0, 3)));
+
+        listener.onForesightDeclared(new ForesightDeclared(gameId, 2, UUID.randomUUID(), UUID.randomUUID(), viewer));
+
+        var reveal = ArgumentCaptor.forClass(ForesightReveal.class);
+        then(reveals).should().saveIfAbsent(reveal.capture());
+        var drawnFresh = game.startEra(1, 3);
+        assertThat(drawnFresh)
+                .containsExactlyElementsOf(reveal.getValue().catalogEventIds().subList(0, 2));
+    }
+
+    private static Game gameAtEra(UUID gameId, List<UUID> deck, int eraNumber) {
+        return Game.reconstitute(
+                gameId, UUID.randomUUID(), new ArrayList<>(deck), eraNumber, 0, GameStatus.IN_PROGRESS);
     }
 
     private static List<UUID> deck(int size) {
