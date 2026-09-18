@@ -76,16 +76,11 @@ class PlaySpecialActionCommandHandler implements PlaySpecialActionUseCase {
     @Override
     @Transactional
     public Result handle(Command command) {
-        // THREAD's target is a resolved outcome from a past era — this validator only knows the current
-        // era's own definitions, so only its current-era source coordinate is checked here. Its target is
-        // verified against actual resolution state by timeline-service's chain saga instead.
-        if (command.specialAction() == SpecialAction.THREAD) {
-            actionTargetValidator.validate(
-                    command.gameId(), command.eraNumber(), command.sourceEventId(), command.sourceOutcomeId());
-        } else {
-            actionTargetValidator.validate(
-                    command.gameId(), command.eraNumber(), command.targetEventId(), command.targetOutcomeId());
-        }
+        // THREAD's target is a not-yet-resolved outcome in the current era, validated the same way as every
+        // other current-era-targeting special. Whether it has actually resolved yet is verified downstream by
+        // timeline-service's chain saga.
+        actionTargetValidator.validate(
+                command.gameId(), command.eraNumber(), command.targetEventId(), command.targetOutcomeId());
         var round = actionRoundRepository
                 .findByGameIdAndEraNumberAndRoundNumberWithLock(
                         command.gameId(), command.eraNumber(), command.roundNumber())

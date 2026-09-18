@@ -253,16 +253,15 @@ public sealed interface SubmittedAction permits SubmittedAction.CardAction, Subm
 
         @Override
         public void validate(int eraNumber, int roundNumber) {
-            if (specialAction != SpecialAction.THREAD && (sourceEventId != null || sourceOutcomeId != null)) {
+            if (sourceEventId != null || sourceOutcomeId != null) {
                 throw InvalidActionTargetException.specialActionCannotHaveSource(specialAction);
             }
             switch (specialAction) {
                 case RALLY, MOMENTUM -> throw new DeclarationSpecialActionRequiredException(specialAction);
-                case FORESIGHT, ANNIHILATE, SEAL, REWRITE, MIMIC, CASCADE -> requireEventAndOutcome();
+                case FORESIGHT, ANNIHILATE, SEAL, REWRITE, MIMIC, CASCADE, THREAD -> requireEventAndOutcome();
                 case FULFILLMENT -> requireEvent();
                 case CORRUPT -> requireOpponent();
                 case EXPOSE -> requireExposeTarget();
-                case THREAD -> requireSourceAndTarget();
                 case OBSCURE, TAPESTRY, REWEAVE -> {
                     // No additional target requirement enforced at submission; TAPESTRY's prerequisites and
                     // REWEAVE's re-anchor target are validated by timeline-service's chain saga, which alone
@@ -274,12 +273,6 @@ public sealed interface SubmittedAction permits SubmittedAction.CardAction, Subm
         private void requireEventAndOutcome() {
             if (targetEventId == null || targetOutcomeId == null) {
                 throw InvalidActionTargetException.specialActionRequiresTarget(specialAction);
-            }
-        }
-
-        private void requireSourceAndTarget() {
-            if (sourceEventId == null || sourceOutcomeId == null || targetEventId == null || targetOutcomeId == null) {
-                throw InvalidActionTargetException.specialActionRequiresSourceAndTarget(specialAction);
             }
         }
 

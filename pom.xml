@@ -56,7 +56,7 @@
 
         <session-event.version>2.0.0</session-event.version>
         <action-event.version>4.0.0</action-event.version>
-        <timeline-event.version>4.0.0</timeline-event.version>
+        <timeline-event.version>5.0.0</timeline-event.version>
         <scoring-event.version>2.0.0</scoring-event.version>
         <session-api.version>2.1.0</session-api.version>
         <action-api.version>4.0.0</action-api.version>
