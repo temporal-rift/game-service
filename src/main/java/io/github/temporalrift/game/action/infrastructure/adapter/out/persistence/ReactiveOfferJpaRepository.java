@@ -19,7 +19,7 @@ interface ReactiveOfferJpaRepository extends JpaRepository<ReactiveOfferJpaEntit
                 (id, game_id, era_number, player_id, stabilize_card_instance_id,
                  detonate_card_instance_id, consumed_card_instance_id, status)
             VALUES (:id, :gameId, :eraNumber, :playerId, :stabilizeCardInstanceId,
-                    :detonateCardInstanceId, :consumedCardInstanceId, :status)
+                    :detonateCardInstanceId, NULL, :status)
             ON CONFLICT (game_id, era_number, player_id) DO NOTHING
             """, nativeQuery = true)
     int insertIfAbsent(
@@ -29,7 +29,6 @@ interface ReactiveOfferJpaRepository extends JpaRepository<ReactiveOfferJpaEntit
             @Param("playerId") UUID playerId,
             @Param("stabilizeCardInstanceId") UUID stabilizeCardInstanceId,
             @Param("detonateCardInstanceId") UUID detonateCardInstanceId,
-            @Param("consumedCardInstanceId") UUID consumedCardInstanceId,
             @Param("status") String status);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
