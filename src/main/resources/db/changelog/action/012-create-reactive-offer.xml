@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+            https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.29.xsd">
+
+    <changeSet id="action-012-create-reactive-offer" author="game-service">
+        <createTable tableName="reactive_offer">
+            <column name="id" type="UUID">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="game_id" type="UUID">
+                <constraints nullable="false"/>
+            </column>
+            <column name="era_number" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="player_id" type="UUID">
+                <constraints nullable="false"/>
+            </column>
+            <column name="stabilize_card_instance_id" type="UUID">
+                <constraints nullable="false"/>
+            </column>
+            <column name="detonate_card_instance_id" type="UUID">
+                <constraints nullable="false"/>
+            </column>
+            <column name="consumed_card_instance_id" type="UUID"/>
+            <column name="status" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addUniqueConstraint
+                tableName="reactive_offer"
+                columnNames="game_id,era_number,player_id"
+                constraintName="uq_reactive_offer_game_era_player"/>
+    </changeSet>
+</databaseChangeLog>

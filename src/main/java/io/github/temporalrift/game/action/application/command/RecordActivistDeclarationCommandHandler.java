@@ -20,6 +20,7 @@ import io.github.temporalrift.game.action.domain.playerstate.PlayerStateNotFound
 import io.github.temporalrift.game.action.domain.port.out.ActionEventPublisher;
 import io.github.temporalrift.game.action.domain.port.out.ActionRoundRepository;
 import io.github.temporalrift.game.action.domain.port.out.ActivistEraStateRepository;
+import io.github.temporalrift.game.action.domain.port.out.DeclarationPhaseRepository;
 import io.github.temporalrift.game.action.domain.port.out.PlayerStateRepository;
 import io.github.temporalrift.game.shared.application.SagaHandoffPublisher;
 import io.github.temporalrift.game.shared.domain.messaging.DomainEventEnvelope;
@@ -32,6 +33,7 @@ class RecordActivistDeclarationCommandHandler implements RecordActivistDeclarati
 
     private final ActivistEraStateRepository activistEraStateRepository;
     private final ActionRoundRepository actionRoundRepository;
+    private final DeclarationPhaseRepository declarationPhaseRepository;
     private final PlayerStateRepository playerStateRepository;
     private final ActionTargetValidator actionTargetValidator;
     private final ActionEventPublisher actionEventPublisher;
@@ -41,6 +43,7 @@ class RecordActivistDeclarationCommandHandler implements RecordActivistDeclarati
     RecordActivistDeclarationCommandHandler(
             ActivistEraStateRepository activistEraStateRepository,
             ActionRoundRepository actionRoundRepository,
+            DeclarationPhaseRepository declarationPhaseRepository,
             PlayerStateRepository playerStateRepository,
             ActionTargetValidator actionTargetValidator,
             ActionEventPublisher actionEventPublisher,
@@ -48,6 +51,7 @@ class RecordActivistDeclarationCommandHandler implements RecordActivistDeclarati
             Clock clock) {
         this.activistEraStateRepository = activistEraStateRepository;
         this.actionRoundRepository = actionRoundRepository;
+        this.declarationPhaseRepository = declarationPhaseRepository;
         this.playerStateRepository = playerStateRepository;
         this.actionTargetValidator = actionTargetValidator;
         this.actionEventPublisher = actionEventPublisher;
@@ -63,6 +67,10 @@ class RecordActivistDeclarationCommandHandler implements RecordActivistDeclarati
         var playerState = playerStateRepository
                 .findByGameIdAndPlayerIdWithLock(command.gameId(), command.playerId())
                 .orElseThrow(() -> new PlayerStateNotFoundException(command.gameId(), command.playerId()));
+        declarationPhaseRepository
+                .findByGameIdAndEraNumber(command.gameId(), command.eraNumber())
+                .orElseThrow(() -> new DeclarationWindowClosedException(command.gameId(), command.eraNumber()))
+                .assertOpen(clock.instant());
         if (actionRoundRepository
                 .findByGameIdAndEraNumberAndRoundNumber(command.gameId(), command.eraNumber(), DECLARATION_ROUND_NUMBER)
                 .isPresent()) {

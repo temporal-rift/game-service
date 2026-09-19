@@ -10,9 +10,11 @@ import org.springframework.context.annotation.Import;
     ActionRoundSagaAdapter.class,
     ActivistEraStateRepositoryAdapter.class,
     CurrentEraFutureEventAdapter.class,
+    DeclarationPhaseRepositoryAdapter.class,
     HandSelectionRepositoryAdapter.class,
     ParadoxResolutionPhaseRepositoryAdapter.class,
     PlayerStateRepositoryAdapter.class,
+    ReactiveOfferRepositoryAdapter.class,
     SpecialActionEraUsageRepositoryAdapter.class
 })
 public class ActionPersistenceAdapters {}

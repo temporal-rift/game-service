@@ -69,6 +69,9 @@ class EraStartedToRoundStartIT {
     HandSelectionRepository handSelectionRepository;
 
     @Autowired
+    io.github.temporalrift.game.action.domain.port.out.DeclarationPhaseRepository declarationPhaseRepository;
+
+    @Autowired
     TransactionTemplate transactionTemplate;
 
     @Test
@@ -102,6 +105,13 @@ class EraStartedToRoundStartIT {
                         selection.dealtCards().stream()
                                 .limit(sessionGameRules.cardsPerHand())
                                 .toList()))));
+
+        var declarationPhase = awaitDeclarationPhase(gameId, eraNumber);
+        assertThat(declarationPhase.status())
+                .isEqualTo(io.github.temporalrift.game.action.domain.declarationphase.DeclarationPhaseStatus.OPEN);
+        assertThat(awaitEraSagaState(gameId).status()).isEqualTo(EraSagaStatus.WAITING_DECLARATION);
+        assertThat(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumber(gameId, eraNumber, roundNumber))
+                .isEmpty();
 
         var actionRound = awaitActionRound(gameId, eraNumber, roundNumber);
         assertThat(actionRound.gameId()).isEqualTo(gameId);
@@ -171,6 +181,16 @@ class EraStartedToRoundStartIT {
                 .until(
                         () -> actionRoundSagaRepository.findByGameIdAndEraNumberAndRoundNumber(
                                 gameId, eraNumber, roundNumber),
+                        Optional::isPresent)
+                .orElseThrow();
+    }
+
+    private io.github.temporalrift.game.action.domain.declarationphase.DeclarationPhase awaitDeclarationPhase(
+            UUID gameId, int eraNumber) {
+        return await().atMost(Duration.ofSeconds(10))
+                .until(
+                        () -> transactionTemplate.execute(
+                                _ -> declarationPhaseRepository.findByGameIdAndEraNumber(gameId, eraNumber)),
                         Optional::isPresent)
                 .orElseThrow();
     }

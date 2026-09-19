@@ -5,6 +5,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
@@ -27,7 +28,12 @@ import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.E
 import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.ParadoxResolutionPhaseStartedPayload;
 import io.github.temporalrift.game.action.domain.paradoxresolutionphase.ParadoxResolutionPhase;
 import io.github.temporalrift.game.action.domain.paradoxresolutionphase.ParadoxResolutionPhaseStatus;
+import io.github.temporalrift.game.action.domain.playerstate.PlayerState;
 import io.github.temporalrift.game.action.domain.port.out.ParadoxResolutionPhaseRepository;
+import io.github.temporalrift.game.action.domain.port.out.PlayerStateRepository;
+import io.github.temporalrift.game.action.domain.port.out.ReactiveOfferRepository;
+import io.github.temporalrift.game.action.domain.reactiveoffer.ReactiveOffer;
+import io.github.temporalrift.game.action.domain.reactiveoffer.ReactiveOfferStatus;
 import io.github.temporalrift.game.shared.domain.port.out.ProcessedEventRepository;
 
 @ExtendWith(MockitoExtension.class)
@@ -46,11 +52,18 @@ class ParadoxResolutionPhaseKafkaConsumerTest {
     @Mock
     ParadoxResolutionPhaseRepository phaseRepository;
 
+    @Mock
+    PlayerStateRepository playerStateRepository;
+
+    @Mock
+    ReactiveOfferRepository reactiveOfferRepository;
+
     ParadoxResolutionPhaseKafkaConsumer consumer;
 
     @BeforeEach
     void setUp() {
-        consumer = new ParadoxResolutionPhaseKafkaConsumer(processedEventRepository, phaseRepository, JSON_MAPPER);
+        consumer = new ParadoxResolutionPhaseKafkaConsumer(
+                processedEventRepository, phaseRepository, playerStateRepository, reactiveOfferRepository, JSON_MAPPER);
     }
 
     @Test
@@ -70,6 +83,69 @@ class ParadoxResolutionPhaseKafkaConsumerTest {
         assertThat(captor.getValue().gameId()).isEqualTo(GAME_ID);
         assertThat(captor.getValue().eraNumber()).isEqualTo(ERA);
         assertThat(captor.getValue().expiresAt()).isEqualTo(OCCURRED_AT.plusSeconds(30));
+    }
+
+    @Test
+    void phaseStartedDealsOneStabilizeAndOneDetonatePerPlayer() {
+        var message = message(
+                "ParadoxResolutionPhaseStarted",
+                1,
+                new ParadoxResolutionPhaseStartedPayload(GAME_ID, ERA, List.of(UUID.randomUUID()), 30));
+        givenClaim(message, true);
+        given(phaseRepository.findByGameIdAndEraNumber(GAME_ID, ERA)).willReturn(Optional.empty());
+        var playerOne = UUID.randomUUID();
+        var playerTwo = UUID.randomUUID();
+        given(playerStateRepository.findAllByGameId(GAME_ID))
+                .willReturn(List.of(
+                        new PlayerState(UUID.randomUUID(), GAME_ID, playerOne),
+                        new PlayerState(UUID.randomUUID(), GAME_ID, playerTwo)));
+
+        consumer.handle(message);
+
+        var offerCaptor = ArgumentCaptor.forClass(ReactiveOffer.class);
+        then(reactiveOfferRepository).should(times(2)).createIfAbsent(offerCaptor.capture());
+        assertThat(offerCaptor.getAllValues()).hasSize(2);
+        assertThat(offerCaptor.getAllValues().stream().map(ReactiveOffer::playerId))
+                .containsExactlyInAnyOrder(playerOne, playerTwo);
+        offerCaptor.getAllValues().forEach(offer -> {
+            assertThat(offer.eraNumber()).isEqualTo(ERA);
+            assertThat(offer.stabilizeCardInstanceId()).isNotEqualTo(offer.detonateCardInstanceId());
+            assertThat(offer.status()).isEqualTo(ReactiveOfferStatus.OFFERED);
+        });
+    }
+
+    @Test
+    void duplicatePhaseStartDoesNotDealAgain() {
+        var message = message(
+                "ParadoxResolutionPhaseStarted",
+                1,
+                new ParadoxResolutionPhaseStartedPayload(GAME_ID, ERA, List.of(UUID.randomUUID()), 30));
+        givenClaim(message, true);
+        given(phaseRepository.findByGameIdAndEraNumber(GAME_ID, ERA))
+                .willReturn(
+                        Optional.of(new ParadoxResolutionPhase(PHASE_ID, GAME_ID, ERA, OCCURRED_AT.plusSeconds(30))));
+
+        consumer.handle(message);
+
+        then(playerStateRepository).shouldHaveNoInteractions();
+        then(reactiveOfferRepository).shouldHaveNoInteractions();
+    }
+
+    @Test
+    void eraCompletionExpiresUnusedOffers() {
+        var phase = new ParadoxResolutionPhase(PHASE_ID, GAME_ID, ERA, OCCURRED_AT.plusSeconds(30));
+        var message = message("EraResolutionCompleted", 1, eraCompleted(GAME_ID));
+        givenClaim(message, true);
+        given(phaseRepository.findByGameIdAndEraNumberWithLock(GAME_ID, ERA)).willReturn(Optional.of(phase));
+        var offer = new ReactiveOffer(
+                UUID.randomUUID(), GAME_ID, ERA, UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID());
+        given(reactiveOfferRepository.findAllByGameIdAndEraNumberWithLock(GAME_ID, ERA))
+                .willReturn(List.of(offer));
+
+        consumer.handle(message);
+
+        assertThat(offer.status()).isEqualTo(ReactiveOfferStatus.EXPIRED);
+        then(reactiveOfferRepository).should().save(offer);
     }
 
     @Test
