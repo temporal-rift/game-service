@@ -32,6 +32,10 @@ game:
       3: 60
       4: 45
       5: 30
+    declaration-timer-seconds:
+      3: 2
+      4: 2
+      5: 2
     card-category-weights:
       PROBABILITY_SHIFTER: 35
       INFORMATION: 25

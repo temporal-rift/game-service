@@ -30,6 +30,7 @@ class SessionRulesPropertiesTest {
                 30,
                 timers,
                 timers,
+                timers,
                 Map.of(
                         CardCategory.PROBABILITY_SHIFTER, 35,
                         CardCategory.INFORMATION, 25,
@@ -88,6 +89,7 @@ class SessionRulesPropertiesTest {
                         30,
                         Map.of(3, 60),
                         Map.of(3, 60),
+                        Map.of(3, 30),
                         Map.of(CardCategory.PARADOX, 1),
                         Map.of(CardGrade.I, 1),
                         Set.of(Faction.PROPHETS),
@@ -111,6 +113,7 @@ class SessionRulesPropertiesTest {
                         30,
                         Map.of(3, 60),
                         Map.of(3, 60),
+                        Map.of(3, 30),
                         Map.of(CardCategory.PARADOX, 1),
                         Map.of(CardGrade.I, 1),
                         Set.of(Faction.PROPHETS),
@@ -128,9 +131,58 @@ class SessionRulesPropertiesTest {
     }
 
     @Test
+    void declarationTimerSeconds_returnsMappedValueAndDefault() {
+        assertThat(properties(Map.of(4, 45)).declarationTimerSeconds(4)).isEqualTo(45);
+        assertThat(new SessionRulesProperties(
+                                2,
+                                8,
+                                4,
+                                3,
+                                5,
+                                7,
+                                7,
+                                100,
+                                30,
+                                Map.of(3, 60),
+                                Map.of(3, 60),
+                                null,
+                                Map.of(CardCategory.PARADOX, 1),
+                                Map.of(CardGrade.I, 1),
+                                Set.of(Faction.PROPHETS),
+                                Set.of(SpecialAction.ANNIHILATE),
+                                Set.of())
+                        .declarationTimerSeconds(7))
+                .isEqualTo(30);
+    }
+
+    @Test
     void nonPositiveHandSelectionTimer_isRejected() {
         assertThatIllegalArgumentException()
                 .isThrownBy(() -> properties(Map.of(3, 0)))
                 .withMessage("hand-selection-timer-seconds must contain only positive values");
+    }
+
+    @Test
+    void nonPositiveDeclarationTimer_isRejected() {
+        assertThatIllegalArgumentException()
+                .isThrownBy(() -> new SessionRulesProperties(
+                        2,
+                        8,
+                        4,
+                        3,
+                        5,
+                        7,
+                        7,
+                        100,
+                        30,
+                        Map.of(3, 60),
+                        Map.of(3, 60),
+                        Map.of(3, 0),
+                        Map.of(CardCategory.PARADOX, 1),
+                        Map.of(CardGrade.I, 1),
+                        Set.of(Faction.PROPHETS),
+                        Set.of(SpecialAction.ANNIHILATE),
+                        Set.of()))
+                .withMessage("declaration-timer-seconds must contain only positive values");
     }
 }

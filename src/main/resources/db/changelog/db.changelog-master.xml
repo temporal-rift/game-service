@@ -40,6 +40,8 @@
     <include file="db/changelog/action/008-add-player-hand-card-grade.xml"/>
     <include file="db/changelog/action/009-create-hand-selection.xml"/>
     <include file="db/changelog/action/010-create-special-action-era-usage.xml"/>
+    <include file="db/changelog/action/011-create-declaration-phase.xml"/>
+    <include file="db/changelog/action/012-create-reactive-offer.xml"/>
 
     <!-- Scoring module -->
     <include file="db/changelog/scoring/001-create-scoring-context-player.xml"/>

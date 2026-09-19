@@ -4,6 +4,8 @@ import static io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelCon
 import static io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.PARADOX_RESOLUTION_PHASE_STARTED_EVENT_TYPE;
 import static org.springframework.transaction.annotation.Propagation.REQUIRES_NEW;
 
+import java.util.UUID;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.kafka.annotation.KafkaListener;
@@ -16,6 +18,9 @@ import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.E
 import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.ParadoxResolutionPhaseStartedPayload;
 import io.github.temporalrift.game.action.domain.paradoxresolutionphase.ParadoxResolutionPhase;
 import io.github.temporalrift.game.action.domain.port.out.ParadoxResolutionPhaseRepository;
+import io.github.temporalrift.game.action.domain.port.out.PlayerStateRepository;
+import io.github.temporalrift.game.action.domain.port.out.ReactiveOfferRepository;
+import io.github.temporalrift.game.action.domain.reactiveoffer.ReactiveOffer;
 import io.github.temporalrift.game.shared.domain.messaging.DomainEventEnvelope;
 import io.github.temporalrift.game.shared.domain.port.out.ProcessedEventRepository;
 import io.github.temporalrift.game.shared.infrastructure.adapter.in.kafka.MessagePayloads;
@@ -29,14 +34,20 @@ class ParadoxResolutionPhaseKafkaConsumer {
 
     private final ProcessedEventRepository processedEventRepository;
     private final ParadoxResolutionPhaseRepository phaseRepository;
+    private final PlayerStateRepository playerStateRepository;
+    private final ReactiveOfferRepository reactiveOfferRepository;
     private final ObjectMapper objectMapper;
 
     ParadoxResolutionPhaseKafkaConsumer(
             ProcessedEventRepository processedEventRepository,
             ParadoxResolutionPhaseRepository phaseRepository,
+            PlayerStateRepository playerStateRepository,
+            ReactiveOfferRepository reactiveOfferRepository,
             ObjectMapper objectMapper) {
         this.processedEventRepository = processedEventRepository;
         this.phaseRepository = phaseRepository;
+        this.playerStateRepository = playerStateRepository;
+        this.reactiveOfferRepository = reactiveOfferRepository;
         this.objectMapper = objectMapper;
     }
 
@@ -95,6 +106,20 @@ class ParadoxResolutionPhaseKafkaConsumer {
                 started.gameId(),
                 started.eraNumber(),
                 envelope.occurredAt().plusSeconds(started.timerSeconds())));
+        dealReactiveOffers(started.gameId(), started.eraNumber());
+    }
+
+    /**
+     * Deals one private Stabilize + Detonate offer per known participant. Offers are created
+     * idempotently per player, so a redelivered phase fact never double-deals; a roster that is
+     * still unknown simply yields no offers yet — the submission path adopts those players lazily.
+     */
+    private void dealReactiveOffers(UUID gameId, int eraNumber) {
+        playerStateRepository.findAllByGameId(gameId).stream()
+                .map(state -> state.playerId())
+                .distinct()
+                .forEach(playerId -> reactiveOfferRepository.createIfAbsent(new ReactiveOffer(
+                        UUID.randomUUID(), gameId, eraNumber, playerId, UUID.randomUUID(), UUID.randomUUID())));
     }
 
     private void closePhase(TimelineEventEnvelope envelope, Message<Object> message) {
@@ -107,6 +132,12 @@ class ParadoxResolutionPhaseKafkaConsumer {
                 .ifPresent(phase -> {
                     phase.close();
                     phaseRepository.save(phase);
+                    reactiveOfferRepository
+                            .findAllByGameIdAndEraNumberWithLock(completed.gameId(), completed.eraNumber())
+                            .forEach(offer -> {
+                                offer.expire();
+                                reactiveOfferRepository.save(offer);
+                            });
                 });
     }
 }

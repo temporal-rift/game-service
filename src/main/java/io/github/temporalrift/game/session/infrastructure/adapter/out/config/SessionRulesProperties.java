@@ -29,6 +29,7 @@ public record SessionRulesProperties(
         @Min(1) int reconnectGracePeriodSeconds,
         @NotEmpty Map<Integer, Integer> actionRoundTimerSeconds,
         @NotEmpty Map<Integer, Integer> handSelectionTimerSeconds,
+        Map<Integer, Integer> declarationTimerSeconds,
         @NotEmpty Map<CardCategory, Integer> cardCategoryWeights,
         @NotEmpty Map<CardGrade, Integer> cardGradeWeights,
         @NotEmpty Set<Faction> stabilizationWinnerFactions,
@@ -37,6 +38,7 @@ public record SessionRulesProperties(
         implements SessionGameRulesPort {
 
     private static final int DEFAULT_ACTION_ROUND_TIMER_SECONDS = 60;
+    private static final int DEFAULT_DECLARATION_TIMER_SECONDS = 30;
 
     public SessionRulesProperties {
         if (cardsPerDeal < cardsPerHand) {
@@ -44,6 +46,7 @@ public record SessionRulesProperties(
         }
         actionRoundTimerSeconds = Map.copyOf(actionRoundTimerSeconds);
         handSelectionTimerSeconds = Map.copyOf(handSelectionTimerSeconds);
+        declarationTimerSeconds = declarationTimerSeconds == null ? Map.of() : Map.copyOf(declarationTimerSeconds);
         cardCategoryWeights = Map.copyOf(cardCategoryWeights);
         cardGradeWeights = Map.copyOf(cardGradeWeights);
         handDealForcedTypes = handDealForcedTypes == null ? Set.of() : Set.copyOf(handDealForcedTypes);
@@ -51,6 +54,7 @@ public record SessionRulesProperties(
             throw new IllegalArgumentException("hand-deal-forced-types must not exceed cards-per-deal");
         }
         validatePositiveValues(handSelectionTimerSeconds, "hand-selection-timer-seconds");
+        validatePositiveValues(declarationTimerSeconds, "declaration-timer-seconds");
         validateWeights(cardCategoryWeights, "card-category-weights");
         validateWeights(cardGradeWeights, "card-grade-weights");
     }
@@ -63,6 +67,11 @@ public record SessionRulesProperties(
     @Override
     public int handSelectionTimerSeconds(int playerCount) {
         return handSelectionTimerSeconds.getOrDefault(playerCount, DEFAULT_ACTION_ROUND_TIMER_SECONDS);
+    }
+
+    @Override
+    public int declarationTimerSeconds(int playerCount) {
+        return declarationTimerSeconds.getOrDefault(playerCount, DEFAULT_DECLARATION_TIMER_SECONDS);
     }
 
     private static void validateWeights(Map<?, Integer> weights, String propertyName) {

@@ -23,7 +23,7 @@ import io.github.temporalrift.game.session.domain.port.out.SessionEventPublisher
 import io.github.temporalrift.game.session.domain.saga.EraSagaState;
 import io.github.temporalrift.game.session.domain.saga.EraSagaStatus;
 import io.github.temporalrift.game.shared.domain.event.HandSelected;
-import io.github.temporalrift.game.shared.domain.event.StartActionRoundRequested;
+import io.github.temporalrift.game.shared.domain.event.HandSelectionCompleted;
 import io.github.temporalrift.game.shared.domain.messaging.DomainEventEnvelope;
 
 @ExtendWith(MockitoExtension.class)
@@ -44,7 +44,7 @@ class HandSelectionEventListenerTest {
     HandSelectionEventListener listener;
 
     @Test
-    void onHandSelected_finalPlayer_startsRoundOneExactlyOnce() {
+    void onHandSelected_finalPlayer_opensDeclarationWindowInsteadOfRoundOne() {
         var gameId = UUID.randomUUID();
         var playerOne = UUID.randomUUID();
         var playerTwo = UUID.randomUUID();
@@ -57,10 +57,10 @@ class HandSelectionEventListenerTest {
         var stateCaptor = ArgumentCaptor.forClass(EraSagaState.class);
         then(eraSagaRepository).should().save(stateCaptor.capture());
         org.assertj.core.api.Assertions.assertThat(stateCaptor.getValue().status())
-                .isEqualTo(EraSagaStatus.WAITING_ROUND_1);
+                .isEqualTo(EraSagaStatus.WAITING_DECLARATION);
         then(applicationEventPublisher)
                 .should()
-                .publishEvent(new StartActionRoundRequested(gameId, 1, 1, List.of(playerOne, playerTwo)));
+                .publishEvent(new HandSelectionCompleted(gameId, 1, List.of(playerOne, playerTwo)));
         then(eventPublisher).should().publish(any(DomainEventEnvelope.class));
     }
 

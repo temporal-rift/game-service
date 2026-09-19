@@ -36,6 +36,7 @@ import io.github.temporalrift.game.action.domain.playerstate.PlayerState;
 import io.github.temporalrift.game.action.domain.port.out.ActionEventPublisher;
 import io.github.temporalrift.game.action.domain.port.out.ActionRoundRepository;
 import io.github.temporalrift.game.action.domain.port.out.ActivistEraStateRepository;
+import io.github.temporalrift.game.action.domain.port.out.DeclarationPhaseRepository;
 import io.github.temporalrift.game.action.domain.port.out.PlayerStateRepository;
 import io.github.temporalrift.game.shared.domain.model.Faction;
 
@@ -55,6 +56,9 @@ class RecordActivistDeclarationCommandHandlerTest {
 
     @Mock
     ActionRoundRepository actionRoundRepository;
+
+    @Mock
+    DeclarationPhaseRepository declarationPhaseRepository;
 
     @Mock
     PlayerStateRepository playerStateRepository;
@@ -81,6 +85,7 @@ class RecordActivistDeclarationCommandHandlerTest {
         handler = new RecordActivistDeclarationCommandHandler(
                 activistEraStateRepository,
                 actionRoundRepository,
+                declarationPhaseRepository,
                 playerStateRepository,
                 actionTargetValidator,
                 actionEventPublisher,
@@ -94,6 +99,8 @@ class RecordActivistDeclarationCommandHandlerTest {
         // given
         given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumber(GAME_ID, ERA_NUMBER, 1))
                 .willReturn(Optional.empty());
+        given(declarationPhaseRepository.findByGameIdAndEraNumberWithLock(GAME_ID, ERA_NUMBER))
+                .willReturn(Optional.of(openDeclarationPhase()));
         given(playerStateRepository.findByGameIdAndPlayerIdWithLock(GAME_ID, PLAYER_ID))
                 .willReturn(Optional.of(playerState));
         given(playerState.faction()).willReturn(Faction.ACTIVISTS);
@@ -136,6 +143,31 @@ class RecordActivistDeclarationCommandHandlerTest {
     }
 
     @Test
+    @DisplayName("handle — validates the window under a write lock so closure cannot interleave")
+    void handleValidatesPhaseUnderWriteLock() {
+        // given
+        given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumber(GAME_ID, ERA_NUMBER, 1))
+                .willReturn(Optional.empty());
+        given(declarationPhaseRepository.findByGameIdAndEraNumberWithLock(GAME_ID, ERA_NUMBER))
+                .willReturn(Optional.of(openDeclarationPhase()));
+        given(playerStateRepository.findByGameIdAndPlayerIdWithLock(GAME_ID, PLAYER_ID))
+                .willReturn(Optional.of(playerState));
+        given(playerState.faction()).willReturn(Faction.ACTIVISTS);
+        given(playerState.isJammed()).willReturn(false);
+        given(activistEraStateRepository.findByGameIdAndEraNumberAndActivistPlayerId(GAME_ID, ERA_NUMBER, PLAYER_ID))
+                .willReturn(Optional.empty());
+
+        // when
+        handler.handle(new RecordActivistDeclarationUseCase.Command(
+                GAME_ID, ERA_NUMBER, PLAYER_ID, ActivistDeclarationMode.RALLY, TARGET_EVENT_ID, TARGET_OUTCOME_ID));
+
+        // then — the timeout close takes the same row lock, so this serializes validation
+        // against closure; an unlocked read must never be used here.
+        then(declarationPhaseRepository).should().findByGameIdAndEraNumberWithLock(GAME_ID, ERA_NUMBER);
+        then(declarationPhaseRepository).shouldHaveNoMoreInteractions();
+    }
+
+    @Test
     @DisplayName("handle — Round 1 created while waiting for the player lock — rejects the declaration")
     void handleRejectsDeclarationWhenRoundOneCommitsWhileWaitingForPlayerLock() {
         // The callback represents ActionRoundSagaImpl committing Round 1 while this handler is
@@ -148,6 +180,8 @@ class RecordActivistDeclarationCommandHandlerTest {
                 });
         given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumber(GAME_ID, ERA_NUMBER, 1))
                 .willAnswer(invocation -> roundOneCreated.get() ? Optional.of(mockRound()) : Optional.empty());
+        given(declarationPhaseRepository.findByGameIdAndEraNumberWithLock(GAME_ID, ERA_NUMBER))
+                .willReturn(Optional.of(openDeclarationPhase()));
         var command = new RecordActivistDeclarationUseCase.Command(
                 GAME_ID, ERA_NUMBER, PLAYER_ID, ActivistDeclarationMode.RALLY, TARGET_EVENT_ID, TARGET_OUTCOME_ID);
 
@@ -159,5 +193,52 @@ class RecordActivistDeclarationCommandHandlerTest {
 
     private static io.github.temporalrift.game.action.domain.actionround.ActionRound mockRound() {
         return mock(io.github.temporalrift.game.action.domain.actionround.ActionRound.class);
+    }
+
+    @Test
+    @DisplayName("handle — missing declaration phase — rejects the declaration as a closed window")
+    void handleRejectsDeclarationWhenPhaseMissing() {
+        given(playerStateRepository.findByGameIdAndPlayerIdWithLock(GAME_ID, PLAYER_ID))
+                .willReturn(Optional.of(playerState));
+        given(declarationPhaseRepository.findByGameIdAndEraNumberWithLock(GAME_ID, ERA_NUMBER))
+                .willReturn(Optional.empty());
+        var command = new RecordActivistDeclarationUseCase.Command(
+                GAME_ID, ERA_NUMBER, PLAYER_ID, ActivistDeclarationMode.RALLY, TARGET_EVENT_ID, TARGET_OUTCOME_ID);
+
+        assertThatThrownBy(() -> handler.handle(command)).isInstanceOf(DeclarationWindowClosedException.class);
+
+        then(activistEraStateRepository).should(never()).save(any());
+        then(actionEventPublisher).shouldHaveNoInteractions();
+    }
+
+    @Test
+    @DisplayName("handle — expired declaration phase — rejects the declaration as a closed window")
+    void handleRejectsDeclarationWhenPhaseExpired() {
+        given(playerStateRepository.findByGameIdAndPlayerIdWithLock(GAME_ID, PLAYER_ID))
+                .willReturn(Optional.of(playerState));
+        given(declarationPhaseRepository.findByGameIdAndEraNumberWithLock(GAME_ID, ERA_NUMBER))
+                .willReturn(Optional.of(
+                        io.github.temporalrift.game.action.domain.declarationphase.DeclarationPhase.reconstitute(
+                                java.util.UUID.randomUUID(),
+                                GAME_ID,
+                                ERA_NUMBER,
+                                CLOCK.instant().minusSeconds(1),
+                                io.github.temporalrift.game.action.domain.declarationphase.DeclarationPhaseStatus
+                                        .OPEN)));
+        var command = new RecordActivistDeclarationUseCase.Command(
+                GAME_ID, ERA_NUMBER, PLAYER_ID, ActivistDeclarationMode.RALLY, TARGET_EVENT_ID, TARGET_OUTCOME_ID);
+
+        assertThatThrownBy(() -> handler.handle(command)).isInstanceOf(DeclarationWindowClosedException.class);
+
+        then(activistEraStateRepository).should(never()).save(any());
+        then(actionEventPublisher).shouldHaveNoInteractions();
+    }
+
+    private static io.github.temporalrift.game.action.domain.declarationphase.DeclarationPhase openDeclarationPhase() {
+        return new io.github.temporalrift.game.action.domain.declarationphase.DeclarationPhase(
+                java.util.UUID.randomUUID(),
+                GAME_ID,
+                ERA_NUMBER,
+                CLOCK.instant().plusSeconds(60));
     }
 }
