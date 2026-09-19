@@ -38,54 +38,39 @@ public class ReactiveOffer extends AggregateRoot {
                 gameId,
                 eraNumber,
                 playerId,
-                stabilizeCardInstanceId,
-                detonateCardInstanceId,
-                null,
-                ReactiveOfferStatus.OFFERED);
+                new PersistedState(stabilizeCardInstanceId, detonateCardInstanceId, null, ReactiveOfferStatus.OFFERED));
     }
 
-    private ReactiveOffer(
-            UUID id,
-            UUID gameId,
-            int eraNumber,
-            UUID playerId,
-            UUID stabilizeCardInstanceId,
-            UUID detonateCardInstanceId,
-            UUID consumedCardInstanceId,
-            ReactiveOfferStatus status) {
+    private ReactiveOffer(UUID id, UUID gameId, int eraNumber, UUID playerId, PersistedState state) {
         this.id = Objects.requireNonNull(id, "id must not be null");
         this.gameId = Objects.requireNonNull(gameId, "gameId must not be null");
         this.eraNumber = eraNumber;
         this.playerId = Objects.requireNonNull(playerId, "playerId must not be null");
         this.stabilizeCardInstanceId =
-                Objects.requireNonNull(stabilizeCardInstanceId, "stabilizeCardInstanceId must not be null");
+                Objects.requireNonNull(state.stabilizeCardInstanceId(), "stabilizeCardInstanceId must not be null");
         this.detonateCardInstanceId =
-                Objects.requireNonNull(detonateCardInstanceId, "detonateCardInstanceId must not be null");
+                Objects.requireNonNull(state.detonateCardInstanceId(), "detonateCardInstanceId must not be null");
         if (stabilizeCardInstanceId.equals(detonateCardInstanceId)) {
             throw new IllegalArgumentException("Offer cards must have distinct instance ids");
         }
-        this.consumedCardInstanceId = consumedCardInstanceId;
-        this.status = Objects.requireNonNull(status, "status must not be null");
+        this.consumedCardInstanceId = state.consumedCardInstanceId();
+        this.status = Objects.requireNonNull(state.status(), "status must not be null");
     }
 
-    public static ReactiveOffer reconstitute(
-            UUID id,
-            UUID gameId,
-            int eraNumber,
-            UUID playerId,
+    public static ReactiveOffer reconstitute(UUID id, UUID gameId, int eraNumber, UUID playerId, PersistedState state) {
+        return new ReactiveOffer(id, gameId, eraNumber, playerId, state);
+    }
+
+    public record PersistedState(
             UUID stabilizeCardInstanceId,
             UUID detonateCardInstanceId,
             UUID consumedCardInstanceId,
             ReactiveOfferStatus status) {
-        return new ReactiveOffer(
-                id,
-                gameId,
-                eraNumber,
-                playerId,
-                stabilizeCardInstanceId,
-                detonateCardInstanceId,
-                consumedCardInstanceId,
-                status);
+        public PersistedState {
+            Objects.requireNonNull(stabilizeCardInstanceId, "stabilizeCardInstanceId must not be null");
+            Objects.requireNonNull(detonateCardInstanceId, "detonateCardInstanceId must not be null");
+            Objects.requireNonNull(status, "status must not be null");
+        }
     }
 
     public CardType cardTypeOf(UUID cardInstanceId) {

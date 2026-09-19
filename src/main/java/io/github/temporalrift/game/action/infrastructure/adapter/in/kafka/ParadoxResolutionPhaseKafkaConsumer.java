@@ -17,6 +17,7 @@ import tools.jackson.databind.ObjectMapper;
 import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.EraResolutionCompletedPayload;
 import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.ParadoxResolutionPhaseStartedPayload;
 import io.github.temporalrift.game.action.domain.paradoxresolutionphase.ParadoxResolutionPhase;
+import io.github.temporalrift.game.action.domain.playerstate.PlayerState;
 import io.github.temporalrift.game.action.domain.port.out.ParadoxResolutionPhaseRepository;
 import io.github.temporalrift.game.action.domain.port.out.PlayerStateRepository;
 import io.github.temporalrift.game.action.domain.port.out.ReactiveOfferRepository;
@@ -116,7 +117,7 @@ class ParadoxResolutionPhaseKafkaConsumer {
      */
     private void dealReactiveOffers(UUID gameId, int eraNumber) {
         playerStateRepository.findAllByGameId(gameId).stream()
-                .map(state -> state.playerId())
+                .map(PlayerState::playerId)
                 .distinct()
                 .forEach(playerId -> reactiveOfferRepository.createIfAbsent(new ReactiveOffer(
                         UUID.randomUUID(), gameId, eraNumber, playerId, UUID.randomUUID(), UUID.randomUUID())));

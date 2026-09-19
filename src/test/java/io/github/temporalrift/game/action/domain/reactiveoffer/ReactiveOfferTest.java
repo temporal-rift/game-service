@@ -37,8 +37,9 @@ class ReactiveOfferTest {
     void cardTypeOf_rejectsUnknownCard() {
         var offer = new ReactiveOffer(
                 UUID.randomUUID(), UUID.randomUUID(), 1, UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID());
+        var unknown = UUID.randomUUID();
 
-        assertThatThrownBy(() -> offer.cardTypeOf(UUID.randomUUID())).isInstanceOf(CardNotInHandException.class);
+        assertThatThrownBy(() -> offer.cardTypeOf(unknown)).isInstanceOf(CardNotInHandException.class);
     }
 
     @Test
@@ -46,10 +47,10 @@ class ReactiveOfferTest {
         var offer = new ReactiveOffer(
                 UUID.randomUUID(), UUID.randomUUID(), 1, UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID());
         offer.expire();
+        var stabilize = offer.stabilizeCardInstanceId();
 
         assertThat(offer.status()).isEqualTo(ReactiveOfferStatus.EXPIRED);
-        assertThatThrownBy(() -> offer.consume(offer.stabilizeCardInstanceId()))
-                .isInstanceOf(CardNotInHandException.class);
+        assertThatThrownBy(() -> offer.consume(stabilize)).isInstanceOf(CardNotInHandException.class);
     }
 
     @Test
@@ -66,9 +67,11 @@ class ReactiveOfferTest {
     @Test
     void constructor_rejectsIdenticalCardIds() {
         var card = UUID.randomUUID();
+        var id = UUID.randomUUID();
+        var gameId = UUID.randomUUID();
+        var playerId = UUID.randomUUID();
 
-        assertThatThrownBy(
-                        () -> new ReactiveOffer(UUID.randomUUID(), UUID.randomUUID(), 1, UUID.randomUUID(), card, card))
+        assertThatThrownBy(() -> new ReactiveOffer(id, gameId, 1, playerId, card, card))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 }

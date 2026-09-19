@@ -37,7 +37,6 @@ class ReactiveOfferRepositoryAdapter implements ReactiveOfferRepository {
                         offer.playerId(),
                         offer.stabilizeCardInstanceId(),
                         offer.detonateCardInstanceId(),
-                        offer.consumedCardInstanceId(),
                         offer.status().name())
                 == 1;
     }
@@ -76,9 +75,10 @@ class ReactiveOfferRepositoryAdapter implements ReactiveOfferRepository {
                 entity.getGameId(),
                 entity.getEraNumber(),
                 entity.getPlayerId(),
-                entity.getStabilizeCardInstanceId(),
-                entity.getDetonateCardInstanceId(),
-                entity.getConsumedCardInstanceId(),
-                ReactiveOfferStatus.valueOf(entity.getStatus()));
+                new ReactiveOffer.PersistedState(
+                        entity.getStabilizeCardInstanceId(),
+                        entity.getDetonateCardInstanceId(),
+                        entity.getConsumedCardInstanceId(),
+                        ReactiveOfferStatus.valueOf(entity.getStatus())));
     }
 }
