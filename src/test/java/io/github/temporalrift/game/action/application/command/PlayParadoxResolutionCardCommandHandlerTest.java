@@ -216,6 +216,25 @@ class PlayParadoxResolutionCardCommandHandlerTest {
         then(actionEventPublisher).shouldHaveNoInteractions();
     }
 
+    @Test
+    void missingOfferIsRejectedWithoutCreatingAnOffer() {
+        var phase = openPhase();
+        var playerState = new PlayerState(UUID.randomUUID(), GAME_ID, PLAYER_ID);
+        given(phaseRepository.findByGameIdAndEraNumberWithLock(GAME_ID, ERA)).willReturn(Optional.of(phase));
+        given(playerStateRepository.findByGameIdAndPlayerIdWithLock(GAME_ID, PLAYER_ID))
+                .willReturn(Optional.of(playerState));
+        given(reactiveOfferRepository.findByGameIdAndEraNumberAndPlayerIdWithLock(GAME_ID, ERA, PLAYER_ID))
+                .willReturn(Optional.empty());
+
+        assertThatExceptionOfType(io.github.temporalrift.game.action.domain.CardNotInHandException.class)
+                .isThrownBy(() -> handler.handle(command()));
+        assertThat(phase.submittedPlayerIds()).isEmpty();
+        then(reactiveOfferRepository).should(never()).createIfAbsent(any());
+        then(reactiveOfferRepository).should(never()).save(any());
+        then(phaseRepository).should(never()).save(any());
+        then(actionEventPublisher).shouldHaveNoInteractions();
+    }
+
     private ParadoxResolutionPhase openPhase() {
         return new ParadoxResolutionPhase(UUID.randomUUID(), GAME_ID, ERA, NOW.plusSeconds(30));
     }

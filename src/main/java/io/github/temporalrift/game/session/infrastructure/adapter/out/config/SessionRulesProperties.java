@@ -54,6 +54,7 @@ public record SessionRulesProperties(
             throw new IllegalArgumentException("hand-deal-forced-types must not exceed cards-per-deal");
         }
         validatePositiveValues(handSelectionTimerSeconds, "hand-selection-timer-seconds");
+        validatePositiveValues(declarationTimerSeconds, "declaration-timer-seconds");
         validateWeights(cardCategoryWeights, "card-category-weights");
         validateWeights(cardGradeWeights, "card-grade-weights");
     }

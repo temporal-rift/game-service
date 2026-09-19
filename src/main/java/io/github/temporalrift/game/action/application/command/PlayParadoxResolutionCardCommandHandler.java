@@ -1,7 +1,6 @@
 package io.github.temporalrift.game.action.application.command;
 
 import java.time.Clock;
-import java.util.UUID;
 
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.stereotype.Service;
@@ -81,8 +80,8 @@ class PlayParadoxResolutionCardCommandHandler implements PlayParadoxResolutionCa
 
     /**
      * Resolves the submitted card against the final five-card hand first, then the player's
-     * phase-opening reactive offer. Unknown cards fail with card-not-in-hand; the offer row is
-     * adopted lazily so a roster that was unknown at phase opening still yields exactly one offer.
+     * phase-opening reactive offer. A card in neither fails with card-not-in-hand; offers exist
+     * only as dealt at phase opening, so no offer row is ever created on the submission path.
      */
     private ResolvedCard resolveCard(Command command, PlayerState playerState) {
         var handCard = playerState.hand().stream()
@@ -93,17 +92,9 @@ class PlayParadoxResolutionCardCommandHandler implements PlayParadoxResolutionCa
         }
         var offer = reactiveOfferRepository
                 .findByGameIdAndEraNumberAndPlayerIdWithLock(command.gameId(), command.eraNumber(), command.playerId())
-                .orElseGet(() -> adoptOffer(command.gameId(), command.eraNumber(), command.playerId()));
+                .orElseThrow(() -> new CardNotInHandException(command.cardInstanceId()));
         var cardType = offer.cardTypeOf(command.cardInstanceId());
         return new ResolvedCard(cardType, CardGrade.I, offer);
-    }
-
-    private ReactiveOffer adoptOffer(UUID gameId, int eraNumber, UUID playerId) {
-        reactiveOfferRepository.createIfAbsent(new ReactiveOffer(
-                UUID.randomUUID(), gameId, eraNumber, playerId, UUID.randomUUID(), UUID.randomUUID()));
-        return reactiveOfferRepository
-                .findByGameIdAndEraNumberAndPlayerIdWithLock(gameId, eraNumber, playerId)
-                .orElseThrow(() -> new CardNotInHandException(playerId));
     }
 
     private record ResolvedCard(CardType cardType, CardGrade grade, ReactiveOffer offer) {}
