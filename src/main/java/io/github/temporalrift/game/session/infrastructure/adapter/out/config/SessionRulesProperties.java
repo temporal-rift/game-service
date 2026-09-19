@@ -34,6 +34,7 @@ public record SessionRulesProperties(
         @NotEmpty Map<CardGrade, Integer> cardGradeWeights,
         @NotEmpty Set<Faction> stabilizationWinnerFactions,
         @NotEmpty Set<SpecialAction> onceEraBudgetedSpecials,
+        @Min(1) int sealMaxUsesPerGame,
         Set<CardType> handDealForcedTypes)
         implements SessionGameRulesPort {
 

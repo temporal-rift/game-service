@@ -78,11 +78,18 @@ public interface EraScoringContextRepository {
             UUID targetOutcomeId);
 
     /**
-     * Confirms whether a previously recorded Corrupt correlation's inversion actually took effect (a
-     * Seal can void it), unlocking {@code CORRUPTED_OPPONENT_CARD} for the corrupting player. Not yet
-     * called by any listener: the timeline-service resolution-time fact this needs does not exist yet
-     * (temporal-rift/timeline-service#12 / #16). Ready for that future consumer.
+     * Confirms whether a previously recorded Corrupt correlation's inversion actually took effect (a Seal can void
+     * it), unlocking {@code CORRUPTED_OPPONENT_CARD} for the corrupting player. Driven by the timeline-owned
+     * {@code CorruptInversionConfirmed} fact via {@link #confirmCorruptInversionForTarget}.
      */
     void confirmCorruptInversion(
             UUID gameId, int eraNumber, UUID corruptingPlayerId, UUID cardInstanceId, boolean tookEffect);
+
+    /**
+     * Confirms a Corrupt correlation by its authoritative target coordinates, as carried by the timeline-owned
+     * confirmation. Corrupt is once-per-era budgeted, so at most one correlation per corrupting player per era
+     * exists; matching on target coordinates disambiguates redelivery without requiring the card identity.
+     */
+    void confirmCorruptInversionForTarget(
+            UUID gameId, int eraNumber, UUID corruptingPlayerId, UUID targetEventId, boolean tookEffect);
 }

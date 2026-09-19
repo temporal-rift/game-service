@@ -70,6 +70,7 @@ class PlayerStateRepositoryAdapter implements PlayerStateRepository {
         entity.setPlayerId(state.playerId());
         entity.setFaction(state.faction() == null ? null : state.faction().name());
         entity.setJammed(state.isJammed());
+        entity.setObscured(state.isObscured());
         entity.setHand(
                 state.hand().stream().map(PlayerHandCardValue::fromDomain).toList());
         return entity;
@@ -84,6 +85,7 @@ class PlayerStateRepositoryAdapter implements PlayerStateRepository {
                 entity.getHand().stream()
                         .map(PlayerHandCardValue::toDomain)
                         .collect(ArrayList::new, ArrayList::add, ArrayList::addAll),
-                entity.isJammed());
+                entity.isJammed(),
+                entity.isObscured());
     }
 }

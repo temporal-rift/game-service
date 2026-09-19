@@ -17,8 +17,8 @@ interface PlayerStateJpaRepository extends JpaRepository<PlayerStateJpaEntity, U
 
     @Modifying
     @Query(value = """
-                    INSERT INTO player_state (id, game_id, player_id, jammed)
-                    VALUES (:id, :gameId, :playerId, false)
+                    INSERT INTO player_state (id, game_id, player_id, jammed, obscured)
+                    VALUES (:id, :gameId, :playerId, false, false)
                     ON CONFLICT (game_id, player_id) DO NOTHING
                     """, nativeQuery = true)
     int insertIfAbsent(@Param("id") UUID id, @Param("gameId") UUID gameId, @Param("playerId") UUID playerId);

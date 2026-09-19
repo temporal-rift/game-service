@@ -297,6 +297,44 @@ class TimelineScoringKafkaConsumerTest {
         then(contextRepository).should(never()).recordParadoxCascadeFact(any(), anyInt(), any(), any(), any());
     }
 
+    @Test
+    @DisplayName("CorruptInversionConfirmed — confirms the correlation by target coordinates")
+    void handle_corruptInversionConfirmed_confirmsByTarget() {
+        var corruptingPlayerId = UUID.randomUUID();
+        var targetEventId = UUID.randomUUID();
+        var targetOutcomeId = UUID.randomUUID();
+        var payload =
+                new io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract
+                        .CorruptInversionConfirmedPayload(
+                        GAME_ID, ERA_NUMBER, 1, corruptingPlayerId, targetEventId, targetOutcomeId, true);
+        var message = message("CorruptInversionConfirmed", json(payload));
+        givenClaim(message, true);
+
+        consumer.handle(message);
+
+        then(contextRepository)
+                .should()
+                .confirmCorruptInversionForTarget(GAME_ID, ERA_NUMBER, corruptingPlayerId, targetEventId, true);
+    }
+
+    @Test
+    @DisplayName("duplicate CorruptInversionConfirmed eventId — claimed as duplicate, no confirmation recorded")
+    void handle_duplicateCorruptInversionConfirmed_ignored() {
+        var payload =
+                new io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract
+                        .CorruptInversionConfirmedPayload(
+                        GAME_ID, ERA_NUMBER, 1, UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), false);
+        var message = message("CorruptInversionConfirmed", json(payload));
+        givenClaim(message, false);
+
+        consumer.handle(message);
+
+        then(contextRepository)
+                .should(never())
+                .confirmCorruptInversionForTarget(
+                        any(), anyInt(), any(), any(), org.mockito.ArgumentMatchers.anyBoolean());
+    }
+
     private void givenClaim(Message<Object> message, boolean claimed) {
         var eventId = UUID.fromString((String) message.getHeaders().get("eventId"));
         given(processedEventRepository.tryMarkProcessed(eventId, CONSUMER)).willReturn(claimed);

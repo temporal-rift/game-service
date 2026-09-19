@@ -734,6 +734,36 @@ class EraScoringContextRepositoryAdapterTest {
     }
 
     @Test
+    void confirmCorruptInversionForTarget_delegatesToUpdate() {
+        var gameId = UUID.randomUUID();
+        var corruptingPlayerId = UUID.randomUUID();
+        var targetEventId = UUID.randomUUID();
+        given(corruptCorrelationJpaRepository.confirmInversionForTarget(
+                        gameId, 2, corruptingPlayerId, targetEventId, true))
+                .willReturn(1);
+
+        adapter.confirmCorruptInversionForTarget(gameId, 2, corruptingPlayerId, targetEventId, true);
+
+        then(corruptCorrelationJpaRepository)
+                .should()
+                .confirmInversionForTarget(eq(gameId), eq(2), eq(corruptingPlayerId), eq(targetEventId), eq(true));
+    }
+
+    @Test
+    void confirmCorruptInversionForTarget_noMatchingRow_doesNotThrow() {
+        var gameId = UUID.randomUUID();
+        var corruptingPlayerId = UUID.randomUUID();
+        var targetEventId = UUID.randomUUID();
+        given(corruptCorrelationJpaRepository.confirmInversionForTarget(
+                        gameId, 2, corruptingPlayerId, targetEventId, false))
+                .willReturn(0);
+
+        assertThatCode(() ->
+                        adapter.confirmCorruptInversionForTarget(gameId, 2, corruptingPlayerId, targetEventId, false))
+                .doesNotThrowAnyException();
+    }
+
+    @Test
     void getRequired_assemblesAnnihilationFactsAndFulfillmentDeclarations() {
         var gameId = UUID.randomUUID();
         var playerId = UUID.randomUUID();

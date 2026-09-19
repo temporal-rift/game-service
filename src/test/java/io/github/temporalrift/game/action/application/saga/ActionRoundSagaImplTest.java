@@ -1506,6 +1506,118 @@ class ActionRoundSagaImplTest {
     }
 
     @Nested
+    @DisplayName("Obscure one-round lifecycle")
+    class ObscureLifecycleTests {
+
+        @Test
+        @DisplayName("applies Obscure for the following round after close")
+        void appliesObscureForFollowingRound() {
+            var obscured = new PlayerState(UUID.randomUUID(), GAME_ID, PLAYER_1);
+            var other = new PlayerState(UUID.randomUUID(), GAME_ID, PLAYER_2);
+            var round = new ActionRound(
+                    UUID.randomUUID(),
+                    new ActionRoundConfig(GAME_ID, ERA_NUMBER, ROUND_NUMBER, TIMER_SECONDS),
+                    List.of(PLAYER_1, PLAYER_2));
+            round.submit(new SubmittedAction.SpecialActionSubmission(
+                    PLAYER_1,
+                    Faction.REVISIONISTS,
+                    io.github.temporalrift.game.shared.domain.model.SpecialAction.OBSCURE,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null));
+            given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(
+                            GAME_ID, ERA_NUMBER, ROUND_NUMBER))
+                    .willReturn(Optional.of(round));
+            given(playerStateRepository.findAllByGameId(GAME_ID)).willReturn(List.of(obscured, other));
+            given(stateManager.markSubmitted(GAME_ID, ERA_NUMBER, ROUND_NUMBER, PLAYER_1))
+                    .willReturn(Optional.of(new ActionRoundSagaState(
+                            UUID.randomUUID(),
+                            GAME_ID,
+                            ERA_NUMBER,
+                            ROUND_NUMBER,
+                            ActionRoundSagaStatus.WAITING,
+                            List.of(),
+                            TIMER_EXPIRES_AT)));
+
+            saga.handlePlayerSubmitted(GAME_ID, ERA_NUMBER, ROUND_NUMBER, PLAYER_1);
+
+            assertThat(obscured.isObscured()).isTrue();
+            assertThat(other.isObscured()).isFalse();
+            then(playerStateRepository).should().save(obscured);
+        }
+
+        @Test
+        @DisplayName("clears Obscure when the obscured round closes without replacement")
+        void clearsObscureWhenObscuredRoundClosesWithoutReplacement() {
+            var target = PlayerState.reconstitute(
+                    UUID.randomUUID(), GAME_ID, PLAYER_2, Faction.REVISIONISTS, List.of(), false, true);
+            var round = new ActionRound(
+                    UUID.randomUUID(), new ActionRoundConfig(GAME_ID, ERA_NUMBER, 2, TIMER_SECONDS), List.of(PLAYER_2));
+            given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA_NUMBER, 2))
+                    .willReturn(Optional.of(round));
+            given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumber(GAME_ID, ERA_NUMBER, 1))
+                    .willReturn(Optional.of(new ActionRound(
+                            UUID.randomUUID(),
+                            new ActionRoundConfig(GAME_ID, ERA_NUMBER, 1, TIMER_SECONDS),
+                            List.of(PLAYER_2))));
+            given(futureEventDefinitionPort.findByGameIdAndEraNumber(GAME_ID, ERA_NUMBER))
+                    .willReturn(List.of());
+            given(bandCalculator.computeBands(any(), any(), any())).willReturn(List.of());
+            given(playerStateRepository.findAllByGameId(GAME_ID)).willReturn(List.of(target));
+            given(stateManager.markSubmitted(GAME_ID, ERA_NUMBER, 2, PLAYER_2))
+                    .willReturn(Optional.of(new ActionRoundSagaState(
+                            UUID.randomUUID(),
+                            GAME_ID,
+                            ERA_NUMBER,
+                            2,
+                            ActionRoundSagaStatus.WAITING,
+                            List.of(),
+                            TIMER_EXPIRES_AT)));
+
+            saga.handlePlayerSubmitted(GAME_ID, ERA_NUMBER, 2, PLAYER_2);
+
+            assertThat(target.isObscured()).isFalse();
+            then(playerStateRepository).should().save(target);
+        }
+
+        @Test
+        @DisplayName("clears every Obscure at the final round boundary and never crosses the era")
+        void clearsEveryObscureAtFinalRoundBoundary() {
+            var target = PlayerState.reconstitute(
+                    UUID.randomUUID(), GAME_ID, PLAYER_2, Faction.REVISIONISTS, List.of(), false, true);
+            var round = new ActionRound(
+                    UUID.randomUUID(), new ActionRoundConfig(GAME_ID, ERA_NUMBER, 3, TIMER_SECONDS), List.of(PLAYER_2));
+            round.submit(new SubmittedAction.SpecialActionSubmission(
+                    PLAYER_2,
+                    Faction.REVISIONISTS,
+                    io.github.temporalrift.game.shared.domain.model.SpecialAction.OBSCURE,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null));
+            given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA_NUMBER, 3))
+                    .willReturn(Optional.of(round));
+            given(playerStateRepository.findAllByGameId(GAME_ID)).willReturn(List.of(target));
+            given(stateManager.markSubmitted(GAME_ID, ERA_NUMBER, 3, PLAYER_2))
+                    .willReturn(Optional.of(new ActionRoundSagaState(
+                            UUID.randomUUID(),
+                            GAME_ID,
+                            ERA_NUMBER,
+                            3,
+                            ActionRoundSagaStatus.WAITING,
+                            List.of(),
+                            TIMER_EXPIRES_AT)));
+
+            saga.handlePlayerSubmitted(GAME_ID, ERA_NUMBER, 3, PLAYER_2);
+
+            assertThat(target.isObscured()).isFalse();
+        }
+    }
+
+    @Nested
     @DisplayName("Trace influence resolution")
     class TraceInfluenceResolutionTests {
 

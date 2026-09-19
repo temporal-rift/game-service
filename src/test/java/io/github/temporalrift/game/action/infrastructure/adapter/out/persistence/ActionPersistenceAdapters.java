@@ -15,6 +15,7 @@ import org.springframework.context.annotation.Import;
     ParadoxResolutionPhaseRepositoryAdapter.class,
     PlayerStateRepositoryAdapter.class,
     ReactiveOfferRepositoryAdapter.class,
+    SealGameUsageRepositoryAdapter.class,
     SpecialActionEraUsageRepositoryAdapter.class
 })
 public class ActionPersistenceAdapters {}

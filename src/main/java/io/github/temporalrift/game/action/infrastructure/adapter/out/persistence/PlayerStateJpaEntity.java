@@ -33,6 +33,9 @@ class PlayerStateJpaEntity {
     @Column(name = "jammed", nullable = false)
     private boolean jammed;
 
+    @Column(name = "obscured", nullable = false)
+    private boolean obscured;
+
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "player_state_hand_card", joinColumns = @JoinColumn(name = "player_state_id"))
     @OrderColumn(name = "card_position")
@@ -78,6 +81,14 @@ class PlayerStateJpaEntity {
 
     void setJammed(boolean jammed) {
         this.jammed = jammed;
+    }
+
+    boolean isObscured() {
+        return obscured;
+    }
+
+    void setObscured(boolean obscured) {
+        this.obscured = obscured;
     }
 
     List<PlayerHandCardValue> getHand() {

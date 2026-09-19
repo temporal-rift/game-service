@@ -54,6 +54,7 @@ game:
       - CORRUPT
       - MIMIC
       - REWEAVE
+    seal-max-uses-per-game: 2
     hand-deal-forced-types: []
     victory:
       eraser-annihilations: 4

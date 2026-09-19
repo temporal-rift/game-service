@@ -39,6 +39,7 @@ class SessionRulesPropertiesTest {
                 Map.of(CardGrade.I, 60, CardGrade.II, 30, CardGrade.III, 10),
                 Set.of(Faction.PROPHETS, Faction.WEAVERS),
                 Set.of(SpecialAction.ANNIHILATE, SpecialAction.SEAL, SpecialAction.CORRUPT, SpecialAction.MIMIC),
+                2,
                 Set.of());
     }
 
@@ -94,6 +95,7 @@ class SessionRulesPropertiesTest {
                         Map.of(CardGrade.I, 1),
                         Set.of(Faction.PROPHETS),
                         Set.of(SpecialAction.ANNIHILATE),
+                        2,
                         Set.of()))
                 .withMessage("cards-per-deal must be greater than or equal to cards-per-hand");
     }
@@ -118,6 +120,7 @@ class SessionRulesPropertiesTest {
                         Map.of(CardGrade.I, 1),
                         Set.of(Faction.PROPHETS),
                         Set.of(SpecialAction.ANNIHILATE),
+                        2,
                         Set.of(
                                 CardType.TRACE,
                                 CardType.NULLIFY,
@@ -150,6 +153,7 @@ class SessionRulesPropertiesTest {
                                 Map.of(CardGrade.I, 1),
                                 Set.of(Faction.PROPHETS),
                                 Set.of(SpecialAction.ANNIHILATE),
+                                2,
                                 Set.of())
                         .declarationTimerSeconds(7))
                 .isEqualTo(30);
@@ -182,6 +186,7 @@ class SessionRulesPropertiesTest {
                         Map.of(CardGrade.I, 1),
                         Set.of(Faction.PROPHETS),
                         Set.of(SpecialAction.ANNIHILATE),
+                        2,
                         Set.of()))
                 .withMessage("declaration-timer-seconds must contain only positive values");
     }

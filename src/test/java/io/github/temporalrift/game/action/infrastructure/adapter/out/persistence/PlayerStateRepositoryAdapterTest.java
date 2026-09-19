@@ -45,6 +45,7 @@ class PlayerStateRepositoryAdapterTest {
         var entity = captor.getValue();
         assertThat(entity.getFaction()).isEqualTo(Faction.ACTIVISTS.name());
         assertThat(entity.isJammed()).isTrue();
+        assertThat(entity.isObscured()).isFalse();
         assertThat(entity.getHand())
                 .containsExactly(new PlayerHandCardValue(
                         state.hand().getFirst().cardInstanceId(),
@@ -59,6 +60,7 @@ class PlayerStateRepositoryAdapterTest {
         entity.setPlayerId(UUID.randomUUID());
         entity.setFaction(Faction.WEAVERS.name());
         entity.setJammed(false);
+        entity.setObscured(true);
         entity.setHand(List.of(new PlayerHandCardValue(UUID.randomUUID(), CardType.SCAN.name())));
         given(jpaRepository.findByGameIdAndPlayerId(entity.getGameId(), entity.getPlayerId()))
                 .willReturn(Optional.of(entity));
@@ -67,6 +69,7 @@ class PlayerStateRepositoryAdapterTest {
 
         assertThat(loaded).isPresent();
         assertThat(loaded.get().faction()).isEqualTo(Faction.WEAVERS);
+        assertThat(loaded.get().isObscured()).isTrue();
         assertThat(loaded.get().hand())
                 .containsExactly(
                         new PlayerState.CardInstance(entity.getHand().getFirst().cardInstanceId(), CardType.SCAN));

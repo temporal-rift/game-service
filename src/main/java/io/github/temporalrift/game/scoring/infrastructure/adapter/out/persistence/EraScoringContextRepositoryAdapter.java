@@ -505,4 +505,21 @@ class EraScoringContextRepositoryAdapter implements EraScoringContextRepository 
                     cardInstanceId);
         }
     }
+
+    @Override
+    @Transactional
+    public void confirmCorruptInversionForTarget(
+            UUID gameId, int eraNumber, UUID corruptingPlayerId, UUID targetEventId, boolean tookEffect) {
+        var updated = corruptCorrelationJpaRepository.confirmInversionForTarget(
+                gameId, eraNumber, corruptingPlayerId, targetEventId, tookEffect);
+        if (updated == 0) {
+            log.warn(
+                    "confirmCorruptInversionForTarget found no matching correlation for game {} era {}"
+                            + " corrupting player {} target event {} — confirmation dropped",
+                    gameId,
+                    eraNumber,
+                    corruptingPlayerId,
+                    targetEventId);
+        }
+    }
 }

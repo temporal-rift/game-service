@@ -212,6 +212,7 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
                 publishTracedInfluence(round, gameId, eraNumber, roundNumber);
                 publishInterceptedHands(round, gameId, eraNumber, roundNumber);
                 reconcileJamState(round, gameId, eraNumber, roundNumber);
+                reconcileObscureState(round, gameId, roundNumber);
 
                 if (roundNumber == SIGNATURE_REVEAL_ROUND_NUMBER) {
                     publishBandedProbabilities(gameId, eraNumber, round);
@@ -289,6 +290,37 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
                         DomainEventEnvelope.SCHEMA_VERSION_V1,
                         new PlayerJammed(gameId, eraNumber, playerState.playerId(), roundNumber + 1),
                         clock));
+            }
+        }
+    }
+
+    private void reconcileObscureState(ActionRound round, UUID gameId, int roundNumber) {
+        // Obscure hides the submitter's faction for exactly one following round and never crosses an
+        // era boundary, mirroring Jam's lifecycle. Applied at round close (not at submit) so simultaneous
+        // submissions in the closing round cannot observe a mid-round flag change. No separate lock:
+        // reconcileJamState runs immediately before in the same transaction and already holds all rows.
+        var obscuredPlayerIds = new LinkedHashSet<UUID>();
+        if (roundNumber < FINAL_ROUND_NUMBER) {
+            round.submittedActions().stream()
+                    .filter(SubmittedAction.SpecialActionSubmission.class::isInstance)
+                    .map(SubmittedAction.SpecialActionSubmission.class::cast)
+                    .filter(special -> special.specialAction()
+                            == io.github.temporalrift.game.shared.domain.model.SpecialAction.OBSCURE)
+                    .map(SubmittedAction.SpecialActionSubmission::playerId)
+                    .forEach(obscuredPlayerIds::add);
+        }
+
+        for (var playerState : playerStateRepository.findAllByGameId(gameId)) {
+            var previouslyObscured = playerState.isObscured();
+            var obscuredForNextRound = obscuredPlayerIds.contains(playerState.playerId());
+            if (previouslyObscured) {
+                playerState.clearObscure();
+            }
+            if (obscuredForNextRound) {
+                playerState.applyObscure();
+            }
+            if (previouslyObscured || obscuredForNextRound) {
+                playerStateRepository.save(playerState);
             }
         }
     }

@@ -144,6 +144,38 @@ class PlayerStateTest {
     }
 
     @Test
+    @DisplayName("applyObscure — isObscured becomes true and clears on demand")
+    void applyAndClearObscure() {
+        // given
+        var ps = newState();
+        assertThat(ps.isObscured()).isFalse();
+
+        // when
+        ps.applyObscure();
+
+        // then
+        assertThat(ps.isObscured()).isTrue();
+
+        // when
+        ps.clearObscure();
+
+        // then
+        assertThat(ps.isObscured()).isFalse();
+    }
+
+    @Test
+    @DisplayName("reconstitute — obscured flag round-trips")
+    void reconstituteObscuredFlagRoundTrips() {
+        // when
+        var ps = PlayerState.reconstitute(
+                UUID.randomUUID(), GAME_ID, PLAYER_ID, Faction.REVISIONISTS, List.of(), false, true);
+
+        // then
+        assertThat(ps.isObscured()).isTrue();
+        assertThat(ps.isJammed()).isFalse();
+    }
+
+    @Test
     @DisplayName("hand() returns unmodifiable view")
     void handReturnsUnmodifiableView() {
         // given
