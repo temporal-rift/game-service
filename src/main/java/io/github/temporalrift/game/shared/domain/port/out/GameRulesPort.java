@@ -8,6 +8,8 @@ public interface GameRulesPort {
 
     int actionRoundTimerSeconds(int playerCount);
 
+    int declarationTimerSeconds(int playerCount);
+
     /** Faction specials limited to one accepted use per player per era. */
     Set<SpecialAction> onceEraBudgetedSpecials();
 }

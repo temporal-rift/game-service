@@ -18,18 +18,24 @@ import io.github.temporalrift.game.action.domain.actionround.SubmittedAction;
 import io.github.temporalrift.game.action.domain.activisterastate.ActivistDeclarationMode;
 import io.github.temporalrift.game.action.domain.activisterastate.ActivistEraState;
 import io.github.temporalrift.game.action.domain.activisterastate.ProbabilityInfluenceSignature;
+import io.github.temporalrift.game.action.domain.declarationphase.DeclarationPhase;
+import io.github.temporalrift.game.action.domain.declarationphase.DeclarationPhaseStatus;
 import io.github.temporalrift.game.action.domain.paradoxresolutionphase.ParadoxResolutionPhase;
 import io.github.temporalrift.game.action.domain.paradoxresolutionphase.ParadoxResolutionPhaseStatus;
 import io.github.temporalrift.game.action.domain.playerstate.PlayerState;
 import io.github.temporalrift.game.action.domain.port.out.ActionRoundRepository;
 import io.github.temporalrift.game.action.domain.port.out.ActionRoundSagaRepository;
 import io.github.temporalrift.game.action.domain.port.out.ActivistEraStateRepository;
+import io.github.temporalrift.game.action.domain.port.out.DeclarationPhaseRepository;
 import io.github.temporalrift.game.action.domain.port.out.FutureEventDefinitionPort;
 import io.github.temporalrift.game.action.domain.port.out.FutureEventDefinitionPort.EventDefinition;
 import io.github.temporalrift.game.action.domain.port.out.FutureEventDefinitionPort.OutcomeDefinition;
 import io.github.temporalrift.game.action.domain.port.out.ParadoxResolutionPhaseRepository;
 import io.github.temporalrift.game.action.domain.port.out.PlayerStateRepository;
+import io.github.temporalrift.game.action.domain.port.out.ReactiveOfferRepository;
 import io.github.temporalrift.game.action.domain.port.out.SpecialActionEraUsageRepository;
+import io.github.temporalrift.game.action.domain.reactiveoffer.ReactiveOffer;
+import io.github.temporalrift.game.action.domain.reactiveoffer.ReactiveOfferStatus;
 import io.github.temporalrift.game.action.domain.saga.ActionRoundSagaState;
 import io.github.temporalrift.game.action.domain.saga.ActionRoundSagaStatus;
 import io.github.temporalrift.game.action.domain.specialactionerausage.SpecialActionEraBudgetExhaustedException;
@@ -60,6 +66,12 @@ class ActionPersistenceIT {
     ParadoxResolutionPhaseRepository paradoxResolutionPhaseRepository;
 
     @Autowired
+    DeclarationPhaseRepository declarationPhaseRepository;
+
+    @Autowired
+    ReactiveOfferRepository reactiveOfferRepository;
+
+    @Autowired
     SpecialActionEraUsageRepository specialActionEraUsageRepository;
 
     @Test
@@ -79,6 +91,69 @@ class ActionPersistenceIT {
         assertThat(loaded.get().expiresAt()).isEqualTo(now.plusSeconds(30));
         assertThat(loaded.get().status()).isEqualTo(ParadoxResolutionPhaseStatus.OPEN);
         assertThat(loaded.get().submittedPlayerIds()).containsExactly(playerId);
+    }
+
+    @Test
+    void declarationPhase_createIfAbsent_isIdempotentAndRoundTripsClose() {
+        var gameId = UUID.randomUUID();
+        var now = Instant.parse("2099-01-01T00:00:00Z");
+        var phase = new DeclarationPhase(UUID.randomUUID(), gameId, 2, now.plusSeconds(30));
+
+        assertThat(declarationPhaseRepository.createIfAbsent(phase)).isTrue();
+        assertThat(declarationPhaseRepository.createIfAbsent(
+                        new DeclarationPhase(UUID.randomUUID(), gameId, 2, now.plusSeconds(30))))
+                .isFalse();
+
+        var loaded = declarationPhaseRepository.findByGameIdAndEraNumberWithLock(gameId, 2);
+        assertThat(loaded).isPresent();
+        assertThat(loaded.get().id()).isEqualTo(phase.id());
+        assertThat(loaded.get().status()).isEqualTo(DeclarationPhaseStatus.OPEN);
+        assertThat(loaded.get().closeIfOpen(now.plusSeconds(31))).isTrue();
+        declarationPhaseRepository.save(loaded.get());
+
+        assertThat(declarationPhaseRepository
+                        .findByGameIdAndEraNumber(gameId, 2)
+                        .orElseThrow()
+                        .status())
+                .isEqualTo(DeclarationPhaseStatus.CLOSED);
+    }
+
+    @Test
+    void reactiveOffer_createIfAbsent_dealConsumeAndExpireRoundTrip() {
+        var gameId = UUID.randomUUID();
+        var playerId = UUID.randomUUID();
+        var stabilize = UUID.randomUUID();
+        var detonate = UUID.randomUUID();
+        var offer = new ReactiveOffer(UUID.randomUUID(), gameId, 2, playerId, stabilize, detonate);
+
+        assertThat(reactiveOfferRepository.createIfAbsent(offer)).isTrue();
+        assertThat(reactiveOfferRepository.createIfAbsent(new ReactiveOffer(
+                        UUID.randomUUID(), gameId, 2, playerId, UUID.randomUUID(), UUID.randomUUID())))
+                .isFalse();
+
+        var loaded = reactiveOfferRepository.findByGameIdAndEraNumberAndPlayerIdWithLock(gameId, 2, playerId);
+        assertThat(loaded).isPresent();
+        assertThat(loaded.get().stabilizeCardInstanceId()).isEqualTo(stabilize);
+        assertThat(loaded.get().detonateCardInstanceId()).isEqualTo(detonate);
+        assertThat(loaded.get().status()).isEqualTo(ReactiveOfferStatus.OFFERED);
+
+        loaded.get().consume(detonate);
+        reactiveOfferRepository.save(loaded.get());
+        assertThat(reactiveOfferRepository
+                        .findByGameIdAndEraNumberAndPlayerIdWithLock(gameId, 2, playerId)
+                        .orElseThrow()
+                        .status())
+                .isEqualTo(ReactiveOfferStatus.CONSUMED);
+
+        var expired = new ReactiveOffer(
+                UUID.randomUUID(), gameId, 2, UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID());
+        reactiveOfferRepository.createIfAbsent(expired);
+        reactiveOfferRepository.findAllByGameIdAndEraNumberWithLock(gameId, 2).forEach(candidate -> {
+            candidate.expire();
+            reactiveOfferRepository.save(candidate);
+        });
+        assertThat(reactiveOfferRepository.findAllByGameIdAndEraNumberWithLock(gameId, 2))
+                .allSatisfy(candidate -> assertThat(candidate.status()).isNotEqualTo(ReactiveOfferStatus.OFFERED));
     }
 
     @Test

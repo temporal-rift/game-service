@@ -1,6 +1,7 @@
 package io.github.temporalrift.game.action.application.command;
 
 import java.time.Clock;
+import java.util.UUID;
 
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.stereotype.Service;
@@ -12,11 +13,16 @@ import io.github.temporalrift.game.action.domain.CardNotInHandException;
 import io.github.temporalrift.game.action.domain.event.ParadoxResolutionCardPlayed;
 import io.github.temporalrift.game.action.domain.paradoxresolutionphase.ParadoxResolutionPhase;
 import io.github.temporalrift.game.action.domain.paradoxresolutionphase.ParadoxResolutionPhaseNotOpenException;
+import io.github.temporalrift.game.action.domain.playerstate.PlayerState;
 import io.github.temporalrift.game.action.domain.playerstate.PlayerStateNotFoundException;
 import io.github.temporalrift.game.action.domain.port.out.ActionEventPublisher;
 import io.github.temporalrift.game.action.domain.port.out.ParadoxResolutionPhaseRepository;
 import io.github.temporalrift.game.action.domain.port.out.PlayerStateRepository;
+import io.github.temporalrift.game.action.domain.port.out.ReactiveOfferRepository;
+import io.github.temporalrift.game.action.domain.reactiveoffer.ReactiveOffer;
 import io.github.temporalrift.game.shared.domain.messaging.DomainEventEnvelope;
+import io.github.temporalrift.game.shared.domain.model.CardGrade;
+import io.github.temporalrift.game.shared.domain.model.CardType;
 
 @Service
 @ConditionalOnBean({ParadoxResolutionPhaseRepository.class, PlayerStateRepository.class})
@@ -24,6 +30,7 @@ class PlayParadoxResolutionCardCommandHandler implements PlayParadoxResolutionCa
 
     private final ParadoxResolutionPhaseRepository phaseRepository;
     private final PlayerStateRepository playerStateRepository;
+    private final ReactiveOfferRepository reactiveOfferRepository;
     private final ActionEventPublisher actionEventPublisher;
     private final ActionTargetValidator actionTargetValidator;
     private final Clock clock;
@@ -31,11 +38,13 @@ class PlayParadoxResolutionCardCommandHandler implements PlayParadoxResolutionCa
     PlayParadoxResolutionCardCommandHandler(
             ParadoxResolutionPhaseRepository phaseRepository,
             PlayerStateRepository playerStateRepository,
+            ReactiveOfferRepository reactiveOfferRepository,
             ActionEventPublisher actionEventPublisher,
             ActionTargetValidator actionTargetValidator,
             Clock clock) {
         this.phaseRepository = phaseRepository;
         this.playerStateRepository = playerStateRepository;
+        this.reactiveOfferRepository = reactiveOfferRepository;
         this.actionEventPublisher = actionEventPublisher;
         this.actionTargetValidator = actionTargetValidator;
         this.clock = clock;
@@ -55,24 +64,51 @@ class PlayParadoxResolutionCardCommandHandler implements PlayParadoxResolutionCa
         var playerState = playerStateRepository
                 .findByGameIdAndPlayerIdWithLock(command.gameId(), command.playerId())
                 .orElseThrow(() -> new PlayerStateNotFoundException(command.gameId(), command.playerId()));
-        var submittedCard = playerState.hand().stream()
-                .filter(card -> card.cardInstanceId().equals(command.cardInstanceId()))
-                .findFirst()
-                .orElseThrow(() -> new CardNotInHandException(command.cardInstanceId()));
+        var resolved = resolveCard(command, playerState);
 
-        phase.submit(command.playerId(), submittedCard.cardType(), now);
-        playerState.removeCard(command.cardInstanceId());
+        phase.submit(command.playerId(), resolved.cardType(), now);
+        if (resolved.offer() == null) {
+            playerState.removeCard(command.cardInstanceId());
+        } else {
+            resolved.offer().consume(command.cardInstanceId());
+            reactiveOfferRepository.save(resolved.offer());
+        }
         phaseRepository.save(phase);
         playerStateRepository.save(playerState);
-        publish(command, phase, submittedCard.cardType(), submittedCard.grade());
+        publish(command, phase, resolved.cardType(), resolved.grade());
         return new Result(command.gameId(), command.eraNumber(), command.playerId());
     }
 
-    private void publish(
-            Command command,
-            ParadoxResolutionPhase phase,
-            io.github.temporalrift.game.shared.domain.model.CardType cardType,
-            io.github.temporalrift.game.shared.domain.model.CardGrade grade) {
+    /**
+     * Resolves the submitted card against the final five-card hand first, then the player's
+     * phase-opening reactive offer. Unknown cards fail with card-not-in-hand; the offer row is
+     * adopted lazily so a roster that was unknown at phase opening still yields exactly one offer.
+     */
+    private ResolvedCard resolveCard(Command command, PlayerState playerState) {
+        var handCard = playerState.hand().stream()
+                .filter(card -> card.cardInstanceId().equals(command.cardInstanceId()))
+                .findFirst();
+        if (handCard.isPresent()) {
+            return new ResolvedCard(handCard.get().cardType(), handCard.get().grade(), null);
+        }
+        var offer = reactiveOfferRepository
+                .findByGameIdAndEraNumberAndPlayerIdWithLock(command.gameId(), command.eraNumber(), command.playerId())
+                .orElseGet(() -> adoptOffer(command.gameId(), command.eraNumber(), command.playerId()));
+        var cardType = offer.cardTypeOf(command.cardInstanceId());
+        return new ResolvedCard(cardType, CardGrade.I, offer);
+    }
+
+    private ReactiveOffer adoptOffer(UUID gameId, int eraNumber, UUID playerId) {
+        reactiveOfferRepository.createIfAbsent(new ReactiveOffer(
+                UUID.randomUUID(), gameId, eraNumber, playerId, UUID.randomUUID(), UUID.randomUUID()));
+        return reactiveOfferRepository
+                .findByGameIdAndEraNumberAndPlayerIdWithLock(gameId, eraNumber, playerId)
+                .orElseThrow(() -> new CardNotInHandException(playerId));
+    }
+
+    private record ResolvedCard(CardType cardType, CardGrade grade, ReactiveOffer offer) {}
+
+    private void publish(Command command, ParadoxResolutionPhase phase, CardType cardType, CardGrade grade) {
         var payload = new ParadoxResolutionCardPlayed(
                 command.gameId(),
                 command.eraNumber(),
