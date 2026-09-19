@@ -42,6 +42,8 @@
     <include file="db/changelog/action/010-create-special-action-era-usage.xml"/>
     <include file="db/changelog/action/011-create-declaration-phase.xml"/>
     <include file="db/changelog/action/012-create-reactive-offer.xml"/>
+    <include file="db/changelog/action/013-create-seal-game-usage.xml"/>
+    <include file="db/changelog/action/014-add-player-state-obscured.xml"/>
 
     <!-- Scoring module -->
     <include file="db/changelog/scoring/001-create-scoring-context-player.xml"/>

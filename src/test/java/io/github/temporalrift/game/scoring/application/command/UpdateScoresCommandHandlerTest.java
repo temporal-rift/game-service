@@ -471,5 +471,11 @@ class UpdateScoresCommandHandlerTest {
                 UUID gameId, int eraNumber, UUID corruptingPlayerId, UUID cardInstanceId, boolean tookEffect) {
             throw new UnsupportedOperationException("not used by UpdateScoresCommandHandler");
         }
+
+        @Override
+        public void confirmCorruptInversionForTarget(
+                UUID gameId, int eraNumber, UUID corruptingPlayerId, UUID targetEventId, boolean tookEffect) {
+            throw new UnsupportedOperationException("not used by UpdateScoresCommandHandler");
+        }
     }
 }

@@ -32,6 +32,7 @@ import io.github.temporalrift.game.action.domain.paradoxresolutionphase.Duplicat
 import io.github.temporalrift.game.action.domain.paradoxresolutionphase.ParadoxResolutionPhaseNotFoundException;
 import io.github.temporalrift.game.action.domain.paradoxresolutionphase.ParadoxResolutionPhaseNotOpenException;
 import io.github.temporalrift.game.action.domain.playerstate.PlayerStateNotFoundException;
+import io.github.temporalrift.game.action.domain.specialactionerausage.SealGameBudgetExhaustedException;
 import io.github.temporalrift.game.action.domain.specialactionerausage.SpecialActionEraBudgetExhaustedException;
 import io.github.temporalrift.game.shared.infrastructure.adapter.in.rest.ProblemDetails;
 import io.github.temporalrift.game.shared.infrastructure.adapter.in.rest.RestAdviceOrder;
@@ -157,6 +158,11 @@ class ActionExceptionHandler {
 
     @ExceptionHandler(SpecialActionEraBudgetExhaustedException.class)
     ProblemDetail handleSpecialActionEraBudgetExhausted(SpecialActionEraBudgetExhaustedException ex) {
+        return ProblemDetails.of(HttpStatus.CONFLICT, ex.getMessage(), "409-10");
+    }
+
+    @ExceptionHandler(SealGameBudgetExhaustedException.class)
+    ProblemDetail handleSealGameBudgetExhausted(SealGameBudgetExhaustedException ex) {
         return ProblemDetails.of(HttpStatus.CONFLICT, ex.getMessage(), "409-10");
     }
 }

@@ -35,9 +35,7 @@ interface ScoringContextCorruptCorrelationJpaRepository
             @Param("sourceOutcomeId") UUID sourceOutcomeId,
             @Param("targetOutcomeId") UUID targetOutcomeId);
 
-    // Not yet called by any production listener: no timeline-service event confirming inversion
-    // outcome exists yet (temporal-rift/timeline-service#12 / #16). Ready for that future consumer —
-    // keyed on the same natural key as insertIfAbsent above. Returns the affected row count so the
+    // Keyed on the same natural key as insertIfAbsent above. Returns the affected row count so the
     // caller can detect (and log) a confirmation that arrived before its correlation row was written.
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query(value = """
@@ -51,5 +49,22 @@ interface ScoringContextCorruptCorrelationJpaRepository
             @Param("eraNumber") int eraNumber,
             @Param("corruptingPlayerId") UUID corruptingPlayerId,
             @Param("cardInstanceId") UUID cardInstanceId,
+            @Param("tookEffect") boolean tookEffect);
+
+    // Corrupt is once-per-era budgeted: at most one correlation per corrupting player per era, so the
+    // timeline-owned confirmation (which carries target coordinates, not the card identity) matches
+    // unambiguously on player plus target event.
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query(value = """
+                    UPDATE scoring_context_corrupt_correlation
+                    SET took_effect = :tookEffect
+                    WHERE game_id = :gameId AND era_number = :eraNumber
+                        AND corrupting_player_id = :corruptingPlayerId AND target_event_id = :targetEventId
+                    """, nativeQuery = true)
+    int confirmInversionForTarget(
+            @Param("gameId") UUID gameId,
+            @Param("eraNumber") int eraNumber,
+            @Param("corruptingPlayerId") UUID corruptingPlayerId,
+            @Param("targetEventId") UUID targetEventId,
             @Param("tookEffect") boolean tookEffect);
 }

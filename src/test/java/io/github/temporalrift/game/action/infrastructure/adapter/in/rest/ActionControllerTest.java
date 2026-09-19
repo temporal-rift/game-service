@@ -582,6 +582,26 @@ class ActionControllerTest {
     }
 
     @Test
+    @DisplayName("Given Seal game budget exhausted, then submits a 409 conflict without disclosing private state")
+    void sealGameBudgetExhausted() throws Exception {
+        given(playSpecialActionUseCase.handle(any()))
+                .willThrow(
+                        new io.github.temporalrift.game.action.domain.specialactionerausage
+                                .SealGameBudgetExhaustedException(PLAYER_ID, 2));
+
+        mockMvc.perform(post(
+                                "/api/v1/games/{gameId}/eras/{eraNumber}/rounds/{roundNumber}/actions",
+                                GAME_ID,
+                                ERA,
+                                ROUND)
+                        .with(auth())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(specialJson()))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("409-10"));
+    }
+
+    @Test
     @DisplayName("Given a declaration request, when POSTed, then dispatches it and returns 202")
     void recordActivistDeclaration() throws Exception {
         given(recordActivistDeclarationUseCase.handle(any()))

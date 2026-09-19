@@ -24,7 +24,9 @@ import io.github.temporalrift.game.action.domain.port.out.ActionEventPublisher;
 import io.github.temporalrift.game.action.domain.port.out.ActionRoundRepository;
 import io.github.temporalrift.game.action.domain.port.out.ActivistEraStateRepository;
 import io.github.temporalrift.game.action.domain.port.out.PlayerStateRepository;
+import io.github.temporalrift.game.action.domain.port.out.SealGameUsageRepository;
 import io.github.temporalrift.game.action.domain.port.out.SpecialActionEraUsageRepository;
+import io.github.temporalrift.game.action.domain.specialactionerausage.SealGameUsage;
 import io.github.temporalrift.game.action.domain.specialactionerausage.SpecialActionEraUsage;
 import io.github.temporalrift.game.shared.domain.model.Faction;
 import io.github.temporalrift.game.shared.domain.model.SpecialAction;
@@ -42,6 +44,8 @@ class PlaySpecialActionCommandHandler implements PlaySpecialActionUseCase {
 
     private final SpecialActionEraUsageRepository specialActionEraUsageRepository;
 
+    private final SealGameUsageRepository sealGameUsageRepository;
+
     private final ActionEventPublisher actionEventPublisher;
 
     private final ActionTargetValidator actionTargetValidator;
@@ -57,6 +61,7 @@ class PlaySpecialActionCommandHandler implements PlaySpecialActionUseCase {
             PlayerStateRepository playerStateRepository,
             ActivistEraStateRepository activistEraStateRepository,
             SpecialActionEraUsageRepository specialActionEraUsageRepository,
+            SealGameUsageRepository sealGameUsageRepository,
             ActionEventPublisher actionEventPublisher,
             ActionTargetValidator actionTargetValidator,
             GameParticipantValidator gameParticipantValidator,
@@ -66,6 +71,7 @@ class PlaySpecialActionCommandHandler implements PlaySpecialActionUseCase {
         this.playerStateRepository = playerStateRepository;
         this.activistEraStateRepository = activistEraStateRepository;
         this.specialActionEraUsageRepository = specialActionEraUsageRepository;
+        this.sealGameUsageRepository = sealGameUsageRepository;
         this.actionEventPublisher = actionEventPublisher;
         this.actionTargetValidator = actionTargetValidator;
         this.gameParticipantValidator = gameParticipantValidator;
@@ -109,6 +115,14 @@ class PlaySpecialActionCommandHandler implements PlaySpecialActionUseCase {
                             java.util.UUID.randomUUID(), command.gameId(), command.eraNumber(), command.playerId()));
             usage.claim(command.specialAction());
         }
+        SealGameUsage sealGameUsage = null;
+        if (command.specialAction() == SpecialAction.SEAL) {
+            sealGameUsage = sealGameUsageRepository
+                    .findByGameIdAndPlayerId(command.gameId(), command.playerId())
+                    .orElseGet(
+                            () -> new SealGameUsage(java.util.UUID.randomUUID(), command.gameId(), command.playerId()));
+            sealGameUsage.claim(gameRules.sealMaxUsesPerGame());
+        }
         var action = new SubmittedAction.SpecialActionSubmission(
                 command.playerId(),
                 faction,
@@ -130,6 +144,9 @@ class PlaySpecialActionCommandHandler implements PlaySpecialActionUseCase {
         }
         if (usage != null) {
             specialActionEraUsageRepository.save(usage);
+        }
+        if (sealGameUsage != null) {
+            sealGameUsageRepository.save(sealGameUsage);
         }
         var allSubmitted = round.submit(action);
         actionRoundRepository.save(round);

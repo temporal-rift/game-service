@@ -33,11 +33,14 @@ import io.github.temporalrift.game.action.domain.port.out.FutureEventDefinitionP
 import io.github.temporalrift.game.action.domain.port.out.ParadoxResolutionPhaseRepository;
 import io.github.temporalrift.game.action.domain.port.out.PlayerStateRepository;
 import io.github.temporalrift.game.action.domain.port.out.ReactiveOfferRepository;
+import io.github.temporalrift.game.action.domain.port.out.SealGameUsageRepository;
 import io.github.temporalrift.game.action.domain.port.out.SpecialActionEraUsageRepository;
 import io.github.temporalrift.game.action.domain.reactiveoffer.ReactiveOffer;
 import io.github.temporalrift.game.action.domain.reactiveoffer.ReactiveOfferStatus;
 import io.github.temporalrift.game.action.domain.saga.ActionRoundSagaState;
 import io.github.temporalrift.game.action.domain.saga.ActionRoundSagaStatus;
+import io.github.temporalrift.game.action.domain.specialactionerausage.SealGameBudgetExhaustedException;
+import io.github.temporalrift.game.action.domain.specialactionerausage.SealGameUsage;
 import io.github.temporalrift.game.action.domain.specialactionerausage.SpecialActionEraBudgetExhaustedException;
 import io.github.temporalrift.game.action.domain.specialactionerausage.SpecialActionEraUsage;
 import io.github.temporalrift.game.shared.domain.model.CardType;
@@ -73,6 +76,9 @@ class ActionPersistenceIT {
 
     @Autowired
     SpecialActionEraUsageRepository specialActionEraUsageRepository;
+
+    @Autowired
+    SealGameUsageRepository sealGameUsageRepository;
 
     @Test
     void paradoxResolutionPhase_saveAndLockedLookup_roundTripsState() {
@@ -420,5 +426,75 @@ class ActionPersistenceIT {
         assertThat(specialActionEraUsageRepository.findByGameIdAndEraNumberAndPlayerId(
                         usage.gameId(), 1, UUID.randomUUID()))
                 .isEmpty();
+    }
+
+    @Test
+    void sealGameUsage_save_and_find_roundTripsAcceptedUses() {
+        var gameId = UUID.randomUUID();
+        var playerId = UUID.randomUUID();
+        var usage = new SealGameUsage(UUID.randomUUID(), gameId, playerId);
+        usage.claim(2);
+
+        sealGameUsageRepository.save(usage);
+
+        var loaded = sealGameUsageRepository.findByGameIdAndPlayerId(gameId, playerId);
+
+        assertThat(loaded).hasValueSatisfying(saved -> {
+            assertThat(saved.gameId()).isEqualTo(gameId);
+            assertThat(saved.playerId()).isEqualTo(playerId);
+            assertThat(saved.acceptedUses()).isEqualTo(1);
+            assertThat(saved.remainingUses(2)).isEqualTo(1);
+        });
+    }
+
+    @Test
+    void sealGameUsage_reloadedInstance_stillEnforcesTheGameBudget() {
+        var gameId = UUID.randomUUID();
+        var playerId = UUID.randomUUID();
+        var usage = new SealGameUsage(UUID.randomUUID(), gameId, playerId);
+        usage.claim(2);
+        usage.claim(2);
+        sealGameUsageRepository.save(usage);
+
+        var reloaded = sealGameUsageRepository.findByGameIdAndPlayerId(gameId, playerId);
+
+        assertThat(reloaded).isPresent();
+        assertThatThrownBy(() -> reloaded.orElseThrow().claim(2)).isInstanceOf(SealGameBudgetExhaustedException.class);
+    }
+
+    @Test
+    void rewriteSubmission_save_and_reload_retainsPrivateTargets() {
+        var gameId = UUID.randomUUID();
+        var player1 = UUID.randomUUID();
+        var player2 = UUID.randomUUID();
+        var targetEventId = UUID.randomUUID();
+        var targetOutcomeId = UUID.randomUUID();
+        var round = new ActionRound(
+                UUID.randomUUID(),
+                new ActionRoundConfig(gameId, 1, 1, 60),
+                io.github.temporalrift.game.action.domain.actionround.ActionRoundParticipants.pending(
+                        List.of(player1, player2)));
+        round.submit(new SubmittedAction.SpecialActionSubmission(
+                player1,
+                Faction.REVISIONISTS,
+                SpecialAction.REWRITE,
+                null,
+                null,
+                targetEventId,
+                targetOutcomeId,
+                null));
+        actionRoundRepository.save(round);
+
+        var loaded = actionRoundRepository.findByGameIdAndEraNumberAndRoundNumber(gameId, 1, 1);
+
+        assertThat(loaded).isPresent();
+        assertThat(loaded.orElseThrow().submittedActions())
+                .anySatisfy(action -> assertThat(action)
+                        .isInstanceOfSatisfying(SubmittedAction.SpecialActionSubmission.class, special -> {
+                            assertThat(special.playerId()).isEqualTo(player1);
+                            assertThat(special.specialAction()).isEqualTo(SpecialAction.REWRITE);
+                            assertThat(special.targetEventId()).isEqualTo(targetEventId);
+                            assertThat(special.targetOutcomeId()).isEqualTo(targetOutcomeId);
+                        }));
     }
 }

@@ -12,4 +12,7 @@ public interface GameRulesPort {
 
     /** Faction specials limited to one accepted use per player per era. */
     Set<SpecialAction> onceEraBudgetedSpecials();
+
+    /** Maximum accepted Seal uses per player per game. */
+    int sealMaxUsesPerGame();
 }

@@ -6,11 +6,13 @@ import org.mapstruct.Mapper;
 
 import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.ChainBrokenPayload;
 import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.ChainCompletedPayload;
+import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.CorruptInversionConfirmedPayload;
 import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.EraResolutionCompletedPayload;
 import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.OutcomeAppliedPayload;
 import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.ParadoxCascadedPayload;
 import io.github.temporalrift.game.scoring.domain.event.ChainBroken;
 import io.github.temporalrift.game.scoring.domain.event.ChainCompleted;
+import io.github.temporalrift.game.scoring.domain.event.CorruptInversionConfirmed;
 import io.github.temporalrift.game.scoring.domain.event.EraResolutionCompleted;
 import io.github.temporalrift.game.scoring.domain.event.OutcomeApplied;
 import io.github.temporalrift.game.scoring.domain.event.ParadoxCascaded;
@@ -26,6 +28,8 @@ interface TimelineScoringWireMapper {
     ChainBroken fromWire(ChainBrokenPayload payload);
 
     EraResolutionCompleted fromWire(EraResolutionCompletedPayload payload);
+
+    CorruptInversionConfirmed fromWire(CorruptInversionConfirmedPayload payload);
 
     /**
      * {@code detonatedByPlayerIds} is optional in the contract, defaulting to an empty list. Normalizing it here

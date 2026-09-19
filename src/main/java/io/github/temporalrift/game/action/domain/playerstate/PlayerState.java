@@ -22,6 +22,7 @@ public class PlayerState extends AggregateRoot {
     private final List<CardInstance> hand;
     private Faction faction;
     private boolean jammed;
+    private boolean obscured;
 
     public PlayerState(UUID id, UUID gameId, UUID playerId) {
         this.id = Objects.requireNonNull(id, "id must not be null");
@@ -30,20 +31,40 @@ public class PlayerState extends AggregateRoot {
         this.faction = null;
         this.hand = new ArrayList<>();
         this.jammed = false;
+        this.obscured = false;
     }
 
-    private PlayerState(UUID id, UUID gameId, UUID playerId, Faction faction, List<CardInstance> hand, boolean jammed) {
+    private PlayerState(
+            UUID id,
+            UUID gameId,
+            UUID playerId,
+            Faction faction,
+            List<CardInstance> hand,
+            boolean jammed,
+            boolean obscured) {
         this.id = id;
         this.gameId = gameId;
         this.playerId = playerId;
         this.faction = faction;
         this.hand = new ArrayList<>(hand);
         this.jammed = jammed;
+        this.obscured = obscured;
     }
 
     public static PlayerState reconstitute(
             UUID id, UUID gameId, UUID playerId, Faction faction, List<CardInstance> hand, boolean jammed) {
-        return new PlayerState(id, gameId, playerId, faction, hand, jammed);
+        return new PlayerState(id, gameId, playerId, faction, hand, jammed, false);
+    }
+
+    public static PlayerState reconstitute(
+            UUID id,
+            UUID gameId,
+            UUID playerId,
+            Faction faction,
+            List<CardInstance> hand,
+            boolean jammed,
+            boolean obscured) {
+        return new PlayerState(id, gameId, playerId, faction, hand, jammed, obscured);
     }
 
     public void assignFaction(Faction faction) {
@@ -75,6 +96,14 @@ public class PlayerState extends AggregateRoot {
         jammed = false;
     }
 
+    public void applyObscure() {
+        obscured = true;
+    }
+
+    public void clearObscure() {
+        obscured = false;
+    }
+
     public UUID id() {
         return id;
     }
@@ -97,6 +126,10 @@ public class PlayerState extends AggregateRoot {
 
     public boolean isJammed() {
         return jammed;
+    }
+
+    public boolean isObscured() {
+        return obscured;
     }
 
     public record CardInstance(UUID cardInstanceId, CardType cardType, CardGrade grade) {
