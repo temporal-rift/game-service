@@ -161,4 +161,28 @@ class SessionRulesPropertiesTest {
                 .isThrownBy(() -> properties(Map.of(3, 0)))
                 .withMessage("hand-selection-timer-seconds must contain only positive values");
     }
+
+    @Test
+    void nonPositiveDeclarationTimer_isRejected() {
+        assertThatIllegalArgumentException()
+                .isThrownBy(() -> new SessionRulesProperties(
+                        2,
+                        8,
+                        4,
+                        3,
+                        5,
+                        7,
+                        7,
+                        100,
+                        30,
+                        Map.of(3, 60),
+                        Map.of(3, 60),
+                        Map.of(3, 0),
+                        Map.of(CardCategory.PARADOX, 1),
+                        Map.of(CardGrade.I, 1),
+                        Set.of(Faction.PROPHETS),
+                        Set.of(SpecialAction.ANNIHILATE),
+                        Set.of()))
+                .withMessage("declaration-timer-seconds must contain only positive values");
+    }
 }

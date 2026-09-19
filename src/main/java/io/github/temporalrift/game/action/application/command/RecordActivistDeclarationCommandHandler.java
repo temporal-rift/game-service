@@ -68,7 +68,7 @@ class RecordActivistDeclarationCommandHandler implements RecordActivistDeclarati
                 .findByGameIdAndPlayerIdWithLock(command.gameId(), command.playerId())
                 .orElseThrow(() -> new PlayerStateNotFoundException(command.gameId(), command.playerId()));
         declarationPhaseRepository
-                .findByGameIdAndEraNumber(command.gameId(), command.eraNumber())
+                .findByGameIdAndEraNumberWithLock(command.gameId(), command.eraNumber())
                 .orElseThrow(() -> new DeclarationWindowClosedException(command.gameId(), command.eraNumber()))
                 .assertOpen(clock.instant());
         if (actionRoundRepository
