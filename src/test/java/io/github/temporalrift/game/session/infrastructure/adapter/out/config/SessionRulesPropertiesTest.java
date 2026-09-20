@@ -8,6 +8,9 @@ import java.util.Set;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.boot.context.properties.bind.Binder;
+import org.springframework.boot.context.properties.source.ConfigurationPropertySources;
+import org.springframework.mock.env.MockPropertySource;
 
 import io.github.temporalrift.game.shared.domain.model.CardCategory;
 import io.github.temporalrift.game.shared.domain.model.CardGrade;
@@ -164,6 +167,37 @@ class SessionRulesPropertiesTest {
         assertThatIllegalArgumentException()
                 .isThrownBy(() -> properties(Map.of(3, 0)))
                 .withMessage("hand-selection-timer-seconds must contain only positive values");
+    }
+
+    @Test
+    @DisplayName("binding without seal-max-uses-per-game — defaults to two uses")
+    void bindingWithoutSealMaxUsesPerGame_defaultsToTwo() {
+        var source = new MockPropertySource()
+                .withProperty("game.rules.min-players", "3")
+                .withProperty("game.rules.max-players", "5")
+                .withProperty("game.rules.max-eras", "5")
+                .withProperty("game.rules.max-cascaded-paradoxes", "3")
+                .withProperty("game.rules.events-per-era", "3")
+                .withProperty("game.rules.cards-per-hand", "5")
+                .withProperty("game.rules.cards-per-deal", "7")
+                .withProperty("game.rules.win-score-threshold", "20")
+                .withProperty("game.rules.reconnect-grace-period-seconds", "30")
+                .withProperty("game.rules.action-round-timer-seconds.3", "60")
+                .withProperty("game.rules.hand-selection-timer-seconds.3", "60")
+                .withProperty("game.rules.card-category-weights.PROBABILITY_SHIFTER", "35")
+                .withProperty("game.rules.card-category-weights.INFORMATION", "25")
+                .withProperty("game.rules.card-category-weights.DISRUPTION", "25")
+                .withProperty("game.rules.card-category-weights.PARADOX", "15")
+                .withProperty("game.rules.card-grade-weights.I", "60")
+                .withProperty("game.rules.card-grade-weights.II", "30")
+                .withProperty("game.rules.card-grade-weights.III", "10")
+                .withProperty("game.rules.stabilization-winner-factions[0]", "PROPHETS")
+                .withProperty("game.rules.once-era-budgeted-specials[0]", "SEAL");
+        var binder = new Binder(ConfigurationPropertySources.from(source));
+
+        var bound = binder.bind("game.rules", SessionRulesProperties.class).orElseThrow(IllegalStateException::new);
+
+        assertThat(bound.sealMaxUsesPerGame()).isEqualTo(2);
     }
 
     @Test

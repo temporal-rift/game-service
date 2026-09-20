@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
@@ -76,6 +77,9 @@ class EraScoringContextRepositoryAdapterTest {
 
     @Mock
     ScoringContextCorruptCorrelationJpaRepository corruptCorrelationJpaRepository;
+
+    @Mock
+    ScoringContextCorruptPendingConfirmationJpaRepository corruptPendingConfirmationJpaRepository;
 
     @Mock
     ScoringContextParadoxCascadeFactJpaRepository paradoxCascadeFactJpaRepository;
@@ -750,7 +754,7 @@ class EraScoringContextRepositoryAdapterTest {
     }
 
     @Test
-    void confirmCorruptInversionForTarget_noMatchingRow_doesNotThrow() {
+    void confirmCorruptInversionForTarget_noMatchingRow_storesPendingConfirmation() {
         var gameId = UUID.randomUUID();
         var corruptingPlayerId = UUID.randomUUID();
         var targetEventId = UUID.randomUUID();
@@ -761,6 +765,84 @@ class EraScoringContextRepositoryAdapterTest {
         assertThatCode(() ->
                         adapter.confirmCorruptInversionForTarget(gameId, 2, corruptingPlayerId, targetEventId, false))
                 .doesNotThrowAnyException();
+
+        then(corruptPendingConfirmationJpaRepository)
+                .should()
+                .insertIfAbsent(
+                        any(UUID.class), eq(gameId), eq(2), eq(corruptingPlayerId), eq(targetEventId), eq(false));
+    }
+
+    @Test
+    void confirmCorruptInversionForTarget_matchingRow_doesNotStorePendingConfirmation() {
+        var gameId = UUID.randomUUID();
+        var corruptingPlayerId = UUID.randomUUID();
+        var targetEventId = UUID.randomUUID();
+        given(corruptCorrelationJpaRepository.confirmInversionForTarget(
+                        gameId, 2, corruptingPlayerId, targetEventId, true))
+                .willReturn(1);
+
+        adapter.confirmCorruptInversionForTarget(gameId, 2, corruptingPlayerId, targetEventId, true);
+
+        then(corruptPendingConfirmationJpaRepository).shouldHaveNoInteractions();
+    }
+
+    @Test
+    void recordCorruptCorrelation_withPendingConfirmation_mergesAndConsumesIt() {
+        var gameId = UUID.randomUUID();
+        var corruptingPlayerId = UUID.randomUUID();
+        var targetEventId = UUID.randomUUID();
+        var pending = new ScoringContextCorruptPendingConfirmationJpaEntity();
+        pending.setId(UUID.randomUUID());
+        pending.setGameId(gameId);
+        pending.setEraNumber(2);
+        pending.setCorruptingPlayerId(corruptingPlayerId);
+        pending.setTargetEventId(targetEventId);
+        pending.setTookEffect(true);
+        given(corruptPendingConfirmationJpaRepository.findByGameIdAndEraNumberAndCorruptingPlayerIdAndTargetEventId(
+                        gameId, 2, corruptingPlayerId, targetEventId))
+                .willReturn(Optional.of(pending));
+
+        adapter.recordCorruptCorrelation(
+                gameId,
+                2,
+                corruptingPlayerId,
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                targetEventId,
+                null,
+                UUID.randomUUID());
+
+        then(corruptCorrelationJpaRepository)
+                .should()
+                .confirmInversionForTarget(eq(gameId), eq(2), eq(corruptingPlayerId), eq(targetEventId), eq(true));
+        then(corruptPendingConfirmationJpaRepository)
+                .should()
+                .deletePending(eq(gameId), eq(2), eq(corruptingPlayerId), eq(targetEventId));
+    }
+
+    @Test
+    void recordCorruptCorrelation_withoutPendingConfirmation_leavesPendingStoreAlone() {
+        var gameId = UUID.randomUUID();
+        var corruptingPlayerId = UUID.randomUUID();
+        var targetEventId = UUID.randomUUID();
+        given(corruptPendingConfirmationJpaRepository.findByGameIdAndEraNumberAndCorruptingPlayerIdAndTargetEventId(
+                        gameId, 2, corruptingPlayerId, targetEventId))
+                .willReturn(Optional.empty());
+
+        adapter.recordCorruptCorrelation(
+                gameId,
+                2,
+                corruptingPlayerId,
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                targetEventId,
+                null,
+                UUID.randomUUID());
+
+        then(corruptCorrelationJpaRepository)
+                .should(never())
+                .confirmInversionForTarget(any(), anyInt(), any(), any(), anyBoolean());
+        then(corruptPendingConfirmationJpaRepository).should(never()).deletePending(any(), anyInt(), any(), any());
     }
 
     @Test

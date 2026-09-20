@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+            https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.29.xsd">
+
+    <!--
+        Holds a Corrupt inversion confirmation that arrived before its correlation row was recorded:
+        timeline-service publishes per-round confirmations while game-service bundles correlations at
+        the final round close, so rounds 1-2 confirmations routinely arrive first. Merged into the
+        correlation on insert; redeliveries are idempotent on the natural key.
+    -->
+    <changeSet id="scoring-018-create-scoring-context-corrupt-pending-confirmation" author="game-service">
+        <createTable tableName="scoring_context_corrupt_pending_confirmation">
+            <column name="id" type="UUID"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="game_id" type="UUID"><constraints nullable="false"/></column>
+            <column name="era_number" type="INT"><constraints nullable="false"/></column>
+            <column name="corrupting_player_id" type="UUID"><constraints nullable="false"/></column>
+            <column name="target_event_id" type="UUID"><constraints nullable="false"/></column>
+            <column name="took_effect" type="BOOLEAN"><constraints nullable="false"/></column>
+        </createTable>
+        <addUniqueConstraint
+                tableName="scoring_context_corrupt_pending_confirmation"
+                columnNames="game_id,era_number,corrupting_player_id,target_event_id"
+                constraintName="uq_scoring_corrupt_pending_game_era_player_event"/>
+    </changeSet>
+</databaseChangeLog>
