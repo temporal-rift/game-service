@@ -39,8 +39,6 @@ import io.github.temporalrift.game.action.domain.reactiveoffer.ReactiveOffer;
 import io.github.temporalrift.game.action.domain.reactiveoffer.ReactiveOfferStatus;
 import io.github.temporalrift.game.action.domain.saga.ActionRoundSagaState;
 import io.github.temporalrift.game.action.domain.saga.ActionRoundSagaStatus;
-import io.github.temporalrift.game.action.domain.specialactionerausage.SealGameBudgetExhaustedException;
-import io.github.temporalrift.game.action.domain.specialactionerausage.SealGameUsage;
 import io.github.temporalrift.game.action.domain.specialactionerausage.SpecialActionEraBudgetExhaustedException;
 import io.github.temporalrift.game.action.domain.specialactionerausage.SpecialActionEraUsage;
 import io.github.temporalrift.game.shared.domain.model.CardType;
@@ -429,38 +427,33 @@ class ActionPersistenceIT {
     }
 
     @Test
-    void sealGameUsage_save_and_find_roundTripsAcceptedUses() {
+    void sealGameUsage_countsSealClaimsAcrossEras() {
         var gameId = UUID.randomUUID();
         var playerId = UUID.randomUUID();
-        var usage = new SealGameUsage(UUID.randomUUID(), gameId, playerId);
-        usage.claim(2);
+        for (int era = 1; era <= 2; era++) {
+            var usage = new SpecialActionEraUsage(UUID.randomUUID(), gameId, era, playerId);
+            usage.claim(SpecialAction.SEAL);
+            specialActionEraUsageRepository.save(usage);
+        }
 
-        sealGameUsageRepository.save(usage);
-
-        var loaded = sealGameUsageRepository.findByGameIdAndPlayerId(gameId, playerId);
-
-        assertThat(loaded).hasValueSatisfying(saved -> {
-            assertThat(saved.gameId()).isEqualTo(gameId);
-            assertThat(saved.playerId()).isEqualTo(playerId);
-            assertThat(saved.acceptedUses()).isEqualTo(1);
-            assertThat(saved.remainingUses(2)).isEqualTo(1);
-        });
+        assertThat(sealGameUsageRepository.countAcceptedSeals(gameId, playerId)).isEqualTo(2);
     }
 
     @Test
-    void sealGameUsage_reloadedInstance_stillEnforcesTheGameBudget() {
+    void sealGameUsage_ignoresOtherPlayersGamesAndSpecials() {
         var gameId = UUID.randomUUID();
         var playerId = UUID.randomUUID();
-        var usage = new SealGameUsage(UUID.randomUUID(), gameId, playerId);
-        usage.claim(2);
-        usage.claim(2);
-        sealGameUsageRepository.save(usage);
+        var ownEraUsage = new SpecialActionEraUsage(UUID.randomUUID(), gameId, 1, playerId);
+        ownEraUsage.claim(SpecialAction.ANNIHILATE);
+        specialActionEraUsageRepository.save(ownEraUsage);
+        var otherPlayerUsage = new SpecialActionEraUsage(UUID.randomUUID(), gameId, 1, UUID.randomUUID());
+        otherPlayerUsage.claim(SpecialAction.SEAL);
+        specialActionEraUsageRepository.save(otherPlayerUsage);
+        var otherGameUsage = new SpecialActionEraUsage(UUID.randomUUID(), UUID.randomUUID(), 1, playerId);
+        otherGameUsage.claim(SpecialAction.SEAL);
+        specialActionEraUsageRepository.save(otherGameUsage);
 
-        var reloaded = sealGameUsageRepository.findByGameIdAndPlayerId(gameId, playerId);
-
-        assertThat(reloaded).isPresent();
-        var reloadedUsage = reloaded.orElseThrow();
-        assertThatThrownBy(() -> reloadedUsage.claim(2)).isInstanceOf(SealGameBudgetExhaustedException.class);
+        assertThat(sealGameUsageRepository.countAcceptedSeals(gameId, playerId)).isZero();
     }
 
     @Test
