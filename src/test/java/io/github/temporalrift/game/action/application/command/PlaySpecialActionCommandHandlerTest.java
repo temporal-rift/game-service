@@ -168,8 +168,7 @@ class PlaySpecialActionCommandHandlerTest {
         given(playerState.isJammed()).willReturn(false);
         given(gameRules.onceEraBudgetedSpecials()).willReturn(Set.of());
         given(gameRules.sealMaxUsesPerGame()).willReturn(2);
-        given(sealGameUsageRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID))
-                .willReturn(Optional.empty());
+        given(sealGameUsageRepository.countAcceptedSeals(GAME_ID, PLAYER_ID)).willReturn(0);
         given(round.submit(any())).willReturn(true);
         given(round.id()).willReturn(UUID.randomUUID());
         given(round.gameId()).willReturn(GAME_ID);
@@ -490,8 +489,7 @@ class PlaySpecialActionCommandHandlerTest {
         given(playerState.isJammed()).willReturn(false);
         given(gameRules.onceEraBudgetedSpecials()).willReturn(Set.of());
         given(gameRules.sealMaxUsesPerGame()).willReturn(2);
-        given(sealGameUsageRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID))
-                .willReturn(Optional.empty());
+        given(sealGameUsageRepository.countAcceptedSeals(GAME_ID, PLAYER_ID)).willReturn(0);
         willThrow(new ActionRoundClosedException()).given(round).submit(any());
         var command = new PlaySpecialActionUseCase.Command(
                 GAME_ID,
@@ -520,8 +518,7 @@ class PlaySpecialActionCommandHandlerTest {
         given(playerState.isJammed()).willReturn(false);
         given(gameRules.onceEraBudgetedSpecials()).willReturn(Set.of());
         given(gameRules.sealMaxUsesPerGame()).willReturn(2);
-        given(sealGameUsageRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID))
-                .willReturn(Optional.empty());
+        given(sealGameUsageRepository.countAcceptedSeals(GAME_ID, PLAYER_ID)).willReturn(0);
         willThrow(new DuplicateSubmissionException(PLAYER_ID)).given(round).submit(any());
         var command = new PlaySpecialActionUseCase.Command(
                 GAME_ID,
@@ -867,8 +864,7 @@ class PlaySpecialActionCommandHandlerTest {
         given(specialActionEraUsageRepository.findByGameIdAndEraNumberAndPlayerId(GAME_ID, ERA, PLAYER_ID))
                 .willReturn(Optional.empty());
         given(gameRules.sealMaxUsesPerGame()).willReturn(2);
-        given(sealGameUsageRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID))
-                .willReturn(Optional.empty());
+        given(sealGameUsageRepository.countAcceptedSeals(GAME_ID, PLAYER_ID)).willReturn(0);
         given(round.submit(any())).willReturn(false);
         given(round.id()).willReturn(UUID.randomUUID());
         given(round.gameId()).willReturn(GAME_ID);
@@ -881,10 +877,6 @@ class PlaySpecialActionCommandHandlerTest {
         var eraCaptor = org.mockito.ArgumentCaptor.forClass(SpecialActionEraUsage.class);
         then(specialActionEraUsageRepository).should().save(eraCaptor.capture());
         assertThat(eraCaptor.getValue().claimedSpecials()).containsExactly(SpecialAction.SEAL);
-        var gameCaptor = org.mockito.ArgumentCaptor.forClass(
-                io.github.temporalrift.game.action.domain.specialactionerausage.SealGameUsage.class);
-        then(sealGameUsageRepository).should().save(gameCaptor.capture());
-        assertThat(gameCaptor.getValue().acceptedUses()).isEqualTo(1);
         then(round).should().submit(any());
     }
 
@@ -912,10 +904,7 @@ class PlaySpecialActionCommandHandlerTest {
         given(specialActionEraUsageRepository.findByGameIdAndEraNumberAndPlayerId(GAME_ID, ERA, PLAYER_ID))
                 .willReturn(Optional.empty());
         given(gameRules.sealMaxUsesPerGame()).willReturn(2);
-        var exhausted = io.github.temporalrift.game.action.domain.specialactionerausage.SealGameUsage.reconstitute(
-                UUID.randomUUID(), GAME_ID, PLAYER_ID, 2);
-        given(sealGameUsageRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID))
-                .willReturn(Optional.of(exhausted));
+        given(sealGameUsageRepository.countAcceptedSeals(GAME_ID, PLAYER_ID)).willReturn(2);
 
         // when / then
         assertThatExceptionOfType(
@@ -923,7 +912,6 @@ class PlaySpecialActionCommandHandlerTest {
                                 .class)
                 .isThrownBy(() -> handler.handle(command));
         then(specialActionEraUsageRepository).should(never()).save(any());
-        then(sealGameUsageRepository).should(never()).save(any());
         then(round).should(never()).submit(any());
     }
 
@@ -942,15 +930,13 @@ class PlaySpecialActionCommandHandlerTest {
         given(specialActionEraUsageRepository.findByGameIdAndEraNumberAndPlayerId(GAME_ID, ERA, PLAYER_ID))
                 .willReturn(Optional.empty());
         given(gameRules.sealMaxUsesPerGame()).willReturn(2);
-        given(sealGameUsageRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID))
-                .willReturn(Optional.empty());
+        given(sealGameUsageRepository.countAcceptedSeals(GAME_ID, PLAYER_ID)).willReturn(0);
 
         // when / then
         assertThatExceptionOfType(
                         io.github.temporalrift.game.action.domain.actionround.InvalidActionTargetException.class)
                 .isThrownBy(() -> handler.handle(command));
         then(specialActionEraUsageRepository).should(never()).save(any());
-        then(sealGameUsageRepository).should(never()).save(any());
         then(round).should(never()).submit(any());
     }
 

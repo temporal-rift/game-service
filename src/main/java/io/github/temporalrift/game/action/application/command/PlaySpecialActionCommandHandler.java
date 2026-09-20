@@ -115,13 +115,13 @@ class PlaySpecialActionCommandHandler implements PlaySpecialActionUseCase {
                             java.util.UUID.randomUUID(), command.gameId(), command.eraNumber(), command.playerId()));
             usage.claim(command.specialAction());
         }
-        SealGameUsage sealGameUsage = null;
         if (command.specialAction() == SpecialAction.SEAL) {
-            sealGameUsage = sealGameUsageRepository
-                    .findByGameIdAndPlayerId(command.gameId(), command.playerId())
-                    .orElseGet(
-                            () -> new SealGameUsage(java.util.UUID.randomUUID(), command.gameId(), command.playerId()));
-            sealGameUsage.claim(gameRules.sealMaxUsesPerGame());
+            // Game-wide Seal accounting is derived from the durable era-usage rows rather than a second
+            // write: eras run sequentially and the era claim below persists the new use on success, so the
+            // observed count stays exact and rejected submissions spend nothing anywhere.
+            var acceptedSeals = sealGameUsageRepository.countAcceptedSeals(command.gameId(), command.playerId());
+            SealGameUsage.reconstitute(java.util.UUID.randomUUID(), command.gameId(), command.playerId(), acceptedSeals)
+                    .claim(gameRules.sealMaxUsesPerGame());
         }
         var action = new SubmittedAction.SpecialActionSubmission(
                 command.playerId(),
@@ -144,9 +144,6 @@ class PlaySpecialActionCommandHandler implements PlaySpecialActionUseCase {
         }
         if (usage != null) {
             specialActionEraUsageRepository.save(usage);
-        }
-        if (sealGameUsage != null) {
-            sealGameUsageRepository.save(sealGameUsage);
         }
         var allSubmitted = round.submit(action);
         actionRoundRepository.save(round);
