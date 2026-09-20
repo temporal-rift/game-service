@@ -5,7 +5,6 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
-import jakarta.persistence.EntityManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -52,7 +51,6 @@ class EraScoringContextRepositoryAdapter implements EraScoringContextRepository 
     private final ScoringContextCorruptCorrelationJpaRepository corruptCorrelationJpaRepository;
     private final ScoringContextCorruptPendingConfirmationJpaRepository corruptPendingConfirmationJpaRepository;
     private final ScoringContextParadoxCascadeFactJpaRepository paradoxCascadeFactJpaRepository;
-    private final EntityManager entityManager;
     private final ObjectMapper objectMapper;
 
     EraScoringContextRepositoryAdapter(
@@ -71,7 +69,6 @@ class EraScoringContextRepositoryAdapter implements EraScoringContextRepository 
             ScoringContextCorruptCorrelationJpaRepository corruptCorrelationJpaRepository,
             ScoringContextCorruptPendingConfirmationJpaRepository corruptPendingConfirmationJpaRepository,
             ScoringContextParadoxCascadeFactJpaRepository paradoxCascadeFactJpaRepository,
-            EntityManager entityManager,
             ObjectMapper objectMapper) {
         this.playerJpaRepository = playerJpaRepository;
         this.eraOutcomeExpectationJpaRepository = eraOutcomeExpectationJpaRepository;
@@ -88,7 +85,6 @@ class EraScoringContextRepositoryAdapter implements EraScoringContextRepository 
         this.corruptCorrelationJpaRepository = corruptCorrelationJpaRepository;
         this.corruptPendingConfirmationJpaRepository = corruptPendingConfirmationJpaRepository;
         this.paradoxCascadeFactJpaRepository = paradoxCascadeFactJpaRepository;
-        this.entityManager = entityManager;
         this.objectMapper = objectMapper;
     }
 
@@ -470,20 +466,14 @@ class EraScoringContextRepositoryAdapter implements EraScoringContextRepository 
     }
 
     /**
-     * Serializes the confirm/record pair for one Corrupt natural key. The two methods run in separate
-     * transactions, so pending-first ordering alone still strands a row when they overlap under read
-     * committed: each side cannot see the other's uncommitted row. A transaction-scoped advisory lock
-     * on the shared key closes that window; it releases automatically at commit or rollback, a single
-     * key per call cannot deadlock, and redeliveries simply re-acquire it.
+     * Serializes the confirm/record pair on the corrupting player's scoring row. The two methods run
+     * in separate transactions, so ordering alone still strands a row when they overlap under read
+     * committed: each side cannot see the other's uncommitted row. Holding this write lock until
+     * commit closes that window; it spans a single row per call, so it cannot deadlock, and the row
+     * itself exists since faction assignment, long before any Corrupt can be played.
      */
-    private void lockCorruptNaturalKey(UUID gameId, int eraNumber, UUID corruptingPlayerId, UUID targetEventId) {
-        entityManager
-                .createNativeQuery("SELECT pg_advisory_xact_lock(hashtext(:key))")
-                .setParameter(
-                        "key",
-                        "corrupt-confirmation:" + gameId + ":" + eraNumber + ":" + corruptingPlayerId + ":"
-                                + targetEventId)
-                .getSingleResult();
+    private void lockCorruptPlayer(UUID gameId, UUID corruptingPlayerId) {
+        playerJpaRepository.findByGameIdAndPlayerIdWithLock(gameId, corruptingPlayerId);
     }
 
     @Override
@@ -497,7 +487,7 @@ class EraScoringContextRepositoryAdapter implements EraScoringContextRepository 
             UUID targetEventId,
             UUID sourceOutcomeId,
             UUID targetOutcomeId) {
-        lockCorruptNaturalKey(gameId, eraNumber, corruptingPlayerId, targetEventId);
+        lockCorruptPlayer(gameId, corruptingPlayerId);
         corruptCorrelationJpaRepository.insertIfAbsent(
                 UUID.randomUUID(),
                 gameId,
@@ -547,11 +537,11 @@ class EraScoringContextRepositoryAdapter implements EraScoringContextRepository 
     @Transactional
     public void confirmCorruptInversionForTarget(
             UUID gameId, int eraNumber, UUID corruptingPlayerId, UUID targetEventId, boolean tookEffect) {
-        // Pending-first ordering plus the shared natural-key lock above: the insert precedes the
-        // update, and the lock serializes this path against recordCorruptCorrelation, so overlapping
-        // transactions can neither miss nor strand the row. Either side may redundantly apply the same
-        // value — both writes are idempotent.
-        lockCorruptNaturalKey(gameId, eraNumber, corruptingPlayerId, targetEventId);
+        // Pending-first ordering under the player lock above: the insert precedes the update. If the
+        // correlation row already committed, the update applies the value and the pending row is removed
+        // again; if not, the pending row waits for recordCorruptCorrelation to merge it on insert.
+        // Either side may redundantly apply the same value — both writes are idempotent.
+        lockCorruptPlayer(gameId, corruptingPlayerId);
         corruptPendingConfirmationJpaRepository.insertIfAbsent(
                 UUID.randomUUID(), gameId, eraNumber, corruptingPlayerId, targetEventId, tookEffect);
         var updated = corruptCorrelationJpaRepository.confirmInversionForTarget(

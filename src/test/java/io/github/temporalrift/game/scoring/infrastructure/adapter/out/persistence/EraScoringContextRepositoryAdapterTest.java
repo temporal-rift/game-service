@@ -9,14 +9,15 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -86,27 +87,10 @@ class EraScoringContextRepositoryAdapterTest {
     ScoringContextParadoxCascadeFactJpaRepository paradoxCascadeFactJpaRepository;
 
     @Mock
-    jakarta.persistence.EntityManager entityManager;
-
-    @Mock
-    jakarta.persistence.Query advisoryLockQuery;
-
-    @Mock
     ObjectMapper objectMapper;
 
     @InjectMocks
     EraScoringContextRepositoryAdapter adapter;
-
-    @BeforeEach
-    void stubAdvisoryLock() {
-        org.mockito.Mockito.lenient()
-                .when(entityManager.createNativeQuery(org.mockito.ArgumentMatchers.anyString()))
-                .thenReturn(advisoryLockQuery);
-        org.mockito.Mockito.lenient()
-                .when(advisoryLockQuery.setParameter(
-                        org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.any()))
-                .thenReturn(advisoryLockQuery);
-    }
 
     @Test
     void getRequired_assemblesPlayersAndUnconsumedChainFacts() {
@@ -786,8 +770,7 @@ class EraScoringContextRepositoryAdapterTest {
 
         // Pending-first ordering: the insert must precede the update so every interleaving with the
         // separate recordCorruptCorrelation transaction converges instead of stranding the row.
-        var pendingInOrder =
-                org.mockito.Mockito.inOrder(corruptPendingConfirmationJpaRepository, corruptCorrelationJpaRepository);
+        var pendingInOrder = inOrder(corruptPendingConfirmationJpaRepository, corruptCorrelationJpaRepository);
         then(corruptPendingConfirmationJpaRepository)
                 .should(pendingInOrder)
                 .insertIfAbsent(
@@ -856,7 +839,7 @@ class EraScoringContextRepositoryAdapterTest {
     }
 
     @Test
-    void corruptConfirmAndRecord_acquireTheSameNaturalKeyLock() {
+    void corruptConfirmAndRecord_lockTheSamePlayerRow() {
         var gameId = UUID.randomUUID();
         var corruptingPlayerId = UUID.randomUUID();
         var targetEventId = UUID.randomUUID();
@@ -878,8 +861,7 @@ class EraScoringContextRepositoryAdapterTest {
                 null,
                 UUID.randomUUID());
 
-        var expectedKey = "corrupt-confirmation:" + gameId + ":2:" + corruptingPlayerId + ":" + targetEventId;
-        then(advisoryLockQuery).should(org.mockito.Mockito.times(2)).setParameter(eq("key"), eq(expectedKey));
+        then(playerJpaRepository).should(times(2)).findByGameIdAndPlayerIdWithLock(eq(gameId), eq(corruptingPlayerId));
     }
 
     @Test
