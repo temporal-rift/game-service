@@ -459,7 +459,8 @@ class ActionPersistenceIT {
         var reloaded = sealGameUsageRepository.findByGameIdAndPlayerId(gameId, playerId);
 
         assertThat(reloaded).isPresent();
-        assertThatThrownBy(() -> reloaded.orElseThrow().claim(2)).isInstanceOf(SealGameBudgetExhaustedException.class);
+        var reloadedUsage = reloaded.orElseThrow();
+        assertThatThrownBy(() -> reloadedUsage.claim(2)).isInstanceOf(SealGameBudgetExhaustedException.class);
     }
 
     @Test
