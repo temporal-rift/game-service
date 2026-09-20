@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -85,10 +86,27 @@ class EraScoringContextRepositoryAdapterTest {
     ScoringContextParadoxCascadeFactJpaRepository paradoxCascadeFactJpaRepository;
 
     @Mock
+    jakarta.persistence.EntityManager entityManager;
+
+    @Mock
+    jakarta.persistence.Query advisoryLockQuery;
+
+    @Mock
     ObjectMapper objectMapper;
 
     @InjectMocks
     EraScoringContextRepositoryAdapter adapter;
+
+    @BeforeEach
+    void stubAdvisoryLock() {
+        org.mockito.Mockito.lenient()
+                .when(entityManager.createNativeQuery(org.mockito.ArgumentMatchers.anyString()))
+                .thenReturn(advisoryLockQuery);
+        org.mockito.Mockito.lenient()
+                .when(advisoryLockQuery.setParameter(
+                        org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.any()))
+                .thenReturn(advisoryLockQuery);
+    }
 
     @Test
     void getRequired_assemblesPlayersAndUnconsumedChainFacts() {
@@ -835,6 +853,33 @@ class EraScoringContextRepositoryAdapterTest {
         then(corruptPendingConfirmationJpaRepository)
                 .should()
                 .deletePending(eq(gameId), eq(2), eq(corruptingPlayerId), eq(targetEventId));
+    }
+
+    @Test
+    void corruptConfirmAndRecord_acquireTheSameNaturalKeyLock() {
+        var gameId = UUID.randomUUID();
+        var corruptingPlayerId = UUID.randomUUID();
+        var targetEventId = UUID.randomUUID();
+        given(corruptCorrelationJpaRepository.confirmInversionForTarget(
+                        gameId, 2, corruptingPlayerId, targetEventId, true))
+                .willReturn(1);
+        given(corruptPendingConfirmationJpaRepository.findByGameIdAndEraNumberAndCorruptingPlayerIdAndTargetEventId(
+                        gameId, 2, corruptingPlayerId, targetEventId))
+                .willReturn(Optional.empty());
+
+        adapter.confirmCorruptInversionForTarget(gameId, 2, corruptingPlayerId, targetEventId, true);
+        adapter.recordCorruptCorrelation(
+                gameId,
+                2,
+                corruptingPlayerId,
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                targetEventId,
+                null,
+                UUID.randomUUID());
+
+        var expectedKey = "corrupt-confirmation:" + gameId + ":2:" + corruptingPlayerId + ":" + targetEventId;
+        then(advisoryLockQuery).should(org.mockito.Mockito.times(2)).setParameter(eq("key"), eq(expectedKey));
     }
 
     @Test
