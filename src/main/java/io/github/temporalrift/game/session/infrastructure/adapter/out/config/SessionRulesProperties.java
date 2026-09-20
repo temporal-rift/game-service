@@ -6,6 +6,7 @@ import java.util.Set;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotEmpty;
 import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.boot.context.properties.bind.DefaultValue;
 import org.springframework.validation.annotation.Validated;
 
 import io.github.temporalrift.game.session.domain.port.out.SessionGameRulesPort;
@@ -34,7 +35,7 @@ public record SessionRulesProperties(
         @NotEmpty Map<CardGrade, Integer> cardGradeWeights,
         @NotEmpty Set<Faction> stabilizationWinnerFactions,
         @NotEmpty Set<SpecialAction> onceEraBudgetedSpecials,
-        @Min(1) int sealMaxUsesPerGame,
+        @DefaultValue("2") @Min(1) int sealMaxUsesPerGame,
         Set<CardType> handDealForcedTypes)
         implements SessionGameRulesPort {
 

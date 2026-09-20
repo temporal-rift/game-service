@@ -49,6 +49,7 @@ class EraScoringContextRepositoryAdapter implements EraScoringContextRepository 
     private final ScoringTimelineResolutionBarrierJpaRepository resolutionBarrierJpaRepository;
     private final ScoringContextFulfillmentDeclarationJpaRepository fulfillmentDeclarationJpaRepository;
     private final ScoringContextCorruptCorrelationJpaRepository corruptCorrelationJpaRepository;
+    private final ScoringContextCorruptPendingConfirmationJpaRepository corruptPendingConfirmationJpaRepository;
     private final ScoringContextParadoxCascadeFactJpaRepository paradoxCascadeFactJpaRepository;
     private final ObjectMapper objectMapper;
 
@@ -66,6 +67,7 @@ class EraScoringContextRepositoryAdapter implements EraScoringContextRepository 
             ScoringTimelineResolutionBarrierJpaRepository resolutionBarrierJpaRepository,
             ScoringContextFulfillmentDeclarationJpaRepository fulfillmentDeclarationJpaRepository,
             ScoringContextCorruptCorrelationJpaRepository corruptCorrelationJpaRepository,
+            ScoringContextCorruptPendingConfirmationJpaRepository corruptPendingConfirmationJpaRepository,
             ScoringContextParadoxCascadeFactJpaRepository paradoxCascadeFactJpaRepository,
             ObjectMapper objectMapper) {
         this.playerJpaRepository = playerJpaRepository;
@@ -81,6 +83,7 @@ class EraScoringContextRepositoryAdapter implements EraScoringContextRepository 
         this.resolutionBarrierJpaRepository = resolutionBarrierJpaRepository;
         this.fulfillmentDeclarationJpaRepository = fulfillmentDeclarationJpaRepository;
         this.corruptCorrelationJpaRepository = corruptCorrelationJpaRepository;
+        this.corruptPendingConfirmationJpaRepository = corruptPendingConfirmationJpaRepository;
         this.paradoxCascadeFactJpaRepository = paradoxCascadeFactJpaRepository;
         this.objectMapper = objectMapper;
     }
@@ -483,6 +486,18 @@ class EraScoringContextRepositoryAdapter implements EraScoringContextRepository 
                 targetEventId,
                 sourceOutcomeId,
                 targetOutcomeId);
+        // A per-round confirmation routinely arrives before the final-round bundle records this row
+        // (rounds 1-2 confirm against a correlation written only at round 3 close). Merge any pending
+        // confirmation now so the credit is not lost; the pending row is consumed exactly once.
+        corruptPendingConfirmationJpaRepository
+                .findByGameIdAndEraNumberAndCorruptingPlayerIdAndTargetEventId(
+                        gameId, eraNumber, corruptingPlayerId, targetEventId)
+                .ifPresent(pending -> {
+                    corruptCorrelationJpaRepository.confirmInversionForTarget(
+                            gameId, eraNumber, corruptingPlayerId, targetEventId, pending.isTookEffect());
+                    corruptPendingConfirmationJpaRepository.deletePending(
+                            gameId, eraNumber, corruptingPlayerId, targetEventId);
+                });
     }
 
     @Override
@@ -513,9 +528,14 @@ class EraScoringContextRepositoryAdapter implements EraScoringContextRepository 
         var updated = corruptCorrelationJpaRepository.confirmInversionForTarget(
                 gameId, eraNumber, corruptingPlayerId, targetEventId, tookEffect);
         if (updated == 0) {
-            log.warn(
-                    "confirmCorruptInversionForTarget found no matching correlation for game {} era {}"
-                            + " corrupting player {} target event {} — confirmation dropped",
+            // No correlation row yet: the confirmation arrived before the final-round bundle recorded
+            // it. Persist it durably (idempotent on the natural key) so recordCorruptCorrelation can
+            // merge it on insert instead of losing the credit.
+            corruptPendingConfirmationJpaRepository.insertIfAbsent(
+                    UUID.randomUUID(), gameId, eraNumber, corruptingPlayerId, targetEventId, tookEffect);
+            log.debug(
+                    "confirmCorruptInversionForTarget stored a pending confirmation for game {} era {}"
+                            + " corrupting player {} target event {}",
                     gameId,
                     eraNumber,
                     corruptingPlayerId,
