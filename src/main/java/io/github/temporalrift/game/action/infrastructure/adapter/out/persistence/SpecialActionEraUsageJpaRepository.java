@@ -18,7 +18,7 @@ interface SpecialActionEraUsageJpaRepository extends JpaRepository<SpecialAction
      */
     @Query(value = """
                     SELECT COUNT(*) FROM special_action_era_usage
-                    WHERE game_id = :gameId AND player_id = :playerId AND claimed_specials @> ARRAY[:special]
+                    WHERE game_id = :gameId AND player_id = :playerId AND :special = ANY(claimed_specials)
                     """, nativeQuery = true)
     int countErasClaiming(
             @Param("gameId") UUID gameId, @Param("playerId") UUID playerId, @Param("special") String special);
