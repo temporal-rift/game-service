@@ -525,14 +525,18 @@ class EraScoringContextRepositoryAdapter implements EraScoringContextRepository 
     @Transactional
     public void confirmCorruptInversionForTarget(
             UUID gameId, int eraNumber, UUID corruptingPlayerId, UUID targetEventId, boolean tookEffect) {
+        // Pending-first ordering: the insert precedes the update so every interleaving with the
+        // separate recordCorruptCorrelation transaction converges. If the correlation already exists,
+        // the update applies the value and the pending row is removed again; if it does not exist yet,
+        // the pending row waits for recordCorruptCorrelation to merge it on insert. Either side may
+        // redundantly apply the same value — both writes are idempotent.
+        corruptPendingConfirmationJpaRepository.insertIfAbsent(
+                UUID.randomUUID(), gameId, eraNumber, corruptingPlayerId, targetEventId, tookEffect);
         var updated = corruptCorrelationJpaRepository.confirmInversionForTarget(
                 gameId, eraNumber, corruptingPlayerId, targetEventId, tookEffect);
-        if (updated == 0) {
-            // No correlation row yet: the confirmation arrived before the final-round bundle recorded
-            // it. Persist it durably (idempotent on the natural key) so recordCorruptCorrelation can
-            // merge it on insert instead of losing the credit.
-            corruptPendingConfirmationJpaRepository.insertIfAbsent(
-                    UUID.randomUUID(), gameId, eraNumber, corruptingPlayerId, targetEventId, tookEffect);
+        if (updated > 0) {
+            corruptPendingConfirmationJpaRepository.deletePending(gameId, eraNumber, corruptingPlayerId, targetEventId);
+        } else {
             log.debug(
                     "confirmCorruptInversionForTarget stored a pending confirmation for game {} era {}"
                             + " corrupting player {} target event {}",
