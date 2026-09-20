@@ -766,14 +766,22 @@ class EraScoringContextRepositoryAdapterTest {
                         adapter.confirmCorruptInversionForTarget(gameId, 2, corruptingPlayerId, targetEventId, false))
                 .doesNotThrowAnyException();
 
+        // Pending-first ordering: the insert must precede the update so every interleaving with the
+        // separate recordCorruptCorrelation transaction converges instead of stranding the row.
+        var pendingInOrder =
+                org.mockito.Mockito.inOrder(corruptPendingConfirmationJpaRepository, corruptCorrelationJpaRepository);
         then(corruptPendingConfirmationJpaRepository)
-                .should()
+                .should(pendingInOrder)
                 .insertIfAbsent(
                         any(UUID.class), eq(gameId), eq(2), eq(corruptingPlayerId), eq(targetEventId), eq(false));
+        then(corruptCorrelationJpaRepository)
+                .should(pendingInOrder)
+                .confirmInversionForTarget(eq(gameId), eq(2), eq(corruptingPlayerId), eq(targetEventId), eq(false));
+        then(corruptPendingConfirmationJpaRepository).should(never()).deletePending(any(), anyInt(), any(), any());
     }
 
     @Test
-    void confirmCorruptInversionForTarget_matchingRow_doesNotStorePendingConfirmation() {
+    void confirmCorruptInversionForTarget_matchingRow_appliesUpdateAndRemovesPending() {
         var gameId = UUID.randomUUID();
         var corruptingPlayerId = UUID.randomUUID();
         var targetEventId = UUID.randomUUID();
@@ -783,7 +791,16 @@ class EraScoringContextRepositoryAdapterTest {
 
         adapter.confirmCorruptInversionForTarget(gameId, 2, corruptingPlayerId, targetEventId, true);
 
-        then(corruptPendingConfirmationJpaRepository).shouldHaveNoInteractions();
+        then(corruptPendingConfirmationJpaRepository)
+                .should()
+                .insertIfAbsent(
+                        any(UUID.class), eq(gameId), eq(2), eq(corruptingPlayerId), eq(targetEventId), eq(true));
+        then(corruptCorrelationJpaRepository)
+                .should()
+                .confirmInversionForTarget(eq(gameId), eq(2), eq(corruptingPlayerId), eq(targetEventId), eq(true));
+        then(corruptPendingConfirmationJpaRepository)
+                .should()
+                .deletePending(eq(gameId), eq(2), eq(corruptingPlayerId), eq(targetEventId));
     }
 
     @Test
