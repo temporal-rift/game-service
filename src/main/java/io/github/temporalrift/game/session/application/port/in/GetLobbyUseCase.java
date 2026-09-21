@@ -16,5 +16,11 @@ public interface GetLobbyUseCase {
 
     record MemberSummary(UUID playerId, String playerName, boolean isHost) {}
 
-    record Result(UUID lobbyId, UUID gameId, UUID hostPlayerId, LobbyStatus status, List<MemberSummary> members) {}
+    record Result(
+            UUID lobbyId,
+            UUID gameId,
+            UUID hostPlayerId,
+            UUID currentPlayerId,
+            LobbyStatus status,
+            List<MemberSummary> members) {}
 }

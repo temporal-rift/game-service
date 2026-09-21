@@ -97,11 +97,13 @@ class SessionController implements SessionApi {
         var members = result.members().stream()
                 .map(member -> new PlayerInLobby(member.playerId(), member.playerName(), member.isHost()))
                 .toList();
-        return ResponseEntity.ok(new LobbyResponse(
+        var response = new LobbyResponse(
                 result.lobbyId(),
                 result.gameId(),
                 result.hostPlayerId(),
                 LobbyStatus.fromValue(result.status().name()),
-                members));
+                members);
+        response.setCurrentPlayerId(result.currentPlayerId());
+        return ResponseEntity.ok(response);
     }
 }

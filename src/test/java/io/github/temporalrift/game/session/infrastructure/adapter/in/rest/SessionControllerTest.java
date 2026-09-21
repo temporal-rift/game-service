@@ -190,6 +190,7 @@ class SessionControllerTest {
                         LOBBY_ID,
                         GAME_ID,
                         PLAYER_ID,
+                        PLAYER_ID,
                         io.github.temporalrift.game.session.domain.lobby.LobbyStatus.WAITING,
                         members));
 
@@ -199,6 +200,7 @@ class SessionControllerTest {
                 .andExpect(jsonPath("$.lobbyId").value(LOBBY_ID.toString()))
                 .andExpect(jsonPath("$.gameId").value(GAME_ID.toString()))
                 .andExpect(jsonPath("$.hostPlayerId").value(PLAYER_ID.toString()))
+                .andExpect(jsonPath("$.currentPlayerId").value(PLAYER_ID.toString()))
                 .andExpect(jsonPath("$.status").value("WAITING"))
                 .andExpect(jsonPath("$.members[0].playerName").value("Alice"));
     }
@@ -344,7 +346,9 @@ class SessionControllerTest {
         // when / then
         mockMvc.perform(get("/api/v1/lobbies/{lobbyId}", LOBBY_ID).with(auth()))
                 .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.code").value("403-01"));
+                .andExpect(jsonPath("$.code").value("403-01"))
+                .andExpect(jsonPath("$.currentPlayerId").doesNotExist())
+                .andExpect(jsonPath("$.members").doesNotExist());
     }
 
     @Test
