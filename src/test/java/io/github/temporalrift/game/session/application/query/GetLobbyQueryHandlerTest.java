@@ -61,11 +61,36 @@ class GetLobbyQueryHandlerTest {
         assertThat(result.lobbyId()).isEqualTo(LOBBY_ID);
         assertThat(result.gameId()).isEqualTo(GAME_ID);
         assertThat(result.hostPlayerId()).isEqualTo(CALLER);
+        assertThat(result.currentPlayerId()).isEqualTo(CALLER);
         assertThat(result.status()).isEqualTo(LobbyStatus.WAITING);
         assertThat(result.members())
                 .containsExactly(
                         new GetLobbyUseCase.MemberSummary(CALLER, "Alice", true),
                         new GetLobbyUseCase.MemberSummary(OTHER, "Bob", false));
+        assertThat(result.members()).anyMatch(member -> member.playerId().equals(result.currentPlayerId()));
+    }
+
+    @Test
+    @DisplayName("non-host member — currentPlayerId identifies the caller, not the host")
+    void handle_nonHostMember_returnsCallerIdentity() {
+        // given
+        var players = List.of(
+                new LobbyPlayer(OTHER, "Bob", null, java.time.Instant.parse("2026-01-01T00:00:00Z"), true),
+                new LobbyPlayer(CALLER, "Alice", null, java.time.Instant.parse("2026-01-01T00:00:00Z"), true));
+        given(lobbyRepository.findById(LOBBY_ID)).willReturn(Optional.of(lobby));
+        given(lobby.currentPlayers()).willReturn(players);
+        given(lobby.id()).willReturn(LOBBY_ID);
+        given(lobby.gameId()).willReturn(GAME_ID);
+        given(lobby.hostPlayerId()).willReturn(OTHER);
+        given(lobby.status()).willReturn(LobbyStatus.WAITING);
+
+        // when
+        var result = handler.handle(new GetLobbyUseCase.Query(LOBBY_ID, CALLER));
+
+        // then
+        assertThat(result.currentPlayerId()).isEqualTo(CALLER);
+        assertThat(result.hostPlayerId()).isEqualTo(OTHER);
+        assertThat(result.members()).anyMatch(member -> member.playerId().equals(result.currentPlayerId()));
     }
 
     @Test

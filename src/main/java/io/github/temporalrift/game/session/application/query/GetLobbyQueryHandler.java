@@ -31,7 +31,8 @@ class GetLobbyQueryHandler implements GetLobbyUseCase {
                         player.playerName(),
                         player.playerId().equals(lobby.hostPlayerId())))
                 .toList();
-        return new Result(lobby.id(), lobby.gameId(), lobby.hostPlayerId(), lobby.status(), members);
+        return new Result(
+                lobby.id(), lobby.gameId(), lobby.hostPlayerId(), query.callerPlayerId(), lobby.status(), members);
     }
 
     private void requireMember(Lobby lobby, Query query) {
