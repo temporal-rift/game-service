@@ -1,31 +1,21 @@
 package io.github.temporalrift.game.action.infrastructure.adapter.out.persistence;
 
 import java.util.List;
-import java.util.UUID;
 
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
 import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
-import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OrderColumn;
 import jakarta.persistence.Table;
 
+import io.github.temporalrift.game.shared.infrastructure.adapter.out.persistence.GamePlayerScopedJpaEntity;
+
 @Entity
 @Table(name = "player_state")
-class PlayerStateJpaEntity {
-
-    @Id
-    @Column(name = "id", nullable = false)
-    private UUID id;
-
-    @Column(name = "game_id", nullable = false)
-    private UUID gameId;
-
-    @Column(name = "player_id", nullable = false)
-    private UUID playerId;
+class PlayerStateJpaEntity extends GamePlayerScopedJpaEntity {
 
     @Column(name = "faction")
     private String faction;
@@ -42,30 +32,6 @@ class PlayerStateJpaEntity {
     private List<PlayerHandCardValue> hand;
 
     protected PlayerStateJpaEntity() {}
-
-    UUID getId() {
-        return id;
-    }
-
-    void setId(UUID id) {
-        this.id = id;
-    }
-
-    UUID getGameId() {
-        return gameId;
-    }
-
-    void setGameId(UUID gameId) {
-        this.gameId = gameId;
-    }
-
-    UUID getPlayerId() {
-        return playerId;
-    }
-
-    void setPlayerId(UUID playerId) {
-        this.playerId = playerId;
-    }
 
     String getFaction() {
         return faction;

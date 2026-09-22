@@ -12,6 +12,8 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OrderColumn;
 import jakarta.persistence.Table;
 
+import io.github.temporalrift.game.shared.infrastructure.adapter.out.persistence.GameEraScopedJpaEntity;
+
 @Entity
 @Table(name = "action_future_event_definition")
 class FutureEventDefinitionJpaEntity extends GameEraScopedJpaEntity {

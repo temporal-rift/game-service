@@ -6,6 +6,8 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
 
+import io.github.temporalrift.game.shared.infrastructure.adapter.out.persistence.GameEraScopedJpaEntity;
+
 /**
  * A Corrupt inversion confirmation that arrived before its correlation row was recorded. Merged into the
  * correlation when {@code recordCorruptCorrelation} inserts it; see the 018 migration.

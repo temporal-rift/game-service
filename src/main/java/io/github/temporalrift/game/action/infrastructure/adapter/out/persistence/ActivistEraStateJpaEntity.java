@@ -6,6 +6,8 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
 
+import io.github.temporalrift.game.shared.infrastructure.adapter.out.persistence.GameEraScopedJpaEntity;
+
 @Entity
 @Table(name = "activist_era_state")
 class ActivistEraStateJpaEntity extends GameEraScopedJpaEntity {
