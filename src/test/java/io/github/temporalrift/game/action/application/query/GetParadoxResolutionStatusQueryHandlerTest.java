@@ -25,6 +25,9 @@ import io.github.temporalrift.game.action.domain.paradoxresolutionphase.ParadoxR
 import io.github.temporalrift.game.action.domain.playerstate.PlayerState;
 import io.github.temporalrift.game.action.domain.port.out.ParadoxResolutionPhaseRepository;
 import io.github.temporalrift.game.action.domain.port.out.PlayerStateRepository;
+import io.github.temporalrift.game.action.domain.port.out.ReactiveOfferRepository;
+import io.github.temporalrift.game.action.domain.reactiveoffer.ReactiveOffer;
+import io.github.temporalrift.game.shared.domain.model.CardType;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("GetParadoxResolutionStatusQueryHandler")
@@ -44,10 +47,14 @@ class GetParadoxResolutionStatusQueryHandlerTest {
     PlayerStateRepository playerStateRepository;
 
     @Mock
+    ReactiveOfferRepository reactiveOfferRepository;
+
+    @Mock
     ParadoxResolutionPhase phase;
 
     private GetParadoxResolutionStatusQueryHandler handler() {
-        return new GetParadoxResolutionStatusQueryHandler(phaseRepository, playerStateRepository, CLOCK);
+        return new GetParadoxResolutionStatusQueryHandler(
+                phaseRepository, playerStateRepository, reactiveOfferRepository, CLOCK);
     }
 
     private void stubCallerIsParticipant() {
@@ -111,6 +118,7 @@ class GetParadoxResolutionStatusQueryHandlerTest {
         assertThat(result.totalPlayers()).isEqualTo(2);
         assertThat(result.pendingPlayerIds()).containsExactly(OTHER);
         assertThat(result.mySubmitted()).isTrue();
+        assertThat(result.eligibleResolutionCards()).isNull();
     }
 
     @Test
@@ -213,5 +221,40 @@ class GetParadoxResolutionStatusQueryHandlerTest {
         assertThat(result.timerRemainingSeconds()).isEqualTo(30);
         assertThat(result.mySubmitted()).isFalse();
         assertThat(result.pendingPlayerIds()).containsExactlyInAnyOrder(CALLER, OTHER);
+    }
+
+    @Test
+    @DisplayName("open phase — returns only the caller's eligible retained and offered cards")
+    void handleOpenPhaseReturnsCallerEligibleCards() {
+        // given
+        var affectedEventId = UUID.randomUUID();
+        var retainedCardId = UUID.randomUUID();
+        var caller = new PlayerState(UUID.randomUUID(), GAME_ID, CALLER);
+        caller.dealCard(new PlayerState.CardInstance(retainedCardId, CardType.PUSH), 5);
+        caller.dealCard(new PlayerState.CardInstance(UUID.randomUUID(), CardType.COLLIDE), 5);
+        given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, CALLER)).willReturn(Optional.of(caller));
+        given(phaseRepository.findByGameIdAndEraNumber(GAME_ID, ERA)).willReturn(Optional.of(phase));
+        given(phase.status()).willReturn(ParadoxResolutionPhaseStatus.OPEN);
+        given(phase.expiresAt()).willReturn(NOW.plusSeconds(10));
+        given(phase.eraNumber()).willReturn(ERA);
+        given(phase.submittedPlayerIds()).willReturn(Set.of());
+        given(phase.affectedEventIds()).willReturn(Set.of(affectedEventId));
+        stubAllPlayers(CALLER, OTHER);
+        var offer = new ReactiveOffer(UUID.randomUUID(), GAME_ID, ERA, CALLER, UUID.randomUUID(), UUID.randomUUID());
+        given(reactiveOfferRepository.findByGameIdAndEraNumberAndPlayerId(GAME_ID, ERA, CALLER))
+                .willReturn(Optional.of(offer));
+
+        // when
+        var result = handler().handle(new GetParadoxResolutionStatusUseCase.Query(GAME_ID, ERA, CALLER));
+
+        // then
+        assertThat(result.affectedEventIds()).containsExactly(affectedEventId);
+        assertThat(result.eligibleResolutionCards())
+                .extracting(GetParadoxResolutionStatusUseCase.EligibleCard::cardInstanceId)
+                .containsExactlyInAnyOrder(
+                        retainedCardId, offer.stabilizeCardInstanceId(), offer.detonateCardInstanceId());
+        assertThat(result.eligibleResolutionCards())
+                .extracting(GetParadoxResolutionStatusUseCase.EligibleCard::cardType)
+                .containsExactlyInAnyOrder(CardType.PUSH, CardType.STABILIZE, CardType.DETONATE);
     }
 }

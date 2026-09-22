@@ -43,6 +43,7 @@ class ParadoxResolutionPhaseRepositoryAdapter implements ParadoxResolutionPhaseR
         entity.setEraNumber(phase.eraNumber());
         entity.setStatus(phase.status().name());
         entity.setExpiresAt(phase.expiresAt());
+        entity.setAffectedEventIds(phase.affectedEventIds().toArray(UUID[]::new));
         entity.setSubmittedPlayerIds(phase.submittedPlayerIds().toArray(UUID[]::new));
         return entity;
     }
@@ -54,6 +55,7 @@ class ParadoxResolutionPhaseRepositoryAdapter implements ParadoxResolutionPhaseR
                 entity.getEraNumber(),
                 entity.getExpiresAt(),
                 ParadoxResolutionPhaseStatus.valueOf(entity.getStatus()),
+                new LinkedHashSet<>(Arrays.asList(entity.getAffectedEventIds())),
                 new LinkedHashSet<>(Arrays.asList(entity.getSubmittedPlayerIds())));
     }
 }

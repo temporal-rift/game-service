@@ -50,6 +50,13 @@ class ReactiveOfferRepositoryAdapter implements ReactiveOfferRepository {
     }
 
     @Override
+    public Optional<ReactiveOffer> findByGameIdAndEraNumberAndPlayerId(UUID gameId, int eraNumber, UUID playerId) {
+        return jpaRepository
+                .findByGameIdAndEraNumberAndPlayerId(gameId, eraNumber, playerId)
+                .map(this::toDomain);
+    }
+
+    @Override
     public List<ReactiveOffer> findAllByGameIdAndEraNumberWithLock(UUID gameId, int eraNumber) {
         return jpaRepository.findAllByGameIdAndEraNumberWithLock(gameId, eraNumber).stream()
                 .map(this::toDomain)

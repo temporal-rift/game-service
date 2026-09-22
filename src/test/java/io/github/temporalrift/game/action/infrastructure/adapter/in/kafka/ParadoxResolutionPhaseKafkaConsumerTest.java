@@ -68,10 +68,8 @@ class ParadoxResolutionPhaseKafkaConsumerTest {
 
     @Test
     void phaseStartedCreatesDurablePhaseWithAdvertisedExpiry() {
-        var message = message(
-                "ParadoxResolutionPhaseStarted",
-                1,
-                new ParadoxResolutionPhaseStartedPayload(GAME_ID, ERA, List.of(UUID.randomUUID()), 30));
+        var affectedEventId = UUID.randomUUID();
+        var message = message("ParadoxResolutionPhaseStarted", 1, phaseStarted(GAME_ID, List.of(affectedEventId)));
         givenClaim(message, true);
         given(phaseRepository.findByGameIdAndEraNumber(GAME_ID, ERA)).willReturn(Optional.empty());
 
@@ -83,6 +81,7 @@ class ParadoxResolutionPhaseKafkaConsumerTest {
         assertThat(captor.getValue().gameId()).isEqualTo(GAME_ID);
         assertThat(captor.getValue().eraNumber()).isEqualTo(ERA);
         assertThat(captor.getValue().expiresAt()).isEqualTo(OCCURRED_AT.plusSeconds(30));
+        assertThat(captor.getValue().affectedEventIds()).containsExactly(affectedEventId);
     }
 
     @Test
@@ -90,7 +89,7 @@ class ParadoxResolutionPhaseKafkaConsumerTest {
         var message = message(
                 "ParadoxResolutionPhaseStarted",
                 1,
-                new ParadoxResolutionPhaseStartedPayload(GAME_ID, ERA, List.of(UUID.randomUUID()), 30));
+                new ParadoxResolutionPhaseStartedPayload(GAME_ID, ERA, List.of(UUID.randomUUID()), List.of(), 30));
         givenClaim(message, true);
         given(phaseRepository.findByGameIdAndEraNumber(GAME_ID, ERA)).willReturn(Optional.empty());
         var playerOne = UUID.randomUUID();
@@ -119,7 +118,7 @@ class ParadoxResolutionPhaseKafkaConsumerTest {
         var message = message(
                 "ParadoxResolutionPhaseStarted",
                 1,
-                new ParadoxResolutionPhaseStartedPayload(GAME_ID, ERA, List.of(UUID.randomUUID()), 30));
+                new ParadoxResolutionPhaseStartedPayload(GAME_ID, ERA, List.of(UUID.randomUUID()), List.of(), 30));
         givenClaim(message, true);
         given(phaseRepository.findByGameIdAndEraNumber(GAME_ID, ERA))
                 .willReturn(
@@ -128,6 +127,21 @@ class ParadoxResolutionPhaseKafkaConsumerTest {
         consumer.handle(message);
 
         then(playerStateRepository).shouldHaveNoInteractions();
+        then(reactiveOfferRepository).shouldHaveNoInteractions();
+    }
+
+    @Test
+    void redeliveredPhaseStartRecoversMissingAffectedTargetsWithoutDealingAgain() {
+        var phase = new ParadoxResolutionPhase(PHASE_ID, GAME_ID, ERA, OCCURRED_AT.plusSeconds(30));
+        var affectedEventId = UUID.randomUUID();
+        var message = message("ParadoxResolutionPhaseStarted", 1, phaseStarted(GAME_ID, List.of(affectedEventId)));
+        givenClaim(message, true);
+        given(phaseRepository.findByGameIdAndEraNumber(GAME_ID, ERA)).willReturn(Optional.of(phase));
+
+        consumer.handle(message);
+
+        assertThat(phase.affectedEventIds()).containsExactly(affectedEventId);
+        then(phaseRepository).should().save(phase);
         then(reactiveOfferRepository).shouldHaveNoInteractions();
     }
 
@@ -177,7 +191,7 @@ class ParadoxResolutionPhaseKafkaConsumerTest {
         var message = message(
                 "ParadoxResolutionPhaseStarted",
                 1,
-                new ParadoxResolutionPhaseStartedPayload(UUID.randomUUID(), ERA, List.of(), 30));
+                new ParadoxResolutionPhaseStartedPayload(UUID.randomUUID(), ERA, List.of(), List.of(), 30));
         givenClaim(message, true);
 
         consumer.handle(message);
@@ -200,7 +214,7 @@ class ParadoxResolutionPhaseKafkaConsumerTest {
         consumer.handle(message(
                 "ParadoxResolutionPhaseStarted",
                 2,
-                new ParadoxResolutionPhaseStartedPayload(GAME_ID, ERA, List.of(), 30)));
+                new ParadoxResolutionPhaseStartedPayload(GAME_ID, ERA, List.of(), List.of(), 30)));
 
         then(processedEventRepository).should(never()).tryMarkProcessed(any(), any());
         then(phaseRepository).shouldHaveNoInteractions();
@@ -211,7 +225,7 @@ class ParadoxResolutionPhaseKafkaConsumerTest {
         consumer.handle(message(
                 "timeline.ParadoxResolutionPhaseStarted",
                 1,
-                new ParadoxResolutionPhaseStartedPayload(GAME_ID, ERA, List.of(), 30)));
+                new ParadoxResolutionPhaseStartedPayload(GAME_ID, ERA, List.of(), List.of(), 30)));
 
         then(processedEventRepository).should(never()).tryMarkProcessed(any(), any());
         then(phaseRepository).shouldHaveNoInteractions();
@@ -249,6 +263,10 @@ class ParadoxResolutionPhaseKafkaConsumerTest {
 
     private static EraResolutionCompletedPayload eraCompleted(UUID gameId) {
         return new EraResolutionCompletedPayload(gameId, ERA, List.of());
+    }
+
+    private static ParadoxResolutionPhaseStartedPayload phaseStarted(UUID gameId, List<UUID> affectedEventIds) {
+        return new ParadoxResolutionPhaseStartedPayload(gameId, ERA, List.of(UUID.randomUUID()), affectedEventIds, 30);
     }
 
     private static UUID eventIdOf(Message<Object> message) {

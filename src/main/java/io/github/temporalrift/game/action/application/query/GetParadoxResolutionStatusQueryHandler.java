@@ -2,6 +2,7 @@ package io.github.temporalrift.game.action.application.query;
 
 import java.time.Clock;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -15,30 +16,38 @@ import io.github.temporalrift.game.action.domain.paradoxresolutionphase.ParadoxR
 import io.github.temporalrift.game.action.domain.playerstate.PlayerState;
 import io.github.temporalrift.game.action.domain.port.out.ParadoxResolutionPhaseRepository;
 import io.github.temporalrift.game.action.domain.port.out.PlayerStateRepository;
+import io.github.temporalrift.game.action.domain.port.out.ReactiveOfferRepository;
+import io.github.temporalrift.game.action.domain.reactiveoffer.ReactiveOfferStatus;
+import io.github.temporalrift.game.shared.domain.model.CardGrade;
+import io.github.temporalrift.game.shared.domain.model.CardType;
 
 @Service
-@ConditionalOnBean({ParadoxResolutionPhaseRepository.class, PlayerStateRepository.class})
+@ConditionalOnBean({ParadoxResolutionPhaseRepository.class, PlayerStateRepository.class, ReactiveOfferRepository.class})
 class GetParadoxResolutionStatusQueryHandler implements GetParadoxResolutionStatusUseCase {
 
     private final ParadoxResolutionPhaseRepository phaseRepository;
 
     private final PlayerStateRepository playerStateRepository;
 
+    private final ReactiveOfferRepository reactiveOfferRepository;
+
     private final Clock clock;
 
     GetParadoxResolutionStatusQueryHandler(
             ParadoxResolutionPhaseRepository phaseRepository,
             PlayerStateRepository playerStateRepository,
+            ReactiveOfferRepository reactiveOfferRepository,
             Clock clock) {
         this.phaseRepository = phaseRepository;
         this.playerStateRepository = playerStateRepository;
+        this.reactiveOfferRepository = reactiveOfferRepository;
         this.clock = clock;
     }
 
     @Override
     @Transactional(readOnly = true)
     public Result handle(Query query) {
-        requireParticipant(query);
+        var caller = requireParticipant(query);
         var phase = phaseRepository
                 .findByGameIdAndEraNumber(query.gameId(), query.eraNumber())
                 .orElseThrow(() -> new ParadoxResolutionPhaseNotFoundException(query.gameId(), query.eraNumber()));
@@ -57,6 +66,7 @@ class GetParadoxResolutionStatusQueryHandler implements GetParadoxResolutionStat
                     .filter(playerId -> !submittedPlayerIds.contains(playerId))
                     .toList();
         }
+        var mySubmitted = submittedPlayerIds.contains(query.callerPlayerId());
         return new Result(
                 phase.eraNumber(),
                 phaseOpen,
@@ -64,14 +74,38 @@ class GetParadoxResolutionStatusQueryHandler implements GetParadoxResolutionStat
                 submittedPlayerIds.size(),
                 totalPlayers,
                 pendingPlayerIds,
-                submittedPlayerIds.contains(query.callerPlayerId()));
+                mySubmitted,
+                phase.affectedEventIds().stream().toList(),
+                phaseOpen && !mySubmitted ? eligibleResolutionCards(query, caller) : null);
     }
 
-    private void requireParticipant(Query query) {
+    private PlayerState requireParticipant(Query query) {
         // Same 404 as an unknown phase so outsiders cannot probe which games or eras exist.
-        playerStateRepository
+        return playerStateRepository
                 .findByGameIdAndPlayerId(query.gameId(), query.callerPlayerId())
                 .orElseThrow(() -> new ParadoxResolutionPhaseNotFoundException(query.gameId(), query.eraNumber()));
+    }
+
+    private List<EligibleCard> eligibleResolutionCards(Query query, PlayerState caller) {
+        var cards = new ArrayList<EligibleCard>();
+        caller.hand().stream()
+                .filter(card -> isEligible(card.cardType()))
+                .map(card -> new EligibleCard(card.cardInstanceId(), card.cardType(), card.grade()))
+                .forEach(cards::add);
+        reactiveOfferRepository
+                .findByGameIdAndEraNumberAndPlayerId(query.gameId(), query.eraNumber(), query.callerPlayerId())
+                .filter(offer -> offer.status() == ReactiveOfferStatus.OFFERED)
+                .ifPresent(offer -> offer.eligibleCards().stream()
+                        .map(card -> new EligibleCard(card.cardInstanceId(), card.cardType(), CardGrade.I))
+                        .forEach(cards::add));
+        return List.copyOf(cards);
+    }
+
+    private static boolean isEligible(CardType cardType) {
+        return cardType == CardType.PUSH
+                || cardType == CardType.SUPPRESS
+                || cardType == CardType.STABILIZE
+                || cardType == CardType.DETONATE;
     }
 
     private int timerRemainingSeconds(java.time.Instant expiresAt) {

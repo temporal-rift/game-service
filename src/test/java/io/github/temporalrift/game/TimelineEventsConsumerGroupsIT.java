@@ -81,7 +81,8 @@ class TimelineEventsConsumerGroupsIT {
                 gameId,
                 "ParadoxResolutionPhaseStarted",
                 "ParadoxResolutionPhase",
-                new ParadoxResolutionPhaseStartedPayload(gameId, ERA_NUMBER, List.of(UUID.randomUUID()), 30));
+                new ParadoxResolutionPhaseStartedPayload(
+                        gameId, ERA_NUMBER, List.of(UUID.randomUUID()), List.of(UUID.randomUUID()), 30));
         var paradoxId = UUID.randomUUID();
         var cascade = event(
                 gameId,

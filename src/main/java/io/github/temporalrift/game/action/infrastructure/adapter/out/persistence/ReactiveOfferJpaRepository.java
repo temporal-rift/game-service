@@ -37,6 +37,8 @@ interface ReactiveOfferJpaRepository extends JpaRepository<ReactiveOfferJpaEntit
     Optional<ReactiveOfferJpaEntity> findByGameIdAndEraNumberAndPlayerIdWithLock(
             @Param("gameId") UUID gameId, @Param("eraNumber") int eraNumber, @Param("playerId") UUID playerId);
 
+    Optional<ReactiveOfferJpaEntity> findByGameIdAndEraNumberAndPlayerId(UUID gameId, int eraNumber, UUID playerId);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select offer from ReactiveOfferJpaEntity offer "
             + "where offer.gameId = :gameId and offer.eraNumber = :eraNumber")

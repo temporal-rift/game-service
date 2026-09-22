@@ -1,5 +1,6 @@
 package io.github.temporalrift.game.action.domain.reactiveoffer;
 
+import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -84,6 +85,10 @@ public class ReactiveOffer extends AggregateRoot {
         throw new CardNotInHandException(cardInstanceId);
     }
 
+    public boolean containsCard(UUID cardInstanceId) {
+        return stabilizeCardInstanceId.equals(cardInstanceId) || detonateCardInstanceId.equals(cardInstanceId);
+    }
+
     public CardType consume(UUID cardInstanceId) {
         var cardType = cardTypeOf(cardInstanceId);
         if (status != ReactiveOfferStatus.OFFERED) {
@@ -98,6 +103,15 @@ public class ReactiveOffer extends AggregateRoot {
         if (status == ReactiveOfferStatus.OFFERED) {
             status = ReactiveOfferStatus.EXPIRED;
         }
+    }
+
+    public List<EligibleCard> eligibleCards() {
+        if (status != ReactiveOfferStatus.OFFERED) {
+            return List.of();
+        }
+        return List.of(
+                new EligibleCard(stabilizeCardInstanceId, CardType.STABILIZE),
+                new EligibleCard(detonateCardInstanceId, CardType.DETONATE));
     }
 
     public UUID id() {
@@ -131,4 +145,6 @@ public class ReactiveOffer extends AggregateRoot {
     public ReactiveOfferStatus status() {
         return status;
     }
+
+    public record EligibleCard(UUID cardInstanceId, CardType cardType) {}
 }

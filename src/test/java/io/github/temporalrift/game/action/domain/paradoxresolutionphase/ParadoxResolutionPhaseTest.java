@@ -65,6 +65,17 @@ class ParadoxResolutionPhaseTest {
                 .isThrownBy(() -> phase.submit(PLAYER_ID, CardType.STABILIZE, NOW));
     }
 
+    @Test
+    void acceptsOnlyEventsIncludedInTheRecoveredPhaseTargetSet() {
+        var affectedEventId = UUID.randomUUID();
+        var phase = new ParadoxResolutionPhase(
+                UUID.randomUUID(), GAME_ID, ERA, NOW.plusSeconds(60), Set.of(affectedEventId));
+
+        assertThatCode(() -> phase.assertAffectedEvent(affectedEventId)).doesNotThrowAnyException();
+        assertThatExceptionOfType(ParadoxResolutionTargetNotAffectedException.class)
+                .isThrownBy(() -> phase.assertAffectedEvent(UUID.randomUUID()));
+    }
+
     private ParadoxResolutionPhase openPhase() {
         return new ParadoxResolutionPhase(UUID.randomUUID(), GAME_ID, ERA, NOW.plusSeconds(60));
     }
