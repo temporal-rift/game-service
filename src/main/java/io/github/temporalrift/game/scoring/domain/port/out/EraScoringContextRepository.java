@@ -9,6 +9,7 @@ import io.github.temporalrift.game.scoring.domain.event.EraResolutionCompleted;
 import io.github.temporalrift.game.scoring.domain.playerscore.ScoreReason;
 import io.github.temporalrift.game.shared.domain.event.ActivistDeclarationRecorded;
 import io.github.temporalrift.game.shared.domain.event.ActivistDeclarationResolved;
+import io.github.temporalrift.game.shared.domain.event.EraActionFactsFinalized;
 import io.github.temporalrift.game.shared.domain.model.Faction;
 import io.github.temporalrift.game.shared.domain.model.SpecialAction;
 
@@ -68,14 +69,7 @@ public interface EraScoringContextRepository {
      * Does not by itself drive a score credit until {@link #confirmCorruptInversion} is called.
      */
     void recordCorruptCorrelation(
-            UUID gameId,
-            int eraNumber,
-            UUID corruptingPlayerId,
-            UUID targetPlayerId,
-            UUID cardInstanceId,
-            UUID targetEventId,
-            UUID sourceOutcomeId,
-            UUID targetOutcomeId);
+            UUID gameId, int eraNumber, EraActionFactsFinalized.CorruptCorrelationFact correlation);
 
     /**
      * Confirms whether a previously recorded Corrupt correlation's inversion actually took effect (a Seal can void

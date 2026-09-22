@@ -35,6 +35,7 @@ import io.github.temporalrift.game.scoring.domain.event.EraResolutionCompleted;
 import io.github.temporalrift.game.scoring.domain.event.OutcomeApplied;
 import io.github.temporalrift.game.scoring.domain.playerscore.ScoreReason;
 import io.github.temporalrift.game.shared.domain.event.ActivistDeclarationRecorded;
+import io.github.temporalrift.game.shared.domain.event.EraActionFactsFinalized;
 import io.github.temporalrift.game.shared.domain.model.Faction;
 import io.github.temporalrift.game.shared.domain.model.SpecialAction;
 
@@ -681,35 +682,19 @@ class EraScoringContextRepositoryAdapterTest {
     @Test
     void recordCorruptCorrelation_delegatesToIdempotentInsert() {
         var gameId = UUID.randomUUID();
-        var corruptingPlayerId = UUID.randomUUID();
-        var targetPlayerId = UUID.randomUUID();
-        var cardInstanceId = UUID.randomUUID();
-        var targetEventId = UUID.randomUUID();
-        var sourceOutcomeId = UUID.randomUUID();
-        var targetOutcomeId = UUID.randomUUID();
+        var correlation = new EraActionFactsFinalized.CorruptCorrelationFact(
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                UUID.randomUUID());
 
-        adapter.recordCorruptCorrelation(
-                gameId,
-                2,
-                corruptingPlayerId,
-                targetPlayerId,
-                cardInstanceId,
-                targetEventId,
-                sourceOutcomeId,
-                targetOutcomeId);
+        adapter.recordCorruptCorrelation(gameId, 2, correlation);
 
         then(corruptCorrelationJpaRepository)
                 .should()
-                .insertIfAbsent(
-                        any(UUID.class),
-                        eq(gameId),
-                        eq(2),
-                        eq(corruptingPlayerId),
-                        eq(targetPlayerId),
-                        eq(cardInstanceId),
-                        eq(targetEventId),
-                        eq(sourceOutcomeId),
-                        eq(targetOutcomeId));
+                .insertIfAbsent(any(UUID.class), eq(gameId), eq(2), eq(correlation));
     }
 
     @Test
@@ -823,12 +808,13 @@ class EraScoringContextRepositoryAdapterTest {
         adapter.recordCorruptCorrelation(
                 gameId,
                 2,
-                corruptingPlayerId,
-                UUID.randomUUID(),
-                UUID.randomUUID(),
-                targetEventId,
-                null,
-                UUID.randomUUID());
+                new EraActionFactsFinalized.CorruptCorrelationFact(
+                        corruptingPlayerId,
+                        UUID.randomUUID(),
+                        UUID.randomUUID(),
+                        targetEventId,
+                        null,
+                        UUID.randomUUID()));
 
         then(corruptCorrelationJpaRepository)
                 .should()
@@ -854,12 +840,13 @@ class EraScoringContextRepositoryAdapterTest {
         adapter.recordCorruptCorrelation(
                 gameId,
                 2,
-                corruptingPlayerId,
-                UUID.randomUUID(),
-                UUID.randomUUID(),
-                targetEventId,
-                null,
-                UUID.randomUUID());
+                new EraActionFactsFinalized.CorruptCorrelationFact(
+                        corruptingPlayerId,
+                        UUID.randomUUID(),
+                        UUID.randomUUID(),
+                        targetEventId,
+                        null,
+                        UUID.randomUUID()));
 
         then(playerJpaRepository).should(times(2)).findByGameIdAndPlayerIdWithLock(eq(gameId), eq(corruptingPlayerId));
     }
@@ -876,12 +863,13 @@ class EraScoringContextRepositoryAdapterTest {
         adapter.recordCorruptCorrelation(
                 gameId,
                 2,
-                corruptingPlayerId,
-                UUID.randomUUID(),
-                UUID.randomUUID(),
-                targetEventId,
-                null,
-                UUID.randomUUID());
+                new EraActionFactsFinalized.CorruptCorrelationFact(
+                        corruptingPlayerId,
+                        UUID.randomUUID(),
+                        UUID.randomUUID(),
+                        targetEventId,
+                        null,
+                        UUID.randomUUID()));
 
         then(corruptCorrelationJpaRepository)
                 .should(never())

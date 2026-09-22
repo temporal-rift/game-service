@@ -8,6 +8,8 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import io.github.temporalrift.game.shared.domain.event.EraActionFactsFinalized;
+
 interface ScoringContextCorruptCorrelationJpaRepository
         extends JpaRepository<ScoringContextCorruptCorrelationJpaEntity, UUID> {
 
@@ -20,20 +22,17 @@ interface ScoringContextCorruptCorrelationJpaRepository
                     INSERT INTO scoring_context_corrupt_correlation
                         (id, game_id, era_number, corrupting_player_id, target_player_id, card_instance_id,
                          target_event_id, source_outcome_id, target_outcome_id)
-                    VALUES (:id, :gameId, :eraNumber, :corruptingPlayerId, :targetPlayerId, :cardInstanceId,
-                            :targetEventId, :sourceOutcomeId, :targetOutcomeId)
+                    VALUES (:id, :gameId, :eraNumber, :#{#correlation.corruptingPlayerId},
+                            :#{#correlation.targetPlayerId}, :#{#correlation.cardInstanceId},
+                            :#{#correlation.targetEventId}, :#{#correlation.sourceOutcomeId},
+                            :#{#correlation.targetOutcomeId})
                     ON CONFLICT (game_id, era_number, corrupting_player_id, card_instance_id) DO NOTHING
                     """, nativeQuery = true)
     void insertIfAbsent(
             @Param("id") UUID id,
             @Param("gameId") UUID gameId,
             @Param("eraNumber") int eraNumber,
-            @Param("corruptingPlayerId") UUID corruptingPlayerId,
-            @Param("targetPlayerId") UUID targetPlayerId,
-            @Param("cardInstanceId") UUID cardInstanceId,
-            @Param("targetEventId") UUID targetEventId,
-            @Param("sourceOutcomeId") UUID sourceOutcomeId,
-            @Param("targetOutcomeId") UUID targetOutcomeId);
+            @Param("correlation") EraActionFactsFinalized.CorruptCorrelationFact correlation);
 
     // Keyed on the same natural key as insertIfAbsent above. Returns the affected row count so the
     // caller can detect (and log) a confirmation that arrived before its correlation row was written.
