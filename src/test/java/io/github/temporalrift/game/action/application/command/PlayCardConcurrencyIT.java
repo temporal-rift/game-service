@@ -6,6 +6,7 @@ import static org.awaitility.Awaitility.await;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.CyclicBarrier;
@@ -78,8 +79,8 @@ class PlayCardConcurrencyIT {
         var targetEventId = UUID.randomUUID();
         var targetOutcomeId = UUID.randomUUID();
         transactionTemplate.executeWithoutResult(_ -> {
-            paradoxResolutionPhaseRepository.save(
-                    new ParadoxResolutionPhase(UUID.randomUUID(), gameId, ERA, Instant.parse("2099-01-01T00:01:00Z")));
+            paradoxResolutionPhaseRepository.save(new ParadoxResolutionPhase(
+                    UUID.randomUUID(), gameId, ERA, Instant.parse("2099-01-01T00:01:00Z"), Set.of(targetEventId)));
             var playerState = new PlayerState(UUID.randomUUID(), gameId, playerId);
             playerState.dealCard(new PlayerState.CardInstance(firstCard, CardType.PUSH), 5);
             playerState.dealCard(new PlayerState.CardInstance(secondCard, CardType.STABILIZE), 5);
