@@ -67,15 +67,15 @@ class PlayParadoxResolutionCardCommandHandler implements PlayParadoxResolutionCa
         var resolved = resolveCard(command, playerState);
 
         phase.submit(command.playerId(), resolved.cardType(), now);
-        if (resolved.offer() == null) {
-            playerState.removeCard(command.cardInstanceId());
-        } else {
-            if (resolved.offer().containsCard(command.cardInstanceId())) {
-                resolved.offer().consume(command.cardInstanceId());
-            } else {
-                resolved.offer().expire();
-            }
+        if (resolved.offer() != null && resolved.offer().containsCard(command.cardInstanceId())) {
+            resolved.offer().consume(command.cardInstanceId());
             reactiveOfferRepository.save(resolved.offer());
+        } else {
+            playerState.removeCard(command.cardInstanceId());
+            if (resolved.offer() != null) {
+                resolved.offer().expire();
+                reactiveOfferRepository.save(resolved.offer());
+            }
         }
         phaseRepository.save(phase);
         playerStateRepository.save(playerState);

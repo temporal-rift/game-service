@@ -13,7 +13,7 @@ public class ParadoxResolutionPhase extends AggregateRoot {
 
     public static final String AGGREGATE_TYPE = "ParadoxResolutionPhase";
 
-    private static final Set<CardType> ELIGIBLE_CARD_TYPES =
+    public static final Set<CardType> ELIGIBLE_CARD_TYPES =
             Set.of(CardType.PUSH, CardType.SUPPRESS, CardType.STABILIZE, CardType.DETONATE);
 
     private final UUID id;
@@ -57,16 +57,6 @@ public class ParadoxResolutionPhase extends AggregateRoot {
             int eraNumber,
             Instant expiresAt,
             ParadoxResolutionPhaseStatus status,
-            Set<UUID> submittedPlayerIds) {
-        return new ParadoxResolutionPhase(id, gameId, eraNumber, expiresAt, status, Set.of(), submittedPlayerIds);
-    }
-
-    public static ParadoxResolutionPhase reconstitute(
-            UUID id,
-            UUID gameId,
-            int eraNumber,
-            Instant expiresAt,
-            ParadoxResolutionPhaseStatus status,
             Set<UUID> affectedEventIds,
             Set<UUID> submittedPlayerIds) {
         return new ParadoxResolutionPhase(
@@ -93,7 +83,8 @@ public class ParadoxResolutionPhase extends AggregateRoot {
     }
 
     public void assertAffectedEvent(UUID eventId) {
-        if (!affectedEventIds.contains(Objects.requireNonNull(eventId, "eventId must not be null"))) {
+        Objects.requireNonNull(eventId, "eventId must not be null");
+        if (!affectedEventIds.isEmpty() && !affectedEventIds.contains(eventId)) {
             throw new ParadoxResolutionTargetNotAffectedException(eventId);
         }
     }

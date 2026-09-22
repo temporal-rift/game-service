@@ -231,7 +231,9 @@ class PlayParadoxResolutionCardCommandHandlerTest {
 
         assertThat(offer.status())
                 .isEqualTo(io.github.temporalrift.game.action.domain.reactiveoffer.ReactiveOfferStatus.EXPIRED);
+        assertThat(playerState.hand()).isEmpty();
         then(reactiveOfferRepository).should().save(offer);
+        then(playerStateRepository).should().save(playerState);
     }
 
     @Test
