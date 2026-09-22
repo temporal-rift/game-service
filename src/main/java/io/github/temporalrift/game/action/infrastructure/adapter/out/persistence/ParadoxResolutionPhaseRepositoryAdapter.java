@@ -55,7 +55,11 @@ class ParadoxResolutionPhaseRepositoryAdapter implements ParadoxResolutionPhaseR
                 entity.getEraNumber(),
                 entity.getExpiresAt(),
                 ParadoxResolutionPhaseStatus.valueOf(entity.getStatus()),
-                new LinkedHashSet<>(Arrays.asList(entity.getAffectedEventIds())),
-                new LinkedHashSet<>(Arrays.asList(entity.getSubmittedPlayerIds())));
+                uuidSet(entity.getAffectedEventIds()),
+                uuidSet(entity.getSubmittedPlayerIds()));
+    }
+
+    private static LinkedHashSet<UUID> uuidSet(UUID[] ids) {
+        return ids == null ? new LinkedHashSet<>() : new LinkedHashSet<>(Arrays.asList(ids));
     }
 }
