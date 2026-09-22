@@ -31,6 +31,7 @@ import io.github.temporalrift.game.action.domain.paradoxresolutionphase.CardNotE
 import io.github.temporalrift.game.action.domain.paradoxresolutionphase.DuplicateParadoxResolutionSubmissionException;
 import io.github.temporalrift.game.action.domain.paradoxresolutionphase.ParadoxResolutionPhaseNotFoundException;
 import io.github.temporalrift.game.action.domain.paradoxresolutionphase.ParadoxResolutionPhaseNotOpenException;
+import io.github.temporalrift.game.action.domain.paradoxresolutionphase.ParadoxResolutionTargetNotAffectedException;
 import io.github.temporalrift.game.action.domain.playerstate.PlayerStateNotFoundException;
 import io.github.temporalrift.game.action.domain.specialactionerausage.SealGameBudgetExhaustedException;
 import io.github.temporalrift.game.action.domain.specialactionerausage.SpecialActionEraBudgetExhaustedException;
@@ -154,6 +155,11 @@ class ActionExceptionHandler {
     @ExceptionHandler(CardNotEligibleForRoundException.class)
     ProblemDetail handleCardNotEligibleForRound(CardNotEligibleForRoundException ex) {
         return ProblemDetails.of(HttpStatus.UNPROCESSABLE_CONTENT, ex.getMessage(), "422-12");
+    }
+
+    @ExceptionHandler(ParadoxResolutionTargetNotAffectedException.class)
+    ProblemDetail handleParadoxResolutionTargetNotAffected(ParadoxResolutionTargetNotAffectedException ex) {
+        return ProblemDetails.of(HttpStatus.UNPROCESSABLE_CONTENT, ex.getMessage(), "422-13");
     }
 
     @ExceptionHandler(SpecialActionEraBudgetExhaustedException.class)

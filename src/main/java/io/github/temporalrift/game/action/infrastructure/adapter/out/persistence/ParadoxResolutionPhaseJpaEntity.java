@@ -19,6 +19,10 @@ class ParadoxResolutionPhaseJpaEntity extends GameEraScopedJpaEntity {
     @Column(name = "expires_at", nullable = false)
     private Instant expiresAt;
 
+    @Column(name = "affected_event_ids", columnDefinition = "uuid[]", nullable = false)
+    @JdbcTypeCode(SqlTypes.ARRAY)
+    private UUID[] affectedEventIds;
+
     @Column(name = "submitted_player_ids", columnDefinition = "uuid[]", nullable = false)
     @JdbcTypeCode(SqlTypes.ARRAY)
     private UUID[] submittedPlayerIds;
@@ -39,6 +43,14 @@ class ParadoxResolutionPhaseJpaEntity extends GameEraScopedJpaEntity {
 
     void setExpiresAt(Instant expiresAt) {
         this.expiresAt = expiresAt;
+    }
+
+    UUID[] getAffectedEventIds() {
+        return affectedEventIds;
+    }
+
+    void setAffectedEventIds(UUID[] affectedEventIds) {
+        this.affectedEventIds = affectedEventIds;
     }
 
     UUID[] getSubmittedPlayerIds() {

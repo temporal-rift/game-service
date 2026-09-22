@@ -12,6 +12,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -29,6 +30,7 @@ import io.github.temporalrift.game.action.domain.paradoxresolutionphase.CardNotE
 import io.github.temporalrift.game.action.domain.paradoxresolutionphase.DuplicateParadoxResolutionSubmissionException;
 import io.github.temporalrift.game.action.domain.paradoxresolutionphase.ParadoxResolutionPhase;
 import io.github.temporalrift.game.action.domain.paradoxresolutionphase.ParadoxResolutionPhaseNotOpenException;
+import io.github.temporalrift.game.action.domain.paradoxresolutionphase.ParadoxResolutionTargetNotAffectedException;
 import io.github.temporalrift.game.action.domain.playerstate.PlayerState;
 import io.github.temporalrift.game.action.domain.port.out.ActionEventPublisher;
 import io.github.temporalrift.game.action.domain.port.out.ParadoxResolutionPhaseRepository;
@@ -157,6 +159,25 @@ class PlayParadoxResolutionCardCommandHandlerTest {
         then(phaseRepository).shouldHaveNoInteractions();
     }
 
+    @Test
+    void targetOutsideTheOpenPhaseIsRejectedBeforeAnyCardOrOfferIsConsumed() {
+        var phase = openPhase();
+        var playerState = playerStateWithCard(CardType.STABILIZE);
+        given(phaseRepository.findByGameIdAndEraNumberWithLock(GAME_ID, ERA)).willReturn(Optional.of(phase));
+        var outsidePhaseTarget = UUID.randomUUID();
+        var command = new PlayParadoxResolutionCardUseCase.Command(
+                GAME_ID, ERA, PLAYER_ID, CARD_INSTANCE_ID, outsidePhaseTarget, TARGET_OUTCOME_ID);
+
+        assertThatExceptionOfType(ParadoxResolutionTargetNotAffectedException.class)
+                .isThrownBy(() -> handler.handle(command));
+
+        assertThat(playerState.hand()).hasSize(1);
+        assertThat(phase.submittedPlayerIds()).isEmpty();
+        then(playerStateRepository).shouldHaveNoInteractions();
+        then(reactiveOfferRepository).shouldHaveNoInteractions();
+        then(actionEventPublisher).shouldHaveNoInteractions();
+    }
+
     private PlayParadoxResolutionCardUseCase.Command command() {
         return new PlayParadoxResolutionCardUseCase.Command(
                 GAME_ID, ERA, PLAYER_ID, CARD_INSTANCE_ID, TARGET_EVENT_ID, TARGET_OUTCOME_ID);
@@ -192,6 +213,25 @@ class PlayParadoxResolutionCardCommandHandlerTest {
                         CardType.STABILIZE,
                         TARGET_EVENT_ID,
                         TARGET_OUTCOME_ID));
+    }
+
+    @Test
+    void acceptsRetainedCardAndExpiresUnusedReactiveOffer() {
+        var phase = openPhase();
+        var playerState = playerStateWithCard(CardType.PUSH);
+        var offer = new io.github.temporalrift.game.action.domain.reactiveoffer.ReactiveOffer(
+                UUID.randomUUID(), GAME_ID, ERA, PLAYER_ID, UUID.randomUUID(), UUID.randomUUID());
+        given(phaseRepository.findByGameIdAndEraNumberWithLock(GAME_ID, ERA)).willReturn(Optional.of(phase));
+        given(playerStateRepository.findByGameIdAndPlayerIdWithLock(GAME_ID, PLAYER_ID))
+                .willReturn(Optional.of(playerState));
+        given(reactiveOfferRepository.findByGameIdAndEraNumberAndPlayerIdWithLock(GAME_ID, ERA, PLAYER_ID))
+                .willReturn(Optional.of(offer));
+
+        handler.handle(command());
+
+        assertThat(offer.status())
+                .isEqualTo(io.github.temporalrift.game.action.domain.reactiveoffer.ReactiveOfferStatus.EXPIRED);
+        then(reactiveOfferRepository).should().save(offer);
     }
 
     @Test
@@ -236,7 +276,8 @@ class PlayParadoxResolutionCardCommandHandlerTest {
     }
 
     private ParadoxResolutionPhase openPhase() {
-        return new ParadoxResolutionPhase(UUID.randomUUID(), GAME_ID, ERA, NOW.plusSeconds(30));
+        return new ParadoxResolutionPhase(
+                UUID.randomUUID(), GAME_ID, ERA, NOW.plusSeconds(30), Set.of(TARGET_EVENT_ID));
     }
 
     private PlayerState playerStateWithCard(CardType cardType) {

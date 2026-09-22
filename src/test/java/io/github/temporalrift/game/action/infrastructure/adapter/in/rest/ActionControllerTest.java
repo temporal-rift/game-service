@@ -362,9 +362,22 @@ class ActionControllerTest {
     void getParadoxResolutionStatus() throws Exception {
         // given
         var pendingPlayerId = UUID.randomUUID();
+        var affectedEventId = UUID.randomUUID();
+        var eligibleCardId = UUID.randomUUID();
         given(getParadoxResolutionStatusUseCase.handle(any()))
                 .willReturn(new GetParadoxResolutionStatusUseCase.Result(
-                        ERA, true, 42, 2, 3, List.of(pendingPlayerId), false));
+                        ERA,
+                        true,
+                        42,
+                        2,
+                        3,
+                        List.of(pendingPlayerId),
+                        false,
+                        List.of(affectedEventId),
+                        List.of(new GetParadoxResolutionStatusUseCase.EligibleCard(
+                                eligibleCardId,
+                                io.github.temporalrift.game.shared.domain.model.CardType.STABILIZE,
+                                io.github.temporalrift.game.shared.domain.model.CardGrade.I))));
 
         // when / then
         mockMvc.perform(get("/api/v1/games/{gameId}/eras/{eraNumber}/paradox-resolution/status", GAME_ID, ERA)
@@ -376,7 +389,12 @@ class ActionControllerTest {
                 .andExpect(jsonPath("$.submittedCount").value(2))
                 .andExpect(jsonPath("$.totalPlayers").value(3))
                 .andExpect(jsonPath("$.pendingPlayerIds[0]").value(pendingPlayerId.toString()))
-                .andExpect(jsonPath("$.mySubmitted").value(false));
+                .andExpect(jsonPath("$.mySubmitted").value(false))
+                .andExpect(jsonPath("$.affectedEventIds[0]").value(affectedEventId.toString()))
+                .andExpect(
+                        jsonPath("$.eligibleResolutionCards[0].cardInstanceId").value(eligibleCardId.toString()))
+                .andExpect(jsonPath("$.eligibleResolutionCards[0].cardType").value("STABILIZE"))
+                .andExpect(jsonPath("$.eligibleResolutionCards[0].grade").value("I"));
     }
 
     @Test
@@ -384,7 +402,8 @@ class ActionControllerTest {
     void getParadoxResolutionStatusClosed() throws Exception {
         // given
         given(getParadoxResolutionStatusUseCase.handle(any()))
-                .willReturn(new GetParadoxResolutionStatusUseCase.Result(ERA, false, null, 3, 3, null, true));
+                .willReturn(new GetParadoxResolutionStatusUseCase.Result(
+                        ERA, false, null, 3, 3, null, true, List.of(UUID.randomUUID()), null));
 
         // when / then
         mockMvc.perform(get("/api/v1/games/{gameId}/eras/{eraNumber}/paradox-resolution/status", GAME_ID, ERA)
@@ -393,6 +412,7 @@ class ActionControllerTest {
                 .andExpect(jsonPath("$.phaseOpen").value(false))
                 .andExpect(jsonPath("$.timerRemainingSeconds").doesNotExist())
                 .andExpect(jsonPath("$.pendingPlayerIds").doesNotExist())
+                .andExpect(jsonPath("$.eligibleResolutionCards").isEmpty())
                 .andExpect(jsonPath("$.mySubmitted").value(true));
     }
 

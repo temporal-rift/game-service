@@ -18,5 +18,7 @@ public interface ReactiveOfferRepository {
 
     Optional<ReactiveOffer> findByGameIdAndEraNumberAndPlayerIdWithLock(UUID gameId, int eraNumber, UUID playerId);
 
+    Optional<ReactiveOffer> findByGameIdAndEraNumberAndPlayerId(UUID gameId, int eraNumber, UUID playerId);
+
     List<ReactiveOffer> findAllByGameIdAndEraNumberWithLock(UUID gameId, int eraNumber);
 }

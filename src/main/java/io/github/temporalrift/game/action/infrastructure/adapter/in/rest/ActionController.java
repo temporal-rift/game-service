@@ -18,6 +18,9 @@ import io.github.temporalrift.game.action.infrastructure.adapter.in.rest.v1.mode
 import io.github.temporalrift.game.action.infrastructure.adapter.in.rest.v1.model.ActivistDeclarationRequest;
 import io.github.temporalrift.game.action.infrastructure.adapter.in.rest.v1.model.ActivistDeclarationResponse;
 import io.github.temporalrift.game.action.infrastructure.adapter.in.rest.v1.model.CardActionRequest;
+import io.github.temporalrift.game.action.infrastructure.adapter.in.rest.v1.model.CardGrade;
+import io.github.temporalrift.game.action.infrastructure.adapter.in.rest.v1.model.CardType;
+import io.github.temporalrift.game.action.infrastructure.adapter.in.rest.v1.model.EligibleResolutionCard;
 import io.github.temporalrift.game.action.infrastructure.adapter.in.rest.v1.model.HandSelectionRequest;
 import io.github.temporalrift.game.action.infrastructure.adapter.in.rest.v1.model.HandSelectionResponse;
 import io.github.temporalrift.game.action.infrastructure.adapter.in.rest.v1.model.HandSelectionStatus;
@@ -169,7 +172,21 @@ class ActionController implements ActionApi {
                 result.mySubmitted());
         response.setTimerRemainingSeconds(result.timerRemainingSeconds());
         response.setPendingPlayerIds(result.pendingPlayerIds());
+        response.setAffectedEventIds(result.affectedEventIds());
+        if (result.eligibleResolutionCards() != null) {
+            response.setEligibleResolutionCards(result.eligibleResolutionCards().stream()
+                    .map(ActionController::toEligibleResolutionCard)
+                    .toList());
+        }
         return ResponseEntity.ok(response);
+    }
+
+    private static EligibleResolutionCard toEligibleResolutionCard(
+            GetParadoxResolutionStatusUseCase.EligibleCard card) {
+        return new EligibleResolutionCard(
+                card.cardInstanceId(),
+                CardType.fromValue(card.cardType().name()),
+                CardGrade.fromValue(card.grade().name()));
     }
 
     private SubmissionResult submitCard(

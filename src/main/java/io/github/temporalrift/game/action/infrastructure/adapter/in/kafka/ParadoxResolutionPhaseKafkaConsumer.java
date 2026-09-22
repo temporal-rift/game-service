@@ -4,6 +4,7 @@ import static io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelCon
 import static io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.PARADOX_RESOLUTION_PHASE_STARTED_EVENT_TYPE;
 import static org.springframework.transaction.annotation.Propagation.REQUIRES_NEW;
 
+import java.util.LinkedHashSet;
 import java.util.UUID;
 
 import org.slf4j.Logger;
@@ -97,16 +98,22 @@ class ParadoxResolutionPhaseKafkaConsumer {
         if (!envelope.matchesGameId(started.gameId())) {
             return;
         }
-        if (phaseRepository
-                .findByGameIdAndEraNumber(started.gameId(), started.eraNumber())
-                .isPresent()) {
+        var affectedEventIds = started.affectedEventIds() == null
+                ? new LinkedHashSet<UUID>()
+                : new LinkedHashSet<>(started.affectedEventIds());
+        var existing = phaseRepository.findByGameIdAndEraNumber(started.gameId(), started.eraNumber());
+        if (existing.isPresent()) {
+            if (existing.get().recoverAffectedEventIds(affectedEventIds)) {
+                phaseRepository.save(existing.get());
+            }
             return;
         }
         phaseRepository.save(new ParadoxResolutionPhase(
                 envelope.eventId(),
                 started.gameId(),
                 started.eraNumber(),
-                envelope.occurredAt().plusSeconds(started.timerSeconds())));
+                envelope.occurredAt().plusSeconds(started.timerSeconds()),
+                affectedEventIds));
         dealReactiveOffers(started.gameId(), started.eraNumber());
     }
 

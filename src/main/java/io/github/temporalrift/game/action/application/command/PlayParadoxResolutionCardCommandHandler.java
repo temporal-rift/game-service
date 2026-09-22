@@ -24,7 +24,7 @@ import io.github.temporalrift.game.shared.domain.model.CardGrade;
 import io.github.temporalrift.game.shared.domain.model.CardType;
 
 @Service
-@ConditionalOnBean({ParadoxResolutionPhaseRepository.class, PlayerStateRepository.class})
+@ConditionalOnBean({ParadoxResolutionPhaseRepository.class, PlayerStateRepository.class, ReactiveOfferRepository.class})
 class PlayParadoxResolutionCardCommandHandler implements PlayParadoxResolutionCardUseCase {
 
     private final ParadoxResolutionPhaseRepository phaseRepository;
@@ -59,6 +59,7 @@ class PlayParadoxResolutionCardCommandHandler implements PlayParadoxResolutionCa
                 .orElseThrow(() -> new ParadoxResolutionPhaseNotOpenException(command.gameId(), command.eraNumber()));
         var now = clock.instant();
         phase.assertPlayerCanSubmit(command.playerId(), now);
+        phase.assertAffectedEvent(command.targetEventId());
 
         var playerState = playerStateRepository
                 .findByGameIdAndPlayerIdWithLock(command.gameId(), command.playerId())
@@ -69,7 +70,11 @@ class PlayParadoxResolutionCardCommandHandler implements PlayParadoxResolutionCa
         if (resolved.offer() == null) {
             playerState.removeCard(command.cardInstanceId());
         } else {
-            resolved.offer().consume(command.cardInstanceId());
+            if (resolved.offer().containsCard(command.cardInstanceId())) {
+                resolved.offer().consume(command.cardInstanceId());
+            } else {
+                resolved.offer().expire();
+            }
             reactiveOfferRepository.save(resolved.offer());
         }
         phaseRepository.save(phase);
@@ -84,17 +89,17 @@ class PlayParadoxResolutionCardCommandHandler implements PlayParadoxResolutionCa
      * only as dealt at phase opening, so no offer row is ever created on the submission path.
      */
     private ResolvedCard resolveCard(Command command, PlayerState playerState) {
+        var offer = reactiveOfferRepository.findByGameIdAndEraNumberAndPlayerIdWithLock(
+                command.gameId(), command.eraNumber(), command.playerId());
         var handCard = playerState.hand().stream()
                 .filter(card -> card.cardInstanceId().equals(command.cardInstanceId()))
                 .findFirst();
         if (handCard.isPresent()) {
-            return new ResolvedCard(handCard.get().cardType(), handCard.get().grade(), null);
+            return new ResolvedCard(handCard.get().cardType(), handCard.get().grade(), offer.orElse(null));
         }
-        var offer = reactiveOfferRepository
-                .findByGameIdAndEraNumberAndPlayerIdWithLock(command.gameId(), command.eraNumber(), command.playerId())
-                .orElseThrow(() -> new CardNotInHandException(command.cardInstanceId()));
-        var cardType = offer.cardTypeOf(command.cardInstanceId());
-        return new ResolvedCard(cardType, CardGrade.I, offer);
+        var resolvedOffer = offer.orElseThrow(() -> new CardNotInHandException(command.cardInstanceId()));
+        var cardType = resolvedOffer.cardTypeOf(command.cardInstanceId());
+        return new ResolvedCard(cardType, CardGrade.I, resolvedOffer);
     }
 
     private record ResolvedCard(CardType cardType, CardGrade grade, ReactiveOffer offer) {}

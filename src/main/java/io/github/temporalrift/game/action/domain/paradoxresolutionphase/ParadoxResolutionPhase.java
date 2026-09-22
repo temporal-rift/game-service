@@ -20,11 +20,16 @@ public class ParadoxResolutionPhase extends AggregateRoot {
     private final UUID gameId;
     private final int eraNumber;
     private final Instant expiresAt;
+    private final Set<UUID> affectedEventIds;
     private final Set<UUID> submittedPlayerIds;
     private ParadoxResolutionPhaseStatus status;
 
     public ParadoxResolutionPhase(UUID id, UUID gameId, int eraNumber, Instant expiresAt) {
-        this(id, gameId, eraNumber, expiresAt, ParadoxResolutionPhaseStatus.OPEN, Set.of());
+        this(id, gameId, eraNumber, expiresAt, Set.of());
+    }
+
+    public ParadoxResolutionPhase(UUID id, UUID gameId, int eraNumber, Instant expiresAt, Set<UUID> affectedEventIds) {
+        this(id, gameId, eraNumber, expiresAt, ParadoxResolutionPhaseStatus.OPEN, affectedEventIds, Set.of());
     }
 
     private ParadoxResolutionPhase(
@@ -33,12 +38,15 @@ public class ParadoxResolutionPhase extends AggregateRoot {
             int eraNumber,
             Instant expiresAt,
             ParadoxResolutionPhaseStatus status,
+            Set<UUID> affectedEventIds,
             Set<UUID> submittedPlayerIds) {
         this.id = Objects.requireNonNull(id, "id must not be null");
         this.gameId = Objects.requireNonNull(gameId, "gameId must not be null");
         this.eraNumber = eraNumber;
         this.expiresAt = Objects.requireNonNull(expiresAt, "expiresAt must not be null");
         this.status = Objects.requireNonNull(status, "status must not be null");
+        this.affectedEventIds =
+                new LinkedHashSet<>(Objects.requireNonNull(affectedEventIds, "affectedEventIds must not be null"));
         this.submittedPlayerIds =
                 new LinkedHashSet<>(Objects.requireNonNull(submittedPlayerIds, "submittedPlayerIds must not be null"));
     }
@@ -50,7 +58,19 @@ public class ParadoxResolutionPhase extends AggregateRoot {
             Instant expiresAt,
             ParadoxResolutionPhaseStatus status,
             Set<UUID> submittedPlayerIds) {
-        return new ParadoxResolutionPhase(id, gameId, eraNumber, expiresAt, status, submittedPlayerIds);
+        return new ParadoxResolutionPhase(id, gameId, eraNumber, expiresAt, status, Set.of(), submittedPlayerIds);
+    }
+
+    public static ParadoxResolutionPhase reconstitute(
+            UUID id,
+            UUID gameId,
+            int eraNumber,
+            Instant expiresAt,
+            ParadoxResolutionPhaseStatus status,
+            Set<UUID> affectedEventIds,
+            Set<UUID> submittedPlayerIds) {
+        return new ParadoxResolutionPhase(
+                id, gameId, eraNumber, expiresAt, status, affectedEventIds, submittedPlayerIds);
     }
 
     public void assertPlayerCanSubmit(UUID playerId, Instant now) {
@@ -70,6 +90,21 @@ public class ParadoxResolutionPhase extends AggregateRoot {
             throw new CardNotEligibleForParadoxResolutionException(cardType);
         }
         submittedPlayerIds.add(playerId);
+    }
+
+    public void assertAffectedEvent(UUID eventId) {
+        if (!affectedEventIds.contains(Objects.requireNonNull(eventId, "eventId must not be null"))) {
+            throw new ParadoxResolutionTargetNotAffectedException(eventId);
+        }
+    }
+
+    public boolean recoverAffectedEventIds(Set<UUID> recoveredAffectedEventIds) {
+        Objects.requireNonNull(recoveredAffectedEventIds, "recoveredAffectedEventIds must not be null");
+        if (recoveredAffectedEventIds.isEmpty() || !affectedEventIds.isEmpty()) {
+            return false;
+        }
+        affectedEventIds.addAll(recoveredAffectedEventIds);
+        return true;
     }
 
     public void close() {
@@ -94,6 +129,10 @@ public class ParadoxResolutionPhase extends AggregateRoot {
 
     public ParadoxResolutionPhaseStatus status() {
         return status;
+    }
+
+    public Set<UUID> affectedEventIds() {
+        return Set.copyOf(affectedEventIds);
     }
 
     public Set<UUID> submittedPlayerIds() {
