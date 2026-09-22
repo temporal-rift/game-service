@@ -19,6 +19,7 @@ import io.github.temporalrift.game.scoring.domain.event.EraResolutionCompleted;
 import io.github.temporalrift.game.scoring.domain.playerscore.ScoreReason;
 import io.github.temporalrift.game.scoring.domain.port.out.EraScoringContextRepository;
 import io.github.temporalrift.game.scoring.domain.port.out.ScoringEraCompletionRepository;
+import io.github.temporalrift.game.shared.domain.event.EraActionFactsFinalized;
 import io.github.temporalrift.game.shared.domain.model.Faction;
 
 @PersistenceIntegrationTest
@@ -32,6 +33,9 @@ class ScoringPersistenceIT {
 
     @Autowired
     ScoringContextChainFactJpaRepository chainFactJpaRepository;
+
+    @Autowired
+    ScoringContextCorruptCorrelationJpaRepository corruptCorrelationJpaRepository;
 
     @Test
     void getRequired_returnsPlayersAssembledFromUpsertedFactionAssignments() {
@@ -133,6 +137,48 @@ class ScoringPersistenceIT {
 
         var secondContext = contextRepository.getRequired(gameId, 2);
         assertThat(secondContext.paradoxCascadeFacts()).isEmpty();
+    }
+
+    @Test
+    void recordCorruptCorrelation_insertsRowIdempotently() {
+        var gameId = UUID.randomUUID();
+        var correlation = new EraActionFactsFinalized.CorruptCorrelationFact(
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                UUID.randomUUID());
+
+        contextRepository.recordCorruptCorrelation(gameId, 2, correlation);
+        contextRepository.recordCorruptCorrelation(gameId, 2, correlation);
+
+        assertThat(corruptCorrelationJpaRepository.findAllByGameIdAndEraNumber(gameId, 2))
+                .singleElement()
+                .satisfies(row -> {
+                    assertThat(row.getGameId()).isEqualTo(gameId);
+                    assertThat(row.getEraNumber()).isEqualTo(2);
+                    assertThat(row.getCorruptingPlayerId()).isEqualTo(correlation.corruptingPlayerId());
+                    assertThat(row.getTargetPlayerId()).isEqualTo(correlation.targetPlayerId());
+                    assertThat(row.getCardInstanceId()).isEqualTo(correlation.cardInstanceId());
+                    assertThat(row.getTargetEventId()).isEqualTo(correlation.targetEventId());
+                    assertThat(row.getSourceOutcomeId()).isEqualTo(correlation.sourceOutcomeId());
+                    assertThat(row.getTargetOutcomeId()).isEqualTo(correlation.targetOutcomeId());
+                    assertThat(row.getTookEffect()).isNull();
+                });
+    }
+
+    @Test
+    void recordCorruptCorrelation_acceptsNullSourceOutcome() {
+        var gameId = UUID.randomUUID();
+        var correlation = new EraActionFactsFinalized.CorruptCorrelationFact(
+                UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), null, UUID.randomUUID());
+
+        contextRepository.recordCorruptCorrelation(gameId, 2, correlation);
+
+        assertThat(corruptCorrelationJpaRepository.findAllByGameIdAndEraNumber(gameId, 2))
+                .singleElement()
+                .satisfies(row -> assertThat(row.getSourceOutcomeId()).isNull());
     }
 
     @Test

@@ -262,36 +262,14 @@ class ScoringContextProjectionEventListenerTest {
         var targetEventId = UUID.randomUUID();
         var sourceOutcomeId = UUID.randomUUID();
         var targetOutcomeId = UUID.randomUUID();
+        var correlation = new EraActionFactsFinalized.CorruptCorrelationFact(
+                corruptingPlayerId, targetPlayerId, cardInstanceId, targetEventId, sourceOutcomeId, targetOutcomeId);
         var event = new EraActionFactsFinalized(
-                gameId,
-                2,
-                List.of(),
-                List.of(),
-                List.of(),
-                List.of(),
-                List.of(),
-                List.of(),
-                List.of(new EraActionFactsFinalized.CorruptCorrelationFact(
-                        corruptingPlayerId,
-                        targetPlayerId,
-                        cardInstanceId,
-                        targetEventId,
-                        sourceOutcomeId,
-                        targetOutcomeId)));
+                gameId, 2, List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(correlation));
 
         listener.onEraActionFactsFinalized(event);
 
-        then(contextRepository)
-                .should()
-                .recordCorruptCorrelation(
-                        gameId,
-                        2,
-                        corruptingPlayerId,
-                        targetPlayerId,
-                        cardInstanceId,
-                        targetEventId,
-                        sourceOutcomeId,
-                        targetOutcomeId);
+        then(contextRepository).should().recordCorruptCorrelation(gameId, 2, correlation);
     }
 
     @Test

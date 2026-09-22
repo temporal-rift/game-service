@@ -133,15 +133,7 @@ class ScoringContextProjectionEventListener {
                 .forEach(fact -> contextRepository.recordFulfillmentDeclaration(
                         event.gameId(), event.eraNumber(), fact.playerId(), fact.targetEventId()));
         event.corruptCorrelationFacts()
-                .forEach(fact -> contextRepository.recordCorruptCorrelation(
-                        event.gameId(),
-                        event.eraNumber(),
-                        fact.corruptingPlayerId(),
-                        fact.targetPlayerId(),
-                        fact.cardInstanceId(),
-                        fact.targetEventId(),
-                        fact.sourceOutcomeId(),
-                        fact.targetOutcomeId()));
+                .forEach(fact -> contextRepository.recordCorruptCorrelation(event.gameId(), event.eraNumber(), fact));
         contextRepository.resolveRevisionistActions(event.gameId(), event.eraNumber());
         contextRepository.markActionFactsReady(event.gameId(), event.eraNumber());
         publishResolutions(event.gameId(), event.eraNumber());

@@ -23,6 +23,7 @@ import io.github.temporalrift.game.scoring.domain.port.out.ScoreRulesPort;
 import io.github.temporalrift.game.scoring.domain.port.out.ScoringEventPublisher;
 import io.github.temporalrift.game.shared.domain.event.ActivistDeclarationRecorded;
 import io.github.temporalrift.game.shared.domain.event.ActivistDeclarationResolved;
+import io.github.temporalrift.game.shared.domain.event.EraActionFactsFinalized;
 import io.github.temporalrift.game.shared.domain.event.ScoresUpdated;
 import io.github.temporalrift.game.shared.domain.messaging.DomainEventEnvelope;
 import io.github.temporalrift.game.shared.domain.model.Faction;
@@ -455,14 +456,7 @@ class UpdateScoresCommandHandlerTest {
 
         @Override
         public void recordCorruptCorrelation(
-                UUID gameId,
-                int eraNumber,
-                UUID corruptingPlayerId,
-                UUID targetPlayerId,
-                UUID cardInstanceId,
-                UUID targetEventId,
-                UUID sourceOutcomeId,
-                UUID targetOutcomeId) {
+                UUID gameId, int eraNumber, EraActionFactsFinalized.CorruptCorrelationFact correlation) {
             throw new UnsupportedOperationException("not used by UpdateScoresCommandHandler");
         }
 

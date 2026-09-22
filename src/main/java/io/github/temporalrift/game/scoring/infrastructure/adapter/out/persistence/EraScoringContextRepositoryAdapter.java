@@ -28,6 +28,7 @@ import io.github.temporalrift.game.scoring.domain.playerscore.ScoreReason;
 import io.github.temporalrift.game.scoring.domain.port.out.EraScoringContextRepository;
 import io.github.temporalrift.game.shared.domain.event.ActivistDeclarationRecorded;
 import io.github.temporalrift.game.shared.domain.event.ActivistDeclarationResolved;
+import io.github.temporalrift.game.shared.domain.event.EraActionFactsFinalized;
 import io.github.temporalrift.game.shared.domain.model.Faction;
 import io.github.temporalrift.game.shared.domain.model.SpecialAction;
 
@@ -479,36 +480,24 @@ class EraScoringContextRepositoryAdapter implements EraScoringContextRepository 
     @Override
     @Transactional
     public void recordCorruptCorrelation(
-            UUID gameId,
-            int eraNumber,
-            UUID corruptingPlayerId,
-            UUID targetPlayerId,
-            UUID cardInstanceId,
-            UUID targetEventId,
-            UUID sourceOutcomeId,
-            UUID targetOutcomeId) {
-        lockCorruptPlayer(gameId, corruptingPlayerId);
-        corruptCorrelationJpaRepository.insertIfAbsent(
-                UUID.randomUUID(),
-                gameId,
-                eraNumber,
-                corruptingPlayerId,
-                targetPlayerId,
-                cardInstanceId,
-                targetEventId,
-                sourceOutcomeId,
-                targetOutcomeId);
+            UUID gameId, int eraNumber, EraActionFactsFinalized.CorruptCorrelationFact correlation) {
+        lockCorruptPlayer(gameId, correlation.corruptingPlayerId());
+        corruptCorrelationJpaRepository.insertIfAbsent(UUID.randomUUID(), gameId, eraNumber, correlation);
         // A per-round confirmation routinely arrives before the final-round bundle records this row
         // (rounds 1-2 confirm against a correlation written only at round 3 close). Merge any pending
         // confirmation now so the credit is not lost; the pending row is consumed exactly once.
         corruptPendingConfirmationJpaRepository
                 .findByGameIdAndEraNumberAndCorruptingPlayerIdAndTargetEventId(
-                        gameId, eraNumber, corruptingPlayerId, targetEventId)
+                        gameId, eraNumber, correlation.corruptingPlayerId(), correlation.targetEventId())
                 .ifPresent(pending -> {
                     corruptCorrelationJpaRepository.confirmInversionForTarget(
-                            gameId, eraNumber, corruptingPlayerId, targetEventId, pending.isTookEffect());
+                            gameId,
+                            eraNumber,
+                            correlation.corruptingPlayerId(),
+                            correlation.targetEventId(),
+                            pending.isTookEffect());
                     corruptPendingConfirmationJpaRepository.deletePending(
-                            gameId, eraNumber, corruptingPlayerId, targetEventId);
+                            gameId, eraNumber, correlation.corruptingPlayerId(), correlation.targetEventId());
                 });
     }
 
