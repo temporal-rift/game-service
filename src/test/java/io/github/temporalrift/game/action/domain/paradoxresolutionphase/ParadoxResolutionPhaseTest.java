@@ -68,19 +68,21 @@ class ParadoxResolutionPhaseTest {
     @Test
     void acceptsOnlyEventsIncludedInTheRecoveredPhaseTargetSet() {
         var affectedEventId = UUID.randomUUID();
+        var unaffectedEventId = UUID.randomUUID();
         var phase = new ParadoxResolutionPhase(
                 UUID.randomUUID(), GAME_ID, ERA, NOW.plusSeconds(60), Set.of(affectedEventId));
 
         assertThatCode(() -> phase.assertAffectedEvent(affectedEventId)).doesNotThrowAnyException();
         assertThatExceptionOfType(ParadoxResolutionTargetNotAffectedException.class)
-                .isThrownBy(() -> phase.assertAffectedEvent(UUID.randomUUID()));
+                .isThrownBy(() -> phase.assertAffectedEvent(unaffectedEventId));
     }
 
     @Test
     void allowsAnyTargetWhenLegacyPhaseHasNoRecoveredTargetSet() {
         var phase = openPhase();
+        var unknownEventId = UUID.randomUUID();
 
-        assertThatCode(() -> phase.assertAffectedEvent(UUID.randomUUID())).doesNotThrowAnyException();
+        assertThatCode(() -> phase.assertAffectedEvent(unknownEventId)).doesNotThrowAnyException();
     }
 
     private ParadoxResolutionPhase openPhase() {
