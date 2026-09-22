@@ -9,6 +9,8 @@ import jakarta.persistence.Table;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
+import io.github.temporalrift.game.shared.infrastructure.adapter.out.persistence.GameEraScopedJpaEntity;
+
 @Entity
 @Table(name = "scoring_context_paradox_cascade_fact")
 class ScoringContextParadoxCascadeFactJpaEntity extends GameEraScopedJpaEntity {

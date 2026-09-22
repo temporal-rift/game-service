@@ -6,6 +6,8 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
 
+import io.github.temporalrift.game.shared.infrastructure.adapter.out.persistence.GameEraScopedJpaEntity;
+
 /**
  * A candidate Corrupt fact only — see {@code scoring_context_corrupt_correlation}'s migration and
  * {@code EraScoreEvaluator.eraserDecisions}: this table alone does not drive any score credit.
