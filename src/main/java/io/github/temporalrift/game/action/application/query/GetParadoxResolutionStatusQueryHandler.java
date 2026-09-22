@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import io.github.temporalrift.game.action.application.port.in.GetParadoxResolutionStatusUseCase;
+import io.github.temporalrift.game.action.domain.paradoxresolutionphase.ParadoxResolutionPhase;
 import io.github.temporalrift.game.action.domain.paradoxresolutionphase.ParadoxResolutionPhaseNotFoundException;
 import io.github.temporalrift.game.action.domain.paradoxresolutionphase.ParadoxResolutionPhaseStatus;
 import io.github.temporalrift.game.action.domain.playerstate.PlayerState;
@@ -19,7 +20,6 @@ import io.github.temporalrift.game.action.domain.port.out.PlayerStateRepository;
 import io.github.temporalrift.game.action.domain.port.out.ReactiveOfferRepository;
 import io.github.temporalrift.game.action.domain.reactiveoffer.ReactiveOfferStatus;
 import io.github.temporalrift.game.shared.domain.model.CardGrade;
-import io.github.temporalrift.game.shared.domain.model.CardType;
 
 @Service
 @ConditionalOnBean({ParadoxResolutionPhaseRepository.class, PlayerStateRepository.class, ReactiveOfferRepository.class})
@@ -89,7 +89,7 @@ class GetParadoxResolutionStatusQueryHandler implements GetParadoxResolutionStat
     private List<EligibleCard> eligibleResolutionCards(Query query, PlayerState caller) {
         var cards = new ArrayList<EligibleCard>();
         caller.hand().stream()
-                .filter(card -> isEligible(card.cardType()))
+                .filter(card -> ParadoxResolutionPhase.ELIGIBLE_CARD_TYPES.contains(card.cardType()))
                 .map(card -> new EligibleCard(card.cardInstanceId(), card.cardType(), card.grade()))
                 .forEach(cards::add);
         reactiveOfferRepository
@@ -99,13 +99,6 @@ class GetParadoxResolutionStatusQueryHandler implements GetParadoxResolutionStat
                         .map(card -> new EligibleCard(card.cardInstanceId(), card.cardType(), CardGrade.I))
                         .forEach(cards::add));
         return List.copyOf(cards);
-    }
-
-    private static boolean isEligible(CardType cardType) {
-        return cardType == CardType.PUSH
-                || cardType == CardType.SUPPRESS
-                || cardType == CardType.STABILIZE
-                || cardType == CardType.DETONATE;
     }
 
     private int timerRemainingSeconds(java.time.Instant expiresAt) {

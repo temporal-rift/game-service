@@ -8,6 +8,7 @@ import static org.mockito.BDDMockito.then;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -256,5 +257,29 @@ class GetParadoxResolutionStatusQueryHandlerTest {
         assertThat(result.eligibleResolutionCards())
                 .extracting(GetParadoxResolutionStatusUseCase.EligibleCard::cardType)
                 .containsExactlyInAnyOrder(CardType.PUSH, CardType.STABILIZE, CardType.DETONATE);
+    }
+
+    @Test
+    @DisplayName("open phase — excludes an expired caller offer from eligible cards")
+    void handleOpenPhaseExcludesExpiredCallerOffer() {
+        var caller = new PlayerState(UUID.randomUUID(), GAME_ID, CALLER);
+        var expiredOffer =
+                new ReactiveOffer(UUID.randomUUID(), GAME_ID, ERA, CALLER, UUID.randomUUID(), UUID.randomUUID());
+        expiredOffer.expire();
+        given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, CALLER)).willReturn(Optional.of(caller));
+        given(phaseRepository.findByGameIdAndEraNumber(GAME_ID, ERA)).willReturn(Optional.of(phase));
+        given(phase.status()).willReturn(ParadoxResolutionPhaseStatus.OPEN);
+        given(phase.expiresAt()).willReturn(NOW.plusSeconds(10));
+        given(phase.eraNumber()).willReturn(ERA);
+        given(phase.submittedPlayerIds()).willReturn(Set.of());
+        given(phase.affectedEventIds()).willReturn(Set.of(UUID.randomUUID()));
+        stubAllPlayers(CALLER, OTHER);
+        given(reactiveOfferRepository.findByGameIdAndEraNumberAndPlayerId(GAME_ID, ERA, CALLER))
+                .willReturn(Optional.of(expiredOffer));
+
+        var result = handler().handle(new GetParadoxResolutionStatusUseCase.Query(GAME_ID, ERA, CALLER));
+
+        assertThat(result.eligibleResolutionCards()).isEqualTo(List.of());
+        then(reactiveOfferRepository).should().findByGameIdAndEraNumberAndPlayerId(GAME_ID, ERA, CALLER);
     }
 }

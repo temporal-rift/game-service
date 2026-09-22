@@ -76,6 +76,13 @@ class ParadoxResolutionPhaseTest {
                 .isThrownBy(() -> phase.assertAffectedEvent(UUID.randomUUID()));
     }
 
+    @Test
+    void allowsAnyTargetWhenLegacyPhaseHasNoRecoveredTargetSet() {
+        var phase = openPhase();
+
+        assertThatCode(() -> phase.assertAffectedEvent(UUID.randomUUID())).doesNotThrowAnyException();
+    }
+
     private ParadoxResolutionPhase openPhase() {
         return new ParadoxResolutionPhase(UUID.randomUUID(), GAME_ID, ERA, NOW.plusSeconds(60));
     }
