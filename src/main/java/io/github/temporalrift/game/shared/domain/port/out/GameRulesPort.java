@@ -15,4 +15,7 @@ public interface GameRulesPort {
 
     /** Maximum accepted Seal uses per player per game. */
     int sealMaxUsesPerGame();
+
+    /** Final era number; Stall promises a next era that does not exist at or beyond this era. */
+    int maxEras();
 }

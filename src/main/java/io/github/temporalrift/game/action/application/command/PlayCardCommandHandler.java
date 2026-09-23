@@ -17,6 +17,7 @@ import io.github.temporalrift.game.action.domain.playerstate.PlayerStateNotFound
 import io.github.temporalrift.game.action.domain.port.out.ActionEventPublisher;
 import io.github.temporalrift.game.action.domain.port.out.ActionRoundRepository;
 import io.github.temporalrift.game.action.domain.port.out.PlayerStateRepository;
+import io.github.temporalrift.game.shared.domain.port.out.GameRulesPort;
 
 @Service
 @ConditionalOnBean({ActionRoundRepository.class, PlayerStateRepository.class})
@@ -32,6 +33,8 @@ class PlayCardCommandHandler implements PlayCardUseCase {
 
     private final GameParticipantValidator gameParticipantValidator;
 
+    private final GameRulesPort gameRules;
+
     private final Clock clock;
 
     PlayCardCommandHandler(
@@ -40,12 +43,14 @@ class PlayCardCommandHandler implements PlayCardUseCase {
             ActionEventPublisher actionEventPublisher,
             ActionTargetValidator actionTargetValidator,
             GameParticipantValidator gameParticipantValidator,
+            GameRulesPort gameRules,
             Clock clock) {
         this.actionRoundRepository = actionRoundRepository;
         this.playerStateRepository = playerStateRepository;
         this.actionEventPublisher = actionEventPublisher;
         this.actionTargetValidator = actionTargetValidator;
         this.gameParticipantValidator = gameParticipantValidator;
+        this.gameRules = gameRules;
         this.clock = clock;
     }
 
@@ -81,6 +86,7 @@ class PlayCardCommandHandler implements PlayCardUseCase {
                 command.sourceOutcomeId(),
                 command.targetOutcomeId(),
                 command.targetPlayerId());
+        action.validateFinalEra(command.eraNumber(), command.roundNumber(), gameRules.maxEras());
         action.validateCurrentEraTargets(currentEraEventIds);
         actionTargetValidator.validateTraceTargetInPrecedingRound(
                 command.gameId(),

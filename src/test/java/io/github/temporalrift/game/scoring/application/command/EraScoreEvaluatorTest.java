@@ -394,6 +394,30 @@ class EraScoreEvaluatorTest {
     }
 
     @Test
+    @DisplayName("prophet Fulfillment declared on a stalled event (no OutcomeApplied) produces no credit")
+    void prophetFulfillmentDeclaredOnStalledEvent() {
+        var prophetId = UUID.randomUUID();
+        var eventId = UUID.randomUUID();
+        var writtenOutcomeId = UUID.randomUUID();
+
+        var context = new EraScoringContext(
+                GAME_ID,
+                ERA,
+                List.of(new PlayerFaction(prophetId, Faction.PROPHETS)),
+                List.of(new EventOutcomeFact(eventId, null, writtenOutcomeId, 3, 3)),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(new FulfillmentDeclarationFact(prophetId, eventId)),
+                List.of(),
+                List.of());
+
+        var decisions = evaluator.evaluate(context, List.of());
+
+        assertThat(decisions).isEmpty();
+    }
+
+    @Test
     @DisplayName(
             "prophet receives two separate FULFILLMENT_SUCCEEDED credits for declarations on two different " + "events")
     void prophetFulfillmentDeclaredOnTwoEvents() {

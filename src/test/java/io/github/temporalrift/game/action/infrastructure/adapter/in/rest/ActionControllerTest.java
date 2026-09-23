@@ -508,6 +508,25 @@ class ActionControllerTest {
     }
 
     @Test
+    @DisplayName("Given final-era STALL rejection, then returns 422-12")
+    void finalEraStallReturnsRoundIneligibilityCode() throws Exception {
+        // given
+        given(playCardUseCase.handle(any())).willThrow(new CardNotEligibleForRoundException(CardType.STALL, 5, 1));
+
+        // when / then
+        mockMvc.perform(post(
+                                "/api/v1/games/{gameId}/eras/{eraNumber}/rounds/{roundNumber}/actions",
+                                GAME_ID,
+                                ERA,
+                                ROUND)
+                        .with(auth())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(cardJson()))
+                .andExpect(status().is(422))
+                .andExpect(jsonPath("$.code").value("422-12"));
+    }
+
+    @Test
     @DisplayName("Given JammedPlayerException, then returns 422")
     void jammedPlayer() throws Exception {
         // given
