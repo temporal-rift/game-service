@@ -688,6 +688,64 @@ class EraScoreEvaluatorTest {
     }
 
     @Test
+    @DisplayName("two findings on one event score once, while a later cascade of that event scores again")
+    void multipleFindingsOnOneEventScoreOncePerEra() {
+        var playerId = UUID.randomUUID();
+        var eventId = UUID.randomUUID();
+        var context = new EraScoringContext(
+                GAME_ID,
+                2,
+                List.of(new PlayerFaction(playerId, Faction.PROPHETS)),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(
+                        new ParadoxCascadeScoringFact(UUID.randomUUID(), eventId, List.of(), 1),
+                        new ParadoxCascadeScoringFact(UUID.randomUUID(), eventId, List.of(), 1),
+                        new ParadoxCascadeScoringFact(UUID.randomUUID(), eventId, List.of(), 2)));
+
+        var decisions = evaluator.evaluate(context, List.of());
+
+        assertThat(decisions)
+                .hasSize(2)
+                .allMatch(d -> d.reason() == ScoreReason.PARADOX_CASCADE_PENALTY)
+                .extracting(PlayerScoreDecision::eraNumber)
+                .containsExactlyInAnyOrder(1, 2);
+    }
+
+    @Test
+    @DisplayName("two findings on one detonated event exempt the detonator and penalize others only once")
+    void multipleFindingsOnDetonatedEventApplyOnePenalty() {
+        var detonatorId = UUID.randomUUID();
+        var otherId = UUID.randomUUID();
+        var eventId = UUID.randomUUID();
+        var context = new EraScoringContext(
+                GAME_ID,
+                ERA,
+                List.of(new PlayerFaction(detonatorId, Faction.PROPHETS), new PlayerFaction(otherId, Faction.ERASERS)),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(
+                        new ParadoxCascadeScoringFact(UUID.randomUUID(), eventId, List.of(detonatorId), ERA),
+                        new ParadoxCascadeScoringFact(UUID.randomUUID(), eventId, List.of(detonatorId), ERA)));
+
+        var decisions = evaluator.evaluate(context, List.of());
+
+        assertThat(decisions).singleElement().satisfies(decision -> {
+            assertThat(decision.playerId()).isEqualTo(otherId);
+            assertThat(decision.reason()).isEqualTo(ScoreReason.PARADOX_CASCADE_PENALTY);
+            assertThat(decision.multiplier()).isEqualTo(2);
+        });
+    }
+
+    @Test
     @DisplayName("a single DETONATE exempts the detonator and doubles the penalty for everyone else")
     void singleDetonateExemptsAndDoublesOthers() {
         var detonatorId = UUID.randomUUID();
