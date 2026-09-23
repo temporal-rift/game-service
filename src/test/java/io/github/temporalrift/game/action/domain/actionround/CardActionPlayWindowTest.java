@@ -115,6 +115,35 @@ class CardActionPlayWindowTest {
     }
 
     @Test
+    void stallIsRejectedInFinalEra() {
+        for (var round : new int[] {1, 2, 3}) {
+            var action = stallAction();
+
+            assertThatExceptionOfType(CardNotEligibleForRoundException.class)
+                    .isThrownBy(() -> action.validate(5, round, 5))
+                    .withMessageContaining("STALL");
+        }
+    }
+
+    @Test
+    void stallIsAcceptedBeforeFinalEra() {
+        for (var era : new int[] {1, 2, 4}) {
+            var action = stallAction();
+
+            assertThatCode(() -> action.validate(era, 1, 5)).doesNotThrowAnyException();
+        }
+    }
+
+    @Test
+    void nonStallCardsAreUnaffectedByFinalEra() {
+        for (var cardType : new CardType[] {CardType.PUSH, CardType.SUPPRESS, CardType.DECOY}) {
+            var action = cardAction(cardType);
+
+            assertThatCode(() -> action.validate(5, 1, 5)).doesNotThrowAnyException();
+        }
+    }
+
+    @Test
     void playerTargetingCardWithoutTargetPlayerIsRejected() {
         for (var cardType : PLAYER_TARGETING_CARD_TYPES) {
             var playerId = UUID.randomUUID();
@@ -236,5 +265,10 @@ class CardActionPlayWindowTest {
         }
         return new SubmittedAction.CardAction(
                 UUID.randomUUID(), UUID.randomUUID(), cardType, UUID.randomUUID(), null, UUID.randomUUID());
+    }
+
+    private SubmittedAction.CardAction stallAction() {
+        return new SubmittedAction.CardAction(
+                UUID.randomUUID(), UUID.randomUUID(), CardType.STALL, UUID.randomUUID(), null, null);
     }
 }

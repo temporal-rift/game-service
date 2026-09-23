@@ -37,6 +37,22 @@ public sealed interface SubmittedAction permits SubmittedAction.CardAction, Subm
      */
     void validate(int eraNumber, int roundNumber);
 
+    /**
+     * Checks playability including the configured final era. The default accepts every era and exists
+     * so callers without rules configuration keep the round-scoped behavior; card actions override it
+     * to reject a final-era Stall whose promised next resolution cycle cannot occur.
+     */
+    default void validate(int eraNumber, int roundNumber, int maxEras) {
+        validate(eraNumber, roundNumber);
+    }
+
+    /**
+     * Checks only the configured final-era rule, without repeating round-scoped structural validation.
+     * Command handlers call this before {@code ActionRound.submit} so a final-era Stall fails fast with
+     * the round-ineligibility error while all other structural checks stay in the aggregate.
+     */
+    default void validateFinalEra(int eraNumber, int roundNumber, int maxEras) {}
+
     /** The round-level event recorded for every submission, regardless of type. */
     Object toPlayedEvent(UUID gameId, int eraNumber, int roundNumber);
 
@@ -135,6 +151,21 @@ public sealed interface SubmittedAction permits SubmittedAction.CardAction, Subm
                 validatePlayerTarget();
             } else {
                 validateEventTarget();
+            }
+        }
+
+        @Override
+        public void validate(int eraNumber, int roundNumber, int maxEras) {
+            validate(eraNumber, roundNumber);
+            validateFinalEra(eraNumber, roundNumber, maxEras);
+        }
+
+        @Override
+        public void validateFinalEra(int eraNumber, int roundNumber, int maxEras) {
+            // Stall defers resolution to the next era; in the final era that era never occurs,
+            // so the card is unplayable there rather than creating an unresolvable stalled event.
+            if (cardType == CardType.STALL && eraNumber >= maxEras) {
+                throw new CardNotEligibleForRoundException(cardType, eraNumber, roundNumber);
             }
         }
 

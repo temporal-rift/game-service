@@ -78,6 +78,9 @@ class PlayCardCommandHandlerTest {
     @Mock
     GameParticipantValidator gameParticipantValidator;
 
+    @Mock
+    io.github.temporalrift.game.shared.domain.port.out.GameRulesPort gameRules;
+
     @Spy
     Clock clock = Clock.systemUTC();
 
@@ -450,6 +453,54 @@ class PlayCardCommandHandlerTest {
         assertThatExceptionOfType(UnknownActionTargetException.class)
                 .isThrownBy(() -> new PlayCardUseCase.Command(
                         GAME_ID, ERA, ROUND, PLAYER_ID, CARD_INSTANCE_ID, null, targets, null, null, null));
+    }
+
+    @Test
+    @DisplayName("handle — final-era STALL — rejects without consuming the card or recording a submission")
+    void handleFinalEraStallIsRejectedWithoutConsuming() {
+        var targetEventId = UUID.randomUUID();
+        var command = new PlayCardUseCase.Command(
+                GAME_ID, 5, 1, PLAYER_ID, CARD_INSTANCE_ID, targetEventId, null, null, null);
+        given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, 5, 1))
+                .willReturn(Optional.of(round));
+        given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(playerState));
+        given(playerState.hand()).willReturn(List.of(new PlayerState.CardInstance(CARD_INSTANCE_ID, CardType.STALL)));
+        given(actionTargetValidator.validateCardTargets(GAME_ID, 5, targetEventId, null, null, null))
+                .willReturn(Set.of(targetEventId));
+        given(gameRules.maxEras()).willReturn(5);
+
+        assertThatExceptionOfType(CardNotEligibleForRoundException.class)
+                .isThrownBy(() -> handler.handle(command))
+                .withMessageContaining("STALL");
+
+        then(round).should(never()).submit(any());
+        then(playerState).should(never()).removeCard(any());
+        then(actionRoundRepository).should(never()).save(any());
+        then(playerStateRepository).should(never()).save(any());
+        then(actionEventPublisher).shouldHaveNoInteractions();
+    }
+
+    @Test
+    @DisplayName("handle — pre-final-era STALL — passes through to the round")
+    void handlePreFinalEraStallIsAccepted() {
+        var targetEventId = UUID.randomUUID();
+        var command = new PlayCardUseCase.Command(
+                GAME_ID, 4, 1, PLAYER_ID, CARD_INSTANCE_ID, targetEventId, null, null, null);
+        given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, 4, 1))
+                .willReturn(Optional.of(round));
+        given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(playerState));
+        given(playerState.hand()).willReturn(List.of(new PlayerState.CardInstance(CARD_INSTANCE_ID, CardType.STALL)));
+        given(actionTargetValidator.validateCardTargets(GAME_ID, 4, targetEventId, null, null, null))
+                .willReturn(Set.of(targetEventId));
+        given(gameRules.maxEras()).willReturn(5);
+        given(round.submit(any())).willReturn(false);
+        given(round.id()).willReturn(UUID.randomUUID());
+        given(round.gameId()).willReturn(GAME_ID);
+        given(round.pullEvents()).willReturn(List.of(cardPlayedEvent()));
+
+        handler.handle(command);
+
+        then(round).should().submit(any(SubmittedAction.CardAction.class));
     }
 
     private static CardPlayed cardPlayedEvent() {

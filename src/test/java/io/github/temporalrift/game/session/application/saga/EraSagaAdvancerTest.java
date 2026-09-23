@@ -435,6 +435,36 @@ class EraSagaAdvancerTest {
         then(eventPublisher).should(never()).publish(envelopeWithPayload(EraEnded.class));
     }
 
+    @Test
+    @DisplayName("final era with pending STALLED carry-overs — stabilization still ends the game without draining")
+    void handleScoresUpdated_finalEraWithPendingStalled_doesNotDrain() {
+        // given
+        var state = new EraSagaState(GAME_ID, MAX_ERAS, EraSagaStatus.WAITING_SCORES, PLAYER_IDS);
+        given(eraSagaRepository.findByGameIdWithLock(GAME_ID)).willReturn(Optional.of(state));
+        given(gameRules.winScoreThreshold()).willReturn(WIN_THRESHOLD);
+        given(gameRules.maxEras()).willReturn(MAX_ERAS);
+        given(gameRules.stabilizationWinnerFactions()).willReturn(Set.of(Faction.PROPHETS, Faction.WEAVERS));
+        givenNoObjectivesMet(MAX_ERAS);
+        var stalledId = UUID.randomUUID();
+        var progress = new GameProgress(
+                MAX_ERAS,
+                0,
+                List.of(new PendingCarryOverEvent(stalledId, CarryOverState.STALLED)),
+                Map.of(),
+                GameStatus.IN_PROGRESS);
+        var game = Game.reconstitute(GAME_ID, LOBBY_ID, List.of(), progress);
+        given(gameRepository.findByIdWithLock(GAME_ID)).willReturn(Optional.of(game));
+
+        // when
+        advancer.handleScoresUpdated(GAME_ID, noWinnerScores(MAX_ERAS));
+
+        // then
+        then(eventPublisher).should().publish(envelopeWithPayload(TimelineStabilized.class));
+        then(eventPublisher).should(never()).publish(envelopeWithPayload(EraStarted.class));
+        assertThat(game.pendingCarryOverEvents())
+                .containsExactly(new PendingCarryOverEvent(stalledId, CarryOverState.STALLED));
+    }
+
     // ─── dual-publish ────────────────────────────────────────────────────────
 
     @Test
