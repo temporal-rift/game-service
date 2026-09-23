@@ -19,6 +19,8 @@ import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Spy;
@@ -32,6 +34,7 @@ import io.github.temporalrift.game.action.domain.actionround.ActionRound;
 import io.github.temporalrift.game.action.domain.actionround.ActionRoundClosedException;
 import io.github.temporalrift.game.action.domain.actionround.CardNotEligibleForRoundException;
 import io.github.temporalrift.game.action.domain.actionround.DuplicateSubmissionException;
+import io.github.temporalrift.game.action.domain.actionround.InvalidActionTargetException;
 import io.github.temporalrift.game.action.domain.actionround.RoundNotFoundException;
 import io.github.temporalrift.game.action.domain.actionround.SubmittedAction;
 import io.github.temporalrift.game.action.domain.actionround.UnknownActionTargetException;
@@ -255,6 +258,36 @@ class PlayCardCommandHandlerTest {
         then(playerState).should(never()).removeCard(any());
         then(actionRoundRepository).should(never()).save(any());
         then(playerStateRepository).should(never()).save(any());
+    }
+
+    @ParameterizedTest
+    @EnumSource(
+            value = CardGrade.class,
+            names = {"I", "II"})
+    void handleFreshTraceTargetDoesNotConsumeCardOrRecordAction(CardGrade grade) {
+        var targetEventId = UUID.randomUUID();
+        var command = new PlayCardUseCase.Command(
+                GAME_ID, 2, 1, PLAYER_ID, CARD_INSTANCE_ID, targetEventId, null, null, null);
+        given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, 2, 1))
+                .willReturn(Optional.of(round));
+        given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(playerState));
+        given(playerState.hand())
+                .willReturn(List.of(new PlayerState.CardInstance(CARD_INSTANCE_ID, CardType.TRACE, grade)));
+        given(actionTargetValidator.validateCardTargets(GAME_ID, 2, targetEventId, null, null, null))
+                .willReturn(Set.of(targetEventId));
+        willThrow(InvalidActionTargetException.traceRequiresPrecedingRoundEvent())
+                .given(actionTargetValidator)
+                .validateTraceTargetInPrecedingRound(GAME_ID, 2, 1, CardType.TRACE, targetEventId);
+
+        assertThatExceptionOfType(InvalidActionTargetException.class)
+                .isThrownBy(() -> handler.handle(command))
+                .withMessageContaining("preceding action round");
+
+        then(round).should(never()).submit(any());
+        then(playerState).should(never()).removeCard(any());
+        then(actionRoundRepository).should(never()).save(any());
+        then(playerStateRepository).should(never()).save(any());
+        then(actionEventPublisher).shouldHaveNoInteractions();
     }
 
     @Test

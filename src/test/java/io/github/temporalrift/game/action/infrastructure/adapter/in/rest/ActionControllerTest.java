@@ -566,6 +566,24 @@ class ActionControllerTest {
     }
 
     @Test
+    void freshTraceTargetExplainsPrecedingRoundRule() throws Exception {
+        given(playCardUseCase.handle(any())).willThrow(InvalidActionTargetException.traceRequiresPrecedingRoundEvent());
+
+        mockMvc.perform(post(
+                                "/api/v1/games/{gameId}/eras/{eraNumber}/rounds/{roundNumber}/actions",
+                                GAME_ID,
+                                ERA,
+                                ROUND)
+                        .with(auth())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(cardJson()))
+                .andExpect(status().isUnprocessableContent())
+                .andExpect(jsonPath("$.code").value("422-03"))
+                .andExpect(jsonPath("$.detail")
+                        .value("TRACE target event must have been active in the preceding action round"));
+    }
+
+    @Test
     @DisplayName("Given a prior Expose, then submits a 409 conflict")
     void exposeAlreadyRecorded() throws Exception {
         given(playSpecialActionUseCase.handle(any())).willThrow(new ExposeAlreadyRecordedException());

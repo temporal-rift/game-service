@@ -82,6 +82,12 @@ class PlayCardCommandHandler implements PlayCardUseCase {
                 command.targetOutcomeId(),
                 command.targetPlayerId());
         action.validateCurrentEraTargets(currentEraEventIds);
+        actionTargetValidator.validateTraceTargetInPrecedingRound(
+                command.gameId(),
+                command.eraNumber(),
+                command.roundNumber(),
+                submittedCard.cardType(),
+                command.targetEventId());
         gameParticipantValidator.requireParticipant(command.gameId(), command.targetPlayerId());
         var allSubmitted = round.submit(action);
         playerState.removeCard(command.cardInstanceId());
