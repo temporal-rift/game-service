@@ -42,12 +42,35 @@ class GetScoringHistoryQueryHandler implements GetScoringHistoryUseCase {
         var factionsRevealed = visibilityRepository.areFactionsRevealed(query.gameId());
         // Rows arrive sorted by era, then playerId, then reason; a LinkedHashMap preserves that
         // ascending era grouping and the within-era ordering for each era's delta list.
+        //
+        // Visibility boundary: before the final faction reveal, reason-level magnitudes are
+        // faction-identifying (the public scoring table is asymmetric, e.g. +3 Annihilate implies
+        // Erasers, +10 chain completion implies Weavers), so each opponent's rows within an era are
+        // combined into a single per-player net entry with no reason. Totals and per-era net changes
+        // stay public as intended clues for win-condition tracking; only the reason-level breakdown
+        // is withheld until reveal. The caller's own rows always keep reason-level detail, and after
+        // the reveal every row is returned unchanged for full auditability.
         var deltasByEra = new LinkedHashMap<Integer, List<ScoreDeltaRow>>();
+        // Pre-reveal opponent aggregation slots: era -> (playerId -> index in that era's delta list).
+        var opponentSlotByEra = new LinkedHashMap<Integer, LinkedHashMap<UUID, Integer>>();
         for (var row : rows) {
-            deltasByEra
-                    .computeIfAbsent(row.eraNumber(), era -> new ArrayList<>())
-                    .add(new ScoreDeltaRow(
-                            row.playerId(), row.pointsDelta(), visibleReason(row, query.playerId(), factionsRevealed)));
+            var deltas = deltasByEra.computeIfAbsent(row.eraNumber(), era -> new ArrayList<>());
+            if (factionsRevealed || row.playerId().equals(query.playerId())) {
+                deltas.add(new ScoreDeltaRow(
+                        row.playerId(), row.pointsDelta(), row.reason().name()));
+            } else {
+                var slots = opponentSlotByEra.computeIfAbsent(row.eraNumber(), era -> new LinkedHashMap<>());
+                var slot = slots.get(row.playerId());
+                if (slot == null) {
+                    slots.put(row.playerId(), deltas.size());
+                    deltas.add(new ScoreDeltaRow(row.playerId(), row.pointsDelta(), null));
+                } else {
+                    var existing = deltas.get(slot);
+                    deltas.set(
+                            slot,
+                            new ScoreDeltaRow(existing.playerId(), existing.pointsDelta() + row.pointsDelta(), null));
+                }
+            }
         }
 
         var history = deltasByEra.entrySet().stream()
@@ -61,12 +84,5 @@ class GetScoringHistoryQueryHandler implements GetScoringHistoryUseCase {
         if (!scoringPlayerRepository.isParticipant(query.gameId(), query.playerId())) {
             throw new ScoringGameNotFoundException(query.gameId());
         }
-    }
-
-    private static String visibleReason(
-            ScoringReadRepository.ScoreHistoryRow row, UUID playerId, boolean factionsRevealed) {
-        return factionsRevealed || row.playerId().equals(playerId)
-                ? row.reason().name()
-                : null;
     }
 }
