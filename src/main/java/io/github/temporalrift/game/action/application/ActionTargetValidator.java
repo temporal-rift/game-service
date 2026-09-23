@@ -9,8 +9,10 @@ import java.util.UUID;
 
 import org.springframework.stereotype.Component;
 
+import io.github.temporalrift.game.action.domain.actionround.InvalidActionTargetException;
 import io.github.temporalrift.game.action.domain.actionround.UnknownActionTargetException;
 import io.github.temporalrift.game.action.domain.port.out.FutureEventDefinitionPort;
+import io.github.temporalrift.game.shared.domain.model.CardType;
 
 /**
  * Confirms that a submitted target event/outcome belongs to the game's current era before an
@@ -37,6 +39,18 @@ public class ActionTargetValidator {
     public Set<UUID> validateCardTargets(
             UUID gameId, int eraNumber, UUID targetEventId, List<UUID> targetEventIds, UUID... outcomeIds) {
         return validate(gameId, eraNumber, targetEventId, targetEventIds, outcomeIds);
+    }
+
+    public void validateTraceTargetInPrecedingRound(
+            UUID gameId, int eraNumber, int roundNumber, CardType cardType, UUID targetEventId) {
+        if (cardType != CardType.TRACE || eraNumber <= 1 || roundNumber != 1 || targetEventId == null) {
+            return;
+        }
+        var activeInPreviousEra = futureEventDefinitionPort.findByGameIdAndEraNumber(gameId, eraNumber - 1).stream()
+                .anyMatch(event -> event.eventId().equals(targetEventId));
+        if (!activeInPreviousEra) {
+            throw InvalidActionTargetException.traceRequiresPrecedingRoundEvent();
+        }
     }
 
     private Set<UUID> validate(

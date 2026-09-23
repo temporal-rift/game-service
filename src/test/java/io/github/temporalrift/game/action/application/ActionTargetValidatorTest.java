@@ -16,8 +16,10 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import io.github.temporalrift.game.action.domain.actionround.InvalidActionTargetException;
 import io.github.temporalrift.game.action.domain.actionround.UnknownActionTargetException;
 import io.github.temporalrift.game.action.domain.port.out.FutureEventDefinitionPort;
+import io.github.temporalrift.game.shared.domain.model.CardType;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("ActionTargetValidator")
@@ -142,5 +144,42 @@ class ActionTargetValidatorTest {
 
         then(futureEventDefinitionPort).should().findByGameIdAndEraNumber(GAME_ID, ERA);
         then(futureEventDefinitionPort).shouldHaveNoMoreInteractions();
+    }
+
+    @Test
+    void traceRejectsFreshEventInLaterEraFirstRound() {
+        var freshEventId = UUID.randomUUID();
+        given(futureEventDefinitionPort.findByGameIdAndEraNumber(GAME_ID, 1))
+                .willReturn(List.of(new FutureEventDefinitionPort.EventDefinition(UUID.randomUUID(), List.of())));
+
+        assertThatExceptionOfType(InvalidActionTargetException.class)
+                .isThrownBy(() ->
+                        validator.validateTraceTargetInPrecedingRound(GAME_ID, 2, 1, CardType.TRACE, freshEventId))
+                .withMessageContaining("active in the preceding action round");
+    }
+
+    @Test
+    void traceAcceptsCarriedEventInLaterEraFirstRound() {
+        var carriedEventId = UUID.randomUUID();
+        given(futureEventDefinitionPort.findByGameIdAndEraNumber(GAME_ID, 1))
+                .willReturn(List.of(new FutureEventDefinitionPort.EventDefinition(carriedEventId, List.of())));
+
+        assertThatCode(() ->
+                        validator.validateTraceTargetInPrecedingRound(GAME_ID, 2, 1, CardType.TRACE, carriedEventId))
+                .doesNotThrowAnyException();
+    }
+
+    @Test
+    void traceDoesNotNeedPriorEraLookupInFirstEraOrLaterRounds() {
+        var eventId = UUID.randomUUID();
+
+        assertThatCode(() -> validator.validateTraceTargetInPrecedingRound(GAME_ID, 1, 1, CardType.TRACE, eventId))
+                .doesNotThrowAnyException();
+        assertThatCode(() -> validator.validateTraceTargetInPrecedingRound(GAME_ID, 2, 2, CardType.TRACE, eventId))
+                .doesNotThrowAnyException();
+        assertThatCode(() -> validator.validateTraceTargetInPrecedingRound(GAME_ID, 2, 1, CardType.PUSH, eventId))
+                .doesNotThrowAnyException();
+
+        then(futureEventDefinitionPort).shouldHaveNoInteractions();
     }
 }

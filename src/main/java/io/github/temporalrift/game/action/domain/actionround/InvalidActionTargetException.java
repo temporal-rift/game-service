@@ -90,4 +90,9 @@ public class InvalidActionTargetException extends RuntimeException {
     public static InvalidActionTargetException traceUnsupportedGrade(CardGrade grade) {
         return new InvalidActionTargetException("TRACE grade " + grade + " is not supported");
     }
+
+    public static InvalidActionTargetException traceRequiresPrecedingRoundEvent() {
+        return new InvalidActionTargetException(
+                "TRACE target event must have been active in the preceding action round");
+    }
 }
