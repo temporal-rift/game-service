@@ -89,7 +89,13 @@ class TimelineEventsConsumerGroupsIT {
                 "ParadoxCascaded",
                 "FutureEvent",
                 new ParadoxCascadedPayload(
-                        gameId, ERA_NUMBER, paradoxId, cascadedEventId, List.of(), List.of(UUID.randomUUID())));
+                        gameId,
+                        ERA_NUMBER,
+                        paradoxId,
+                        List.of(paradoxId),
+                        cascadedEventId,
+                        List.of(),
+                        List.of(UUID.randomUUID())));
         // The renamed band correction supersedes game-service's own preview for this game and era
         // and no game-service consumer owns it, so it must be skipped without claiming.
         var bands = event(

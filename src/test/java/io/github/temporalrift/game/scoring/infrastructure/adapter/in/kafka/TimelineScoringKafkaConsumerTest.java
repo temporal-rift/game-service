@@ -258,7 +258,15 @@ class TimelineScoringKafkaConsumerTest {
     @DisplayName("ParadoxCascaded — records a paradox cascade fact stamped with the event's own era")
     void handle_paradoxCascaded_recordsParadoxCascadeFact() {
         var detonatedByPlayerIds = List.of(UUID.randomUUID());
-        var payload = paradoxCascaded(detonatedByPlayerIds);
+        var firstId = UUID.randomUUID();
+        var payload = new ParadoxCascadedPayload(
+                GAME_ID,
+                2,
+                firstId,
+                List.of(firstId, UUID.randomUUID()),
+                UUID.randomUUID(),
+                List.of(),
+                detonatedByPlayerIds);
         var message = message("ParadoxCascaded", json(payload));
         givenClaim(message, true);
 
@@ -268,6 +276,7 @@ class TimelineScoringKafkaConsumerTest {
                 .should()
                 .recordParadoxCascadeFact(
                         GAME_ID, 2, payload.paradoxId(), payload.affectedEventId(), detonatedByPlayerIds);
+        then(contextRepository).shouldHaveNoMoreInteractions();
     }
 
     @Test
@@ -345,8 +354,9 @@ class TimelineScoringKafkaConsumerTest {
     }
 
     private static ParadoxCascadedPayload paradoxCascaded(List<UUID> detonatedByPlayerIds) {
+        var paradoxId = UUID.randomUUID();
         return new ParadoxCascadedPayload(
-                GAME_ID, 2, UUID.randomUUID(), UUID.randomUUID(), List.of(), detonatedByPlayerIds);
+                GAME_ID, 2, paradoxId, List.of(paradoxId), UUID.randomUUID(), List.of(), detonatedByPlayerIds);
     }
 
     private static String json(Object payload) {

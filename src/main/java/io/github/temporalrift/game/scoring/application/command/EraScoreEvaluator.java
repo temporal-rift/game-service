@@ -2,6 +2,7 @@ package io.github.temporalrift.game.scoring.application.command;
 
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -32,8 +33,8 @@ class EraScoreEvaluator {
             }
         }
 
-        // Cross-faction: PARADOX_CASCADE_PENALTY applies to every player regardless of faction, so it
-        // runs once per player per fact rather than inside the per-faction switch above.
+        // Cross-faction: score each affected event once per era for every player. Older producers could
+        // publish one fact per finding on the same event; those facts share one scoring unit.
         for (var player : context.players()) {
             decisions.addAll(paradoxCascadeDecisions(player.playerId(), context));
         }
@@ -46,7 +47,11 @@ class EraScoreEvaluator {
 
     private List<PlayerScoreDecision> paradoxCascadeDecisions(UUID playerId, EraScoringContext context) {
         var decisions = new ArrayList<PlayerScoreDecision>();
+        var scoredEvents = new HashSet<CascadeEventKey>();
         for (var fact : context.paradoxCascadeFacts()) {
+            if (!scoredEvents.add(new CascadeEventKey(fact.eraNumber(), fact.affectedEventId()))) {
+                continue;
+            }
             if (fact.detonatedByPlayerIds().contains(playerId)) {
                 continue;
             }
@@ -56,6 +61,8 @@ class EraScoreEvaluator {
         }
         return decisions;
     }
+
+    private record CascadeEventKey(int eraNumber, UUID eventId) {}
 
     private List<PlayerScoreDecision> prophetDecisions(
             UUID playerId, EraScoringContext context, List<OutcomeApplied> outcomes) {
