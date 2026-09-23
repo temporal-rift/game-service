@@ -49,10 +49,8 @@ class EraScoreEvaluator {
         var decisions = new ArrayList<PlayerScoreDecision>();
         var scoredEvents = new HashSet<CascadeEventKey>();
         for (var fact : context.paradoxCascadeFacts()) {
-            if (!scoredEvents.add(new CascadeEventKey(fact.eraNumber(), fact.affectedEventId()))) {
-                continue;
-            }
-            if (fact.detonatedByPlayerIds().contains(playerId)) {
+            boolean alreadyScored = !scoredEvents.add(new CascadeEventKey(fact.eraNumber(), fact.affectedEventId()));
+            if (alreadyScored || fact.detonatedByPlayerIds().contains(playerId)) {
                 continue;
             }
             int multiplier = fact.detonatedByPlayerIds().isEmpty() ? 1 : 2;
