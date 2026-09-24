@@ -460,6 +460,71 @@ class EraScoringContextRepositoryAdapterTest {
     }
 
     @Test
+    void resolveActivistDeclarations_carriedEventScoresOnlyTheLaterEraDeclaration() {
+        var gameId = UUID.randomUUID();
+        var playerId = UUID.randomUUID();
+        var eventId = UUID.randomUUID();
+        var winningOutcomeId = UUID.randomUUID();
+        var first = new ScoringContextActivistDeclarationJpaEntity();
+        first.setId(UUID.randomUUID());
+        first.setGameId(gameId);
+        first.setEraNumber(2);
+        first.setPlayerId(playerId);
+        first.setMode("RALLY");
+        first.setTargetEventId(eventId);
+        first.setTargetOutcomeId(winningOutcomeId);
+        var later = new ScoringContextActivistDeclarationJpaEntity();
+        later.setId(UUID.randomUUID());
+        later.setGameId(gameId);
+        later.setEraNumber(3);
+        later.setPlayerId(playerId);
+        later.setMode("RALLY");
+        later.setTargetEventId(eventId);
+        later.setTargetOutcomeId(winningOutcomeId);
+        given(activistDeclarationJpaRepository.findAllUnresolvedWithLock(gameId, 2))
+                .willAnswer(invocation -> first.getResolutionSucceeded() == null ? List.of(first) : List.of());
+        given(activistDeclarationJpaRepository.findAllUnresolvedWithLock(gameId, 3))
+                .willAnswer(invocation -> later.getResolutionSucceeded() == null ? List.of(later) : List.of());
+        var stalled = new EraResolutionCompleted(
+                gameId,
+                2,
+                List.of(new EraResolutionCompleted.TerminalResolution(
+                        eventId, 0, EraResolutionCompleted.TerminalState.STALLED, null)));
+        var resolved = new EraResolutionCompleted(
+                gameId,
+                3,
+                List.of(new EraResolutionCompleted.TerminalResolution(
+                        eventId, 0, EraResolutionCompleted.TerminalState.OUTCOME_APPLIED, winningOutcomeId)));
+        given(resolutionBarrierJpaRepository.findByGameIdAndEraNumber(gameId, 2))
+                .willReturn(Optional.of(ScoringTimelineResolutionBarrierJpaEntity.fromDomain(stalled)));
+        given(resolutionBarrierJpaRepository.findByGameIdAndEraNumber(gameId, 3))
+                .willReturn(Optional.of(ScoringTimelineResolutionBarrierJpaEntity.fromDomain(resolved)));
+        given(outcomeInboxJpaRepository.findByGameIdAndEraNumberAndEventId(gameId, 3, eventId))
+                .willReturn(Optional.of(ScoringTimelineOutcomeInboxJpaEntity.fromDomain(
+                        new OutcomeApplied(gameId, 3, eventId, winningOutcomeId, List.of()))));
+
+        assertThat(adapter.resolveActivistDeclarations(gameId, 2))
+                .containsExactly(new io.github.temporalrift.game.shared.domain.event.ActivistDeclarationResolved(
+                        gameId, 2, playerId, false));
+        assertThat(adapter.resolveActivistDeclarations(gameId, 3))
+                .containsExactly(new io.github.temporalrift.game.shared.domain.event.ActivistDeclarationResolved(
+                        gameId, 3, playerId, true));
+        assertThat(adapter.resolveActivistDeclarations(gameId, 2)).isEmpty();
+        assertThat(adapter.resolveActivistDeclarations(gameId, 3)).isEmpty();
+        assertThat(first.getResolutionSucceeded()).isFalse();
+        assertThat(later.getResolutionSucceeded()).isTrue();
+        then(actionFactJpaRepository)
+                .should(times(1))
+                .insertIfAbsent(
+                        any(UUID.class),
+                        eq(gameId),
+                        eq(3),
+                        eq(playerId),
+                        eq(Faction.ACTIVISTS.name()),
+                        eq(ScoreReason.DECLARED_OUTCOME_WON_WITH_RALLY.name()));
+    }
+
+    @Test
     void resolveActivistDeclarations_appliedWinningRallyRecordsSuccessAndItsScoringFact() {
         var gameId = UUID.randomUUID();
         var playerId = UUID.randomUUID();

@@ -166,6 +166,22 @@ class FactionObjectiveEvaluatorTest {
                 .isTrue();
     }
 
+    @Test
+    void activist_stalledEraBreaksStreakEvenIfTheCarriedEventWinsLater() {
+        var score = score(Faction.ACTIVISTS);
+        score.apply(1, ScoreReason.DECLARED_OUTCOME_WON_WITH_RALLY, 8);
+        score.apply(2, ScoreReason.DECLARED_OUTCOME_WON, 4);
+
+        assertThat(FactionObjectiveEvaluator.evaluate(score, 3, RULES).progressCount())
+                .isZero();
+
+        score.apply(4, ScoreReason.DECLARED_OUTCOME_WON_WITH_RALLY, 8);
+        assertThat(FactionObjectiveEvaluator.evaluate(score, 4, RULES).progressCount())
+                .isEqualTo(1);
+        assertThat(FactionObjectiveEvaluator.evaluate(score, 5, RULES).progressCount())
+                .isZero();
+    }
+
     private static PlayerScore score(Faction faction) {
         return new PlayerScore(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), faction);
     }
