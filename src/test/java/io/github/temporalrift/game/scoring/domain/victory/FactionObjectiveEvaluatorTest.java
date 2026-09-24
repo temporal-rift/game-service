@@ -101,6 +101,30 @@ class FactionObjectiveEvaluatorTest {
     }
 
     @Test
+    @DisplayName("revisionist with no declared preference makes no objective progress")
+    void revisionist_noDeclaration_noProgress() {
+        var score = score(Faction.REVISIONISTS);
+
+        var progress = FactionObjectiveEvaluator.evaluate(score, 1, RULES);
+
+        assertThat(progress.progressCount()).isZero();
+        assertThat(progress.objectiveMet()).isFalse();
+    }
+
+    @Test
+    @DisplayName("revisionist mimic alone makes no objective progress")
+    void revisionist_mimicOnly_noProgress() {
+        var score = score(Faction.REVISIONISTS);
+        score.apply(1, ScoreReason.MIMIC_CONTRIBUTED_TO_WIN, 2);
+        score.apply(2, ScoreReason.MIMIC_CONTRIBUTED_TO_WIN, 2);
+
+        var progress = FactionObjectiveEvaluator.evaluate(score, 2, RULES);
+
+        assertThat(progress.progressCount()).isZero();
+        assertThat(progress.objectiveMet()).isFalse();
+    }
+
+    @Test
     @DisplayName("weaver with a completed chain meets the objective at full length")
     void weaver_chainCompleted_objectiveMet() {
         var score = score(Faction.WEAVERS);

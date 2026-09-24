@@ -111,7 +111,13 @@ public record EraActionFactsFinalized(
     public record ActivistDeclarationFact(
             UUID playerId, SpecialAction mode, UUID targetEventId, UUID targetOutcomeId) {}
 
-    /** Private action-to-scoring attribution; it is intentionally never sent through Kafka. */
+    /**
+     * Private action-to-scoring attribution; it is intentionally never sent through Kafka.
+     *
+     * <p>A player starts the era with no preference. The latest {@code REWRITE} in the era is that
+     * player's single declaration and replaces any earlier one; with no {@code REWRITE} there is no
+     * eligible preference to score.
+     */
     public record RevisionistFact(UUID playerId, SpecialAction action, UUID targetEventId, UUID targetOutcomeId) {}
 
     /** Private action-to-scoring attribution; it is intentionally never sent through Kafka. */
