@@ -26,7 +26,7 @@ import io.github.temporalrift.game.shared.domain.model.CardGrade;
 /**
  * Exercises spring.config.import=configserver:... end to end against an in-process HTTP stub serving the
  * Config Server's real /{application}/{profile} response shape, rather than a shared Docker image from the
- * infrastructure repo (see design.md Decision 3 of the game-scoring-config-client change — mirrors
+ * infrastructure repo (mirrors
  * timeline-service's TimelineRulesPropertiesConfigServerTest).
  */
 class ScoringRulesPropertiesConfigServerTest {

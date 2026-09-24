@@ -122,8 +122,8 @@ class EraSagaImpl implements EraSaga {
 
     /**
      * Mints a fresh, per-game-unique {@code eventId}/{@code outcomeId} for each drawn catalog card instead of
-     * reusing the catalog's own fixed IDs (shared across every game) — see the {@code future-event-draw-identity}
-     * capability. Returns the resulting {@code eventId -> DrawnFutureEvent} mapping alongside the events so the
+     * reusing the catalog's own fixed IDs (shared across every game).
+     * Returns the resulting {@code eventId -> DrawnFutureEvent} mapping alongside the events so the
      * caller can record it on {@link Game} for later carry-over lookups.
      */
     private FreshDraw toFreshFutureEvents(List<UUID> ids) {
