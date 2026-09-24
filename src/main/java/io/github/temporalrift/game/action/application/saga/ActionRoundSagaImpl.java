@@ -10,6 +10,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Random;
+import java.util.Set;
 import java.util.UUID;
 
 import org.slf4j.Logger;
@@ -46,7 +47,9 @@ import io.github.temporalrift.game.action.domain.saga.ActionRoundSagaState;
 import io.github.temporalrift.game.action.domain.saga.ActionRoundSagaStatus;
 import io.github.temporalrift.game.shared.application.SagaHandoffPublisher;
 import io.github.temporalrift.game.shared.domain.event.EraActionFactsFinalized;
+import io.github.temporalrift.game.shared.domain.event.PlayersIdentified;
 import io.github.temporalrift.game.shared.domain.messaging.DomainEventEnvelope;
+import io.github.temporalrift.game.shared.domain.model.CardDrawWeights;
 import io.github.temporalrift.game.shared.domain.model.CardType;
 import io.github.temporalrift.game.shared.domain.port.out.GameRulesPort;
 
@@ -209,18 +212,21 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
                 ActionRoundEventPublication.publish(round, actionEventPublisher, clock);
 
                 publishRoundSummary(round, gameId, eraNumber, roundNumber, skippedPlayerIds);
-                publishTracedInfluence(round, gameId, eraNumber, roundNumber);
-                publishInterceptedHands(round, gameId, eraNumber, roundNumber);
+                var identifiedPlayerIds = new LinkedHashSet<UUID>();
+                identifiedPlayerIds.addAll(publishTracedInfluence(round, gameId, eraNumber, roundNumber));
+                // Must run before reconcileObscureState, while the Obscure flag still covers this round.
+                identifiedPlayerIds.addAll(publishInterceptedHands(round, gameId, eraNumber, roundNumber));
                 reconcileJamState(round, gameId, eraNumber, roundNumber);
                 reconcileObscureState(round, gameId, roundNumber);
 
                 if (roundNumber == SIGNATURE_REVEAL_ROUND_NUMBER) {
                     publishBandedProbabilities(gameId, eraNumber, round);
-                    publishExposeSignatures(gameId, eraNumber);
+                    identifiedPlayerIds.addAll(publishExposeSignatures(gameId, eraNumber));
                 }
+                publishIdentifications(gameId, eraNumber, roundNumber, List.copyOf(identifiedPlayerIds));
                 if (roundNumber == FINAL_ROUND_NUMBER) {
                     publishExposeBehaviorChanges(gameId, eraNumber, round);
-                    publishFinalRoundActionFacts(gameId, eraNumber, round);
+                    publishFinalRoundActionFacts(gameId, eraNumber, round, List.copyOf(identifiedPlayerIds));
                 }
 
                 stateManager.complete(gameId, eraNumber, roundNumber);
@@ -295,20 +301,12 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
     }
 
     private void reconcileObscureState(ActionRound round, UUID gameId, int roundNumber) {
-        // Obscure hides the submitter's faction for exactly one following round and never crosses an
-        // era boundary, mirroring Jam's lifecycle. Applied at round close (not at submit) so simultaneous
+        // Obscure covers exactly one following round and never crosses an era boundary, mirroring Jam's
+        // lifecycle; Intercept at that round's close reads this flag to reveal decoys instead of the hand
+        // and to skip identification. Applied at round close (not at submit) so simultaneous
         // submissions in the closing round cannot observe a mid-round flag change. No separate lock:
         // reconcileJamState runs immediately before in the same transaction and already holds all rows.
-        var obscuredPlayerIds = new LinkedHashSet<UUID>();
-        if (roundNumber < FINAL_ROUND_NUMBER) {
-            round.submittedActions().stream()
-                    .filter(SubmittedAction.SpecialActionSubmission.class::isInstance)
-                    .map(SubmittedAction.SpecialActionSubmission.class::cast)
-                    .filter(special -> special.specialAction()
-                            == io.github.temporalrift.game.shared.domain.model.SpecialAction.OBSCURE)
-                    .map(SubmittedAction.SpecialActionSubmission::playerId)
-                    .forEach(obscuredPlayerIds::add);
-        }
+        var obscuredPlayerIds = roundNumber < FINAL_ROUND_NUMBER ? obscureSubmitters(round) : Set.<UUID>of();
 
         for (var playerState : playerStateRepository.findAllByGameId(gameId)) {
             var previouslyObscured = playerState.isObscured();
@@ -325,16 +323,40 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
         }
     }
 
-    private void publishTracedInfluence(ActionRound round, UUID gameId, int eraNumber, int roundNumber) {
+    private Set<UUID> obscureSubmitters(ActionRound round) {
+        return round.submittedActions().stream()
+                .filter(SubmittedAction.SpecialActionSubmission.class::isInstance)
+                .map(SubmittedAction.SpecialActionSubmission.class::cast)
+                .filter(special -> special.specialAction()
+                        == io.github.temporalrift.game.shared.domain.model.SpecialAction.OBSCURE)
+                .map(SubmittedAction.SpecialActionSubmission::playerId)
+                .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
+    }
+
+    // The Obscure flag of a past round has already been cleared, so coverage is derived from the round before it.
+    private Set<UUID> obscuredDuring(ActionRound observedRound) {
+        if (observedRound.roundNumber() == 1) {
+            return Set.of();
+        }
+        return actionRoundRepository
+                .findByGameIdAndEraNumberAndRoundNumber(
+                        observedRound.gameId(), observedRound.eraNumber(), observedRound.roundNumber() - 1)
+                .map(this::obscureSubmitters)
+                .orElseGet(Set::of);
+    }
+
+    private List<UUID> publishTracedInfluence(ActionRound round, UUID gameId, int eraNumber, int roundNumber) {
         var traces = round.submittedActions().stream()
                 .filter(SubmittedAction.CardAction.class::isInstance)
                 .map(SubmittedAction.CardAction.class::cast)
                 .filter(card -> card.cardType() == CardType.TRACE)
                 .toList();
         if (traces.isEmpty()) {
-            return;
+            return List.of();
         }
         var predecessor = previousRound(gameId, eraNumber, roundNumber);
+        var obscuredPlayerIds = predecessor.map(this::obscuredDuring).orElseGet(Set::of);
+        var listedPlayerIds = new LinkedHashSet<UUID>();
         for (var trace : traces) {
             traceTargets(trace, gameId, eraNumber, roundNumber).forEach(targetEventId -> {
                 var influencerPlayerIds = predecessor.map(ActionRound::submittedActions).orElseGet(List::of).stream()
@@ -342,7 +364,9 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
                         .map(SubmittedAction.CardAction.class::cast)
                         .filter(card -> card.isDirectProbabilityInfluenceOn(targetEventId))
                         .map(SubmittedAction.CardAction::playerId)
+                        .filter(playerId -> !obscuredPlayerIds.contains(playerId))
                         .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
+                listedPlayerIds.addAll(influencerPlayerIds);
                 actionEventPublisher.publish(DomainEventEnvelope.create(
                         round.id(),
                         ActionRound.AGGREGATE_TYPE,
@@ -358,24 +382,34 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
                         clock));
             });
         }
+        return List.copyOf(listedPlayerIds);
     }
 
-    private void publishInterceptedHands(ActionRound round, UUID gameId, int eraNumber, int roundNumber) {
+    private List<UUID> publishInterceptedHands(ActionRound round, UUID gameId, int eraNumber, int roundNumber) {
         var intercepts = round.submittedActions().stream()
                 .filter(SubmittedAction.CardAction.class::isInstance)
                 .map(SubmittedAction.CardAction.class::cast)
                 .filter(card -> card.cardType() == CardType.INTERCEPT)
                 .toList();
         if (intercepts.isEmpty()) {
-            return;
+            return List.of();
         }
-        var handsByPlayer = new HashMap<UUID, List<PlayerState.CardInstance>>();
+        var statesByPlayer = new HashMap<UUID, PlayerState>();
         for (var playerState : playerStateRepository.findAllByGameId(gameId)) {
-            handsByPlayer.put(playerState.playerId(), playerState.hand());
+            statesByPlayer.put(playerState.playerId(), playerState);
         }
+        var identifiedPlayerIds = new ArrayList<UUID>();
         for (var intercept : intercepts) {
-            var hand = handsByPlayer.getOrDefault(intercept.targetPlayerId(), List.of());
-            var revealed = InterceptHandSampler.select(hand, intercept.grade(), INTERCEPT_RANDOMNESS).stream()
+            var target = java.util.Optional.ofNullable(statesByPlayer.get(intercept.targetPlayerId()));
+            var hand = target.map(PlayerState::hand).orElseGet(List::of);
+            var obscured = target.map(PlayerState::isObscured).orElse(false);
+            var sample = obscured
+                    ? InterceptHandSampler.decoys(hand, intercept.grade(), cardDrawWeights(), INTERCEPT_RANDOMNESS)
+                    : InterceptHandSampler.select(hand, intercept.grade(), INTERCEPT_RANDOMNESS);
+            if (!obscured) {
+                identifiedPlayerIds.add(intercept.targetPlayerId());
+            }
+            var revealed = sample.stream()
                     .map(card ->
                             new HandCardIntercepted.RevealedCard(card.cardInstanceId(), card.cardType(), card.grade()))
                     .toList();
@@ -387,6 +421,18 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
                     new HandCardIntercepted(
                             gameId, eraNumber, roundNumber, intercept.playerId(), intercept.targetPlayerId(), revealed),
                     clock));
+        }
+        return identifiedPlayerIds;
+    }
+
+    private CardDrawWeights cardDrawWeights() {
+        return new CardDrawWeights(gameRules.cardCategoryWeights(), gameRules.cardGradeWeights());
+    }
+
+    private void publishIdentifications(UUID gameId, int eraNumber, int roundNumber, List<UUID> identifiedPlayerIds) {
+        if (!identifiedPlayerIds.isEmpty()) {
+            actionEventPublisher.publishInternally(
+                    new PlayersIdentified(gameId, eraNumber, roundNumber, identifiedPlayerIds));
         }
     }
 
@@ -470,22 +516,25 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
                 clock));
     }
 
-    private void publishExposeSignatures(UUID gameId, int eraNumber) {
-        activistEraStateRepository
-                .findExposedByGameIdAndEraNumber(gameId, eraNumber)
-                .forEach(state -> actionEventPublisher.publish(DomainEventEnvelope.create(
-                        state.id(),
-                        io.github.temporalrift.game.action.domain.activisterastate.ActivistEraState.AGGREGATE_TYPE,
+    // The revealed signature is from Round 1, which no Obscure can cover, so every exposed player is identified.
+    private List<UUID> publishExposeSignatures(UUID gameId, int eraNumber) {
+        var exposedStates = activistEraStateRepository.findExposedByGameIdAndEraNumber(gameId, eraNumber);
+        exposedStates.forEach(state -> actionEventPublisher.publish(DomainEventEnvelope.create(
+                state.id(),
+                io.github.temporalrift.game.action.domain.activisterastate.ActivistEraState.AGGREGATE_TYPE,
+                gameId,
+                DomainEventEnvelope.SCHEMA_VERSION_V1,
+                new ExposeSignatureRevealed(
                         gameId,
-                        DomainEventEnvelope.SCHEMA_VERSION_V1,
-                        new ExposeSignatureRevealed(
-                                gameId,
-                                eraNumber,
-                                SIGNATURE_REVEAL_ROUND_NUMBER,
-                                state.activistPlayerId(),
-                                state.exposedPlayerId(),
-                                state.exposedSignature()),
-                        clock)));
+                        eraNumber,
+                        SIGNATURE_REVEAL_ROUND_NUMBER,
+                        state.activistPlayerId(),
+                        state.exposedPlayerId(),
+                        state.exposedSignature()),
+                clock)));
+        return exposedStates.stream()
+                .map(io.github.temporalrift.game.action.domain.activisterastate.ActivistEraState::exposedPlayerId)
+                .toList();
     }
 
     private void publishExposeBehaviorChanges(UUID gameId, int eraNumber, ActionRound round3) {
@@ -524,7 +573,8 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
     // final round's own submittedActions, which is complete and final by the time close() returns, so
     // it cannot race the independently-dispatched per-submission ForesightDeclared/OutcomeAnnihilated
     // listeners the way onActionRoundClosed alone would.
-    private void publishFinalRoundActionFacts(UUID gameId, int eraNumber, ActionRound round) {
+    private void publishFinalRoundActionFacts(
+            UUID gameId, int eraNumber, ActionRound round, List<UUID> identifiedPlayerIds) {
         var foresightFacts = new ArrayList<EraActionFactsFinalized.ForesightFact>();
         var annihilationFacts = new ArrayList<EraActionFactsFinalized.AnnihilationFact>();
         var mimicFacts = new ArrayList<EraActionFactsFinalized.RevisionistFact>();
@@ -599,6 +649,7 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
                 java.util.stream.Stream.concat(latestRewriteFacts.values().stream(), mimicFacts.stream())
                         .toList(),
                 List.copyOf(fulfillmentFacts),
-                corruptCorrelationFacts));
+                corruptCorrelationFacts,
+                identifiedPlayerIds));
     }
 }

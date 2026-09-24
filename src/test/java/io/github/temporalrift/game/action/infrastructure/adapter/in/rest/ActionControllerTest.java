@@ -41,6 +41,7 @@ import io.github.temporalrift.game.action.domain.actionround.InvalidActionTarget
 import io.github.temporalrift.game.action.domain.actionround.JammedPlayerException;
 import io.github.temporalrift.game.action.domain.actionround.RoundNotFoundException;
 import io.github.temporalrift.game.action.domain.actionround.SpecialActionNotEligibleForEraException;
+import io.github.temporalrift.game.action.domain.actionround.SpecialActionNotEligibleForRoundException;
 import io.github.temporalrift.game.action.domain.activisterastate.ExposeAlreadyRecordedException;
 import io.github.temporalrift.game.action.domain.handselection.InvalidHandSelectionException;
 import io.github.temporalrift.game.action.domain.paradoxresolutionphase.CardNotEligibleForParadoxResolutionException;
@@ -523,6 +524,26 @@ class ActionControllerTest {
                         .with(auth())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(cardJson()))
+                .andExpect(status().is(422))
+                .andExpect(jsonPath("$.code").value("422-12"));
+    }
+
+    @Test
+    @DisplayName("Given round-3 OBSCURE rejection, then returns 422-12")
+    void roundThreeObscureReturnsRoundIneligibilityCode() throws Exception {
+        // given
+        given(playSpecialActionUseCase.handle(any()))
+                .willThrow(new SpecialActionNotEligibleForRoundException(SpecialAction.OBSCURE, ERA, 3));
+
+        // when / then
+        mockMvc.perform(post(
+                                "/api/v1/games/{gameId}/eras/{eraNumber}/rounds/{roundNumber}/actions",
+                                GAME_ID,
+                                ERA,
+                                ROUND)
+                        .with(auth())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(specialJson()))
                 .andExpect(status().is(422))
                 .andExpect(jsonPath("$.code").value("422-12"));
     }

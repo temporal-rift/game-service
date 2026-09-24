@@ -6,8 +6,10 @@ import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
+import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 
@@ -17,6 +19,7 @@ import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -57,7 +60,9 @@ import io.github.temporalrift.game.action.domain.saga.ActionRoundSagaStatus;
 import io.github.temporalrift.game.shared.domain.event.ActionRoundClosed;
 import io.github.temporalrift.game.shared.domain.event.EraActionFactsFinalized;
 import io.github.temporalrift.game.shared.domain.event.ExposeBehaviorChanged;
+import io.github.temporalrift.game.shared.domain.event.PlayersIdentified;
 import io.github.temporalrift.game.shared.domain.messaging.DomainEventEnvelope;
+import io.github.temporalrift.game.shared.domain.model.CardCategory;
 import io.github.temporalrift.game.shared.domain.model.CardGrade;
 import io.github.temporalrift.game.shared.domain.model.CardType;
 import io.github.temporalrift.game.shared.domain.model.Faction;
@@ -1583,21 +1588,12 @@ class ActionRoundSagaImplTest {
         }
 
         @Test
-        @DisplayName("clears every Obscure at the final round boundary and never crosses the era")
+        @DisplayName("clears a carried Obscure at the final round boundary and never crosses the era")
         void clearsEveryObscureAtFinalRoundBoundary() {
             var target = PlayerState.reconstitute(
                     UUID.randomUUID(), GAME_ID, PLAYER_2, Faction.REVISIONISTS, List.of(), false, true);
             var round = new ActionRound(
                     UUID.randomUUID(), new ActionRoundConfig(GAME_ID, ERA_NUMBER, 3, TIMER_SECONDS), List.of(PLAYER_2));
-            round.submit(new SubmittedAction.SpecialActionSubmission(
-                    PLAYER_2,
-                    Faction.REVISIONISTS,
-                    io.github.temporalrift.game.shared.domain.model.SpecialAction.OBSCURE,
-                    null,
-                    null,
-                    null,
-                    null,
-                    null));
             given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA_NUMBER, 3))
                     .willReturn(Optional.of(round));
             given(playerStateRepository.findAllByGameId(GAME_ID)).willReturn(List.of(target));
@@ -1934,6 +1930,256 @@ class ActionRoundSagaImplTest {
                     .map(DomainEventEnvelope::payload)
                     .filter(HandCardIntercepted.class::isInstance)
                     .map(HandCardIntercepted.class::cast)
+                    .toList();
+        }
+    }
+
+    @Nested
+    @DisplayName("Obscure disguise and identification")
+    class ObscureDisguiseAndIdentificationTests {
+
+        @Test
+        @DisplayName("Intercept of an obscured target reveals decoys of the sampled size and identifies nobody")
+        void obscuredInterceptRevealsDecoys() {
+            var hand = List.of(
+                    new PlayerState.CardInstance(UUID.randomUUID(), CardType.PUSH, CardGrade.I),
+                    new PlayerState.CardInstance(UUID.randomUUID(), CardType.SCAN, CardGrade.II),
+                    new PlayerState.CardInstance(UUID.randomUUID(), CardType.JAM, CardGrade.I));
+            closeInterceptRound(2, CardGrade.II, obscuredState(PLAYER_2, hand));
+
+            var revealed = interceptedEvents().getFirst().revealedCards();
+            assertThat(revealed).hasSize(2);
+            assertThat(revealed)
+                    .extracting(HandCardIntercepted.RevealedCard::cardInstanceId)
+                    .doesNotContainAnyElementsOf(hand.stream()
+                            .map(PlayerState.CardInstance::cardInstanceId)
+                            .toList())
+                    .doesNotHaveDuplicates();
+            assertThat(revealed)
+                    .allSatisfy(card ->
+                            assertThat(card.cardType().supportedGrades()).contains(card.grade()));
+            assertThat(identifications()).isEmpty();
+        }
+
+        @Test
+        @DisplayName("decoy count matches what a real sample of a short hand would reveal")
+        void decoyCountMatchesShortHand() {
+            var hand = List.of(new PlayerState.CardInstance(UUID.randomUUID(), CardType.PUSH, CardGrade.I));
+            closeInterceptRound(2, CardGrade.II, obscuredState(PLAYER_2, hand));
+
+            var revealed = interceptedEvents().getFirst().revealedCards();
+            assertThat(revealed).hasSize(1);
+            assertThat(revealed.getFirst().cardInstanceId())
+                    .isNotEqualTo(hand.getFirst().cardInstanceId());
+        }
+
+        @Test
+        @DisplayName("Intercept of a non-obscured target reveals its hand and identifies it")
+        void interceptIdentifiesNonObscuredTarget() {
+            var card = new PlayerState.CardInstance(UUID.randomUUID(), CardType.PUSH, CardGrade.I);
+            closeInterceptRound(
+                    2,
+                    CardGrade.I,
+                    PlayerState.reconstitute(
+                            UUID.randomUUID(), GAME_ID, PLAYER_2, Faction.REVISIONISTS, List.of(card), false));
+
+            assertThat(interceptedEvents().getFirst().revealedCards())
+                    .containsExactly(
+                            new HandCardIntercepted.RevealedCard(card.cardInstanceId(), card.cardType(), card.grade()));
+            assertThat(identifications())
+                    .containsExactly(new PlayersIdentified(GAME_ID, ERA_NUMBER, 2, List.of(PLAYER_2)));
+        }
+
+        @Test
+        @DisplayName("Trace omits an influencer obscured during the traced round and identifies the rest, "
+                + "repeating final-round identifications on EraActionFactsFinalized")
+        void traceOmitsObscuredInfluencer() {
+            var eventId = UUID.randomUUID();
+            var roundOne = new ActionRound(
+                    UUID.randomUUID(), new ActionRoundConfig(GAME_ID, ERA_NUMBER, 1, TIMER_SECONDS), List.of(PLAYER_2));
+            roundOne.submit(obscure(PLAYER_2));
+            var roundTwo = new ActionRound(
+                    UUID.randomUUID(),
+                    new ActionRoundConfig(GAME_ID, ERA_NUMBER, 2, TIMER_SECONDS),
+                    List.of(PLAYER_2, PLAYER_3));
+            roundTwo.submit(new SubmittedAction.CardAction(
+                    PLAYER_2, UUID.randomUUID(), CardType.PUSH, eventId, null, UUID.randomUUID()));
+            roundTwo.submit(new SubmittedAction.CardAction(
+                    PLAYER_3, UUID.randomUUID(), CardType.PUSH, eventId, null, UUID.randomUUID()));
+            var roundThree = new ActionRound(
+                    UUID.randomUUID(), new ActionRoundConfig(GAME_ID, ERA_NUMBER, 3, TIMER_SECONDS), List.of(PLAYER_1));
+            roundThree.submit(new SubmittedAction.CardAction(
+                    PLAYER_1, UUID.randomUUID(), CardType.TRACE, CardGrade.I, eventId, null, null, null));
+            given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA_NUMBER, 3))
+                    .willReturn(Optional.of(roundThree));
+            given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumber(GAME_ID, ERA_NUMBER, 1))
+                    .willReturn(Optional.of(roundOne));
+            given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumber(GAME_ID, ERA_NUMBER, 2))
+                    .willReturn(Optional.of(roundTwo));
+            given(stateManager.markSubmitted(GAME_ID, ERA_NUMBER, 3, PLAYER_1)).willReturn(waitingState(ERA_NUMBER, 3));
+
+            saga.handlePlayerSubmitted(GAME_ID, ERA_NUMBER, 3, PLAYER_1);
+
+            assertThat(tracedEvents())
+                    .containsExactly(new InfluenceTraced(GAME_ID, ERA_NUMBER, 3, PLAYER_1, eventId, List.of(PLAYER_3)));
+            assertThat(identifications())
+                    .containsExactly(new PlayersIdentified(GAME_ID, ERA_NUMBER, 3, List.of(PLAYER_3)));
+            assertThat(internallyPublished(EraActionFactsFinalized.class))
+                    .singleElement()
+                    .extracting(EraActionFactsFinalized::identifiedPlayerIds)
+                    .isEqualTo(List.of(PLAYER_3));
+        }
+
+        @Test
+        @DisplayName("Trace across the era boundary omits a player obscured during the previous era's Round 3")
+        void traceAcrossEraBoundaryOmitsObscuredInfluencer() {
+            var eventId = UUID.randomUUID();
+            var eraOneRoundTwo = new ActionRound(
+                    UUID.randomUUID(), new ActionRoundConfig(GAME_ID, 1, 2, TIMER_SECONDS), List.of(PLAYER_2));
+            eraOneRoundTwo.submit(obscure(PLAYER_2));
+            var eraOneRoundThree = new ActionRound(
+                    UUID.randomUUID(), new ActionRoundConfig(GAME_ID, 1, 3, TIMER_SECONDS), List.of(PLAYER_2));
+            eraOneRoundThree.submit(new SubmittedAction.CardAction(
+                    PLAYER_2, UUID.randomUUID(), CardType.SUPPRESS, eventId, null, UUID.randomUUID()));
+            var eraTwoRoundOne = new ActionRound(
+                    UUID.randomUUID(), new ActionRoundConfig(GAME_ID, 2, 1, TIMER_SECONDS), List.of(PLAYER_1));
+            eraTwoRoundOne.submit(new SubmittedAction.CardAction(
+                    PLAYER_1, UUID.randomUUID(), CardType.TRACE, CardGrade.I, eventId, null, null, null));
+            given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, 2, 1))
+                    .willReturn(Optional.of(eraTwoRoundOne));
+            given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumber(GAME_ID, 1, 3))
+                    .willReturn(Optional.of(eraOneRoundThree));
+            given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumber(GAME_ID, 1, 2))
+                    .willReturn(Optional.of(eraOneRoundTwo));
+            given(stateManager.markSubmitted(GAME_ID, 2, 1, PLAYER_1)).willReturn(waitingState(2, 1));
+
+            saga.handlePlayerSubmitted(GAME_ID, 2, 1, PLAYER_1);
+
+            assertThat(tracedEvents())
+                    .containsExactly(new InfluenceTraced(GAME_ID, 2, 1, PLAYER_1, eventId, List.of()));
+            assertThat(identifications()).isEmpty();
+        }
+
+        @Test
+        @DisplayName("revealing an Expose signature at Round 2 close identifies the exposed player")
+        void exposeRevealIdentifiesExposedPlayer() {
+            var activistState = new ActivistEraState(UUID.randomUUID(), GAME_ID, ERA_NUMBER, PLAYER_1, false);
+            activistState.expose(
+                    PLAYER_2,
+                    new ProbabilityInfluenceSignature(CardType.PUSH, UUID.randomUUID(), null, UUID.randomUUID()));
+            given(activistEraStateRepository.findExposedByGameIdAndEraNumber(GAME_ID, ERA_NUMBER))
+                    .willReturn(List.of(activistState));
+            var roundTwo = new ActionRound(
+                    UUID.randomUUID(), new ActionRoundConfig(GAME_ID, ERA_NUMBER, 2, TIMER_SECONDS), List.of());
+            given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA_NUMBER, 2))
+                    .willReturn(Optional.of(roundTwo));
+            given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumber(GAME_ID, ERA_NUMBER, 1))
+                    .willReturn(Optional.of(new ActionRound(
+                            UUID.randomUUID(),
+                            new ActionRoundConfig(GAME_ID, ERA_NUMBER, 1, TIMER_SECONDS),
+                            List.of())));
+            given(futureEventDefinitionPort.findByGameIdAndEraNumber(GAME_ID, ERA_NUMBER))
+                    .willReturn(List.of());
+            given(bandCalculator.computeBands(any(), any(), any())).willReturn(List.of());
+            given(stateManager.markSubmitted(GAME_ID, ERA_NUMBER, 2, PLAYER_1)).willReturn(waitingState(ERA_NUMBER, 2));
+
+            saga.handlePlayerSubmitted(GAME_ID, ERA_NUMBER, 2, PLAYER_1);
+
+            assertThat(identifications())
+                    .containsExactly(new PlayersIdentified(GAME_ID, ERA_NUMBER, 2, List.of(PLAYER_2)));
+        }
+
+        private void closeInterceptRound(int roundNumber, CardGrade grade, PlayerState target) {
+            var round = new ActionRound(
+                    UUID.randomUUID(),
+                    new ActionRoundConfig(GAME_ID, ERA_NUMBER, roundNumber, TIMER_SECONDS),
+                    List.of(PLAYER_1));
+            round.submit(new SubmittedAction.CardAction(
+                    PLAYER_1, UUID.randomUUID(), CardType.INTERCEPT, grade, null, null, null, PLAYER_2));
+            given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(
+                            GAME_ID, ERA_NUMBER, roundNumber))
+                    .willReturn(Optional.of(round));
+            lenient()
+                    .when(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumber(
+                            GAME_ID, ERA_NUMBER, roundNumber - 1))
+                    .thenReturn(Optional.of(new ActionRound(
+                            UUID.randomUUID(),
+                            new ActionRoundConfig(GAME_ID, ERA_NUMBER, roundNumber - 1, TIMER_SECONDS),
+                            List.of())));
+            lenient()
+                    .when(futureEventDefinitionPort.findByGameIdAndEraNumber(GAME_ID, ERA_NUMBER))
+                    .thenReturn(List.of());
+            lenient().when(bandCalculator.computeBands(any(), any(), any())).thenReturn(List.of());
+            lenient()
+                    .when(gameRules.cardCategoryWeights())
+                    .thenReturn(Map.of(
+                            CardCategory.PROBABILITY_SHIFTER, 35,
+                            CardCategory.INFORMATION, 25,
+                            CardCategory.DISRUPTION, 25,
+                            CardCategory.PARADOX, 15));
+            lenient()
+                    .when(gameRules.cardGradeWeights())
+                    .thenReturn(Map.of(CardGrade.I, 60, CardGrade.II, 30, CardGrade.III, 10));
+            given(playerStateRepository.findAllByGameId(GAME_ID))
+                    .willReturn(List.of(
+                            PlayerState.reconstitute(
+                                    UUID.randomUUID(), GAME_ID, PLAYER_1, Faction.ERASERS, List.of(), false),
+                            target));
+            given(stateManager.markSubmitted(GAME_ID, ERA_NUMBER, roundNumber, PLAYER_1))
+                    .willReturn(waitingState(ERA_NUMBER, roundNumber));
+
+            saga.handlePlayerSubmitted(GAME_ID, ERA_NUMBER, roundNumber, PLAYER_1);
+        }
+
+        private PlayerState obscuredState(UUID playerId, List<PlayerState.CardInstance> hand) {
+            return PlayerState.reconstitute(
+                    UUID.randomUUID(), GAME_ID, playerId, Faction.REVISIONISTS, hand, false, true);
+        }
+
+        private SubmittedAction.SpecialActionSubmission obscure(UUID playerId) {
+            return new SubmittedAction.SpecialActionSubmission(
+                    playerId, Faction.REVISIONISTS, SpecialAction.OBSCURE, null, null, null, null, null);
+        }
+
+        private Optional<ActionRoundSagaState> waitingState(int eraNumber, int roundNumber) {
+            return Optional.of(new ActionRoundSagaState(
+                    UUID.randomUUID(),
+                    GAME_ID,
+                    eraNumber,
+                    roundNumber,
+                    ActionRoundSagaStatus.WAITING,
+                    List.of(),
+                    TIMER_EXPIRES_AT));
+        }
+
+        private <T> List<T> internallyPublished(Class<T> type) {
+            var published = ArgumentCaptor.forClass(Object.class);
+            then(actionEventPublisher).should(atLeast(0)).publishInternally(published.capture());
+            return published.getAllValues().stream()
+                    .filter(type::isInstance)
+                    .map(type::cast)
+                    .toList();
+        }
+
+        private List<PlayersIdentified> identifications() {
+            return internallyPublished(PlayersIdentified.class);
+        }
+
+        private List<HandCardIntercepted> interceptedEvents() {
+            return publishedPayloads(HandCardIntercepted.class);
+        }
+
+        private List<InfluenceTraced> tracedEvents() {
+            return publishedPayloads(InfluenceTraced.class);
+        }
+
+        private <T> List<T> publishedPayloads(Class<T> type) {
+            var published = ArgumentCaptor.<DomainEventEnvelope>captor();
+            then(actionEventPublisher).should(atLeastOnce()).publish(published.capture());
+            return published.getAllValues().stream()
+                    .map(DomainEventEnvelope::payload)
+                    .filter(type::isInstance)
+                    .map(type::cast)
                     .toList();
         }
     }

@@ -18,6 +18,7 @@ import io.github.temporalrift.game.action.domain.actionround.InvalidSpecialActio
 import io.github.temporalrift.game.action.domain.actionround.JammedPlayerException;
 import io.github.temporalrift.game.action.domain.actionround.RoundNotFoundException;
 import io.github.temporalrift.game.action.domain.actionround.SpecialActionNotEligibleForEraException;
+import io.github.temporalrift.game.action.domain.actionround.SpecialActionNotEligibleForRoundException;
 import io.github.temporalrift.game.action.domain.actionround.UnknownActionTargetException;
 import io.github.temporalrift.game.action.domain.activisterastate.ActivistDeclarationAlreadyRecordedException;
 import io.github.temporalrift.game.action.domain.activisterastate.DeclarationWindowClosedException;
@@ -153,7 +154,11 @@ class ActionExceptionHandler {
         return ProblemDetails.of(HttpStatus.UNPROCESSABLE_CONTENT, ex.getMessage(), "422-11");
     }
 
-    @ExceptionHandler({CardNotEligibleForRoundException.class, SpecialActionNotEligibleForEraException.class})
+    @ExceptionHandler({
+        CardNotEligibleForRoundException.class,
+        SpecialActionNotEligibleForEraException.class,
+        SpecialActionNotEligibleForRoundException.class
+    })
     ProblemDetail handleNotEligibleForRound(RuntimeException ex) {
         return ProblemDetails.of(HttpStatus.UNPROCESSABLE_CONTENT, ex.getMessage(), "422-12");
     }
