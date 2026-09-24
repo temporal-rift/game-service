@@ -37,6 +37,7 @@ import io.github.temporalrift.game.action.domain.actionround.InvalidActionTarget
 import io.github.temporalrift.game.action.domain.actionround.InvalidSpecialActionException;
 import io.github.temporalrift.game.action.domain.actionround.JammedPlayerException;
 import io.github.temporalrift.game.action.domain.actionround.RoundNotFoundException;
+import io.github.temporalrift.game.action.domain.actionround.SpecialActionNotEligibleForEraException;
 import io.github.temporalrift.game.action.domain.actionround.SubmittedAction;
 import io.github.temporalrift.game.action.domain.actionround.UnknownActionTargetException;
 import io.github.temporalrift.game.action.domain.activisterastate.ActivistEraState;
@@ -404,6 +405,7 @@ class PlaySpecialActionCommandHandlerTest {
             given(playerState.faction()).willReturn(c.faction());
             given(playerState.isJammed()).willReturn(false);
             given(gameRules.onceEraBudgetedSpecials()).willReturn(Set.of());
+            given(gameRules.maxEras()).willReturn(5);
             given(round.submit(any())).willReturn(false);
             given(round.id()).willReturn(UUID.randomUUID());
             given(round.gameId()).willReturn(GAME_ID);
@@ -417,6 +419,36 @@ class PlaySpecialActionCommandHandlerTest {
                             PLAYER_ID, c.faction(), c.special(), null, null, c.event(), c.outcome(), c.player())));
             org.mockito.Mockito.reset(round, actionRoundRepository, playerStateRepository, playerState);
         }
+    }
+
+    @Test
+    @DisplayName("handle — CASCADE in the final era — rejected before any budget or round submission")
+    void handleFinalEraCascadeRejectedWithoutSpending() {
+        // given
+        var command = new PlaySpecialActionUseCase.Command(
+                GAME_ID,
+                5,
+                ROUND,
+                PLAYER_ID,
+                SpecialAction.CASCADE,
+                null,
+                null,
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                null);
+        given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, 5, ROUND))
+                .willReturn(Optional.of(round));
+        given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(playerState));
+        given(playerState.faction()).willReturn(Faction.ERASERS);
+        given(playerState.isJammed()).willReturn(false);
+        given(gameRules.maxEras()).willReturn(5);
+
+        // when / then
+        assertThatExceptionOfType(SpecialActionNotEligibleForEraException.class)
+                .isThrownBy(() -> handler.handle(command));
+        then(specialActionEraUsageRepository).shouldHaveNoInteractions();
+        then(round).should(never()).submit(any());
+        then(actionRoundRepository).should(never()).save(any());
     }
 
     @Test

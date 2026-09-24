@@ -40,6 +40,7 @@ import io.github.temporalrift.game.action.domain.actionround.FactionRequiredExce
 import io.github.temporalrift.game.action.domain.actionround.InvalidActionTargetException;
 import io.github.temporalrift.game.action.domain.actionround.JammedPlayerException;
 import io.github.temporalrift.game.action.domain.actionround.RoundNotFoundException;
+import io.github.temporalrift.game.action.domain.actionround.SpecialActionNotEligibleForEraException;
 import io.github.temporalrift.game.action.domain.activisterastate.ExposeAlreadyRecordedException;
 import io.github.temporalrift.game.action.domain.handselection.InvalidHandSelectionException;
 import io.github.temporalrift.game.action.domain.paradoxresolutionphase.CardNotEligibleForParadoxResolutionException;
@@ -522,6 +523,26 @@ class ActionControllerTest {
                         .with(auth())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(cardJson()))
+                .andExpect(status().is(422))
+                .andExpect(jsonPath("$.code").value("422-12"));
+    }
+
+    @Test
+    @DisplayName("Given final-era CASCADE rejection, then returns 422-12")
+    void finalEraCascadeReturnsRoundIneligibilityCode() throws Exception {
+        // given
+        given(playSpecialActionUseCase.handle(any()))
+                .willThrow(new SpecialActionNotEligibleForEraException(SpecialAction.CASCADE, 5));
+
+        // when / then
+        mockMvc.perform(post(
+                                "/api/v1/games/{gameId}/eras/{eraNumber}/rounds/{roundNumber}/actions",
+                                GAME_ID,
+                                ERA,
+                                ROUND)
+                        .with(auth())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(specialJson()))
                 .andExpect(status().is(422))
                 .andExpect(jsonPath("$.code").value("422-12"));
     }

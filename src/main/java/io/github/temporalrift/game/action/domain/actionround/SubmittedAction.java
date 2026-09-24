@@ -283,6 +283,20 @@ public sealed interface SubmittedAction permits SubmittedAction.CardAction, Subm
             implements SubmittedAction {
 
         @Override
+        public void validate(int eraNumber, int roundNumber, int maxEras) {
+            validate(eraNumber, roundNumber);
+            validateFinalEra(eraNumber, roundNumber, maxEras);
+        }
+
+        @Override
+        public void validateFinalEra(int eraNumber, int roundNumber, int maxEras) {
+            // Cascade only erases again when its event carries into a next era, which the final era never has.
+            if (specialAction == SpecialAction.CASCADE && eraNumber >= maxEras) {
+                throw new SpecialActionNotEligibleForEraException(specialAction, eraNumber);
+            }
+        }
+
+        @Override
         public void validate(int eraNumber, int roundNumber) {
             if (sourceEventId != null || sourceOutcomeId != null) {
                 throw InvalidActionTargetException.specialActionCannotHaveSource(specialAction);
