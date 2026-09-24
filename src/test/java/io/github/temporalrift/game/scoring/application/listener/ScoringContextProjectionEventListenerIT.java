@@ -21,11 +21,13 @@ import io.github.temporalrift.game.scoring.domain.context.PendingEraScoringCompl
 import io.github.temporalrift.game.scoring.domain.context.PlayerFaction;
 import io.github.temporalrift.game.scoring.domain.event.EraResolutionCompleted;
 import io.github.temporalrift.game.scoring.domain.port.out.EraScoringContextRepository;
+import io.github.temporalrift.game.scoring.domain.port.out.FactionIdentificationRepository;
 import io.github.temporalrift.game.shared.domain.event.EraActionFactsFinalized;
 import io.github.temporalrift.game.shared.domain.event.EventsDrawn;
 import io.github.temporalrift.game.shared.domain.event.FactionAssigned;
 import io.github.temporalrift.game.shared.domain.event.ForesightDeclared;
 import io.github.temporalrift.game.shared.domain.event.OutcomeAnnihilated;
+import io.github.temporalrift.game.shared.domain.event.PlayersIdentified;
 import io.github.temporalrift.game.shared.domain.model.CarryOverState;
 import io.github.temporalrift.game.shared.domain.model.Faction;
 
@@ -43,6 +45,48 @@ class ScoringContextProjectionEventListenerIT {
 
     @Autowired
     EraScoringCompletionChecker completionChecker;
+
+    @Autowired
+    FactionIdentificationRepository factionIdentificationRepository;
+
+    @Test
+    void playersIdentified_recordsIdentificationIdempotently() {
+        var gameId = UUID.randomUUID();
+        var playerId = UUID.randomUUID();
+        var event = new PlayersIdentified(gameId, 1, 2, List.of(playerId));
+
+        transactionTemplate.executeWithoutResult(_ -> applicationEventPublisher.publishEvent(event));
+        transactionTemplate.executeWithoutResult(_ -> applicationEventPublisher.publishEvent(event));
+
+        await().atMost(Duration.ofSeconds(10))
+                .untilAsserted(
+                        () -> assertThat(factionIdentificationRepository.wasIdentifiedBeforeGameEnd(gameId, playerId))
+                                .isTrue());
+    }
+
+    @Test
+    void eraActionFactsFinalized_recordsFinalRoundIdentifications() {
+        var gameId = UUID.randomUUID();
+        var playerId = UUID.randomUUID();
+        var event = new EraActionFactsFinalized(
+                gameId,
+                1,
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(playerId));
+
+        transactionTemplate.executeWithoutResult(_ -> applicationEventPublisher.publishEvent(event));
+
+        await().atMost(Duration.ofSeconds(10))
+                .untilAsserted(
+                        () -> assertThat(factionIdentificationRepository.wasIdentifiedBeforeGameEnd(gameId, playerId))
+                                .isTrue());
+    }
 
     @Test
     void factionAssigned_populatesScoringContextPlayer() {

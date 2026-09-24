@@ -22,7 +22,7 @@ import io.github.temporalrift.game.shared.domain.model.Faction;
  *
  * <p>The eligibility check intentionally precedes the atomic ledger claim: the reveal that
  * invokes this handler is not prior identification, while a persisted earlier identification
- * disqualifies the player.
+ * (see {@link FactionIdentificationRepository}) disqualifies the player.
  */
 public class AwardUnidentifiedFactionScores {
 
