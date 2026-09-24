@@ -300,19 +300,17 @@ public sealed interface SubmittedAction permits SubmittedAction.CardAction, Subm
             if (sourceEventId != null || sourceOutcomeId != null) {
                 throw InvalidActionTargetException.specialActionCannotHaveSource(specialAction);
             }
+            // Obscure covers the following round of the same era, which Round 3 does not have.
+            if (specialAction == SpecialAction.OBSCURE && roundNumber == 3) {
+                throw new SpecialActionNotEligibleForRoundException(specialAction, eraNumber, roundNumber);
+            }
             switch (specialAction) {
                 case RALLY, MOMENTUM -> throw new DeclarationSpecialActionRequiredException(specialAction);
                 case FORESIGHT, ANNIHILATE, SEAL, REWRITE, MIMIC, CASCADE, THREAD -> requireEventAndOutcome();
                 case FULFILLMENT -> requireEvent();
                 case CORRUPT -> requireOpponent();
                 case EXPOSE -> requireExposeTarget();
-                // Obscure covers the following round of the same era, which Round 3 does not have.
-                case OBSCURE -> {
-                    if (roundNumber == 3) {
-                        throw new SpecialActionNotEligibleForRoundException(specialAction, eraNumber, roundNumber);
-                    }
-                }
-                case TAPESTRY, REWEAVE -> {
+                case OBSCURE, TAPESTRY, REWEAVE -> {
                     // No additional target requirement enforced at submission; TAPESTRY's prerequisites and
                     // REWEAVE's re-anchor target are validated by timeline-service's chain saga, which alone
                     // knows chain and resolution state.

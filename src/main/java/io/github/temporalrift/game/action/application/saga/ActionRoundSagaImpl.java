@@ -402,7 +402,7 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
         for (var intercept : intercepts) {
             var target = java.util.Optional.ofNullable(statesByPlayer.get(intercept.targetPlayerId()));
             var hand = target.map(PlayerState::hand).orElseGet(List::of);
-            var obscured = target.map(PlayerState::isObscured).orElse(false);
+            var obscured = target.filter(PlayerState::isObscured).isPresent();
             var sample = obscured
                     ? InterceptHandSampler.decoys(hand, intercept.grade(), cardDrawWeights(), INTERCEPT_RANDOMNESS)
                     : InterceptHandSampler.select(hand, intercept.grade(), INTERCEPT_RANDOMNESS);
