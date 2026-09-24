@@ -27,8 +27,10 @@ class SpecialActionSubmissionRoundTest {
     @ValueSource(ints = {1, 2, 3, 4, 5})
     @DisplayName("OBSCURE in round 3 is rejected in every era")
     void obscureRejectedInFinalRound(int eraNumber) {
+        var obscure = obscure();
+
         assertThatExceptionOfType(SpecialActionNotEligibleForRoundException.class)
-                .isThrownBy(() -> obscure().validate(eraNumber, 3))
+                .isThrownBy(() -> obscure.validate(eraNumber, 3))
                 .withMessageContaining("OBSCURE");
     }
 
