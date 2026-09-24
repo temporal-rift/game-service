@@ -31,6 +31,7 @@ import io.github.temporalrift.game.action.application.port.in.RecordActivistDecl
 import io.github.temporalrift.game.action.domain.activisterastate.ActivistDeclarationMode;
 import io.github.temporalrift.game.action.domain.activisterastate.ActivistEraState;
 import io.github.temporalrift.game.action.domain.activisterastate.DeclarationWindowClosedException;
+import io.github.temporalrift.game.action.domain.activisterastate.MomentumNotEligibleException;
 import io.github.temporalrift.game.action.domain.event.ActivistDeclarationRecorded;
 import io.github.temporalrift.game.action.domain.playerstate.PlayerState;
 import io.github.temporalrift.game.action.domain.port.out.ActionEventPublisher;
@@ -140,6 +141,38 @@ class RecordActivistDeclarationCommandHandlerTest {
                         io.github.temporalrift.game.shared.domain.model.SpecialAction.RALLY,
                         TARGET_EVENT_ID,
                         TARGET_OUTCOME_ID));
+    }
+
+    @Test
+    void handleMomentumAfterStalledPreviousDeclaration_isRejected() {
+        var nextEra = ERA_NUMBER + 1;
+        var previous = new ActivistEraState(UUID.randomUUID(), GAME_ID, ERA_NUMBER, PLAYER_ID, false);
+        previous.declare(ActivistDeclarationMode.RALLY, TARGET_EVENT_ID, TARGET_OUTCOME_ID);
+        previous.recordResolution(false);
+        given(playerStateRepository.findByGameIdAndPlayerIdWithLock(GAME_ID, PLAYER_ID))
+                .willReturn(Optional.of(playerState));
+        given(declarationPhaseRepository.findByGameIdAndEraNumberWithLock(GAME_ID, nextEra))
+                .willReturn(Optional.of(new io.github.temporalrift.game.action.domain.declarationphase.DeclarationPhase(
+                        UUID.randomUUID(), GAME_ID, nextEra, CLOCK.instant().plusSeconds(30))));
+        given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumber(GAME_ID, nextEra, 1))
+                .willReturn(Optional.empty());
+        given(playerState.faction()).willReturn(Faction.ACTIVISTS);
+        given(playerState.isJammed()).willReturn(false);
+        given(activistEraStateRepository.findByGameIdAndEraNumberAndActivistPlayerId(GAME_ID, nextEra, PLAYER_ID))
+                .willReturn(Optional.empty());
+        given(activistEraStateRepository.findByGameIdAndEraNumberAndActivistPlayerId(GAME_ID, ERA_NUMBER, PLAYER_ID))
+                .willReturn(Optional.of(previous));
+
+        assertThatThrownBy(() -> handler.handle(new RecordActivistDeclarationUseCase.Command(
+                        GAME_ID,
+                        nextEra,
+                        PLAYER_ID,
+                        ActivistDeclarationMode.MOMENTUM,
+                        TARGET_EVENT_ID,
+                        TARGET_OUTCOME_ID)))
+                .isInstanceOf(MomentumNotEligibleException.class);
+        then(activistEraStateRepository).should(never()).save(any());
+        then(actionEventPublisher).shouldHaveNoInteractions();
     }
 
     @Test

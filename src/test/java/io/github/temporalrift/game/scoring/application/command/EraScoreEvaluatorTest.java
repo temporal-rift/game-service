@@ -394,6 +394,77 @@ class EraScoreEvaluatorTest {
     }
 
     @Test
+    void prophetWritingAndFulfillmentExpireAfterRepeatedStall() {
+        var prophetId = UUID.randomUUID();
+        var eventId = UUID.randomUUID();
+        var firstWrittenOutcome = UUID.randomUUID();
+        var laterWrittenOutcome = UUID.randomUUID();
+        var players = List.of(new PlayerFaction(prophetId, Faction.PROPHETS));
+        var firstEra = new EraScoringContext(
+                GAME_ID,
+                2,
+                players,
+                List.of(new EventOutcomeFact(eventId, null, firstWrittenOutcome, 3, 3)),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(new FulfillmentDeclarationFact(prophetId, eventId)),
+                List.of(),
+                List.of());
+        var secondEra = new EraScoringContext(
+                GAME_ID,
+                3,
+                players,
+                List.of(new EventOutcomeFact(eventId, null, laterWrittenOutcome, 3, 3)),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of());
+        var resolvingEra = new EraScoringContext(
+                GAME_ID,
+                4,
+                players,
+                List.of(new EventOutcomeFact(eventId, laterWrittenOutcome, laterWrittenOutcome, 3, 3)),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of());
+
+        assertThat(evaluator.evaluate(firstEra, List.of())).isEmpty();
+        assertThat(evaluator.evaluate(secondEra, List.of())).isEmpty();
+        assertThat(evaluator.evaluate(
+                        resolvingEra, List.of(new OutcomeApplied(GAME_ID, 4, eventId, laterWrittenOutcome, List.of()))))
+                .singleElement()
+                .satisfies(decision -> {
+                    assertThat(decision.reason()).isEqualTo(ScoreReason.EVENT_RESOLVED_AS_WRITTEN);
+                    assertThat(decision.eraNumber()).isEqualTo(4);
+                });
+    }
+
+    @Test
+    void prophetFinalEraWithoutOutcomeAwardsNoScore() {
+        var prophetId = UUID.randomUUID();
+        var eventId = UUID.randomUUID();
+        var finalEra = new EraScoringContext(
+                GAME_ID,
+                5,
+                List.of(new PlayerFaction(prophetId, Faction.PROPHETS)),
+                List.of(new EventOutcomeFact(eventId, null, UUID.randomUUID(), 3, 3)),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(new FulfillmentDeclarationFact(prophetId, eventId)),
+                List.of(),
+                List.of());
+
+        assertThat(evaluator.evaluate(finalEra, List.of())).isEmpty();
+    }
+
+    @Test
     @DisplayName(
             "prophet receives two separate FULFILLMENT_SUCCEEDED credits for declarations on two different " + "events")
     void prophetFulfillmentDeclaredOnTwoEvents() {
