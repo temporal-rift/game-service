@@ -117,14 +117,11 @@ class ActionController implements ActionApi {
     public ResponseEntity<SubmitActionResponse> submitAction(
             UUID gameId, Integer eraNumber, Integer roundNumber, SubmitActionRequest submitActionRequest) {
         var playerId = CurrentPlayer.id();
-        var result =
-                switch (submitActionRequest.getActionType()) {
-                    case CARD ->
-                        submitCard(gameId, eraNumber, roundNumber, playerId, (CardActionRequest) submitActionRequest);
-                    case SPECIAL ->
-                        submitSpecial(
-                                gameId, eraNumber, roundNumber, playerId, (SpecialActionRequest) submitActionRequest);
-                };
+        var result = switch (submitActionRequest.getActionType()) {
+            case CARD -> submitCard(gameId, eraNumber, roundNumber, playerId, (CardActionRequest) submitActionRequest);
+            case SPECIAL ->
+                submitSpecial(gameId, eraNumber, roundNumber, playerId, (SpecialActionRequest) submitActionRequest);
+        };
 
         return ResponseEntity.accepted()
                 .body(new SubmitActionResponse(
