@@ -1006,6 +1006,73 @@ class EraScoringContextRepositoryAdapterTest {
     }
 
     @Test
+    void getRequired_carriedEventDoesNotCarryProphetWritingOrFulfillmentIntoLaterEra() {
+        var gameId = UUID.randomUUID();
+        var playerId = UUID.randomUUID();
+        var eventId = UUID.randomUUID();
+        var oldWrittenOutcomeId = UUID.randomUUID();
+        var newWrittenOutcomeId = UUID.randomUUID();
+        var player = new ScoringContextPlayerJpaEntity();
+        player.setId(UUID.randomUUID());
+        player.setGameId(gameId);
+        player.setPlayerId(playerId);
+        player.setFaction(Faction.PROPHETS.name());
+        given(playerJpaRepository.findAllByGameId(gameId)).willReturn(List.of(player));
+
+        var oldBaseline = new ScoringContextEventOutcomeJpaEntity();
+        oldBaseline.setId(UUID.randomUUID());
+        oldBaseline.setGameId(gameId);
+        oldBaseline.setEraNumber(2);
+        oldBaseline.setEventId(eventId);
+        oldBaseline.setStartingOutcomeCount(3);
+        oldBaseline.setWrittenOutcomeId(oldWrittenOutcomeId);
+        var carriedBaseline = new ScoringContextEventOutcomeJpaEntity();
+        carriedBaseline.setId(UUID.randomUUID());
+        carriedBaseline.setGameId(gameId);
+        carriedBaseline.setEraNumber(3);
+        carriedBaseline.setEventId(eventId);
+        carriedBaseline.setStartingOutcomeCount(3);
+        var freshBaseline = new ScoringContextEventOutcomeJpaEntity();
+        freshBaseline.setId(UUID.randomUUID());
+        freshBaseline.setGameId(gameId);
+        freshBaseline.setEraNumber(4);
+        freshBaseline.setEventId(eventId);
+        freshBaseline.setStartingOutcomeCount(3);
+        freshBaseline.setWrittenOutcomeId(newWrittenOutcomeId);
+        given(eventOutcomeJpaRepository.findAllByGameIdAndEraNumber(gameId, 2)).willReturn(List.of(oldBaseline));
+        given(eventOutcomeJpaRepository.findAllByGameIdAndEraNumber(gameId, 3)).willReturn(List.of(carriedBaseline));
+        given(eventOutcomeJpaRepository.findAllByGameIdAndEraNumber(gameId, 4)).willReturn(List.of(freshBaseline));
+
+        var oldDeclaration = new ScoringContextFulfillmentDeclarationJpaEntity();
+        oldDeclaration.setId(UUID.randomUUID());
+        oldDeclaration.setGameId(gameId);
+        oldDeclaration.setEraNumber(2);
+        oldDeclaration.setPlayerId(playerId);
+        oldDeclaration.setTargetEventId(eventId);
+        given(fulfillmentDeclarationJpaRepository.findAllByGameIdAndEraNumber(gameId, 2))
+                .willReturn(List.of(oldDeclaration));
+
+        var stalledEra = adapter.getRequired(gameId, 2);
+        var carriedEra = adapter.getRequired(gameId, 3);
+        var resolvingEra = adapter.getRequired(gameId, 4);
+
+        assertThat(stalledEra.eventOutcomes())
+                .singleElement()
+                .satisfies(fact -> assertThat(fact.writtenOutcomeId()).isEqualTo(oldWrittenOutcomeId));
+        assertThat(stalledEra.fulfillmentDeclarations())
+                .containsExactly(new io.github.temporalrift.game.scoring.domain.context.FulfillmentDeclarationFact(
+                        playerId, eventId));
+        assertThat(carriedEra.eventOutcomes())
+                .singleElement()
+                .satisfies(fact -> assertThat(fact.writtenOutcomeId()).isNull());
+        assertThat(carriedEra.fulfillmentDeclarations()).isEmpty();
+        assertThat(resolvingEra.eventOutcomes())
+                .singleElement()
+                .satisfies(fact -> assertThat(fact.writtenOutcomeId()).isEqualTo(newWrittenOutcomeId));
+        assertThat(resolvingEra.fulfillmentDeclarations()).isEmpty();
+    }
+
+    @Test
     void getRequired_assemblesAndConsumesParadoxCascadeFacts() {
         var gameId = UUID.randomUUID();
         var playerId = UUID.randomUUID();
