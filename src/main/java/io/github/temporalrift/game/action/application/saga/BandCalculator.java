@@ -104,12 +104,11 @@ class BandCalculator {
         }
 
         // Non-shifter cards (Amplify, Jam, etc.) are resolved at timeline resolution time, not here.
-        var shift =
-                switch (action.cardType()) {
-                    case PUSH -> bandRules.pushShift(action.grade());
-                    case SUPPRESS -> bandRules.suppressShift(action.grade());
-                    default -> 0;
-                };
+        var shift = switch (action.cardType()) {
+            case PUSH -> bandRules.pushShift(action.grade());
+            case SUPPRESS -> bandRules.suppressShift(action.grade());
+            default -> 0;
+        };
         if (shift != 0) {
             outcomeMap.merge(action.targetOutcomeId(), shift, Integer::sum);
         }
