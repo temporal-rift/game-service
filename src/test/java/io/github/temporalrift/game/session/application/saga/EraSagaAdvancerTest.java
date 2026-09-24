@@ -521,7 +521,7 @@ class EraSagaAdvancerTest {
     @DisplayName("no winner and not final era — EraEnded relays before EraStarted's Kafka and in-process publishes")
     void handleScoresUpdated_noWinnerNotFinalEra_relaysEraEndedBeforeEraStartedOnBothPaths() {
         // given — EraEnded is Kafka-only (no in-process listener today) and EraStarted is dual-published
-        // through the helper; this proves the state-before-terminal-fact ordering sagas.md requires holds
+        // through the helper; this proves the required state-before-terminal-fact ordering holds
         // across both the Kafka relay and the in-process path, matching the helper's own kafka-then-internal
         // contract per call.
         var state = new EraSagaState(GAME_ID, 1, EraSagaStatus.WAITING_SCORES, PLAYER_IDS);
