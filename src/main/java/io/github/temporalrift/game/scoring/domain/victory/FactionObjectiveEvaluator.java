@@ -58,6 +58,7 @@ public final class FactionObjectiveEvaluator {
                 .count();
     }
 
+    // Only eras with a declared preference that won count; an era with no Rewrite contributes nothing.
     private static int revisionistSuccessfulEras(PlayerScore score) {
         var eras = new HashSet<Integer>();
         for (var entry : score.history()) {

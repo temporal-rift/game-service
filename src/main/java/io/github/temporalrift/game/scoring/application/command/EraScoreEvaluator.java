@@ -120,6 +120,7 @@ class EraScoreEvaluator {
                 .toList();
     }
 
+    // Decisions come only from recorded action facts, so a player with no fact in the era scores nothing.
     private List<PlayerScoreDecision> actionDecisions(UUID playerId, EraScoringContext context) {
         return context.actionFacts().stream()
                 .filter(fact -> fact.playerId().equals(playerId))

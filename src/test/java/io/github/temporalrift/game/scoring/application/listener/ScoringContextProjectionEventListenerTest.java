@@ -280,6 +280,7 @@ class ScoringContextProjectionEventListenerTest {
 
         then(contextRepository).should(never()).upsertWrittenOutcome(any(), anyInt(), any(), any(), any());
         then(contextRepository).should(never()).recordAnnihilatedOutcome(any(), anyInt(), any(), any(), any());
+        then(contextRepository).should(never()).recordRevisionistAction(any(), anyInt(), any(), any(), any(), any());
         then(contextRepository).should().markActionFactsReady(gameId, 2);
         then(completionChecker).should().tryComplete(gameId, 2);
     }

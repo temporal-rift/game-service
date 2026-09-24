@@ -409,6 +409,11 @@ class EraScoringContextRepositoryAdapter implements EraScoringContextRepository 
                 UUID.randomUUID(), gameId, eraNumber, playerId, action.name(), targetEventId, targetOutcomeId);
     }
 
+    /**
+     * Resolves recorded Rewrite and Mimic targets against the era terminal barrier. A player with no
+     * recorded Rewrite has no eligible preference, so nothing scores for them; a cascaded or stalled
+     * target resolves without a score and without waiting for an outcome.
+     */
     @Override
     @Transactional
     public void resolveRevisionistActions(UUID gameId, int eraNumber) {

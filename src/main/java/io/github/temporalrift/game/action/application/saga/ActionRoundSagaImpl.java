@@ -565,6 +565,7 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
                     case ANNIHILATE ->
                         annihilationFacts.add(new EraActionFactsFinalized.AnnihilationFact(
                                 special.targetEventId(), special.targetOutcomeId(), special.playerId()));
+                    // The latest Rewrite is the player's single era declaration; it replaces any earlier one.
                     case REWRITE ->
                         latestRewriteFacts.put(
                                 special.playerId(),

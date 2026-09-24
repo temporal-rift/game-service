@@ -258,6 +258,53 @@ class EraScoreEvaluatorTest {
     }
 
     @Test
+    @DisplayName("revisionist receives scoring reason from a declared preference fact")
+    void revisionistDeclaredPreferenceFact() {
+        var revisionistId = UUID.randomUUID();
+
+        var context = new EraScoringContext(
+                GAME_ID,
+                ERA,
+                List.of(new PlayerFaction(revisionistId, Faction.REVISIONISTS)),
+                List.of(),
+                List.of(new ActionScoringFact(revisionistId, Faction.REVISIONISTS, ScoreReason.SECRET_OUTCOME_WON)),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of());
+
+        var decisions = evaluator.evaluate(context, List.of());
+
+        assertThat(decisions).hasSize(1);
+        assertThat(decisions.get(0).playerId()).isEqualTo(revisionistId);
+        assertThat(decisions.get(0).reason()).isEqualTo(ScoreReason.SECRET_OUTCOME_WON);
+        assertThat(decisions.get(0).eraNumber()).isEqualTo(ERA);
+    }
+
+    @Test
+    @DisplayName("revisionist with no declared preference fact receives no decision")
+    void revisionistWithNoDeclarationReceivesNoDecision() {
+        var revisionistId = UUID.randomUUID();
+
+        var context = new EraScoringContext(
+                GAME_ID,
+                ERA,
+                List.of(new PlayerFaction(revisionistId, Faction.REVISIONISTS)),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of());
+
+        var decisions = evaluator.evaluate(context, List.of());
+
+        assertThat(decisions).isEmpty();
+    }
+
+    @Test
     @DisplayName("decisions are sorted by player id then reason name")
     void decisionsAreSorted() {
         var id1 = UUID.fromString("00000000-0000-0000-0000-000000000001");

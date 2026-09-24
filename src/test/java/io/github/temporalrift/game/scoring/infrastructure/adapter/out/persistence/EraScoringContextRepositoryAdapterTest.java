@@ -648,6 +648,71 @@ class EraScoringContextRepositoryAdapterTest {
     }
 
     @Test
+    void resolveRevisionistActions_appliedWinningMimicRecordsMimicFact() {
+        var gameId = UUID.randomUUID();
+        var playerId = UUID.randomUUID();
+        var eventId = UUID.randomUUID();
+        var outcomeId = UUID.randomUUID();
+        var action = revisionistAction(gameId, playerId, SpecialAction.MIMIC, eventId, outcomeId);
+        given(revisionistActionJpaRepository.findAllUnresolvedWithLock(gameId, 2))
+                .willReturn(List.of(action));
+        given(resolutionBarrierJpaRepository.findByGameIdAndEraNumber(gameId, 2))
+                .willReturn(Optional.of(resolutionBarrier(gameId, eventId, outcomeId)));
+        given(outcomeInboxJpaRepository.findByGameIdAndEraNumberAndEventId(gameId, 2, eventId))
+                .willReturn(Optional.of(ScoringTimelineOutcomeInboxJpaEntity.fromDomain(
+                        new OutcomeApplied(gameId, 2, eventId, outcomeId, List.of()))));
+
+        adapter.resolveRevisionistActions(gameId, 2);
+
+        assertThat(action.getResolved()).isTrue();
+        then(actionFactJpaRepository)
+                .should()
+                .insertIfAbsent(
+                        any(UUID.class),
+                        eq(gameId),
+                        eq(2),
+                        eq(playerId),
+                        eq(Faction.REVISIONISTS.name()),
+                        eq(ScoreReason.MIMIC_CONTRIBUTED_TO_WIN.name()));
+    }
+
+    @Test
+    void resolveRevisionistActions_appliedNonWinningRewriteResolvesWithoutScoringFact() {
+        var gameId = UUID.randomUUID();
+        var playerId = UUID.randomUUID();
+        var eventId = UUID.randomUUID();
+        var targetOutcomeId = UUID.randomUUID();
+        var winningOutcomeId = UUID.randomUUID();
+        var action = revisionistAction(gameId, playerId, SpecialAction.REWRITE, eventId, targetOutcomeId);
+        given(revisionistActionJpaRepository.findAllUnresolvedWithLock(gameId, 2))
+                .willReturn(List.of(action));
+        given(resolutionBarrierJpaRepository.findByGameIdAndEraNumber(gameId, 2))
+                .willReturn(Optional.of(resolutionBarrier(gameId, eventId, winningOutcomeId)));
+        given(outcomeInboxJpaRepository.findByGameIdAndEraNumberAndEventId(gameId, 2, eventId))
+                .willReturn(Optional.of(ScoringTimelineOutcomeInboxJpaEntity.fromDomain(
+                        new OutcomeApplied(gameId, 2, eventId, winningOutcomeId, List.of()))));
+
+        adapter.resolveRevisionistActions(gameId, 2);
+
+        assertThat(action.getResolved()).isTrue();
+        then(actionFactJpaRepository).shouldHaveNoInteractions();
+    }
+
+    @Test
+    void resolveRevisionistActions_noRecordedActionsResolvesWithoutScoringFact() {
+        var gameId = UUID.randomUUID();
+        given(revisionistActionJpaRepository.findAllUnresolvedWithLock(gameId, 2))
+                .willReturn(List.of());
+        given(resolutionBarrierJpaRepository.findByGameIdAndEraNumber(gameId, 2))
+                .willReturn(Optional.empty());
+
+        adapter.resolveRevisionistActions(gameId, 2);
+
+        then(outcomeInboxJpaRepository).shouldHaveNoInteractions();
+        then(actionFactJpaRepository).shouldHaveNoInteractions();
+    }
+
+    @Test
     void resolveRevisionistActions_appliedNonWinningMimicResolvesWithoutScoringFact() {
         var gameId = UUID.randomUUID();
         var playerId = UUID.randomUUID();
