@@ -4,6 +4,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
 
 import java.util.List;
@@ -18,6 +19,7 @@ import org.springframework.context.ApplicationEventPublisher;
 
 import io.github.temporalrift.game.scoring.application.command.EraScoringCompletionChecker;
 import io.github.temporalrift.game.scoring.domain.port.out.EraScoringContextRepository;
+import io.github.temporalrift.game.scoring.domain.port.out.FactionIdentificationRepository;
 import io.github.temporalrift.game.shared.domain.event.ActivistDeclarationRecorded;
 import io.github.temporalrift.game.shared.domain.event.ActivistDeclarationResolved;
 import io.github.temporalrift.game.shared.domain.event.EraActionFactsFinalized;
@@ -26,6 +28,7 @@ import io.github.temporalrift.game.shared.domain.event.ExposeBehaviorChanged;
 import io.github.temporalrift.game.shared.domain.event.FactionAssigned;
 import io.github.temporalrift.game.shared.domain.event.ForesightDeclared;
 import io.github.temporalrift.game.shared.domain.event.OutcomeAnnihilated;
+import io.github.temporalrift.game.shared.domain.event.PlayersIdentified;
 import io.github.temporalrift.game.shared.domain.model.CarryOverState;
 import io.github.temporalrift.game.shared.domain.model.Faction;
 import io.github.temporalrift.game.shared.domain.model.SpecialAction;
@@ -41,6 +44,9 @@ class ScoringContextProjectionEventListenerTest {
 
     @Mock
     ApplicationEventPublisher applicationEventPublisher;
+
+    @Mock
+    FactionIdentificationRepository factionIdentificationRepository;
 
     @InjectMocks
     ScoringContextProjectionEventListener listener;
@@ -283,5 +289,40 @@ class ScoringContextProjectionEventListenerTest {
         then(contextRepository).should(never()).recordRevisionistAction(any(), anyInt(), any(), any(), any(), any());
         then(contextRepository).should().markActionFactsReady(gameId, 2);
         then(completionChecker).should().tryComplete(gameId, 2);
+    }
+
+    @Test
+    void onPlayersIdentified_recordsEveryIdentifiedPlayer() {
+        var gameId = UUID.randomUUID();
+        var first = UUID.randomUUID();
+        var second = UUID.randomUUID();
+
+        listener.onPlayersIdentified(new PlayersIdentified(gameId, 1, 2, List.of(first, second)));
+
+        then(factionIdentificationRepository).should().recordIdentification(gameId, first);
+        then(factionIdentificationRepository).should().recordIdentification(gameId, second);
+    }
+
+    @Test
+    void onEraActionFactsFinalized_recordsFinalRoundIdentificationsBeforeMarkingReady() {
+        var gameId = UUID.randomUUID();
+        var identified = UUID.randomUUID();
+        var event = new EraActionFactsFinalized(
+                gameId,
+                2,
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(identified));
+
+        listener.onEraActionFactsFinalized(event);
+
+        var ordered = inOrder(factionIdentificationRepository, contextRepository);
+        then(factionIdentificationRepository).should(ordered).recordIdentification(gameId, identified);
+        then(contextRepository).should(ordered).markActionFactsReady(gameId, 2);
     }
 }
