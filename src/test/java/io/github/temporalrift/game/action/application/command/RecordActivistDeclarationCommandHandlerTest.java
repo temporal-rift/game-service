@@ -163,14 +163,9 @@ class RecordActivistDeclarationCommandHandlerTest {
         given(activistEraStateRepository.findByGameIdAndEraNumberAndActivistPlayerId(GAME_ID, ERA_NUMBER, PLAYER_ID))
                 .willReturn(Optional.of(previous));
 
-        assertThatThrownBy(() -> handler.handle(new RecordActivistDeclarationUseCase.Command(
-                        GAME_ID,
-                        nextEra,
-                        PLAYER_ID,
-                        ActivistDeclarationMode.MOMENTUM,
-                        TARGET_EVENT_ID,
-                        TARGET_OUTCOME_ID)))
-                .isInstanceOf(MomentumNotEligibleException.class);
+        var command = new RecordActivistDeclarationUseCase.Command(
+                GAME_ID, nextEra, PLAYER_ID, ActivistDeclarationMode.MOMENTUM, TARGET_EVENT_ID, TARGET_OUTCOME_ID);
+        assertThatThrownBy(() -> handler.handle(command)).isInstanceOf(MomentumNotEligibleException.class);
         then(activistEraStateRepository).should(never()).save(any());
         then(actionEventPublisher).shouldHaveNoInteractions();
     }
