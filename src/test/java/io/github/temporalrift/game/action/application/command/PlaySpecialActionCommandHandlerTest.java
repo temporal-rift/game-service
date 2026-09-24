@@ -38,6 +38,7 @@ import io.github.temporalrift.game.action.domain.actionround.InvalidSpecialActio
 import io.github.temporalrift.game.action.domain.actionround.JammedPlayerException;
 import io.github.temporalrift.game.action.domain.actionround.RoundNotFoundException;
 import io.github.temporalrift.game.action.domain.actionround.SpecialActionNotEligibleForEraException;
+import io.github.temporalrift.game.action.domain.actionround.SpecialActionNotEligibleForRoundException;
 import io.github.temporalrift.game.action.domain.actionround.SubmittedAction;
 import io.github.temporalrift.game.action.domain.actionround.UnknownActionTargetException;
 import io.github.temporalrift.game.action.domain.activisterastate.ActivistEraState;
@@ -447,6 +448,30 @@ class PlaySpecialActionCommandHandlerTest {
         assertThatExceptionOfType(SpecialActionNotEligibleForEraException.class)
                 .isThrownBy(() -> handler.handle(command));
         then(specialActionEraUsageRepository).shouldHaveNoInteractions();
+        then(round).should(never()).submit(any());
+        then(actionRoundRepository).should(never()).save(any());
+    }
+
+    @Test
+    @DisplayName("handle — OBSCURE in round 3 — rejected without saving era usage or submitting")
+    void handleRoundThreeObscureRejectedWithoutSpending() {
+        // given
+        var command = new PlaySpecialActionUseCase.Command(
+                GAME_ID, ERA, 3, PLAYER_ID, SpecialAction.OBSCURE, null, null, null, null, null);
+        given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA, 3))
+                .willReturn(Optional.of(round));
+        given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(playerState));
+        given(playerState.faction()).willReturn(Faction.REVISIONISTS);
+        given(playerState.isJammed()).willReturn(false);
+        given(gameRules.maxEras()).willReturn(5);
+        given(gameRules.onceEraBudgetedSpecials()).willReturn(EnumSet.of(SpecialAction.OBSCURE));
+        given(specialActionEraUsageRepository.findByGameIdAndEraNumberAndPlayerId(GAME_ID, ERA, PLAYER_ID))
+                .willReturn(Optional.empty());
+
+        // when / then
+        assertThatExceptionOfType(SpecialActionNotEligibleForRoundException.class)
+                .isThrownBy(() -> handler.handle(command));
+        then(specialActionEraUsageRepository).should(never()).save(any());
         then(round).should(never()).submit(any());
         then(actionRoundRepository).should(never()).save(any());
     }

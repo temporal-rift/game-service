@@ -18,6 +18,8 @@ import io.github.temporalrift.game.shared.domain.model.SpecialAction;
  * this bundle lets scoring redundantly (and idempotently) re-apply the final round's facts and mark the
  * era's action facts ready in the very same listener invocation, closing the race where the final
  * round's own projection could otherwise still be in flight when scoring decides the era is ready.
+ * {@code identifiedPlayerIds} repeats the final round's {@link PlayersIdentified} for the same reason: an
+ * identification made at the final round close must be recorded before the game can end.
  */
 public record EraActionFactsFinalized(
         UUID gameId,
@@ -28,7 +30,31 @@ public record EraActionFactsFinalized(
         List<ActivistDeclarationFact> activistDeclarationFacts,
         List<RevisionistFact> revisionistFacts,
         List<FulfillmentFact> fulfillmentFacts,
-        List<CorruptCorrelationFact> corruptCorrelationFacts) {
+        List<CorruptCorrelationFact> corruptCorrelationFacts,
+        List<UUID> identifiedPlayerIds) {
+
+    public EraActionFactsFinalized(
+            UUID gameId,
+            int eraNumber,
+            List<ForesightFact> foresightFacts,
+            List<AnnihilationFact> annihilationFacts,
+            List<ExposeFact> exposeFacts,
+            List<ActivistDeclarationFact> activistDeclarationFacts,
+            List<RevisionistFact> revisionistFacts,
+            List<FulfillmentFact> fulfillmentFacts,
+            List<CorruptCorrelationFact> corruptCorrelationFacts) {
+        this(
+                gameId,
+                eraNumber,
+                foresightFacts,
+                annihilationFacts,
+                exposeFacts,
+                activistDeclarationFacts,
+                revisionistFacts,
+                fulfillmentFacts,
+                corruptCorrelationFacts,
+                List.of());
+    }
 
     public EraActionFactsFinalized(
             UUID gameId,

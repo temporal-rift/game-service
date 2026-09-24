@@ -306,7 +306,13 @@ public sealed interface SubmittedAction permits SubmittedAction.CardAction, Subm
                 case FULFILLMENT -> requireEvent();
                 case CORRUPT -> requireOpponent();
                 case EXPOSE -> requireExposeTarget();
-                case OBSCURE, TAPESTRY, REWEAVE -> {
+                // Obscure covers the following round of the same era, which Round 3 does not have.
+                case OBSCURE -> {
+                    if (roundNumber == 3) {
+                        throw new SpecialActionNotEligibleForRoundException(specialAction, eraNumber, roundNumber);
+                    }
+                }
+                case TAPESTRY, REWEAVE -> {
                     // No additional target requirement enforced at submission; TAPESTRY's prerequisites and
                     // REWEAVE's re-anchor target are validated by timeline-service's chain saga, which alone
                     // knows chain and resolution state.
