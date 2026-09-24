@@ -411,8 +411,8 @@ class EraScoringContextRepositoryAdapter implements EraScoringContextRepository 
 
     /**
      * Resolves recorded Rewrite and Mimic targets against the era terminal barrier. A player with no
-     * recorded Rewrite has no eligible preference, so nothing scores for them; a cascaded or stalled
-     * target resolves without a score and without waiting for an outcome.
+     * recorded Rewrite has no eligible preference, so they receive no preference score; a cascaded
+     * or stalled target resolves without a score and without waiting for an outcome.
      */
     @Override
     @Transactional
