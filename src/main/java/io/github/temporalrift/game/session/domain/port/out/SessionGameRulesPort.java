@@ -1,10 +1,7 @@
 package io.github.temporalrift.game.session.domain.port.out;
 
-import java.util.Map;
 import java.util.Set;
 
-import io.github.temporalrift.game.shared.domain.model.CardCategory;
-import io.github.temporalrift.game.shared.domain.model.CardGrade;
 import io.github.temporalrift.game.shared.domain.model.CardType;
 import io.github.temporalrift.game.shared.domain.model.Faction;
 import io.github.temporalrift.game.shared.domain.port.out.GameRulesPort;
@@ -30,10 +27,6 @@ public interface SessionGameRulesPort extends GameRulesPort {
     int reconnectGracePeriodSeconds();
 
     int handSelectionTimerSeconds(int playerCount);
-
-    Map<CardCategory, Integer> cardCategoryWeights();
-
-    Map<CardGrade, Integer> cardGradeWeights();
 
     Set<Faction> stabilizationWinnerFactions();
 

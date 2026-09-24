@@ -1,7 +1,10 @@
 package io.github.temporalrift.game.shared.domain.port.out;
 
+import java.util.Map;
 import java.util.Set;
 
+import io.github.temporalrift.game.shared.domain.model.CardCategory;
+import io.github.temporalrift.game.shared.domain.model.CardGrade;
 import io.github.temporalrift.game.shared.domain.model.SpecialAction;
 
 public interface GameRulesPort {
@@ -18,4 +21,8 @@ public interface GameRulesPort {
 
     /** Final era number; Stall promises a next era that does not exist at or beyond this era. */
     int maxEras();
+
+    Map<CardCategory, Integer> cardCategoryWeights();
+
+    Map<CardGrade, Integer> cardGradeWeights();
 }
