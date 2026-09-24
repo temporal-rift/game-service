@@ -107,6 +107,16 @@ class PlaySpecialActionCommandHandler implements PlaySpecialActionUseCase {
         if (!faction.hasSpecialAction(command.specialAction())) {
             throw new InvalidSpecialActionException(faction, command.specialAction());
         }
+        var action = new SubmittedAction.SpecialActionSubmission(
+                command.playerId(),
+                faction,
+                command.specialAction(),
+                command.sourceEventId(),
+                command.sourceOutcomeId(),
+                command.targetEventId(),
+                command.targetOutcomeId(),
+                command.targetPlayerId());
+        action.validateFinalEra(command.eraNumber(), command.roundNumber(), gameRules.maxEras());
         SpecialActionEraUsage usage = null;
         if (gameRules.onceEraBudgetedSpecials().contains(command.specialAction())) {
             usage = specialActionEraUsageRepository
@@ -123,15 +133,6 @@ class PlaySpecialActionCommandHandler implements PlaySpecialActionUseCase {
             SealGameUsage.reconstitute(java.util.UUID.randomUUID(), command.gameId(), command.playerId(), acceptedSeals)
                     .claim(gameRules.sealMaxUsesPerGame());
         }
-        var action = new SubmittedAction.SpecialActionSubmission(
-                command.playerId(),
-                faction,
-                command.specialAction(),
-                command.sourceEventId(),
-                command.sourceOutcomeId(),
-                command.targetEventId(),
-                command.targetOutcomeId(),
-                command.targetPlayerId());
         // Structural shape (target fields, self-targeting) must be confirmed before any target-specific
         // processing below reads those fields — recordExpose() in particular does a real round-1 lookup and
         // can persist ActivistEraState for a submission round.submit() would otherwise reject.
