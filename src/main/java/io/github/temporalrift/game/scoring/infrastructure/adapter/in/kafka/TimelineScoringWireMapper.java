@@ -6,12 +6,14 @@ import org.mapstruct.Mapper;
 
 import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.ChainBrokenPayload;
 import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.ChainCompletedPayload;
+import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.ChainLinkAddedPayload;
 import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.CorruptInversionConfirmedPayload;
 import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.EraResolutionCompletedPayload;
 import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.OutcomeAppliedPayload;
 import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.ParadoxCascadedPayload;
 import io.github.temporalrift.game.scoring.domain.event.ChainBroken;
 import io.github.temporalrift.game.scoring.domain.event.ChainCompleted;
+import io.github.temporalrift.game.scoring.domain.event.ChainLinkAdded;
 import io.github.temporalrift.game.scoring.domain.event.CorruptInversionConfirmed;
 import io.github.temporalrift.game.scoring.domain.event.EraResolutionCompleted;
 import io.github.temporalrift.game.scoring.domain.event.OutcomeApplied;
@@ -24,6 +26,8 @@ interface TimelineScoringWireMapper {
     OutcomeApplied fromWire(OutcomeAppliedPayload payload);
 
     ChainCompleted fromWire(ChainCompletedPayload payload);
+
+    ChainLinkAdded fromWire(ChainLinkAddedPayload payload);
 
     ChainBroken fromWire(ChainBrokenPayload payload);
 
