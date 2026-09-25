@@ -14,6 +14,7 @@ import io.github.temporalrift.game.scoring.domain.context.ActionScoringFact;
 import io.github.temporalrift.game.scoring.domain.context.ChainScoringFact;
 import io.github.temporalrift.game.scoring.domain.context.EraScoringContext;
 import io.github.temporalrift.game.scoring.domain.context.EventOutcomeFact;
+import io.github.temporalrift.game.scoring.domain.context.ParadoxCascadeScoringFact;
 import io.github.temporalrift.game.scoring.domain.context.PlayerFaction;
 import io.github.temporalrift.game.scoring.domain.playerscore.PlayerScore;
 import io.github.temporalrift.game.scoring.domain.playerscore.ScoreReason;
@@ -146,6 +147,43 @@ class UpdateScoresCommandHandlerTest {
         var update = event.updates().get(0);
         assertThat(update.newTotal()).isEqualTo(-3);
         assertThat(update.pointsDelta()).isEqualTo(-3);
+    }
+
+    @Test
+    @DisplayName("an all-DETONATE cascade deducts two points from every player's score")
+    void allDetonatorsReceiveBaseCascadePenalty() {
+        var playerIds = List.of(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID());
+        var players = playerIds.stream()
+                .map(playerId -> new PlayerFaction(playerId, Faction.ACTIVISTS))
+                .toList();
+        var context = new EraScoringContext(
+                GAME_ID,
+                ERA,
+                players,
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(new ParadoxCascadeScoringFact(UUID.randomUUID(), UUID.randomUUID(), playerIds, ERA)));
+        var savedScores = new ArrayList<PlayerScore>();
+
+        handler(context, List.of(), scoreRules(), savedScores)
+                .handle(new UpdateEraScoresCommand(GAME_ID, ERA, List.of()));
+
+        assertThat(savedScores).hasSize(4).allSatisfy(score -> {
+            assertThat(score.totalScore()).isEqualTo(-2);
+            assertThat(score.history()).singleElement().satisfies(entry -> {
+                assertThat(entry.reason()).isEqualTo(ScoreReason.PARADOX_CASCADE_PENALTY);
+                assertThat(entry.pointsDelta()).isEqualTo(-2);
+            });
+        });
+        var event = (ScoresUpdated) internalEvents.get(0);
+        assertThat(event.updates()).hasSize(4).allSatisfy(update -> {
+            assertThat(update.pointsDelta()).isEqualTo(-2);
+            assertThat(update.newTotal()).isEqualTo(-2);
+        });
     }
 
     @Test
