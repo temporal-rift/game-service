@@ -2,6 +2,7 @@ package io.github.temporalrift.game.scoring.infrastructure.adapter.in.kafka;
 
 import static io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.CHAIN_BROKEN_EVENT_TYPE;
 import static io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.CHAIN_COMPLETED_EVENT_TYPE;
+import static io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.CHAIN_LINK_ADDED_EVENT_TYPE;
 import static io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.CORRUPT_INVERSION_CONFIRMED_EVENT_TYPE;
 import static io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.ERA_RESOLUTION_COMPLETED_EVENT_TYPE;
 import static io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.OUTCOME_APPLIED_EVENT_TYPE;
@@ -21,6 +22,7 @@ import tools.jackson.databind.ObjectMapper;
 
 import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.ChainBrokenPayload;
 import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.ChainCompletedPayload;
+import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.ChainLinkAddedPayload;
 import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.CorruptInversionConfirmedPayload;
 import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.EraResolutionCompletedPayload;
 import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.OutcomeAppliedPayload;
@@ -42,6 +44,7 @@ class TimelineScoringKafkaConsumer {
     private static final String CONSUMER = "scoring.timeline-events";
     private static final Set<String> SUPPORTED_EVENT_TYPES = Set.of(
             OUTCOME_APPLIED_EVENT_TYPE,
+            CHAIN_LINK_ADDED_EVENT_TYPE,
             CHAIN_COMPLETED_EVENT_TYPE,
             CHAIN_BROKEN_EVENT_TYPE,
             ERA_RESOLUTION_COMPLETED_EVENT_TYPE,
@@ -101,6 +104,7 @@ class TimelineScoringKafkaConsumer {
 
         switch (envelope.eventType()) {
             case OUTCOME_APPLIED_EVENT_TYPE -> handleOutcomeApplied(message);
+            case CHAIN_LINK_ADDED_EVENT_TYPE -> handleChainLinkAdded(message);
             case CHAIN_COMPLETED_EVENT_TYPE -> handleChainCompleted(message);
             case CHAIN_BROKEN_EVENT_TYPE -> handleChainBroken(message);
             case ERA_RESOLUTION_COMPLETED_EVENT_TYPE -> handleEraResolutionCompleted(message);
@@ -118,6 +122,12 @@ class TimelineScoringKafkaConsumer {
                 .resolveActivistDeclarations(outcome.gameId(), outcome.eraNumber())
                 .forEach(applicationEventPublisher::publishEvent);
         completionChecker.tryComplete(outcome.gameId(), outcome.eraNumber());
+    }
+
+    private void handleChainLinkAdded(Message<Object> message) {
+        var event = wireMapper.fromWire(read(message, ChainLinkAddedPayload.class));
+        contextRepository.recordChainFact(
+                event.gameId(), event.playerId(), event.chainId(), ScoreReason.CHAIN_LINK_ADDED, event.eraNumber());
     }
 
     private void handleChainCompleted(Message<Object> message) {

@@ -9,6 +9,7 @@ import static org.mockito.Mockito.never;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -226,6 +227,41 @@ class TimelineScoringKafkaConsumerTest {
     }
 
     @Test
+    @DisplayName("ChainLinkAdded — records a link fact for the Weaver, stamped with the confirmed link's era")
+    void handle_chainLinkAdded_recordsLinkFact() {
+        var playerId = UUID.randomUUID();
+        var chainId = UUID.randomUUID();
+        var message = message("ChainLinkAdded", json(chainLinkAdded(chainId, playerId, 3)));
+        givenClaim(message, true);
+
+        consumer.handle(message);
+
+        then(contextRepository).should().recordChainFact(GAME_ID, playerId, chainId, ScoreReason.CHAIN_LINK_ADDED, 3);
+    }
+
+    @Test
+    @DisplayName("duplicate ChainLinkAdded eventId — claimed as duplicate, no fact recorded")
+    void handle_duplicateChainLinkAddedEventId_ignored() {
+        var message = message("ChainLinkAdded", json(chainLinkAdded(UUID.randomUUID(), UUID.randomUUID(), 2)));
+        givenClaim(message, false);
+
+        consumer.handle(message);
+
+        then(contextRepository).should(never()).recordChainFact(any(), any(), any(), any(), anyInt());
+    }
+
+    @Test
+    @DisplayName("ChainReAnchored — not a scoring fact, never claimed or recorded")
+    void handle_chainReAnchored_recordsNothing() {
+        var message = message("ChainReAnchored", "{}");
+
+        consumer.handle(message);
+
+        then(processedEventRepository).should(never()).tryMarkProcessed(any(), any());
+        then(contextRepository).should(never()).recordChainFact(any(), any(), any(), any(), anyInt());
+    }
+
+    @Test
     @DisplayName("ChainCompleted — records a chain fact for the completing player, stamped with the event's own era")
     void handle_chainCompleted_recordsChainFact() {
         var playerId = UUID.randomUUID();
@@ -357,6 +393,17 @@ class TimelineScoringKafkaConsumerTest {
         var paradoxId = UUID.randomUUID();
         return new ParadoxCascadedPayload(
                 GAME_ID, 2, paradoxId, List.of(paradoxId), UUID.randomUUID(), List.of(), detonatedByPlayerIds);
+    }
+
+    private static Map<String, Object> chainLinkAdded(UUID chainId, UUID playerId, int eraNumber) {
+        return Map.of(
+                "gameId", GAME_ID,
+                "chainId", chainId,
+                "playerId", playerId,
+                "linkedEventId", UUID.randomUUID(),
+                "linkedOutcomeId", UUID.randomUUID(),
+                "chainLength", 1,
+                "eraNumber", eraNumber);
     }
 
     private static String json(Object payload) {
