@@ -556,12 +556,16 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
     }
 
     private void publishExposeBehaviorChanges(UUID gameId, int eraNumber, ActionRound round3) {
+        var exposedStates = activistEraStateRepository.findExposedByGameIdAndEraNumber(gameId, eraNumber);
+        if (exposedStates.isEmpty()) {
+            return;
+        }
         var cancelledExposePlayerIds = actionRoundRepository
                 .findByGameIdAndEraNumberAndRoundNumber(gameId, eraNumber, SIGNATURE_REVEAL_ROUND_NUMBER)
                 .map(ActionRound::submittedActions)
                 .map(RoundCancellation::cancelledPlayerIds)
                 .orElseGet(Set::of);
-        activistEraStateRepository.findExposedByGameIdAndEraNumber(gameId, eraNumber).stream()
+        exposedStates.stream()
                 .filter(state -> !cancelledExposePlayerIds.contains(state.activistPlayerId()))
                 .forEach(state -> {
                     var responseSignature = uncancelledActions(round3)
