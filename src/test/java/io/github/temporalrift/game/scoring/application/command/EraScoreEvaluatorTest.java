@@ -4,9 +4,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.IntStream;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import io.github.temporalrift.game.scoring.domain.context.ActionScoringFact;
 import io.github.temporalrift.game.scoring.domain.context.AnnihilationFact;
@@ -835,7 +838,7 @@ class EraScoreEvaluatorTest {
     }
 
     @Test
-    @DisplayName("two findings on one detonated event exempt the detonator and penalize others only once")
+    @DisplayName("two findings on one detonated event charge each player only once")
     void multipleFindingsOnDetonatedEventApplyOnePenalty() {
         var detonatorId = UUID.randomUUID();
         var otherId = UUID.randomUUID();
@@ -856,16 +859,20 @@ class EraScoreEvaluatorTest {
 
         var decisions = evaluator.evaluate(context, List.of());
 
-        assertThat(decisions).singleElement().satisfies(decision -> {
-            assertThat(decision.playerId()).isEqualTo(otherId);
-            assertThat(decision.reason()).isEqualTo(ScoreReason.PARADOX_CASCADE_PENALTY);
-            assertThat(decision.multiplier()).isEqualTo(2);
-        });
+        assertThat(decisions).hasSize(2).allMatch(decision -> decision.reason() == ScoreReason.PARADOX_CASCADE_PENALTY);
+        assertThat(decisions)
+                .filteredOn(decision -> decision.playerId().equals(detonatorId))
+                .singleElement()
+                .satisfies(decision -> assertThat(decision.multiplier()).isEqualTo(1));
+        assertThat(decisions)
+                .filteredOn(decision -> decision.playerId().equals(otherId))
+                .singleElement()
+                .satisfies(decision -> assertThat(decision.multiplier()).isEqualTo(2));
     }
 
     @Test
-    @DisplayName("a single DETONATE exempts the detonator and doubles the penalty for everyone else")
-    void singleDetonateExemptsAndDoublesOthers() {
+    @DisplayName("a single DETONATE costs the detonator the base penalty and doubles it for everyone else")
+    void singleDetonateCostsBaseAndDoublesOthers() {
         var detonatorId = UUID.randomUUID();
         var otherId1 = UUID.randomUUID();
         var otherId2 = UUID.randomUUID();
@@ -893,15 +900,21 @@ class EraScoreEvaluatorTest {
                 .filter(d -> d.reason() == ScoreReason.PARADOX_CASCADE_PENALTY)
                 .toList();
         assertThat(cascadeDecisions)
-                .hasSize(2)
-                .allMatch(d -> d.multiplier() == 2)
-                .extracting("playerId")
-                .containsExactlyInAnyOrder(otherId1, otherId2);
+                .hasSize(3)
+                .extracting(PlayerScoreDecision::playerId)
+                .containsExactlyInAnyOrder(detonatorId, otherId1, otherId2);
+        assertThat(cascadeDecisions)
+                .filteredOn(d -> d.playerId().equals(detonatorId))
+                .singleElement()
+                .satisfies(d -> assertThat(d.multiplier()).isEqualTo(1));
+        assertThat(cascadeDecisions)
+                .filteredOn(d -> !d.playerId().equals(detonatorId))
+                .allMatch(d -> d.multiplier() == 2);
     }
 
     @Test
-    @DisplayName("multiple DETONATEs on the same cascade exempt every detonator and never exceed a double penalty")
-    void multipleDetonatesExemptAllAndCapAtDouble() {
+    @DisplayName("multiple DETONATEs on the same cascade cost the base penalty and never exceed double")
+    void multipleDetonatesCostBaseAndCapAtDouble() {
         var detonatorId1 = UUID.randomUUID();
         var detonatorId2 = UUID.randomUUID();
         var otherId = UUID.randomUUID();
@@ -929,9 +942,89 @@ class EraScoreEvaluatorTest {
         var cascadeDecisions = decisions.stream()
                 .filter(d -> d.reason() == ScoreReason.PARADOX_CASCADE_PENALTY)
                 .toList();
-        assertThat(cascadeDecisions).hasSize(1);
-        assertThat(cascadeDecisions.get(0).playerId()).isEqualTo(otherId);
-        assertThat(cascadeDecisions.get(0).multiplier()).isEqualTo(2);
+        assertThat(cascadeDecisions).hasSize(3);
+        assertThat(cascadeDecisions)
+                .filteredOn(d -> d.playerId().equals(otherId))
+                .singleElement()
+                .satisfies(d -> assertThat(d.multiplier()).isEqualTo(2));
+        assertThat(cascadeDecisions)
+                .filteredOn(d -> !d.playerId().equals(otherId))
+                .hasSize(2)
+                .allMatch(d -> d.multiplier() == 1);
+    }
+
+    @ParameterizedTest(name = "{0} players all detonate")
+    @ValueSource(ints = {3, 4, 5})
+    @DisplayName("an all-DETONATE cascade charges every player the base penalty")
+    void allDetonatorsPayBasePenalty(int playerCount) {
+        var playerIds = IntStream.range(0, playerCount)
+                .mapToObj(ignored -> UUID.randomUUID())
+                .toList();
+        var players = playerIds.stream()
+                .map(id -> new PlayerFaction(id, Faction.ACTIVISTS))
+                .toList();
+        var context = new EraScoringContext(
+                GAME_ID,
+                ERA,
+                players,
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(new ParadoxCascadeScoringFact(UUID.randomUUID(), UUID.randomUUID(), playerIds, ERA)));
+
+        var decisions = evaluator.evaluate(context, List.of());
+
+        assertThat(decisions)
+                .hasSize(playerCount)
+                .allMatch(d -> d.reason() == ScoreReason.PARADOX_CASCADE_PENALTY)
+                .allMatch(d -> d.multiplier() == 1)
+                .extracting(PlayerScoreDecision::playerId)
+                .containsExactlyInAnyOrderElementsOf(playerIds);
+    }
+
+    @Test
+    @DisplayName("each distinct cascaded event is charged once even when one has multiple findings")
+    void multipleCascadedEventsEachChargeOnce() {
+        var detonatorId = UUID.randomUUID();
+        var otherIds = List.of(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID());
+        var players = IntStream.range(0, 5)
+                .mapToObj(index ->
+                        new PlayerFaction(index == 0 ? detonatorId : otherIds.get(index - 1), Faction.ACTIVISTS))
+                .toList();
+        var firstEvent = UUID.randomUUID();
+        var context = new EraScoringContext(
+                GAME_ID,
+                ERA,
+                players,
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(
+                        new ParadoxCascadeScoringFact(UUID.randomUUID(), firstEvent, List.of(detonatorId), ERA),
+                        new ParadoxCascadeScoringFact(UUID.randomUUID(), firstEvent, List.of(detonatorId), ERA),
+                        new ParadoxCascadeScoringFact(UUID.randomUUID(), UUID.randomUUID(), List.of(), ERA),
+                        new ParadoxCascadeScoringFact(UUID.randomUUID(), UUID.randomUUID(), List.of(), ERA)));
+
+        var decisions = evaluator.evaluate(context, List.of());
+
+        assertThat(decisions).hasSize(15).allMatch(d -> d.reason() == ScoreReason.PARADOX_CASCADE_PENALTY);
+        assertThat(decisions)
+                .filteredOn(d -> d.playerId().equals(detonatorId))
+                .hasSize(3)
+                .allMatch(d -> d.multiplier() == 1);
+        for (var otherId : otherIds) {
+            assertThat(decisions)
+                    .filteredOn(d -> d.playerId().equals(otherId))
+                    .hasSize(3)
+                    .extracting(PlayerScoreDecision::multiplier)
+                    .containsExactlyInAnyOrder(1, 1, 2);
+        }
     }
 
     @Test

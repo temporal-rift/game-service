@@ -50,10 +50,13 @@ class EraScoreEvaluator {
         var scoredEvents = new HashSet<CascadeEventKey>();
         for (var fact : context.paradoxCascadeFacts()) {
             boolean alreadyScored = !scoredEvents.add(new CascadeEventKey(fact.eraNumber(), fact.affectedEventId()));
-            if (alreadyScored || fact.detonatedByPlayerIds().contains(playerId)) {
+            if (alreadyScored) {
                 continue;
             }
-            int multiplier = fact.detonatedByPlayerIds().isEmpty() ? 1 : 2;
+            int multiplier = fact.detonatedByPlayerIds().isEmpty()
+                            || fact.detonatedByPlayerIds().contains(playerId)
+                    ? 1
+                    : 2;
             decisions.add(new PlayerScoreDecision(
                     playerId, ScoreReason.PARADOX_CASCADE_PENALTY, fact.eraNumber(), multiplier));
         }
