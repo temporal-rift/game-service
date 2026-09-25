@@ -10,7 +10,7 @@ import io.github.temporalrift.game.shared.infrastructure.adapter.out.persistence
 @Table(name = "scoring_player")
 class ScoringPlayerJpaEntity extends GamePlayerScopedJpaEntity {
 
-    @Column(name = "player_name", nullable = false)
+    @Column(name = "player_name", nullable = false, length = 32)
     private String playerName;
 
     protected ScoringPlayerJpaEntity() {}

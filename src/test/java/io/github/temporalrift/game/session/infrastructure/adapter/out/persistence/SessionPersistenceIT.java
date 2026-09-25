@@ -98,6 +98,24 @@ class SessionPersistenceIT {
     }
 
     @Test
+    void lobby_save_withBoundaryLengthPlayerName_persistsItUnchanged() {
+        var id = UUID.randomUUID();
+        var gameId = UUID.randomUUID();
+        var hostPlayerId = UUID.randomUUID();
+        var boundaryName = "A".repeat(LobbyPlayer.MAX_PLAYER_NAME_LENGTH);
+        var player = new LobbyPlayer(hostPlayerId, boundaryName, null, Instant.parse("2026-01-01T00:00:00Z"), true);
+
+        var lobby = new Lobby(
+                id, gameId, hostPlayerId, new ArrayList<>(List.of(player)), new LobbyConfig("BOUND1", 2, 5, clock));
+        lobbyRepository.save(lobby);
+
+        var loaded = lobbyRepository.findById(id).orElseThrow();
+        assertThat(loaded.currentPlayers())
+                .singleElement()
+                .satisfies(loadedPlayer -> assertThat(loadedPlayer.playerName()).isEqualTo(boundaryName));
+    }
+
+    @Test
     void game_save_and_findById_roundTripsAllFields() {
         var id = UUID.randomUUID();
         var lobbyId = UUID.randomUUID();

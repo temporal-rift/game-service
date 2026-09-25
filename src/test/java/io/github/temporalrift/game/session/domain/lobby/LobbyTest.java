@@ -63,6 +63,43 @@ class LobbyTest {
                 .isThrownBy(() -> new LobbyPlayer(playerId, "  ", null, null, true));
     }
 
+    @Test
+    @DisplayName("Given an empty playerName, LobbyPlayer constructor throws InvalidPlayerNameException")
+    void lobbyPlayer_emptyName_throws() {
+        // given
+        var playerId = UUID.randomUUID();
+
+        // when / then
+        assertThatExceptionOfType(InvalidPlayerNameException.class)
+                .isThrownBy(() -> new LobbyPlayer(playerId, "", null, null, true));
+    }
+
+    @Test
+    @DisplayName("Given a 33-character playerName, LobbyPlayer constructor throws InvalidPlayerNameException")
+    void lobbyPlayer_overlongName_throws() {
+        // given
+        var playerId = UUID.randomUUID();
+        var overlong = "A".repeat(LobbyPlayer.MAX_PLAYER_NAME_LENGTH + 1);
+
+        // when / then
+        assertThatExceptionOfType(InvalidPlayerNameException.class)
+                .isThrownBy(() -> new LobbyPlayer(playerId, overlong, null, null, true));
+    }
+
+    @Test
+    @DisplayName("Given a 32-character playerName, LobbyPlayer keeps it unchanged")
+    void lobbyPlayer_boundaryName_accepted() {
+        // given
+        var playerId = UUID.randomUUID();
+        var boundary = "A".repeat(LobbyPlayer.MAX_PLAYER_NAME_LENGTH);
+
+        // when
+        var player = new LobbyPlayer(playerId, boundary, null, null, true);
+
+        // then
+        assertThat(player.playerName()).isEqualTo(boundary);
+    }
+
     // --- Constructor ---
 
     @Test

@@ -23,7 +23,7 @@ class LobbyPlayerJpaEntity {
     @JoinColumn(name = "lobby_id", nullable = false)
     private LobbyJpaEntity lobby;
 
-    @Column(name = "player_name", nullable = false)
+    @Column(name = "player_name", nullable = false, length = 32)
     private String playerName;
 
     @Column(name = "faction")

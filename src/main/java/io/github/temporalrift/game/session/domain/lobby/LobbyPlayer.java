@@ -10,10 +10,16 @@ import io.github.temporalrift.game.shared.domain.model.Faction;
 
 public record LobbyPlayer(UUID playerId, String playerName, Faction faction, Instant joinedAt, boolean connected) {
 
+    /** Longest display name the lobby accepts; mirrors the session contract bound. */
+    public static final int MAX_PLAYER_NAME_LENGTH = 32;
+
     public LobbyPlayer {
         Objects.requireNonNull(playerId, "playerId cannot be null");
         if (StringUtils.isBlank(playerName)) {
-            throw new IllegalArgumentException("playerName cannot be null or blank");
+            throw new InvalidPlayerNameException("playerName cannot be null or blank");
+        }
+        if (playerName.length() > MAX_PLAYER_NAME_LENGTH) {
+            throw new InvalidPlayerNameException("playerName cannot exceed " + MAX_PLAYER_NAME_LENGTH + " characters");
         }
     }
 

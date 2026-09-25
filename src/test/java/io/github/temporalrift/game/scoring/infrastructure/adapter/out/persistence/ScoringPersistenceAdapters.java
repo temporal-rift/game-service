@@ -11,6 +11,7 @@ import org.springframework.context.annotation.Import;
     FactionIdentificationRepositoryAdapter.class,
     PlayerScoreRepositoryAdapter.class,
     ScoringEraCompletionRepositoryAdapter.class,
+    ScoringPlayerRepositoryAdapter.class,
     TimelineOutcomeInboxRepositoryAdapter.class
 })
 public class ScoringPersistenceAdapters {}
