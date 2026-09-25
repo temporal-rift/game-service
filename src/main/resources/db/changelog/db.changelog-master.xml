@@ -28,6 +28,7 @@
     <include file="db/changelog/session/014-create-era-saga-scores-updated-inbox.xml"/>
     <include file="db/changelog/session/016-add-era-hand-selection-state.xml"/>
     <include file="db/changelog/session/017-create-session-foresight-reveal.xml"/>
+    <include file="db/changelog/session/018-size-lobby-player-name-to-contract-bound.xml"/>
 
     <!-- Action module -->
     <include file="db/changelog/action/001-create-action-round.xml"/>
@@ -64,6 +65,7 @@
     <include file="db/changelog/scoring/016-create-scoring-context-corrupt-correlation.xml"/>
     <include file="db/changelog/scoring/017-create-scoring-context-paradox-cascade-fact.xml"/>
     <include file="db/changelog/scoring/018-create-scoring-context-corrupt-pending-confirmation.xml"/>
+    <include file="db/changelog/scoring/019-size-player-name-to-contract-bound.xml"/>
 
 </databaseChangeLog>
 

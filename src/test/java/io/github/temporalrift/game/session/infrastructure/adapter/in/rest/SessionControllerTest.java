@@ -2,6 +2,7 @@ package io.github.temporalrift.game.session.infrastructure.adapter.in.rest;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.then;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -373,5 +374,69 @@ class SessionControllerTest {
         mockMvc.perform(delete("/api/v1/lobbies/{lobbyId}/players/me", LOBBY_ID).with(auth()))
                 .andExpect(status().isInternalServerError())
                 .andExpect(jsonPath("$.detail").value("An unexpected error occurred"));
+    }
+
+    // --- Player-name bound (contract: 1-32 characters) ---
+
+    @Test
+    @DisplayName("Given an overlong playerName, when POST /lobbies, then 400 without creating a lobby")
+    void createLobby_overlongPlayerName_returns400() throws Exception {
+        // given a 33-character name
+        var overlong = "A".repeat(33);
+
+        // when / then
+        mockMvc.perform(post("/api/v1/lobbies")
+                        .with(auth())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"playerName\": \"" + overlong + "\"}"))
+                .andExpect(status().isBadRequest());
+
+        then(createLobbyUseCase).shouldHaveNoInteractions();
+    }
+
+    @Test
+    @DisplayName("Given an empty playerName, when POST /lobbies, then 400 without creating a lobby")
+    void createLobby_emptyPlayerName_returns400() throws Exception {
+        // when / then
+        mockMvc.perform(post("/api/v1/lobbies")
+                        .with(auth())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"playerName": ""}
+                                """))
+                .andExpect(status().isBadRequest());
+
+        then(createLobbyUseCase).shouldHaveNoInteractions();
+    }
+
+    @Test
+    @DisplayName("Given an overlong playerName, when POST /lobbies/{lobbyId}/join, then 400 without joining")
+    void joinLobby_overlongPlayerName_returns400() throws Exception {
+        // given a 33-character name
+        var overlong = "A".repeat(33);
+
+        // when / then
+        mockMvc.perform(post("/api/v1/lobbies/{lobbyId}/join", LOBBY_ID)
+                        .with(auth())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"playerName\": \"" + overlong + "\"}"))
+                .andExpect(status().isBadRequest());
+
+        then(joinLobbyUseCase).shouldHaveNoInteractions();
+    }
+
+    @Test
+    @DisplayName("Given an empty playerName, when POST /lobbies/{lobbyId}/join, then 400 without joining")
+    void joinLobby_emptyPlayerName_returns400() throws Exception {
+        // when / then
+        mockMvc.perform(post("/api/v1/lobbies/{lobbyId}/join", LOBBY_ID)
+                        .with(auth())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"playerName": ""}
+                                """))
+                .andExpect(status().isBadRequest());
+
+        then(joinLobbyUseCase).shouldHaveNoInteractions();
     }
 }
