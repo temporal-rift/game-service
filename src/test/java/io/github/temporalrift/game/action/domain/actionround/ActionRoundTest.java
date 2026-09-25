@@ -524,8 +524,7 @@ class ActionRoundTest {
         round.close("ALL_SUBMITTED");
 
         var events = round.pullEvents();
-        assertThat(events).singleElement().isInstanceOf(ActionRoundClosed.class);
-        assertThat(events).noneMatch(ForesightDeclared.class::isInstance);
+        assertThat(events).hasExactlyElementsOfTypes(ActionRoundClosed.class);
     }
 
     @Test
