@@ -136,6 +136,11 @@ class ActionRoundSagaImplTest {
         return argThat(envelope -> payloadType.isInstance(envelope.payload()));
     }
 
+    private static SubmittedAction.CardAction nullify(UUID playerId, UUID targetPlayerId) {
+        return new SubmittedAction.CardAction(
+                playerId, UUID.randomUUID(), CardType.NULLIFY, CardGrade.I, null, null, null, targetPlayerId);
+    }
+
     @Nested
     @DisplayName("start()")
     class StartTests {
@@ -724,6 +729,110 @@ class ActionRoundSagaImplTest {
                                     PLAYER_1, SpecialAction.REWRITE, latestRewriteEventId, latestRewriteOutcomeId),
                             new EraActionFactsFinalized.RevisionistFact(
                                     PLAYER_1, SpecialAction.MIMIC, mimicEventId, mimicOutcomeId));
+        }
+
+        @Test
+        @DisplayName("NULLIFY removes every cancelled special from the era scoring bundle")
+        void tryClose_nullifiedSpecials_doNotProduceEraScoringFacts() {
+            var foresightPlayerId = UUID.randomUUID();
+            var annihilatePlayerId = UUID.randomUUID();
+            var rewritePlayerId = UUID.randomUUID();
+            var fulfillmentPlayerId = UUID.randomUUID();
+            var mimicPlayerId = UUID.randomUUID();
+
+            var round1 = new ActionRound(
+                    UUID.randomUUID(),
+                    new ActionRoundConfig(GAME_ID, ERA_NUMBER, 1, TIMER_SECONDS),
+                    List.of(foresightPlayerId, annihilatePlayerId, UUID.randomUUID(), UUID.randomUUID()));
+            round1.submit(new SubmittedAction.SpecialActionSubmission(
+                    foresightPlayerId,
+                    Faction.PROPHETS,
+                    SpecialAction.FORESIGHT,
+                    null,
+                    null,
+                    UUID.randomUUID(),
+                    UUID.randomUUID(),
+                    null));
+            round1.submit(new SubmittedAction.SpecialActionSubmission(
+                    annihilatePlayerId,
+                    Faction.ERASERS,
+                    SpecialAction.ANNIHILATE,
+                    null,
+                    null,
+                    UUID.randomUUID(),
+                    UUID.randomUUID(),
+                    null));
+            var firstNullifierId = round1.pendingPlayerIds().getFirst();
+            var secondNullifierId = round1.pendingPlayerIds().getLast();
+            round1.submit(nullify(firstNullifierId, foresightPlayerId));
+            round1.submit(nullify(secondNullifierId, annihilatePlayerId));
+
+            var rewriteNullifierId = UUID.randomUUID();
+            var round2 = new ActionRound(
+                    UUID.randomUUID(),
+                    new ActionRoundConfig(GAME_ID, ERA_NUMBER, 2, TIMER_SECONDS),
+                    List.of(rewritePlayerId, rewriteNullifierId));
+            round2.submit(new SubmittedAction.SpecialActionSubmission(
+                    rewritePlayerId,
+                    Faction.REVISIONISTS,
+                    SpecialAction.REWRITE,
+                    null,
+                    null,
+                    UUID.randomUUID(),
+                    UUID.randomUUID(),
+                    null));
+            round2.submit(nullify(rewriteNullifierId, rewritePlayerId));
+
+            var fulfillmentNullifierId = UUID.randomUUID();
+            var mimicNullifierId = UUID.randomUUID();
+            var round3 = new ActionRound(
+                    UUID.randomUUID(),
+                    new ActionRoundConfig(GAME_ID, ERA_NUMBER, 3, TIMER_SECONDS),
+                    List.of(fulfillmentPlayerId, mimicPlayerId, fulfillmentNullifierId, mimicNullifierId));
+            round3.submit(new SubmittedAction.SpecialActionSubmission(
+                    fulfillmentPlayerId,
+                    Faction.PROPHETS,
+                    SpecialAction.FULFILLMENT,
+                    null,
+                    null,
+                    UUID.randomUUID(),
+                    null,
+                    null));
+            round3.submit(new SubmittedAction.SpecialActionSubmission(
+                    mimicPlayerId,
+                    Faction.REVISIONISTS,
+                    SpecialAction.MIMIC,
+                    null,
+                    null,
+                    UUID.randomUUID(),
+                    UUID.randomUUID(),
+                    null));
+            round3.submit(nullify(fulfillmentNullifierId, fulfillmentPlayerId));
+            round3.submit(nullify(mimicNullifierId, mimicPlayerId));
+            given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA_NUMBER, 3))
+                    .willReturn(Optional.of(round3));
+            given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumber(GAME_ID, ERA_NUMBER, 1))
+                    .willReturn(Optional.of(round1));
+            given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumber(GAME_ID, ERA_NUMBER, 2))
+                    .willReturn(Optional.of(round2));
+            given(stateManager.markSubmitted(GAME_ID, ERA_NUMBER, 3, PLAYER_1))
+                    .willReturn(Optional.of(new ActionRoundSagaState(
+                            UUID.randomUUID(),
+                            GAME_ID,
+                            ERA_NUMBER,
+                            3,
+                            ActionRoundSagaStatus.WAITING,
+                            List.of(),
+                            TIMER_EXPIRES_AT)));
+
+            saga.handlePlayerSubmitted(GAME_ID, ERA_NUMBER, 3, PLAYER_1);
+
+            var captor = ArgumentCaptor.<EraActionFactsFinalized>captor();
+            then(actionEventPublisher).should().publishInternally(captor.capture());
+            assertThat(captor.getValue().foresightFacts()).isEmpty();
+            assertThat(captor.getValue().annihilationFacts()).isEmpty();
+            assertThat(captor.getValue().revisionistFacts()).isEmpty();
+            assertThat(captor.getValue().fulfillmentFacts()).isEmpty();
         }
 
         @Test

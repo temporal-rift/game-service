@@ -16,6 +16,7 @@ import io.github.temporalrift.game.action.domain.event.SpecialActionPlayed;
 import io.github.temporalrift.game.shared.domain.event.ActionRoundClosed;
 import io.github.temporalrift.game.shared.domain.event.ForesightDeclared;
 import io.github.temporalrift.game.shared.domain.event.OutcomeAnnihilated;
+import io.github.temporalrift.game.shared.domain.model.CardGrade;
 import io.github.temporalrift.game.shared.domain.model.CardType;
 import io.github.temporalrift.game.shared.domain.model.Faction;
 import io.github.temporalrift.game.shared.domain.model.SpecialAction;
@@ -58,6 +59,11 @@ class ActionRoundTest {
             UUID targetPlayerId) {
         return new SubmittedAction.SpecialActionSubmission(
                 playerId, faction, specialAction, null, null, targetEventId, targetOutcomeId, targetPlayerId);
+    }
+
+    static SubmittedAction.CardAction nullify(UUID playerId, UUID targetPlayerId) {
+        return new SubmittedAction.CardAction(
+                playerId, UUID.randomUUID(), CardType.NULLIFY, CardGrade.I, null, null, null, targetPlayerId);
     }
 
     @Test
@@ -454,8 +460,8 @@ class ActionRoundTest {
     }
 
     @Test
-    @DisplayName("submit — FORESIGHT with a target — registers SpecialActionPlayed and ForesightDeclared")
-    void submitSpecialForesightWithTargetRegistersForesightDeclared() {
+    @DisplayName("close — live FORESIGHT with a target — registers ForesightDeclared")
+    void closeLiveForesightWithTargetRegistersForesightDeclared() {
         // given
         var round = openRound(List.of(PLAYER_A));
         round.pullEvents();
@@ -464,11 +470,12 @@ class ActionRoundTest {
 
         // when
         round.submit(special(PLAYER_A, Faction.PROPHETS, SpecialAction.FORESIGHT, eventId, outcomeId, null));
+        round.pullEvents();
+        round.close("ALL_SUBMITTED");
 
         // then
         var events = round.pullEvents();
         assertThat(events).hasSize(2);
-        assertThat(events.get(0)).isInstanceOf(SpecialActionPlayed.class);
         assertThat(events.get(1)).isInstanceOfSatisfying(ForesightDeclared.class, declared -> {
             assertThat(declared.gameId()).isEqualTo(GAME_ID);
             assertThat(declared.eraNumber()).isEqualTo(ERA);
@@ -479,8 +486,8 @@ class ActionRoundTest {
     }
 
     @Test
-    @DisplayName("submit — ANNIHILATE with a target — registers SpecialActionPlayed and OutcomeAnnihilated")
-    void submitSpecialAnnihilateWithTargetRegistersOutcomeAnnihilated() {
+    @DisplayName("close — live ANNIHILATE with a target — registers OutcomeAnnihilated")
+    void closeLiveAnnihilateWithTargetRegistersOutcomeAnnihilated() {
         // given
         var round = openRound(List.of(PLAYER_A));
         round.pullEvents();
@@ -489,11 +496,12 @@ class ActionRoundTest {
 
         // when
         round.submit(special(PLAYER_A, Faction.ERASERS, SpecialAction.ANNIHILATE, eventId, outcomeId, null));
+        round.pullEvents();
+        round.close("ALL_SUBMITTED");
 
         // then
         var events = round.pullEvents();
         assertThat(events).hasSize(2);
-        assertThat(events.get(0)).isInstanceOf(SpecialActionPlayed.class);
         assertThat(events.get(1)).isInstanceOfSatisfying(OutcomeAnnihilated.class, annihilated -> {
             assertThat(annihilated.gameId()).isEqualTo(GAME_ID);
             assertThat(annihilated.eraNumber()).isEqualTo(ERA);
@@ -501,6 +509,23 @@ class ActionRoundTest {
             assertThat(annihilated.outcomeId()).isEqualTo(outcomeId);
             assertThat(annihilated.playerId()).isEqualTo(PLAYER_A);
         });
+    }
+
+    @Test
+    @DisplayName("close — NULLIFY cancels FORESIGHT's immediate scoring fact")
+    void closeNullifiedForesightDoesNotRegisterScoringFact() {
+        var round = openRound(List.of(PLAYER_A, PLAYER_B));
+        round.pullEvents();
+        round.submit(special(
+                PLAYER_A, Faction.PROPHETS, SpecialAction.FORESIGHT, UUID.randomUUID(), UUID.randomUUID(), null));
+        round.submit(nullify(PLAYER_B, PLAYER_A));
+        round.pullEvents();
+
+        round.close("ALL_SUBMITTED");
+
+        assertThat(round.pullEvents())
+                .containsExactlyInstanceOf(ActionRoundClosed.class)
+                .noneMatch(ForesightDeclared.class::isInstance);
     }
 
     @Test
