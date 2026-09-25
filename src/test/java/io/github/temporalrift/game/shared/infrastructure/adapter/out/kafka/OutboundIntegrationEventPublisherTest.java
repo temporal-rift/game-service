@@ -31,6 +31,7 @@ import io.github.temporalrift.asyncapi.scoringevents.GeneratedChannelContract.Fa
 import io.github.temporalrift.asyncapi.scoringevents.GeneratedChannelContract.ScoreUpdate;
 import io.github.temporalrift.asyncapi.scoringevents.GeneratedChannelContract.ScoresUpdatedPayload;
 import io.github.temporalrift.asyncapi.sessionevents.GeneratedChannelContract.GameStartedPayload;
+import io.github.temporalrift.asyncapi.sessionevents.GeneratedChannelContract.GameStartedPlayer;
 import io.github.temporalrift.game.shared.domain.messaging.DomainEventEnvelope;
 
 @ExtendWith(MockitoExtension.class)
@@ -58,7 +59,8 @@ class OutboundIntegrationEventPublisherTest {
     @Test
     void publish_validSessionPayload_publishesEvent() {
         var gameId = UUID.randomUUID();
-        var payload = new GameStartedPayload(gameId, UUID.randomUUID(), List.of(UUID.randomUUID()), 3, 30);
+        var payload = new GameStartedPayload(
+                gameId, UUID.randomUUID(), List.of(new GameStartedPlayer(UUID.randomUUID(), "Ada")), 3, 30);
 
         outboundEvents.publish("GameStarted", payload, envelope(gameId));
 

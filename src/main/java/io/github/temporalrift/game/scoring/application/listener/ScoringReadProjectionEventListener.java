@@ -4,11 +4,11 @@ import org.springframework.modulith.events.ApplicationModuleListener;
 import org.springframework.stereotype.Component;
 
 import io.github.temporalrift.game.scoring.domain.port.out.ScoringPlayerRepository;
-import io.github.temporalrift.game.shared.domain.event.PlayerJoinedLobby;
+import io.github.temporalrift.game.shared.domain.event.GameStarted;
 
 /**
  * Projects public session events into the scoring-owned read model backing the score REST API:
- * player display names from lobby joins. Idempotent upsert, so Modulith's at-least-once listener
+ * player display names from the game's starting roster. Idempotent upsert, so Modulith's at-least-once listener
  * retry needs no extra dedup.
  */
 @Component
@@ -21,7 +21,9 @@ class ScoringReadProjectionEventListener {
     }
 
     @ApplicationModuleListener
-    void onPlayerJoinedLobby(PlayerJoinedLobby event) {
-        playerRepository.upsertPlayerName(event.gameId(), event.playerId(), event.playerName());
+    void onGameStarted(GameStarted event) {
+        event.players()
+                .forEach(player ->
+                        playerRepository.upsertPlayerName(event.gameId(), player.playerId(), player.playerName()));
     }
 }
