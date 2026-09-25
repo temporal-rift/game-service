@@ -234,7 +234,7 @@ class StartGameSagaImplTest {
         saga.start(LOBBY_ID, REQUESTING_PLAYER_ID);
 
         // then
-        then(applicationEventPublisher).should(times(3)).publishEvent(captor.capture());
+        then(applicationEventPublisher).should(times(4)).publishEvent(captor.capture());
         var eraStarted = captor.getAllValues().stream()
                 .filter(EraStarted.class::isInstance)
                 .map(EraStarted.class::cast)
@@ -258,7 +258,7 @@ class StartGameSagaImplTest {
         saga.start(LOBBY_ID, REQUESTING_PLAYER_ID);
 
         // then
-        then(applicationEventPublisher).should(times(3)).publishEvent(captor.capture());
+        then(applicationEventPublisher).should(times(4)).publishEvent(captor.capture());
         var factionAssignedEvents = captor.getAllValues().stream()
                 .filter(FactionAssigned.class::isInstance)
                 .map(FactionAssigned.class::cast)
