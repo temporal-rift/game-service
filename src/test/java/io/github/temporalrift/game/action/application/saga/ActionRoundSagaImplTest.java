@@ -475,8 +475,14 @@ class ActionRoundSagaImplTest {
             // given
             var round2Id = UUID.randomUUID();
             var round1Id = UUID.randomUUID();
-            var round2 =
-                    new ActionRound(round2Id, new ActionRoundConfig(GAME_ID, ERA_NUMBER, 2, TIMER_SECONDS), List.of());
+            var round2 = new ActionRound(
+                    round2Id,
+                    new ActionRoundConfig(GAME_ID, ERA_NUMBER, 2, TIMER_SECONDS),
+                    List.of(PLAYER_1, PLAYER_2));
+            var cancelledPush = new SubmittedAction.CardAction(
+                    PLAYER_1, UUID.randomUUID(), CardType.PUSH, UUID.randomUUID(), null, UUID.randomUUID());
+            round2.submit(cancelledPush);
+            round2.submit(nullify(PLAYER_2, PLAYER_1));
             var round1 =
                     new ActionRound(round1Id, new ActionRoundConfig(GAME_ID, ERA_NUMBER, 1, TIMER_SECONDS), List.of());
 
@@ -503,7 +509,9 @@ class ActionRoundSagaImplTest {
             // then
             then(actionEventPublisher).should(times(1)).publish(envelopeWithPayload(RoundSummaryPublished.class));
             then(actionEventPublisher).should(times(1)).publish(envelopeWithPayload(BandedProbabilityPublished.class));
-            then(bandCalculator).should(times(1)).computeBands(any(), any(), any());
+            var roundTwoActions = ArgumentCaptor.<List<SubmittedAction>>captor();
+            then(bandCalculator).should(times(1)).computeBands(any(), captor.capture(), any());
+            assertThat(captor.getValue()).doesNotContain(cancelledPush);
         }
 
         @Test
@@ -898,6 +906,45 @@ class ActionRoundSagaImplTest {
             assertThat(captor.getValue().activistDeclarationFacts())
                     .containsExactly(new EraActionFactsFinalized.ActivistDeclarationFact(
                             PLAYER_1, SpecialAction.RALLY, targetEventId, targetOutcomeId));
+        }
+
+        @Test
+        @DisplayName("Round 3 — omits an Activist declaration cancelled in Round 1")
+        void tryClose_round3OmitsNullifiedActivistDeclaration() {
+            var targetEventId = UUID.randomUUID();
+            var targetOutcomeId = UUID.randomUUID();
+            var declarationAction = new SubmittedAction.SpecialActionSubmission(
+                    PLAYER_1, Faction.ACTIVISTS, SpecialAction.RALLY, null, null, targetEventId, targetOutcomeId, null);
+            var roundOne = new ActionRound(
+                    UUID.randomUUID(),
+                    new ActionRoundConfig(GAME_ID, ERA_NUMBER, 1, TIMER_SECONDS),
+                    new ActionRoundParticipants(List.of(PLAYER_1, PLAYER_2), List.of(declarationAction)));
+            roundOne.submit(nullify(PLAYER_2, PLAYER_1));
+            var roundThree = new ActionRound(
+                    UUID.randomUUID(), new ActionRoundConfig(GAME_ID, ERA_NUMBER, 3, TIMER_SECONDS), List.of());
+            var declaration = new ActivistEraState(UUID.randomUUID(), GAME_ID, ERA_NUMBER, PLAYER_1, false);
+            declaration.declare(ActivistDeclarationMode.RALLY, targetEventId, targetOutcomeId);
+            given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA_NUMBER, 3))
+                    .willReturn(Optional.of(roundThree));
+            given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumber(GAME_ID, ERA_NUMBER, 1))
+                    .willReturn(Optional.of(roundOne));
+            given(activistEraStateRepository.findDeclaredByGameIdAndEraNumber(GAME_ID, ERA_NUMBER))
+                    .willReturn(List.of(declaration));
+            given(stateManager.markSubmitted(GAME_ID, ERA_NUMBER, 3, PLAYER_1))
+                    .willReturn(Optional.of(new ActionRoundSagaState(
+                            UUID.randomUUID(),
+                            GAME_ID,
+                            ERA_NUMBER,
+                            3,
+                            ActionRoundSagaStatus.WAITING,
+                            List.of(),
+                            TIMER_EXPIRES_AT)));
+
+            saga.handlePlayerSubmitted(GAME_ID, ERA_NUMBER, 3, PLAYER_1);
+
+            var captor = ArgumentCaptor.<EraActionFactsFinalized>captor();
+            then(actionEventPublisher).should(times(1)).publishInternally(captor.capture());
+            assertThat(captor.getValue().activistDeclarationFacts()).isEmpty();
         }
 
         @Test
@@ -1513,6 +1560,30 @@ class ActionRoundSagaImplTest {
             var ordered = inOrder(actionEventPublisher);
             then(actionEventPublisher).should(ordered).publish(envelopeWithPayload(RoundSummaryPublished.class));
             then(actionEventPublisher).should(ordered).publish(envelopeWithPayload(PlayerJammed.class));
+        }
+
+        @Test
+        @DisplayName("a NULLIFY-cancelled Jam does not suppress its target")
+        void nullifiedJamDoesNotSuppressTarget() {
+            var target = new PlayerState(UUID.randomUUID(), GAME_ID, PLAYER_2);
+            var round = new ActionRound(
+                    UUID.randomUUID(),
+                    new ActionRoundConfig(GAME_ID, ERA_NUMBER, ROUND_NUMBER, TIMER_SECONDS),
+                    List.of(PLAYER_1, PLAYER_3));
+            round.submit(new SubmittedAction.CardAction(
+                    PLAYER_1, UUID.randomUUID(), CardType.JAM, CardGrade.I, null, null, null, PLAYER_2));
+            round.submit(nullify(PLAYER_3, PLAYER_1));
+            given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(
+                            GAME_ID, ERA_NUMBER, ROUND_NUMBER))
+                    .willReturn(Optional.of(round));
+            given(playerStateRepository.findAllByGameId(GAME_ID)).willReturn(List.of(target));
+            given(stateManager.markSubmitted(GAME_ID, ERA_NUMBER, ROUND_NUMBER, PLAYER_1))
+                    .willReturn(waitingState(ERA_NUMBER, ROUND_NUMBER));
+
+            saga.handlePlayerSubmitted(GAME_ID, ERA_NUMBER, ROUND_NUMBER, PLAYER_1);
+
+            assertThat(target.isJammed()).isFalse();
+            then(actionEventPublisher).should(never()).publish(envelopeWithPayload(PlayerJammed.class));
         }
 
         @Test
@@ -2179,7 +2250,9 @@ class ActionRoundSagaImplTest {
             given(activistEraStateRepository.findExposedByGameIdAndEraNumber(GAME_ID, ERA_NUMBER))
                     .willReturn(List.of(activistState));
             var roundTwo = new ActionRound(
-                    UUID.randomUUID(), new ActionRoundConfig(GAME_ID, ERA_NUMBER, 2, TIMER_SECONDS), List.of());
+                    UUID.randomUUID(), new ActionRoundConfig(GAME_ID, ERA_NUMBER, 2, TIMER_SECONDS), List.of(PLAYER_1));
+            roundTwo.submit(new SubmittedAction.SpecialActionSubmission(
+                    PLAYER_1, Faction.ACTIVISTS, SpecialAction.EXPOSE, null, null, null, null, PLAYER_2));
             given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA_NUMBER, 2))
                     .willReturn(Optional.of(roundTwo));
             given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumber(GAME_ID, ERA_NUMBER, 1))

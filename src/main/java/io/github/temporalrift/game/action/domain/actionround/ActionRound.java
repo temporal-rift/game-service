@@ -115,14 +115,14 @@ public class ActionRound extends AggregateRoot {
         pendingPlayerIds.clear();
 
         status = RoundStatus.CLOSED;
-        registerEvent(
-                new ActionRoundClosed(gameId, eraNumber, roundNumber, closedReason, this.submittedActions.size()));
         var cancelledPlayerIds = RoundCancellation.cancelledPlayerIds(submittedActions);
         submittedActions.stream()
                 .filter(action -> !cancelledPlayerIds.contains(action.playerId()))
                 .map(action -> action.scoringFact(gameId, eraNumber))
                 .flatMap(java.util.Optional::stream)
                 .forEach(this::registerEvent);
+        registerEvent(
+                new ActionRoundClosed(gameId, eraNumber, roundNumber, closedReason, this.submittedActions.size()));
 
         return new CloseOutcome.Closed(skippedPlayerIds);
     }
