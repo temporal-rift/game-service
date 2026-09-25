@@ -21,6 +21,7 @@ import io.github.temporalrift.asyncapi.sessionevents.GeneratedChannelContract.Ev
 import io.github.temporalrift.asyncapi.sessionevents.GeneratedChannelContract.FactionAssignedPayload;
 import io.github.temporalrift.asyncapi.sessionevents.GeneratedChannelContract.FactionRevealedPayload;
 import io.github.temporalrift.asyncapi.sessionevents.GeneratedChannelContract.FactionsDrawnPayload;
+import io.github.temporalrift.asyncapi.sessionevents.GeneratedChannelContract.ForesightRevealedPayload;
 import io.github.temporalrift.asyncapi.sessionevents.GeneratedChannelContract.GameEndedAbnormallyPayload;
 import io.github.temporalrift.asyncapi.sessionevents.GeneratedChannelContract.GameEndedPayload;
 import io.github.temporalrift.asyncapi.sessionevents.GeneratedChannelContract.GameStartCancelledPayload;
@@ -156,7 +157,7 @@ class SessionEventPublisherAdapterTest {
                 adapter,
                 gameId,
                 mock(ForesightRevealed.class),
-                mock(ForesightRevealedWirePayload.class),
+                mock(ForesightRevealedPayload.class),
                 "ForesightRevealed");
     }
 
@@ -500,7 +501,7 @@ class SessionEventPublisherAdapterTest {
             SessionEventPublisherAdapter adapter,
             UUID gameId,
             ForesightRevealed payload,
-            ForesightRevealedWirePayload wirePayload,
+            ForesightRevealedPayload wirePayload,
             String eventType) {
         given(mapper.toWire(payload)).willReturn(wirePayload);
         var event = envelope(gameId, payload);

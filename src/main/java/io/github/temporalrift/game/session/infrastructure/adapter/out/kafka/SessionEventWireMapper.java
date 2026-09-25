@@ -15,6 +15,9 @@ import io.github.temporalrift.asyncapi.sessionevents.GeneratedChannelContract.Fa
 import io.github.temporalrift.asyncapi.sessionevents.GeneratedChannelContract.FactionRevealedPayload;
 import io.github.temporalrift.asyncapi.sessionevents.GeneratedChannelContract.FactionRevealedPlayerFactionResult;
 import io.github.temporalrift.asyncapi.sessionevents.GeneratedChannelContract.FactionsDrawnPayload;
+import io.github.temporalrift.asyncapi.sessionevents.GeneratedChannelContract.ForesightRevealedEvent;
+import io.github.temporalrift.asyncapi.sessionevents.GeneratedChannelContract.ForesightRevealedOutcome;
+import io.github.temporalrift.asyncapi.sessionevents.GeneratedChannelContract.ForesightRevealedPayload;
 import io.github.temporalrift.asyncapi.sessionevents.GeneratedChannelContract.GameEndedAbnormallyPayload;
 import io.github.temporalrift.asyncapi.sessionevents.GeneratedChannelContract.GameEndedPayload;
 import io.github.temporalrift.asyncapi.sessionevents.GeneratedChannelContract.GameEndedPlayerScoreResult;
@@ -137,9 +140,9 @@ interface SessionEventWireMapper {
 
     HandDealtCardInstance toWire(HandDealt.CardInstance cardInstance);
 
-    ForesightRevealedWirePayload toWire(ForesightRevealed event);
+    ForesightRevealedPayload toWire(ForesightRevealed event);
 
-    ForesightRevealedWirePayload.RevealedEvent toWire(ForesightRevealed.RevealedEvent event);
+    ForesightRevealedEvent toWire(ForesightRevealed.RevealedEvent event);
 
-    ForesightRevealedWirePayload.RevealedOutcome toWire(ForesightRevealed.RevealedOutcome outcome);
+    ForesightRevealedOutcome toWire(ForesightRevealed.RevealedOutcome outcome);
 }
