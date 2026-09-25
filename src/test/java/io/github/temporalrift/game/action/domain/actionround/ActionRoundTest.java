@@ -476,7 +476,7 @@ class ActionRoundTest {
         // then
         var events = round.pullEvents();
         assertThat(events).hasSize(2);
-        assertThat(events.get(1)).isInstanceOfSatisfying(ForesightDeclared.class, declared -> {
+        assertThat(events.get(0)).isInstanceOfSatisfying(ForesightDeclared.class, declared -> {
             assertThat(declared.gameId()).isEqualTo(GAME_ID);
             assertThat(declared.eraNumber()).isEqualTo(ERA);
             assertThat(declared.eventId()).isEqualTo(eventId);
@@ -502,7 +502,7 @@ class ActionRoundTest {
         // then
         var events = round.pullEvents();
         assertThat(events).hasSize(2);
-        assertThat(events.get(1)).isInstanceOfSatisfying(OutcomeAnnihilated.class, annihilated -> {
+        assertThat(events.get(0)).isInstanceOfSatisfying(OutcomeAnnihilated.class, annihilated -> {
             assertThat(annihilated.gameId()).isEqualTo(GAME_ID);
             assertThat(annihilated.eraNumber()).isEqualTo(ERA);
             assertThat(annihilated.eventId()).isEqualTo(eventId);
@@ -523,9 +523,9 @@ class ActionRoundTest {
 
         round.close("ALL_SUBMITTED");
 
-        assertThat(round.pullEvents())
-                .containsExactlyInstanceOf(ActionRoundClosed.class)
-                .noneMatch(ForesightDeclared.class::isInstance);
+        var events = round.pullEvents();
+        assertThat(events).singleElement().isInstanceOf(ActionRoundClosed.class);
+        assertThat(events).noneMatch(ForesightDeclared.class::isInstance);
     }
 
     @Test
