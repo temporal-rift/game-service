@@ -358,11 +358,22 @@ class PlaySpecialActionCommandHandlerTest {
     }
 
     @Test
-    @DisplayName("handle — REWEAVE — carries no target coordinates and submits without additional validation")
-    void handleReweaveSubmitsWithoutAdditionalTargetValidation() {
+    @DisplayName("handle — REWEAVE — validates the current-era target coordinate like THREAD and submits")
+    void handleReweaveValidatesTargetCoordinatesAndSubmits() {
         // given
+        var targetEventId = UUID.randomUUID();
+        var targetOutcomeId = UUID.randomUUID();
         var command = new PlaySpecialActionUseCase.Command(
-                GAME_ID, ERA, ROUND, PLAYER_ID, SpecialAction.REWEAVE, null, null, null, null, null);
+                GAME_ID,
+                ERA,
+                ROUND,
+                PLAYER_ID,
+                SpecialAction.REWEAVE,
+                null,
+                null,
+                targetEventId,
+                targetOutcomeId,
+                null);
         given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA, ROUND))
                 .willReturn(Optional.of(round));
         given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(playerState));
@@ -378,10 +389,37 @@ class PlaySpecialActionCommandHandlerTest {
         handler.handle(command);
 
         // then
+        then(actionTargetValidator).should().validate(GAME_ID, ERA, targetEventId, targetOutcomeId);
         then(round)
                 .should()
                 .submit(eq(new SubmittedAction.SpecialActionSubmission(
-                        PLAYER_ID, Faction.WEAVERS, SpecialAction.REWEAVE, null, null, null, null, null)));
+                        PLAYER_ID,
+                        Faction.WEAVERS,
+                        SpecialAction.REWEAVE,
+                        null,
+                        null,
+                        targetEventId,
+                        targetOutcomeId,
+                        null)));
+    }
+
+    @Test
+    @DisplayName("handle — REWEAVE missing its target coordinate — throws InvalidActionTargetException before "
+            + "submitting")
+    void handleReweaveMissingTargetRejectsBeforeSubmitting() {
+        // given
+        var command = new PlaySpecialActionUseCase.Command(
+                GAME_ID, ERA, ROUND, PLAYER_ID, SpecialAction.REWEAVE, null, null, null, null, null);
+        given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA, ROUND))
+                .willReturn(Optional.of(round));
+        given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(playerState));
+        given(playerState.faction()).willReturn(Faction.WEAVERS);
+        given(playerState.isJammed()).willReturn(false);
+        given(gameRules.onceEraBudgetedSpecials()).willReturn(Set.of());
+
+        // when / then
+        assertThatExceptionOfType(InvalidActionTargetException.class).isThrownBy(() -> handler.handle(command));
+        then(round).should(never()).submit(any());
     }
 
     @Test

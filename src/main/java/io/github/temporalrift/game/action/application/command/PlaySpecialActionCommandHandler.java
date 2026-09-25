@@ -82,8 +82,8 @@ class PlaySpecialActionCommandHandler implements PlaySpecialActionUseCase {
     @Override
     @Transactional
     public Result handle(Command command) {
-        // THREAD's target is a not-yet-resolved outcome in the current era, validated the same way as every
-        // other current-era-targeting special. Whether it has actually resolved yet is verified downstream by
+        // THREAD's and REWEAVE's targets are not-yet-resolved outcomes in the current era, validated the same way
+        // as every other current-era-targeting special. Whether they are still live is verified downstream by
         // timeline-service's chain saga.
         actionTargetValidator.validate(
                 command.gameId(), command.eraNumber(), command.targetEventId(), command.targetOutcomeId());
