@@ -169,13 +169,15 @@ class StartGameSagaImpl implements StartGameSaga {
                 .map(player -> new GameStarted.Player(player.playerId(), player.playerName()))
                 .toList();
 
-        eventPublisher.publish(DomainEventEnvelope.create(
-                lobby.id(),
-                Lobby.AGGREGATE_TYPE,
-                gameId,
-                DomainEventEnvelope.SCHEMA_VERSION_V1,
-                new GameStarted(gameId, lobby.id(), roster, assignments.size(), gameDeck.size()),
-                clock));
+        sagaHandoffPublisher.publish(
+                eventPublisher::publish,
+                DomainEventEnvelope.create(
+                        lobby.id(),
+                        Lobby.AGGREGATE_TYPE,
+                        gameId,
+                        DomainEventEnvelope.SCHEMA_VERSION_V1,
+                        new GameStarted(gameId, lobby.id(), roster, assignments.size(), gameDeck.size()),
+                        clock));
 
         var eraStarted = new EraStarted(gameId, 1, List.of(), playerIds);
         sagaHandoffPublisher.publish(
