@@ -2,6 +2,7 @@ package io.github.temporalrift.game.scoring.application.listener;
 
 import static org.mockito.BDDMockito.then;
 
+import java.util.List;
 import java.util.UUID;
 
 import org.junit.jupiter.api.DisplayName;
@@ -12,7 +13,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import io.github.temporalrift.game.scoring.domain.port.out.ScoringPlayerRepository;
-import io.github.temporalrift.game.shared.domain.event.PlayerJoinedLobby;
+import io.github.temporalrift.game.shared.domain.event.GameStarted;
 
 @ExtendWith(MockitoExtension.class)
 class ScoringReadProjectionEventListenerTest {
@@ -28,10 +29,18 @@ class ScoringReadProjectionEventListenerTest {
     ScoringReadProjectionEventListener listener;
 
     @Test
-    @DisplayName("PlayerJoinedLobby — projects the player name keyed by gameId")
-    void onPlayerJoinedLobby_upsertsName() {
-        listener.onPlayerJoinedLobby(new PlayerJoinedLobby(GAME_ID, LOBBY_ID, PLAYER_ID, "Ada"));
+    @DisplayName("GameStarted — projects every roster name keyed by gameId")
+    void onGameStarted_upsertsEveryRosterName() {
+        var other = UUID.randomUUID();
+
+        listener.onGameStarted(new GameStarted(
+                GAME_ID,
+                LOBBY_ID,
+                List.of(new GameStarted.Player(PLAYER_ID, "Ada"), new GameStarted.Player(other, "Ben")),
+                2,
+                30));
 
         then(playerRepository).should().upsertPlayerName(GAME_ID, PLAYER_ID, "Ada");
+        then(playerRepository).should().upsertPlayerName(GAME_ID, other, "Ben");
     }
 }

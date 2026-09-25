@@ -19,7 +19,6 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 
 import io.github.temporalrift.game.session.domain.event.EraStarted;
 import io.github.temporalrift.game.session.domain.event.FactionsDrawn;
-import io.github.temporalrift.game.session.domain.event.GameStarted;
 import io.github.temporalrift.game.session.domain.game.Game;
 import io.github.temporalrift.game.session.domain.lobby.DisconnectedPlayersException;
 import io.github.temporalrift.game.session.domain.lobby.Lobby;
@@ -35,6 +34,7 @@ import io.github.temporalrift.game.session.domain.port.out.SessionEventPublisher
 import io.github.temporalrift.game.session.domain.saga.FactionAssignment;
 import io.github.temporalrift.game.shared.application.SagaHandoffPublisher;
 import io.github.temporalrift.game.shared.domain.event.FactionAssigned;
+import io.github.temporalrift.game.shared.domain.event.GameStarted;
 import io.github.temporalrift.game.shared.domain.messaging.DomainEventEnvelope;
 import io.github.temporalrift.game.shared.domain.model.Faction;
 
@@ -165,13 +165,16 @@ class StartGameSagaImpl implements StartGameSaga {
         gameRepository.save(game);
 
         var playerIds = assignments.stream().map(FactionAssignment::playerId).toList();
+        var roster = lobby.currentPlayers().stream()
+                .map(player -> new GameStarted.Player(player.playerId(), player.playerName()))
+                .toList();
 
         eventPublisher.publish(DomainEventEnvelope.create(
                 lobby.id(),
                 Lobby.AGGREGATE_TYPE,
                 gameId,
                 DomainEventEnvelope.SCHEMA_VERSION_V1,
-                new GameStarted(gameId, lobby.id(), playerIds, assignments.size(), gameDeck.size()),
+                new GameStarted(gameId, lobby.id(), roster, assignments.size(), gameDeck.size()),
                 clock));
 
         var eraStarted = new EraStarted(gameId, 1, List.of(), playerIds);

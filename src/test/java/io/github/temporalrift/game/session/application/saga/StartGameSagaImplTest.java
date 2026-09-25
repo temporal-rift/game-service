@@ -8,6 +8,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.BDDMockito.willThrow;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -34,7 +35,6 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 
 import io.github.temporalrift.game.session.domain.event.EraStarted;
 import io.github.temporalrift.game.session.domain.event.FactionsDrawn;
-import io.github.temporalrift.game.session.domain.event.GameStarted;
 import io.github.temporalrift.game.session.domain.lobby.DisconnectedPlayersException;
 import io.github.temporalrift.game.session.domain.lobby.Lobby;
 import io.github.temporalrift.game.session.domain.lobby.LobbyNotFoundException;
@@ -47,6 +47,7 @@ import io.github.temporalrift.game.session.domain.port.out.GameRepository;
 import io.github.temporalrift.game.session.domain.port.out.LobbyRepository;
 import io.github.temporalrift.game.session.domain.port.out.SessionEventPublisher;
 import io.github.temporalrift.game.shared.domain.event.FactionAssigned;
+import io.github.temporalrift.game.shared.domain.event.GameStarted;
 import io.github.temporalrift.game.shared.domain.messaging.DomainEventEnvelope;
 
 @ExtendWith(MockitoExtension.class)
@@ -268,6 +269,33 @@ class StartGameSagaImplTest {
         assertThat(factionAssignedEvents.stream().map(FactionAssigned::playerId))
                 .containsExactlyInAnyOrderElementsOf(
                         TWO_PLAYERS.stream().map(LobbyPlayer::playerId).toList());
+    }
+
+    @Test
+    @DisplayName("happy path — GameStarted carries the named roster in seat order")
+    void start_happyPath_gameStartedCarriesTheNamedRosterInSeatOrder() {
+        // given
+        stubStartableLobby();
+        given(lobby.id()).willReturn(LOBBY_ID);
+        given(lobby.currentPlayers()).willReturn(TWO_PLAYERS);
+        given(futureEventCatalog.allEventIds()).willReturn(CATALOG_IDS);
+        var captor = ArgumentCaptor.forClass(DomainEventEnvelope.class);
+
+        // when
+        saga.start(LOBBY_ID, REQUESTING_PLAYER_ID);
+
+        // then
+        then(eventPublisher).should(atLeastOnce()).publish(captor.capture());
+        var gameStarted = captor.getAllValues().stream()
+                .map(DomainEventEnvelope::payload)
+                .filter(GameStarted.class::isInstance)
+                .map(GameStarted.class::cast)
+                .findFirst()
+                .orElseThrow();
+        assertThat(gameStarted.players())
+                .containsExactlyElementsOf(TWO_PLAYERS.stream()
+                        .map(player -> new GameStarted.Player(player.playerId(), player.playerName()))
+                        .toList());
     }
 
     @Test
