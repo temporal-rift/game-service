@@ -25,6 +25,7 @@ import io.github.temporalrift.game.action.domain.actionround.ActionRound;
 import io.github.temporalrift.game.action.domain.actionround.ActionRoundConfig;
 import io.github.temporalrift.game.action.domain.actionround.ActionRoundParticipants;
 import io.github.temporalrift.game.action.domain.actionround.CloseOutcome;
+import io.github.temporalrift.game.action.domain.actionround.RoundCancellation;
 import io.github.temporalrift.game.action.domain.actionround.SubmittedAction;
 import io.github.temporalrift.game.action.domain.activisterastate.ProbabilityInfluenceSignature;
 import io.github.temporalrift.game.action.domain.event.ActionEventPayload;
@@ -470,9 +471,11 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
     // see publishFinalRoundActionFacts, which applies this same round-scoped correlation across every
     // round of the era in one synchronous, non-racing pass.
     private List<EraActionFactsFinalized.CorruptCorrelationFact> correlateCorruptCardsForRound(ActionRound round) {
+        var cancelledPlayerIds = RoundCancellation.cancelledPlayerIds(round.submittedActions());
         var shiftCardsByPlayer = round.submittedActions().stream()
                 .filter(SubmittedAction.CardAction.class::isInstance)
                 .map(SubmittedAction.CardAction.class::cast)
+                .filter(card -> !cancelledPlayerIds.contains(card.playerId()))
                 .filter(card -> card.cardType() == CardType.PUSH
                         || card.cardType() == CardType.SUPPRESS
                         || card.cardType() == CardType.SWING)
@@ -482,6 +485,7 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
         round.submittedActions().stream()
                 .filter(SubmittedAction.SpecialActionSubmission.class::isInstance)
                 .map(SubmittedAction.SpecialActionSubmission.class::cast)
+                .filter(special -> !cancelledPlayerIds.contains(special.playerId()))
                 .filter(special -> special.specialAction()
                         == io.github.temporalrift.game.shared.domain.model.SpecialAction.CORRUPT)
                 .forEach(corrupt -> {
@@ -575,6 +579,13 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
     // listeners the way onActionRoundClosed alone would.
     private void publishFinalRoundActionFacts(
             UUID gameId, int eraNumber, ActionRound round, List<UUID> identifiedPlayerIds) {
+        var eraRounds = new ArrayList<ActionRound>();
+        for (var roundNumber = 1; roundNumber < FINAL_ROUND_NUMBER; roundNumber++) {
+            actionRoundRepository
+                    .findByGameIdAndEraNumberAndRoundNumber(gameId, eraNumber, roundNumber)
+                    .ifPresent(eraRounds::add);
+        }
+        eraRounds.add(round);
         var foresightFacts = new ArrayList<EraActionFactsFinalized.ForesightFact>();
         var annihilationFacts = new ArrayList<EraActionFactsFinalized.AnnihilationFact>();
         var mimicFacts = new ArrayList<EraActionFactsFinalized.RevisionistFact>();
@@ -594,18 +605,11 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
                                 state.targetEventId(),
                                 state.targetOutcomeId()))
                         .toList();
-        var eraRounds = new ArrayList<ActionRound>();
-        for (var roundNumber = 1; roundNumber < FINAL_ROUND_NUMBER; roundNumber++) {
-            actionRoundRepository
-                    .findByGameIdAndEraNumberAndRoundNumber(gameId, eraNumber, roundNumber)
-                    .ifPresent(eraRounds::add);
-        }
-        eraRounds.add(round);
         var corruptCorrelationFacts = eraRounds.stream()
                 .flatMap(actionRound -> correlateCorruptCardsForRound(actionRound).stream())
                 .toList();
         for (var action : eraRounds.stream()
-                .flatMap(actionRound -> actionRound.submittedActions().stream())
+                .flatMap(ActionRoundSagaImpl::uncancelledActions)
                 .toList()) {
             if (action instanceof SubmittedAction.SpecialActionSubmission special) {
                 switch (special.specialAction()) {
@@ -651,5 +655,10 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
                 List.copyOf(fulfillmentFacts),
                 corruptCorrelationFacts,
                 identifiedPlayerIds));
+    }
+
+    private static java.util.stream.Stream<SubmittedAction> uncancelledActions(ActionRound round) {
+        var cancelledPlayerIds = RoundCancellation.cancelledPlayerIds(round.submittedActions());
+        return round.submittedActions().stream().filter(action -> !cancelledPlayerIds.contains(action.playerId()));
     }
 }
