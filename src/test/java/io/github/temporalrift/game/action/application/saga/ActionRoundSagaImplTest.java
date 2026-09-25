@@ -509,7 +509,7 @@ class ActionRoundSagaImplTest {
             // then
             then(actionEventPublisher).should(times(1)).publish(envelopeWithPayload(RoundSummaryPublished.class));
             then(actionEventPublisher).should(times(1)).publish(envelopeWithPayload(BandedProbabilityPublished.class));
-            var roundTwoActions = ArgumentCaptor.<List<SubmittedAction>>captor();
+            var captor = ArgumentCaptor.<List<SubmittedAction>>captor();
             then(bandCalculator).should(times(1)).computeBands(any(), captor.capture(), any());
             assertThat(captor.getValue()).doesNotContain(cancelledPush);
         }
@@ -1578,7 +1578,14 @@ class ActionRoundSagaImplTest {
                     .willReturn(Optional.of(round));
             given(playerStateRepository.findAllByGameId(GAME_ID)).willReturn(List.of(target));
             given(stateManager.markSubmitted(GAME_ID, ERA_NUMBER, ROUND_NUMBER, PLAYER_1))
-                    .willReturn(waitingState(ERA_NUMBER, ROUND_NUMBER));
+                    .willReturn(Optional.of(new ActionRoundSagaState(
+                            UUID.randomUUID(),
+                            GAME_ID,
+                            ERA_NUMBER,
+                            ROUND_NUMBER,
+                            ActionRoundSagaStatus.WAITING,
+                            List.of(),
+                            TIMER_EXPIRES_AT)));
 
             saga.handlePlayerSubmitted(GAME_ID, ERA_NUMBER, ROUND_NUMBER, PLAYER_1);
 
