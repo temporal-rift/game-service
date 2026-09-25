@@ -306,14 +306,12 @@ public sealed interface SubmittedAction permits SubmittedAction.CardAction, Subm
             }
             switch (specialAction) {
                 case RALLY, MOMENTUM -> throw new DeclarationSpecialActionRequiredException(specialAction);
-                case FORESIGHT, ANNIHILATE, SEAL, REWRITE, MIMIC, CASCADE, THREAD -> requireEventAndOutcome();
+                case FORESIGHT, ANNIHILATE, SEAL, REWRITE, MIMIC, CASCADE, THREAD, REWEAVE -> requireEventAndOutcome();
                 case FULFILLMENT -> requireEvent();
                 case CORRUPT -> requireOpponent();
                 case EXPOSE -> requireExposeTarget();
-                case OBSCURE, TAPESTRY, REWEAVE -> {
-                    // No additional target requirement enforced at submission; TAPESTRY's prerequisites and
-                    // REWEAVE's re-anchor target are validated by timeline-service's chain saga, which alone
-                    // knows chain and resolution state.
+                case OBSCURE, TAPESTRY -> {
+                    // No target; TAPESTRY's chain prerequisites are validated by timeline-service's chain saga.
                 }
             }
         }
