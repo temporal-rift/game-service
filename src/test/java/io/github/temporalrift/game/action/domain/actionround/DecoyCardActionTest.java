@@ -30,13 +30,17 @@ class DecoyCardActionTest {
     @ParameterizedTest
     @EnumSource(CardCategory.class)
     void acceptsAnyDisguiseWithoutTargets(CardCategory disguise) {
-        assertThatCode(() -> decoy(disguise).validate(1, 1)).doesNotThrowAnyException();
+        var action = decoy(disguise);
+
+        assertThatCode(() -> action.validate(1, 1)).doesNotThrowAnyException();
     }
 
     @Test
     void rejectsMissingDisguise() {
+        var action = decoy(null);
+
         assertThatExceptionOfType(InvalidActionTargetException.class)
-                .isThrownBy(() -> decoy(null).validate(1, 1))
+                .isThrownBy(() -> action.validate(1, 1))
                 .withMessageContaining("disguiseCategory");
     }
 
