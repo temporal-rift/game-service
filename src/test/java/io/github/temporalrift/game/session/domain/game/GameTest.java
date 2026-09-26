@@ -306,6 +306,24 @@ class GameTest {
     }
 
     @Test
+    void findCollapsingEvent_counterAlreadyPastLimit_returnsFirstNewlyRecordedCascade() {
+        var first = UUID.randomUUID();
+        var game = Game.reconstitute(
+                GAME_ID,
+                LOBBY_ID,
+                List.of(),
+                new GameProgress(
+                        2,
+                        MAX_CASCADED_PARADOXES + 1,
+                        List.of(new PendingCarryOverEvent(first, CarryOverState.CASCADED)),
+                        Map.of(),
+                        GameStatus.IN_PROGRESS));
+        // Threshold already reached before this era's cascade (rule value lowered mid-game):
+        // keep the previous >= auto-end choice of crossing event instead of yielding no collapse.
+        assertThat(game.findCollapsingEvent(MAX_CASCADED_PARADOXES)).isEqualTo(first);
+    }
+
+    @Test
     void findCollapsingEvent_belowThreshold_returnsNull() {
         var game = Game.reconstitute(
                 GAME_ID,
