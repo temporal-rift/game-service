@@ -86,6 +86,9 @@ class EraSagaAdvancerTest {
     @Mock
     SessionFactionObjectivePort factionObjectives;
 
+    @Mock
+    TimelineCollapsePublisher collapsePublisher;
+
     @Spy
     Clock clock = Clock.systemUTC();
 
@@ -99,6 +102,7 @@ class EraSagaAdvancerTest {
                 gameRepository,
                 eventPublisher,
                 applicationEventPublisher,
+                collapsePublisher,
                 gameRules,
                 factionObjectives,
                 clock);
@@ -307,6 +311,7 @@ class EraSagaAdvancerTest {
         given(eraSagaRepository.findByGameIdWithLock(GAME_ID)).willReturn(Optional.of(state));
         given(gameRules.winScoreThreshold()).willReturn(WIN_THRESHOLD);
         given(gameRules.maxEras()).willReturn(MAX_ERAS);
+        given(gameRules.maxCascadedParadoxes()).willReturn(3);
         givenNoObjectivesMet(1);
         var game = Game.reconstitute(GAME_ID, LOBBY_ID, List.of(), 1, 0, GameStatus.IN_PROGRESS);
         given(gameRepository.findByIdWithLock(GAME_ID)).willReturn(Optional.of(game));
@@ -368,6 +373,116 @@ class EraSagaAdvancerTest {
     }
 
     @Test
+    @DisplayName("same-era collapse and score qualifier — normal victory wins (collapse recorded first)")
+    void handleScoresUpdated_collapseRecordedThenScored_victoryWins() {
+        // given — the resolution consumer already recorded the third cascade and deferred;
+        // scoring then yields a threshold qualifier for the same era.
+        var state = new EraSagaState(GAME_ID, 3, EraSagaStatus.WAITING_SCORES, PLAYER_IDS);
+        given(eraSagaRepository.findByGameIdWithLock(GAME_ID)).willReturn(Optional.of(state));
+        given(gameRules.winScoreThreshold()).willReturn(WIN_THRESHOLD);
+        givenNoObjectivesMet(3);
+        var collapsingEvent = UUID.randomUUID();
+        var game = Game.reconstitute(
+                GAME_ID,
+                LOBBY_ID,
+                List.of(),
+                new GameProgress(
+                        3,
+                        3,
+                        List.of(new PendingCarryOverEvent(collapsingEvent, CarryOverState.CASCADED)),
+                        Map.of(),
+                        GameStatus.IN_PROGRESS));
+        given(gameRepository.findByIdWithLock(GAME_ID)).willReturn(Optional.of(game));
+        var updates = List.of(new ScoresUpdated.ScoreUpdate(PLAYER_1, Faction.PROPHETS, 8, "round-bonus", 24));
+        var su = new ScoresUpdated(GAME_ID, 3, updates);
+
+        // when
+        advancer.handleScoresUpdated(GAME_ID, su);
+
+        // then — victory regardless of collapse-first processing order
+        assertThat(game.status()).isEqualTo(GameStatus.ENDED_BY_WIN);
+        then(eventPublisher).should().publish(envelopeWithPayload(WinConditionMet.class));
+        then(collapsePublisher).should(never()).publishCollapse(any(), any(Integer.class), any());
+        then(eventPublisher).should(never()).publish(envelopeWithPayload(EraStarted.class));
+    }
+
+    @Test
+    @DisplayName("same-era collapse and faction-objective qualifier — normal victory wins")
+    void handleScoresUpdated_collapsePlusObjectiveQualifier_victoryWins() {
+        // given — Eraser-style objective qualifier below the score threshold with the
+        // collapse threshold also reached in the same era.
+        var state = new EraSagaState(GAME_ID, 3, EraSagaStatus.WAITING_SCORES, PLAYER_IDS);
+        given(eraSagaRepository.findByGameIdWithLock(GAME_ID)).willReturn(Optional.of(state));
+        given(gameRules.winScoreThreshold()).willReturn(WIN_THRESHOLD);
+        given(factionObjectives.evaluate(GAME_ID, 3))
+                .willReturn(List.of(
+                        new SessionFactionObjectivePort.ObjectiveProgress(PLAYER_1, Faction.ERASERS, 4, 4, true),
+                        new SessionFactionObjectivePort.ObjectiveProgress(PLAYER_2, Faction.WEAVERS, 0, 3, false)));
+        var collapsingEvent = UUID.randomUUID();
+        var game = Game.reconstitute(
+                GAME_ID,
+                LOBBY_ID,
+                List.of(),
+                new GameProgress(
+                        3,
+                        3,
+                        List.of(new PendingCarryOverEvent(collapsingEvent, CarryOverState.CASCADED)),
+                        Map.of(),
+                        GameStatus.IN_PROGRESS));
+        given(gameRepository.findByIdWithLock(GAME_ID)).willReturn(Optional.of(game));
+        var updates = List.of(
+                new ScoresUpdated.ScoreUpdate(PLAYER_1, Faction.ERASERS, 3, "bonus", 16),
+                new ScoresUpdated.ScoreUpdate(PLAYER_2, Faction.WEAVERS, 1, "bonus", 8));
+        var su = new ScoresUpdated(GAME_ID, 3, updates);
+        var captor = ArgumentCaptor.<DomainEventEnvelope>captor();
+
+        // when
+        advancer.handleScoresUpdated(GAME_ID, su);
+
+        // then
+        then(eventPublisher).should().publish(captor.capture());
+        var winEvent = (WinConditionMet) captor.getValue().payload();
+        assertThat(winEvent.winType()).isEqualTo("FACTION_OBJECTIVE");
+        then(collapsePublisher).should(never()).publishCollapse(any(), any(Integer.class), any());
+    }
+
+    @Test
+    @DisplayName("same-era collapse without qualifier — collapse wins with the reveal-ordered event")
+    void handleScoresUpdated_collapseWithoutQualifier_collapseWins() {
+        // given — third cascade recorded, scoring yields no qualifier.
+        var state = new EraSagaState(GAME_ID, 3, EraSagaStatus.WAITING_SCORES, PLAYER_IDS);
+        given(eraSagaRepository.findByGameIdWithLock(GAME_ID)).willReturn(Optional.of(state));
+        given(gameRules.winScoreThreshold()).willReturn(WIN_THRESHOLD);
+        given(gameRules.maxCascadedParadoxes()).willReturn(3);
+        givenNoObjectivesMet(3);
+        var firstCascadedEvent = UUID.randomUUID();
+        var collapsingEvent = UUID.randomUUID();
+        var game = Game.reconstitute(
+                GAME_ID,
+                LOBBY_ID,
+                List.of(),
+                new GameProgress(
+                        3,
+                        3,
+                        List.of(
+                                new PendingCarryOverEvent(firstCascadedEvent, CarryOverState.CASCADED),
+                                new PendingCarryOverEvent(collapsingEvent, CarryOverState.CASCADED)),
+                        Map.of(),
+                        GameStatus.IN_PROGRESS));
+        given(gameRepository.findByIdWithLock(GAME_ID)).willReturn(Optional.of(game));
+
+        // when
+        advancer.handleScoresUpdated(GAME_ID, noWinnerScores(3));
+
+        // then — single collapse decision, no victory and no next era
+        assertThat(game.status()).isEqualTo(GameStatus.ENDED_BY_COLLAPSE);
+        then(collapsePublisher).should().publishCollapse(game, 3, collapsingEvent);
+        then(eventPublisher).should(never()).publish(envelopeWithPayload(WinConditionMet.class));
+        then(eventPublisher).should(never()).publish(envelopeWithPayload(EraStarted.class));
+        then(eventPublisher).should(never()).publish(envelopeWithPayload(TimelineStabilized.class));
+    }
+
+    @Test
     @DisplayName(
             "no winner and not final era — EraStarted also published as typed Spring event for internal saga trigger")
     void handleScoresUpdated_noWinnerNotFinalEra_publishesTypedEraStartedForInternalRouting() {
@@ -376,6 +491,7 @@ class EraSagaAdvancerTest {
         given(eraSagaRepository.findByGameIdWithLock(GAME_ID)).willReturn(Optional.of(state));
         given(gameRules.winScoreThreshold()).willReturn(WIN_THRESHOLD);
         given(gameRules.maxEras()).willReturn(MAX_ERAS);
+        given(gameRules.maxCascadedParadoxes()).willReturn(3);
         givenNoObjectivesMet(1);
         var firstCascadedEvent = UUID.randomUUID();
         var secondCascadedEvent = UUID.randomUUID();
@@ -419,6 +535,7 @@ class EraSagaAdvancerTest {
         given(eraSagaRepository.findByGameIdWithLock(GAME_ID)).willReturn(Optional.of(state));
         given(gameRules.winScoreThreshold()).willReturn(WIN_THRESHOLD);
         given(gameRules.maxEras()).willReturn(MAX_ERAS);
+        given(gameRules.maxCascadedParadoxes()).willReturn(3);
         given(gameRules.stabilizationWinnerFactions()).willReturn(Set.of(Faction.PROPHETS, Faction.WEAVERS));
         givenNoObjectivesMet(MAX_ERAS);
         // eraCounter == maxEras so endEra() sets ENDED_BY_STABILIZATION
@@ -443,6 +560,7 @@ class EraSagaAdvancerTest {
         given(eraSagaRepository.findByGameIdWithLock(GAME_ID)).willReturn(Optional.of(state));
         given(gameRules.winScoreThreshold()).willReturn(WIN_THRESHOLD);
         given(gameRules.maxEras()).willReturn(MAX_ERAS);
+        given(gameRules.maxCascadedParadoxes()).willReturn(3);
         given(gameRules.stabilizationWinnerFactions()).willReturn(Set.of(Faction.PROPHETS, Faction.WEAVERS));
         givenNoObjectivesMet(MAX_ERAS);
         var stalledId = UUID.randomUUID();
@@ -528,6 +646,7 @@ class EraSagaAdvancerTest {
         given(eraSagaRepository.findByGameIdWithLock(GAME_ID)).willReturn(Optional.of(state));
         given(gameRules.winScoreThreshold()).willReturn(WIN_THRESHOLD);
         given(gameRules.maxEras()).willReturn(MAX_ERAS);
+        given(gameRules.maxCascadedParadoxes()).willReturn(3);
         givenNoObjectivesMet(1);
         var game = Game.reconstitute(GAME_ID, LOBBY_ID, List.of(), 1, 0, GameStatus.IN_PROGRESS);
         given(gameRepository.findByIdWithLock(GAME_ID)).willReturn(Optional.of(game));
