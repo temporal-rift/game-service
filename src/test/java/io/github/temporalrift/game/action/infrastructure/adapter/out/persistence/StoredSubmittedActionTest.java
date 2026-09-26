@@ -100,6 +100,26 @@ class StoredSubmittedActionTest {
     }
 
     @Test
+    void legacyDecoyWithoutDisguiseRehydratesWithItsOwnCategory() throws Exception {
+        var json = """
+                {
+                  "type": "CARD",
+                  "playerId": "%s",
+                  "cardInstanceId": "%s",
+                  "cardType": "DECOY",
+                  "cardGrade": "I",
+                  "targetEventId": "%s"
+                }
+                """.formatted(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID());
+
+        var action = (SubmittedAction.CardAction)
+                objectMapper.readValue(json, StoredSubmittedAction.class).toDomain();
+
+        assertThat(action.disguiseCategory()).isEqualTo(CardCategory.INFORMATION);
+        assertThat(action.publicCategory()).contains(CardCategory.INFORMATION);
+    }
+
+    @Test
     void nullifyTargetListSurvivesJsonRoundTripAndDomainRehydration() throws Exception {
         var targets = List.of(UUID.randomUUID(), UUID.randomUUID());
         var action = new SubmittedAction.CardAction(
