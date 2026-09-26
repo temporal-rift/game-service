@@ -424,7 +424,7 @@ class PlayCardCommandHandlerTest {
         var event3 = UUID.randomUUID();
         var targets = List.of(event1, event3);
         var command = new PlayCardUseCase.Command(
-                GAME_ID, ERA, ROUND, PLAYER_ID, CARD_INSTANCE_ID, null, targets, null, null, null);
+                GAME_ID, ERA, ROUND, PLAYER_ID, CARD_INSTANCE_ID, null, targets, null, null, null, null);
         given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA, ROUND))
                 .willReturn(Optional.of(round));
         given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(playerState));
@@ -442,7 +442,64 @@ class PlayCardCommandHandlerTest {
         then(round)
                 .should()
                 .submit(eq(new SubmittedAction.CardAction(
-                        PLAYER_ID, CARD_INSTANCE_ID, CardType.SCAN, CardGrade.II, null, targets, null, null, null)));
+                        PLAYER_ID,
+                        CARD_INSTANCE_ID,
+                        CardType.SCAN,
+                        CardGrade.II,
+                        null,
+                        targets,
+                        null,
+                        null,
+                        null,
+                        null)));
+    }
+
+    @Test
+    @DisplayName("handle — Nullify grade II — preserves both validated target players")
+    void handleNullifyGradeTwoPreservesBothTargets() {
+        var firstTarget = UUID.randomUUID();
+        var secondTarget = UUID.randomUUID();
+        var targets = List.of(firstTarget, secondTarget);
+        var command = new PlayCardUseCase.Command(
+                GAME_ID, ERA, ROUND, PLAYER_ID, CARD_INSTANCE_ID, null, null, null, null, null, targets);
+        given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA, ROUND))
+                .willReturn(Optional.of(round));
+        given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(playerState));
+        given(playerState.hand())
+                .willReturn(List.of(new PlayerState.CardInstance(CARD_INSTANCE_ID, CardType.NULLIFY, CardGrade.II)));
+        given(actionTargetValidator.validateCardTargets(GAME_ID, ERA, null, null, null, null))
+                .willReturn(Set.of());
+        given(round.submit(any())).willReturn(false);
+        given(round.id()).willReturn(UUID.randomUUID());
+        given(round.gameId()).willReturn(GAME_ID);
+        given(round.pullEvents()).willReturn(List.of(cardPlayedEvent()));
+
+        handler.handle(command);
+
+        then(gameParticipantValidator).should().requireParticipants(GAME_ID, targets);
+        then(round)
+                .should()
+                .submit(eq(new SubmittedAction.CardAction(
+                        PLAYER_ID,
+                        CARD_INSTANCE_ID,
+                        CardType.NULLIFY,
+                        CardGrade.II,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        targets)));
+    }
+
+    @Test
+    @DisplayName("Command — targetPlayerIds containing a null element — rejects it instead of NPE-ing on copy")
+    void commandRejectsNullElementInTargetPlayerIds() {
+        var targets = Arrays.asList(UUID.randomUUID(), null);
+
+        assertThatExceptionOfType(UnknownActionTargetException.class)
+                .isThrownBy(() -> new PlayCardUseCase.Command(
+                        GAME_ID, ERA, ROUND, PLAYER_ID, CARD_INSTANCE_ID, null, null, null, null, null, targets));
     }
 
     @Test
@@ -452,7 +509,7 @@ class PlayCardCommandHandlerTest {
 
         assertThatExceptionOfType(UnknownActionTargetException.class)
                 .isThrownBy(() -> new PlayCardUseCase.Command(
-                        GAME_ID, ERA, ROUND, PLAYER_ID, CARD_INSTANCE_ID, null, targets, null, null, null));
+                        GAME_ID, ERA, ROUND, PLAYER_ID, CARD_INSTANCE_ID, null, targets, null, null, null, null));
     }
 
     @Test

@@ -198,7 +198,8 @@ class ActionController implements ActionApi {
                 request.getTargetEventIds(),
                 request.getSourceOutcomeId(),
                 request.getTargetOutcomeId(),
-                request.getTargetPlayerId()));
+                request.getTargetPlayerId(),
+                request.getTargetPlayerIds()));
         return new SubmissionResult(
                 result.gameId(), result.eraNumber(), result.roundNumber(), result.playerId(), result.roundClosed());
     }

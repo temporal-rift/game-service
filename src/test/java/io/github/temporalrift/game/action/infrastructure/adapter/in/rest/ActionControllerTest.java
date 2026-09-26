@@ -254,6 +254,48 @@ class ActionControllerTest {
     }
 
     @Test
+    @DisplayName("Given NULLIFY list request, when POST action, then preserves every selected player id")
+    void submitNullifyTargets() throws Exception {
+        var secondTargetId = UUID.randomUUID();
+        given(playCardUseCase.handle(any()))
+                .willReturn(new PlayCardUseCase.Result(GAME_ID, ERA, ROUND, PLAYER_ID, false));
+
+        mockMvc.perform(post(
+                                "/api/v1/games/{gameId}/eras/{eraNumber}/rounds/{roundNumber}/actions",
+                                GAME_ID,
+                                ERA,
+                                ROUND)
+                        .with(auth())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(nullifyJson(secondTargetId)))
+                .andExpect(status().isAccepted());
+
+        var captor = ArgumentCaptor.forClass(PlayCardUseCase.Command.class);
+        org.mockito.BDDMockito.then(playCardUseCase).should().handle(captor.capture());
+        assertThat(captor.getValue().targetEventId()).isNull();
+        assertThat(captor.getValue().targetEventIds()).isNull();
+        assertThat(captor.getValue().targetPlayerId()).isNull();
+        assertThat(captor.getValue().targetPlayerIds()).containsExactly(TARGET_PLAYER_ID, secondTargetId);
+    }
+
+    @Test
+    @DisplayName("Given duplicate NULLIFY target JSON, when POST action, then rejects it before set deserialization")
+    void submitNullifyDuplicateTargets() throws Exception {
+        mockMvc.perform(post(
+                                "/api/v1/games/{gameId}/eras/{eraNumber}/rounds/{roundNumber}/actions",
+                                GAME_ID,
+                                ERA,
+                                ROUND)
+                        .with(auth())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(nullifyJson(TARGET_PLAYER_ID)))
+                .andExpect(status().isUnprocessableContent())
+                .andExpect(jsonPath("$.code").value("422-03"));
+
+        org.mockito.BDDMockito.then(playCardUseCase).shouldHaveNoInteractions();
+    }
+
+    @Test
     @DisplayName("Given SPECIAL request, when POST action, then maps generated enum and returns 202")
     void submitSpecial() throws Exception {
         // given
@@ -795,6 +837,16 @@ class ActionControllerTest {
                   "targetEventIds": ["%s", "%s"]
                 }
                 """.formatted(CARD_INSTANCE_ID, TARGET_EVENT_ID, secondEventId);
+    }
+
+    private static String nullifyJson(UUID secondTargetId) {
+        return """
+                {
+                  "actionType": "CARD",
+                  "cardInstanceId": "%s",
+                  "targetPlayerIds": ["%s", "%s"]
+                }
+                """.formatted(CARD_INSTANCE_ID, TARGET_PLAYER_ID, secondTargetId);
     }
 
     private static String declarationJson() {

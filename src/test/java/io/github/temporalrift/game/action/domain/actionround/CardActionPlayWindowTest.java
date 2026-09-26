@@ -3,6 +3,7 @@ package io.github.temporalrift.game.action.domain.actionround;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
@@ -227,8 +228,23 @@ class CardActionPlayWindowTest {
     void selfTargetingIsRejected() {
         for (var cardType : PLAYER_TARGETING_CARD_TYPES) {
             var playerId = UUID.randomUUID();
-            var action = new SubmittedAction.CardAction(
-                    playerId, UUID.randomUUID(), cardType, CardGrade.I, null, null, null, playerId);
+            SubmittedAction.CardAction action;
+            if (cardType == CardType.NULLIFY) {
+                action = new SubmittedAction.CardAction(
+                        playerId,
+                        UUID.randomUUID(),
+                        cardType,
+                        CardGrade.I,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        List.of(playerId));
+            } else {
+                action = new SubmittedAction.CardAction(
+                        playerId, UUID.randomUUID(), cardType, CardGrade.I, null, null, null, playerId);
+            }
 
             assertThatExceptionOfType(InvalidActionTargetException.class)
                     .isThrownBy(() -> action.validate(1, 1))
@@ -239,14 +255,49 @@ class CardActionPlayWindowTest {
     @Test
     void playerTargetingCardWithAnOpponentTargetValidates() {
         for (var cardType : PLAYER_TARGETING_CARD_TYPES) {
-            var action = new SubmittedAction.CardAction(
-                    UUID.randomUUID(), UUID.randomUUID(), cardType, CardGrade.I, null, null, null, UUID.randomUUID());
+            SubmittedAction.CardAction action;
+            if (cardType == CardType.NULLIFY) {
+                action = new SubmittedAction.CardAction(
+                        UUID.randomUUID(),
+                        UUID.randomUUID(),
+                        cardType,
+                        CardGrade.I,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        List.of(UUID.randomUUID()));
+            } else {
+                action = new SubmittedAction.CardAction(
+                        UUID.randomUUID(),
+                        UUID.randomUUID(),
+                        cardType,
+                        CardGrade.I,
+                        null,
+                        null,
+                        null,
+                        UUID.randomUUID());
+            }
 
             assertThatCode(() -> action.validate(1, 1)).doesNotThrowAnyException();
         }
     }
 
     private SubmittedAction.CardAction cardAction(CardType cardType) {
+        if (cardType == CardType.NULLIFY) {
+            return new SubmittedAction.CardAction(
+                    UUID.randomUUID(),
+                    UUID.randomUUID(),
+                    cardType,
+                    CardGrade.I,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    List.of(UUID.randomUUID()));
+        }
         if (PLAYER_TARGETING_CARD_TYPES.contains(cardType)) {
             return new SubmittedAction.CardAction(
                     UUID.randomUUID(), UUID.randomUUID(), cardType, CardGrade.I, null, null, null, UUID.randomUUID());
@@ -259,6 +310,7 @@ class CardActionPlayWindowTest {
                     CardGrade.I,
                     null,
                     java.util.List.of(UUID.randomUUID()),
+                    null,
                     null,
                     null,
                     null);

@@ -66,6 +66,31 @@ public class InvalidActionTargetException extends RuntimeException {
         return new InvalidActionTargetException(cardType + " cannot target the submitting player");
     }
 
+    public static InvalidActionTargetException cardCannotUsePlayerTargetList(CardType cardType) {
+        return new InvalidActionTargetException(cardType + " cannot carry targetPlayerIds");
+    }
+
+    public static InvalidActionTargetException nullifyRequiresTargetPlayers() {
+        return new InvalidActionTargetException("NULLIFY requires targetPlayerIds");
+    }
+
+    public static InvalidActionTargetException nullifyCannotUseScalarTargets() {
+        return new InvalidActionTargetException("NULLIFY cannot combine targetPlayerIds with scalar target fields");
+    }
+
+    public static InvalidActionTargetException nullifyRequiresDistinctTargets() {
+        return new InvalidActionTargetException("NULLIFY requires distinct targetPlayerIds");
+    }
+
+    public static InvalidActionTargetException nullifyRequiresTargetCount(CardGrade grade, int count) {
+        return new InvalidActionTargetException(
+                "NULLIFY grade " + grade + " requires exactly " + count + " targetPlayerIds");
+    }
+
+    public static InvalidActionTargetException nullifyUnsupportedGrade(CardGrade grade) {
+        return new InvalidActionTargetException("NULLIFY grade " + grade + " is not supported");
+    }
+
     public static InvalidActionTargetException scanRequiresTargetEvents() {
         return new InvalidActionTargetException("SCAN requires targetEventIds");
     }

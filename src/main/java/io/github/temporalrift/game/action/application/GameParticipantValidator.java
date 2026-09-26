@@ -1,5 +1,6 @@
 package io.github.temporalrift.game.action.application;
 
+import java.util.List;
 import java.util.UUID;
 
 import org.springframework.stereotype.Component;
@@ -29,5 +30,12 @@ public class GameParticipantValidator {
         playerStateRepository
                 .findByGameIdAndPlayerId(gameId, targetPlayerId)
                 .orElseThrow(() -> new PlayerStateNotFoundException(gameId, targetPlayerId));
+    }
+
+    public void requireParticipants(UUID gameId, List<UUID> targetPlayerIds) {
+        if (targetPlayerIds == null) {
+            return;
+        }
+        targetPlayerIds.forEach(targetPlayerId -> requireParticipant(gameId, targetPlayerId));
     }
 }

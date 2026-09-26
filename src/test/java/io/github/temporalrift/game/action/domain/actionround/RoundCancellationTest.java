@@ -23,8 +23,61 @@ class RoundCancellationTest {
         assertThat(cancelledPlayerIds).containsExactlyInAnyOrder(firstPlayerId, secondPlayerId);
     }
 
+    @Test
+    void gradeTwoNullify_cancelsBothNamedPlayers() {
+        var nullifyingPlayerId = UUID.randomUUID();
+        var firstTargetId = UUID.randomUUID();
+        var secondTargetId = UUID.randomUUID();
+
+        var cancelledPlayerIds = RoundCancellation.cancelledPlayerIds(List.of(
+                nullify(nullifyingPlayerId, CardGrade.II, List.of(firstTargetId, secondTargetId)),
+                push(firstTargetId),
+                push(secondTargetId)));
+
+        assertThat(cancelledPlayerIds).containsExactlyInAnyOrder(firstTargetId, secondTargetId);
+    }
+
+    @Test
+    void gradeTwoNullify_namingANonSubmitter_cancelsOnlyTheSubmitter() {
+        var nullifyingPlayerId = UUID.randomUUID();
+        var targetId = UUID.randomUUID();
+
+        var cancelledPlayerIds = RoundCancellation.cancelledPlayerIds(List.of(
+                nullify(nullifyingPlayerId, CardGrade.II, List.of(targetId, UUID.randomUUID())), push(targetId)));
+
+        assertThat(cancelledPlayerIds).containsExactly(targetId);
+    }
+
+    @Test
+    void gradeOneNullify_cancelsItsSingleNamedPlayer() {
+        var nullifyingPlayerId = UUID.randomUUID();
+        var targetId = UUID.randomUUID();
+
+        var cancelledPlayerIds = RoundCancellation.cancelledPlayerIds(
+                List.of(nullify(nullifyingPlayerId, CardGrade.I, List.of(targetId)), push(targetId)));
+
+        assertThat(cancelledPlayerIds).containsExactly(targetId);
+    }
+
     private static SubmittedAction.CardAction nullify(UUID playerId, UUID targetPlayerId) {
         return new SubmittedAction.CardAction(
                 playerId, UUID.randomUUID(), CardType.NULLIFY, CardGrade.I, null, null, null, targetPlayerId);
+    }
+
+    private static SubmittedAction.CardAction nullify(UUID playerId, CardGrade grade, List<UUID> targetPlayerIds) {
+        return new SubmittedAction.CardAction(
+                playerId, UUID.randomUUID(), CardType.NULLIFY, grade, null, null, null, null, null, targetPlayerIds);
+    }
+
+    private static SubmittedAction.CardAction push(UUID playerId) {
+        return new SubmittedAction.CardAction(
+                playerId,
+                UUID.randomUUID(),
+                CardType.PUSH,
+                CardGrade.I,
+                UUID.randomUUID(),
+                null,
+                UUID.randomUUID(),
+                null);
     }
 }

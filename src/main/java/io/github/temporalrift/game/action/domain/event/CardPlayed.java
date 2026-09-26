@@ -18,11 +18,13 @@ public record CardPlayed(
         List<UUID> targetEventIds,
         UUID sourceOutcomeId,
         UUID targetOutcomeId,
-        UUID targetPlayerId)
+        UUID targetPlayerId,
+        List<UUID> targetPlayerIds)
         implements ActionEventPayload {
 
     public CardPlayed {
         targetEventIds = targetEventIds == null ? null : List.copyOf(targetEventIds);
+        targetPlayerIds = targetPlayerIds == null ? null : List.copyOf(targetPlayerIds);
     }
 
     public CardPlayed(
@@ -49,7 +51,8 @@ public record CardPlayed(
                 null,
                 sourceOutcomeId,
                 targetOutcomeId,
-                targetPlayerId);
+                targetPlayerId,
+                null);
     }
 
     public CardPlayed(
@@ -75,6 +78,7 @@ public record CardPlayed(
                 null,
                 sourceOutcomeId,
                 targetOutcomeId,
-                targetPlayerId);
+                targetPlayerId,
+                null);
     }
 }

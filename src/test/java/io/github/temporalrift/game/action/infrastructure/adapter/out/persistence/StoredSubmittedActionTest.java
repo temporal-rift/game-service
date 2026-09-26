@@ -31,7 +31,16 @@ class StoredSubmittedActionTest {
     void scanTargetListSurvivesJsonRoundTripAndDomainRehydration() throws Exception {
         var eventIds = List.of(UUID.randomUUID(), UUID.randomUUID());
         var action = new SubmittedAction.CardAction(
-                UUID.randomUUID(), UUID.randomUUID(), CardType.SCAN, CardGrade.II, null, eventIds, null, null, null);
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                CardType.SCAN,
+                CardGrade.II,
+                null,
+                eventIds,
+                null,
+                null,
+                null,
+                null);
 
         var stored = StoredSubmittedAction.fromDomain(action);
         var json = objectMapper.writeValueAsString(stored);
@@ -44,6 +53,7 @@ class StoredSubmittedActionTest {
 
     @Test
     void legacyJsonWithoutTargetEventIdsRehydratesWithNullList() throws Exception {
+
         var playerId = UUID.randomUUID();
         var cardId = UUID.randomUUID();
         var eventId = UUID.randomUUID();
@@ -63,5 +73,51 @@ class StoredSubmittedActionTest {
 
         assertThat(action.targetEventId()).isEqualTo(eventId);
         assertThat(action.targetEventIds()).isNull();
+    }
+
+    @Test
+    void nullifyTargetListSurvivesJsonRoundTripAndDomainRehydration() throws Exception {
+        var targets = List.of(UUID.randomUUID(), UUID.randomUUID());
+        var action = new SubmittedAction.CardAction(
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                CardType.NULLIFY,
+                CardGrade.II,
+                null,
+                null,
+                null,
+                null,
+                null,
+                targets);
+
+        var stored = StoredSubmittedAction.fromDomain(action);
+        var json = objectMapper.writeValueAsString(stored);
+        var rehydrated =
+                objectMapper.readValue(json, StoredSubmittedAction.class).toDomain();
+
+        assertThat(rehydrated).isEqualTo(action);
+        assertThat(json).contains("targetPlayerIds");
+    }
+
+    @Test
+    void legacyScalarNullifyRehydratesToSingleEntryList() throws Exception {
+        var playerId = UUID.randomUUID();
+        var cardId = UUID.randomUUID();
+        var targetId = UUID.randomUUID();
+        var json = """
+                {
+                  "type": "CARD",
+                  "playerId": "%s",
+                  "cardInstanceId": "%s",
+                  "cardType": "NULLIFY",
+                  "cardGrade": "I",
+                  "targetPlayerId": "%s"
+                }
+                """.formatted(playerId, cardId, targetId);
+
+        var action = (SubmittedAction.CardAction)
+                objectMapper.readValue(json, StoredSubmittedAction.class).toDomain();
+
+        assertThat(action.targetPlayerIds()).containsExactly(targetId);
     }
 }
