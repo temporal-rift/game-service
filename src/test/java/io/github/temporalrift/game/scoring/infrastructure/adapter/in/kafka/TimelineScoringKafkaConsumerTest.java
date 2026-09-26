@@ -86,7 +86,7 @@ class TimelineScoringKafkaConsumerTest {
     @Test
     @DisplayName("unrelated event type — ignored without claiming")
     void handle_wrongEventType_ignored() {
-        consumer.handle(message("ResolutionWarning", "{}"));
+        consumer.handle(message("ResolutionFailed", "{}"));
 
         then(processedEventRepository).should(never()).tryMarkProcessed(any(), any());
         then(outcomeInboxRepository).should(never()).save(any());
