@@ -9,6 +9,7 @@ import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
 
+import io.github.temporalrift.game.shared.domain.model.CardCategory;
 import io.github.temporalrift.game.shared.domain.model.CardGrade;
 import io.github.temporalrift.game.shared.domain.model.CardType;
 
@@ -137,11 +138,24 @@ class CardActionPlayWindowTest {
 
     @Test
     void nonStallCardsAreUnaffectedByFinalEra() {
-        for (var cardType : new CardType[] {CardType.PUSH, CardType.SUPPRESS, CardType.DECOY}) {
+        for (var cardType : new CardType[] {CardType.PUSH, CardType.SUPPRESS}) {
             var action = cardAction(cardType);
 
             assertThatCode(() -> action.validate(5, 1, 5)).doesNotThrowAnyException();
         }
+        var decoy = new SubmittedAction.CardAction(
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                CardType.DECOY,
+                CardGrade.I,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                CardCategory.DISRUPTION);
+        assertThatCode(() -> decoy.validate(5, 1, 5)).doesNotThrowAnyException();
     }
 
     @Test
@@ -204,7 +218,7 @@ class CardActionPlayWindowTest {
 
     @Test
     void eventTargetingCardWithoutTargetEventIsRejected() {
-        for (var cardType : new CardType[] {CardType.PUSH, CardType.SUPPRESS, CardType.SCAN, CardType.DECOY}) {
+        for (var cardType : new CardType[] {CardType.PUSH, CardType.SUPPRESS, CardType.SCAN}) {
             var action = new SubmittedAction.CardAction(
                     UUID.randomUUID(), UUID.randomUUID(), cardType, CardGrade.I, null, null, null, null);
 
@@ -240,7 +254,8 @@ class CardActionPlayWindowTest {
                         null,
                         null,
                         null,
-                        List.of(playerId));
+                        List.of(playerId),
+                        null);
             } else {
                 action = new SubmittedAction.CardAction(
                         playerId, UUID.randomUUID(), cardType, CardGrade.I, null, null, null, playerId);
@@ -267,7 +282,8 @@ class CardActionPlayWindowTest {
                         null,
                         null,
                         null,
-                        List.of(UUID.randomUUID()));
+                        List.of(UUID.randomUUID()),
+                        null);
             } else {
                 action = new SubmittedAction.CardAction(
                         UUID.randomUUID(),
@@ -296,7 +312,8 @@ class CardActionPlayWindowTest {
                     null,
                     null,
                     null,
-                    List.of(UUID.randomUUID()));
+                    List.of(UUID.randomUUID()),
+                    null);
         }
         if (PLAYER_TARGETING_CARD_TYPES.contains(cardType)) {
             return new SubmittedAction.CardAction(
@@ -310,6 +327,7 @@ class CardActionPlayWindowTest {
                     CardGrade.I,
                     null,
                     java.util.List.of(UUID.randomUUID()),
+                    null,
                     null,
                     null,
                     null,

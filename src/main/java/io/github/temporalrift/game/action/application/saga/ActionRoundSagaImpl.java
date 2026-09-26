@@ -246,13 +246,8 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
         // projection-style public view of the round, not part of the aggregate's invariant changes.
         var summaries = new ArrayList<ActionSummary>();
         for (var action : round.submittedActions()) {
-            switch (action) {
-                case SubmittedAction.CardAction card ->
-                    summaries.add(
-                            new ActionSummary(card.playerId(), card.cardType().name(), "CARD", false));
-                case SubmittedAction.SpecialActionSubmission special ->
-                    summaries.add(new ActionSummary(special.playerId(), "SPECIAL", "SPECIAL", false));
-            }
+            summaries.add(
+                    new ActionSummary(action.playerId(), action.publicCategory().orElse(null), action.family(), false));
         }
         for (var skippedId : skippedPlayerIds) {
             summaries.add(new ActionSummary(skippedId, null, null, true));

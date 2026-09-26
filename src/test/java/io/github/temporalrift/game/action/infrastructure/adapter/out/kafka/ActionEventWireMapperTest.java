@@ -1,6 +1,7 @@
 package io.github.temporalrift.game.action.infrastructure.adapter.out.kafka;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.groups.Tuple.tuple;
 
 import java.util.List;
 import java.util.UUID;
@@ -8,13 +9,17 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.mapstruct.factory.Mappers;
 
+import io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract;
+import io.github.temporalrift.game.action.domain.actionround.ActionFamily;
 import io.github.temporalrift.game.action.domain.event.CardPlayed;
 import io.github.temporalrift.game.action.domain.event.ExposeBehaviorChanged;
 import io.github.temporalrift.game.action.domain.event.HandCardIntercepted;
 import io.github.temporalrift.game.action.domain.event.InfluenceTraced;
 import io.github.temporalrift.game.action.domain.event.ParadoxResolutionCardPlayed;
 import io.github.temporalrift.game.action.domain.event.PlayerJammed;
+import io.github.temporalrift.game.action.domain.event.RoundSummaryPublished;
 import io.github.temporalrift.game.action.domain.event.SpecialActionPlayed;
+import io.github.temporalrift.game.shared.domain.model.CardCategory;
 import io.github.temporalrift.game.shared.domain.model.CardGrade;
 import io.github.temporalrift.game.shared.domain.model.CardType;
 import io.github.temporalrift.game.shared.domain.model.Faction;
@@ -78,6 +83,7 @@ class ActionEventWireMapperTest {
                 null,
                 null,
                 null,
+                null,
                 null);
 
         var wire = mapper.toWire(domain);
@@ -103,12 +109,68 @@ class ActionEventWireMapperTest {
                 null,
                 null,
                 null,
-                targets);
+                targets,
+                null);
 
         var wire = mapper.toWire(domain);
 
         assertThat(wire.targetPlayerId()).isNull();
         assertThat(wire.targetPlayerIds()).containsExactlyElementsOf(targets);
+    }
+
+    @Test
+    void cardPlayedMapsDecoyDisguise() {
+        var domain = new CardPlayed(
+                UUID.randomUUID(),
+                1,
+                1,
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                CardType.DECOY,
+                CardGrade.I,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                CardCategory.DISRUPTION);
+
+        var wire = mapper.toWire(domain);
+
+        assertThat(wire.disguiseCategory()).isEqualTo(GeneratedChannelContract.CardCategory.DISRUPTION);
+        assertThat(wire.targetEventId()).isNull();
+    }
+
+    @Test
+    void roundSummaryMapsTypedCategoryAndFamily() {
+        var card = UUID.randomUUID();
+        var special = UUID.randomUUID();
+        var skipped = UUID.randomUUID();
+        var domain = new RoundSummaryPublished(
+                UUID.randomUUID(),
+                1,
+                2,
+                List.of(
+                        new RoundSummaryPublished.ActionSummary(
+                                card, CardCategory.INFORMATION, ActionFamily.CARD, false),
+                        new RoundSummaryPublished.ActionSummary(special, null, ActionFamily.SPECIAL, false),
+                        new RoundSummaryPublished.ActionSummary(skipped, null, null, true)));
+
+        var wire = mapper.toWire(domain);
+
+        assertThat(wire.actionSummaries())
+                .extracting(
+                        GeneratedChannelContract.ActionSummary::playerId,
+                        GeneratedChannelContract.ActionSummary::actionCategory,
+                        GeneratedChannelContract.ActionSummary::actionFamily)
+                .containsExactly(
+                        tuple(
+                                card,
+                                GeneratedChannelContract.CardCategory.INFORMATION,
+                                GeneratedChannelContract.ActionFamily.CARD),
+                        tuple(special, null, GeneratedChannelContract.ActionFamily.SPECIAL),
+                        tuple(skipped, null, null));
     }
 
     @Test

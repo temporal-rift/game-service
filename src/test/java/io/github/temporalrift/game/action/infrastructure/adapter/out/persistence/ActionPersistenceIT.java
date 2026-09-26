@@ -237,7 +237,17 @@ class ActionPersistenceIT {
                 roundId, new ActionRoundConfig(gameId, 1, 1, 45), List.of(submitter, firstTarget, secondTarget));
         round.pullEvents();
         round.submit(new SubmittedAction.CardAction(
-                submitter, UUID.randomUUID(), CardType.NULLIFY, CardGrade.II, null, null, null, null, null, targets));
+                submitter,
+                UUID.randomUUID(),
+                CardType.NULLIFY,
+                CardGrade.II,
+                null,
+                null,
+                null,
+                null,
+                null,
+                targets,
+                null));
         actionRoundRepository.save(round);
 
         var loaded = actionRoundRepository.findById(roundId);

@@ -37,7 +37,17 @@ class ScanCardActionTest {
     void requiresListModeAndRejectsMixedScalarCoordinates() {
         var missing = scan(CardGrade.I, null);
         var mixed = new SubmittedAction.CardAction(
-                PLAYER_ID, CARD_ID, CardType.SCAN, CardGrade.I, EVENT_1, List.of(EVENT_1), null, null, null, null);
+                PLAYER_ID,
+                CARD_ID,
+                CardType.SCAN,
+                CardGrade.I,
+                EVENT_1,
+                List.of(EVENT_1),
+                null,
+                null,
+                null,
+                null,
+                null);
 
         assertThatExceptionOfType(InvalidActionTargetException.class)
                 .isThrownBy(() -> missing.validate(1, 1))
@@ -105,7 +115,7 @@ class ScanCardActionTest {
     @Test
     void nonScanCardsRejectListTargetMode() {
         var push = new SubmittedAction.CardAction(
-                PLAYER_ID, CARD_ID, CardType.PUSH, CardGrade.I, null, List.of(EVENT_1), null, null, null, null);
+                PLAYER_ID, CARD_ID, CardType.PUSH, CardGrade.I, null, List.of(EVENT_1), null, null, null, null, null);
 
         assertThatExceptionOfType(InvalidActionTargetException.class).isThrownBy(() -> push.validate(1, 1));
     }
@@ -117,7 +127,7 @@ class ScanCardActionTest {
 
     private static SubmittedAction.CardAction scan(CardGrade grade, List<UUID> targets) {
         return new SubmittedAction.CardAction(
-                PLAYER_ID, CARD_ID, CardType.SCAN, grade, null, targets, null, null, null, null);
+                PLAYER_ID, CARD_ID, CardType.SCAN, grade, null, targets, null, null, null, null, null);
     }
 
     private static SubmittedAction.CardAction actionWithEvents(UUID... targets) {

@@ -72,7 +72,8 @@ class ActionRoundTest {
                 null,
                 null,
                 null,
-                List.of(targetPlayerId));
+                List.of(targetPlayerId),
+                null);
     }
 
     @Test

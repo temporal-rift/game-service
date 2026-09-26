@@ -9,6 +9,7 @@ import io.github.temporalrift.game.action.domain.event.CardPlayed;
 import io.github.temporalrift.game.action.domain.event.SpecialActionPlayed;
 import io.github.temporalrift.game.shared.domain.event.ForesightDeclared;
 import io.github.temporalrift.game.shared.domain.event.OutcomeAnnihilated;
+import io.github.temporalrift.game.shared.domain.model.CardCategory;
 import io.github.temporalrift.game.shared.domain.model.CardGrade;
 import io.github.temporalrift.game.shared.domain.model.CardType;
 import io.github.temporalrift.game.shared.domain.model.Faction;
@@ -62,6 +63,12 @@ public sealed interface SubmittedAction permits SubmittedAction.CardAction, Subm
      */
     Optional<Object> scoringFact(UUID gameId, int eraNumber);
 
+    /** The family every other player sees for this submission in the public round summary. */
+    ActionFamily family();
+
+    /** The card category every other player sees for this submission; empty for faction specials. */
+    Optional<CardCategory> publicCategory();
+
     record CardAction(
             UUID playerId,
             UUID cardInstanceId,
@@ -72,7 +79,8 @@ public sealed interface SubmittedAction permits SubmittedAction.CardAction, Subm
             UUID sourceOutcomeId,
             UUID targetOutcomeId,
             UUID targetPlayerId,
-            List<UUID> targetPlayerIds)
+            List<UUID> targetPlayerIds,
+            CardCategory disguiseCategory)
             implements SubmittedAction {
 
         /** The only card types whose resolution (timeline-service's {@code applyShift}) needs two outcomes. */
@@ -110,6 +118,7 @@ public sealed interface SubmittedAction permits SubmittedAction.CardAction, Subm
                     sourceOutcomeId,
                     targetOutcomeId,
                     targetPlayerId,
+                    null,
                     null);
         }
 
@@ -130,6 +139,7 @@ public sealed interface SubmittedAction permits SubmittedAction.CardAction, Subm
                     sourceOutcomeId,
                     targetOutcomeId,
                     null,
+                    null,
                     null);
         }
 
@@ -149,7 +159,12 @@ public sealed interface SubmittedAction permits SubmittedAction.CardAction, Subm
             if (ROUND_THREE_INELIGIBLE_CARD_TYPES.contains(cardType) && roundNumber == 3) {
                 throw new CardNotEligibleForRoundException(cardType, eraNumber, roundNumber);
             }
-            if (cardType == CardType.SCAN) {
+            if (cardType != CardType.DECOY && disguiseCategory != null) {
+                throw InvalidActionTargetException.cardCannotDisguise(cardType);
+            }
+            if (cardType == CardType.DECOY) {
+                validateDecoy();
+            } else if (cardType == CardType.SCAN) {
                 validateScanTargetMode();
             } else if (cardType == CardType.NULLIFY) {
                 validateNullifyTargetMode();
@@ -187,6 +202,20 @@ public sealed interface SubmittedAction permits SubmittedAction.CardAction, Subm
             }
             if (targetPlayerId.equals(playerId)) {
                 throw InvalidActionTargetException.cardCannotTargetSelf(cardType);
+            }
+        }
+
+        private void validateDecoy() {
+            if (targetEventId != null
+                    || targetEventIds != null
+                    || sourceOutcomeId != null
+                    || targetOutcomeId != null
+                    || targetPlayerId != null
+                    || targetPlayerIds != null) {
+                throw InvalidActionTargetException.decoyCannotTarget();
+            }
+            if (disguiseCategory == null) {
+                throw InvalidActionTargetException.decoyRequiresDisguise();
             }
         }
 
@@ -302,12 +331,23 @@ public sealed interface SubmittedAction permits SubmittedAction.CardAction, Subm
                     sourceOutcomeId,
                     targetOutcomeId,
                     targetPlayerId,
-                    targetPlayerIds);
+                    targetPlayerIds,
+                    disguiseCategory);
         }
 
         @Override
         public Optional<Object> scoringFact(UUID gameId, int eraNumber) {
             return Optional.empty();
+        }
+
+        @Override
+        public ActionFamily family() {
+            return ActionFamily.CARD;
+        }
+
+        @Override
+        public Optional<CardCategory> publicCategory() {
+            return Optional.of(cardType == CardType.DECOY ? disguiseCategory : cardType.getCategory());
         }
     }
 
@@ -415,6 +455,16 @@ public sealed interface SubmittedAction permits SubmittedAction.CardAction, Subm
                     Optional.of(new OutcomeAnnihilated(gameId, eraNumber, targetEventId, targetOutcomeId, playerId));
                 default -> Optional.empty();
             };
+        }
+
+        @Override
+        public ActionFamily family() {
+            return ActionFamily.SPECIAL;
+        }
+
+        @Override
+        public Optional<CardCategory> publicCategory() {
+            return Optional.empty();
         }
     }
 }

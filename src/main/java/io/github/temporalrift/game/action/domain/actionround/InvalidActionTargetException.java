@@ -70,6 +70,18 @@ public class InvalidActionTargetException extends RuntimeException {
         return new InvalidActionTargetException(cardType + " cannot carry targetPlayerIds");
     }
 
+    public static InvalidActionTargetException decoyRequiresDisguise() {
+        return new InvalidActionTargetException("DECOY requires a disguiseCategory");
+    }
+
+    public static InvalidActionTargetException decoyCannotTarget() {
+        return new InvalidActionTargetException("DECOY cannot carry any target");
+    }
+
+    public static InvalidActionTargetException cardCannotDisguise(CardType cardType) {
+        return new InvalidActionTargetException(cardType + " cannot carry a disguiseCategory");
+    }
+
     public static InvalidActionTargetException nullifyRequiresTargetPlayers() {
         return new InvalidActionTargetException("NULLIFY requires targetPlayerIds");
     }

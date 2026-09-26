@@ -5,6 +5,7 @@ import java.util.Objects;
 import java.util.UUID;
 
 import io.github.temporalrift.game.action.domain.actionround.UnknownActionTargetException;
+import io.github.temporalrift.game.shared.domain.model.CardCategory;
 
 /**
  * Accepts a player's card submission for an open action round.
@@ -34,7 +35,8 @@ public interface PlayCardUseCase {
             UUID sourceOutcomeId,
             UUID targetOutcomeId,
             UUID targetPlayerId,
-            List<UUID> targetPlayerIds) {
+            List<UUID> targetPlayerIds,
+            CardCategory disguiseCategory) {
 
         public Command {
             if (targetEventIds != null && targetEventIds.stream().anyMatch(Objects::isNull)) {
@@ -68,6 +70,7 @@ public interface PlayCardUseCase {
                     sourceOutcomeId,
                     targetOutcomeId,
                     targetPlayerId,
+                    null,
                     null);
         }
     }

@@ -72,7 +72,8 @@ class NullifyCardActionTest {
                 null,
                 null,
                 null,
-                List.of(TARGET_1, TARGET_2));
+                List.of(TARGET_1, TARGET_2),
+                null);
         var outcomeTarget = new SubmittedAction.CardAction(
                 PLAYER_ID,
                 CARD_ID,
@@ -83,7 +84,8 @@ class NullifyCardActionTest {
                 TARGET_1,
                 TARGET_2,
                 null,
-                List.of(TARGET_1, TARGET_2));
+                List.of(TARGET_1, TARGET_2),
+                null);
 
         assertThatExceptionOfType(InvalidActionTargetException.class)
                 .isThrownBy(() -> scalarPlayer.validate(1, 1))
@@ -99,7 +101,7 @@ class NullifyCardActionTest {
     @Test
     void otherCardsRejectThePlayerTargetList() {
         var push = new SubmittedAction.CardAction(
-                PLAYER_ID, CARD_ID, CardType.PUSH, CardGrade.I, null, null, null, null, null, List.of(TARGET_1));
+                PLAYER_ID, CARD_ID, CardType.PUSH, CardGrade.I, null, null, null, null, null, List.of(TARGET_1), null);
         var redirect = new SubmittedAction.CardAction(
                 PLAYER_ID,
                 CARD_ID,
@@ -110,7 +112,8 @@ class NullifyCardActionTest {
                 null,
                 null,
                 TARGET_1,
-                List.of(TARGET_1));
+                List.of(TARGET_1),
+                null);
 
         assertThatExceptionOfType(InvalidActionTargetException.class)
                 .isThrownBy(() -> push.validate(1, 1))
@@ -141,6 +144,6 @@ class NullifyCardActionTest {
 
     private static SubmittedAction.CardAction nullify(CardGrade grade, List<UUID> targets) {
         return new SubmittedAction.CardAction(
-                PLAYER_ID, CARD_ID, CardType.NULLIFY, grade, null, null, null, null, null, targets);
+                PLAYER_ID, CARD_ID, CardType.NULLIFY, grade, null, null, null, null, null, targets, null);
     }
 }
