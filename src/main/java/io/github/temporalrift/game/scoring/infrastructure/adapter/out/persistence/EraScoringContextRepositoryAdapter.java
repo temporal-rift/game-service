@@ -2,6 +2,7 @@ package io.github.temporalrift.game.scoring.infrastructure.adapter.out.persisten
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -99,7 +100,8 @@ class EraScoringContextRepositoryAdapter implements EraScoringContextRepository 
             throw new EraScoringContextNotFoundException(gameId, eraNumber);
         }
 
-        var eventOutcomes = buildEventOutcomeFacts(gameId, eraNumber);
+        var stalledEventIds = stalledTerminalEventIds(gameId, eraNumber);
+        var eventOutcomes = buildEventOutcomeFacts(gameId, eraNumber, stalledEventIds);
 
         var unconsumedChainFacts = chainFactJpaRepository.findAllByGameIdAndConsumedFalseWithLock(gameId);
         var chainFacts = unconsumedChainFacts.stream()
@@ -122,7 +124,11 @@ class EraScoringContextRepositoryAdapter implements EraScoringContextRepository 
         unconsumedActionFacts.forEach(entity -> entity.setConsumed(true));
         actionFactJpaRepository.saveAll(unconsumedActionFacts);
 
+        // A stalled event carries into the next era without a winner and its erasures are cleared
+        // on carry, so annihilations on a STALLED terminal score nothing and contribute nothing to the
+        // fewer-outcomes rule. Filtered here so the evaluator only ever sees scorable facts.
         var annihilationFacts = annihilatedOutcomeJpaRepository.findAllByGameIdAndEraNumber(gameId, eraNumber).stream()
+                .filter(entity -> !stalledEventIds.contains(entity.getEventId()))
                 .map(entity -> new AnnihilationFact(entity.getEventId(), entity.getOutcomeId(), entity.getPlayerId()))
                 .toList();
 
@@ -168,7 +174,19 @@ class EraScoringContextRepositoryAdapter implements EraScoringContextRepository 
                 paradoxCascadeFacts);
     }
 
-    private List<EventOutcomeFact> buildEventOutcomeFacts(UUID gameId, int eraNumber) {
+    private Set<UUID> stalledTerminalEventIds(UUID gameId, int eraNumber) {
+        return resolutionBarrierJpaRepository
+                .findByGameIdAndEraNumber(gameId, eraNumber)
+                .map(ScoringTimelineResolutionBarrierJpaEntity::payload)
+                .map(EraResolutionCompleted::terminalResolutions)
+                .orElse(List.of())
+                .stream()
+                .filter(resolution -> resolution.terminalState() == EraResolutionCompleted.TerminalState.STALLED)
+                .map(EraResolutionCompleted.TerminalResolution::eventId)
+                .collect(Collectors.toUnmodifiableSet());
+    }
+
+    private List<EventOutcomeFact> buildEventOutcomeFacts(UUID gameId, int eraNumber, Set<UUID> stalledEventIds) {
         var baselines = eventOutcomeJpaRepository.findAllByGameIdAndEraNumber(gameId, eraNumber);
         if (baselines.isEmpty()) {
             return List.of();
@@ -176,6 +194,7 @@ class EraScoringContextRepositoryAdapter implements EraScoringContextRepository 
 
         Map<UUID, Long> annihilatedCountsByEvent =
                 annihilatedOutcomeJpaRepository.findAllByGameIdAndEraNumber(gameId, eraNumber).stream()
+                        .filter(entity -> !stalledEventIds.contains(entity.getEventId()))
                         .collect(Collectors.groupingBy(
                                 ScoringContextAnnihilatedOutcomeJpaEntity::getEventId, Collectors.counting()));
 

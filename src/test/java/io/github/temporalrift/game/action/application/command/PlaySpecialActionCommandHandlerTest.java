@@ -100,6 +100,9 @@ class PlaySpecialActionCommandHandlerTest {
     @Mock
     GameParticipantValidator gameParticipantValidator;
 
+    @Mock
+    io.github.temporalrift.game.action.application.StalledEventTargetLock stalledEventTargetLock;
+
     @Spy
     Clock clock = Clock.systemUTC();
 
@@ -146,6 +149,42 @@ class PlaySpecialActionCommandHandlerTest {
         assertThat(result.roundNumber()).isEqualTo(ROUND);
         assertThat(result.playerId()).isEqualTo(PLAYER_ID);
         assertThat(result.roundClosed()).isFalse();
+    }
+
+    @Test
+    @DisplayName("handle — stalled event target — rejects without spending usage or recording a submission")
+    void handleStalledEventTargetIsRejectedWithoutSpending() {
+        var targetEventId = UUID.randomUUID();
+        var command = new PlaySpecialActionUseCase.Command(
+                GAME_ID,
+                ERA,
+                2,
+                PLAYER_ID,
+                SpecialAction.ANNIHILATE,
+                null,
+                null,
+                targetEventId,
+                UUID.randomUUID(),
+                null);
+        given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA, 2))
+                .willReturn(Optional.of(round));
+        given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(playerState));
+        given(playerState.faction()).willReturn(Faction.ERASERS);
+        given(playerState.isJammed()).willReturn(false);
+        willThrow(io.github.temporalrift.game.action.domain.actionround.InvalidActionTargetException.stalledEventTarget(
+                        targetEventId))
+                .given(stalledEventTargetLock)
+                .requireEventNotStalled(GAME_ID, ERA, 2, targetEventId);
+
+        assertThatExceptionOfType(
+                        io.github.temporalrift.game.action.domain.actionround.InvalidActionTargetException.class)
+                .isThrownBy(() -> handler.handle(command))
+                .withMessageContaining(targetEventId.toString());
+
+        then(round).should(never()).submit(any());
+        then(actionRoundRepository).should(never()).save(any());
+        then(specialActionEraUsageRepository).shouldHaveNoInteractions();
+        then(actionEventPublisher).shouldHaveNoInteractions();
     }
 
     @Test

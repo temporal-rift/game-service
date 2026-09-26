@@ -9,6 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 import io.github.temporalrift.game.action.application.ActionRoundEventPublication;
 import io.github.temporalrift.game.action.application.ActionTargetValidator;
 import io.github.temporalrift.game.action.application.GameParticipantValidator;
+import io.github.temporalrift.game.action.application.StalledEventTargetLock;
 import io.github.temporalrift.game.action.application.port.in.PlaySpecialActionUseCase;
 import io.github.temporalrift.game.action.domain.actionround.FactionRequiredException;
 import io.github.temporalrift.game.action.domain.actionround.InvalidSpecialActionException;
@@ -52,6 +53,8 @@ class PlaySpecialActionCommandHandler implements PlaySpecialActionUseCase {
 
     private final GameParticipantValidator gameParticipantValidator;
 
+    private final StalledEventTargetLock stalledEventTargetLock;
+
     private final GameRulesPort gameRules;
 
     private final Clock clock;
@@ -65,6 +68,7 @@ class PlaySpecialActionCommandHandler implements PlaySpecialActionUseCase {
             ActionEventPublisher actionEventPublisher,
             ActionTargetValidator actionTargetValidator,
             GameParticipantValidator gameParticipantValidator,
+            StalledEventTargetLock stalledEventTargetLock,
             GameRulesPort gameRules,
             Clock clock) {
         this.actionRoundRepository = actionRoundRepository;
@@ -75,6 +79,7 @@ class PlaySpecialActionCommandHandler implements PlaySpecialActionUseCase {
         this.actionEventPublisher = actionEventPublisher;
         this.actionTargetValidator = actionTargetValidator;
         this.gameParticipantValidator = gameParticipantValidator;
+        this.stalledEventTargetLock = stalledEventTargetLock;
         this.gameRules = gameRules;
         this.clock = clock;
     }
@@ -107,6 +112,11 @@ class PlaySpecialActionCommandHandler implements PlaySpecialActionUseCase {
         if (!faction.hasSpecialAction(command.specialAction())) {
             throw new InvalidSpecialActionException(faction, command.specialAction());
         }
+        // A stalled event cannot be targeted for the rest of its era. Rejected here, before any
+        // era/game usage claim below, so nothing is spent. Null event targets (CORRUPT, EXPOSE,
+        // OBSCURE, TAPESTRY) return immediately.
+        stalledEventTargetLock.requireEventNotStalled(
+                command.gameId(), command.eraNumber(), command.roundNumber(), command.targetEventId());
         var action = new SubmittedAction.SpecialActionSubmission(
                 command.playerId(),
                 faction,

@@ -1,5 +1,7 @@
 package io.github.temporalrift.game.action.domain.actionround;
 
+import java.util.UUID;
+
 import io.github.temporalrift.game.shared.domain.model.CardGrade;
 import io.github.temporalrift.game.shared.domain.model.CardType;
 import io.github.temporalrift.game.shared.domain.model.SpecialAction;
@@ -131,5 +133,10 @@ public class InvalidActionTargetException extends RuntimeException {
     public static InvalidActionTargetException traceRequiresPrecedingRoundEvent() {
         return new InvalidActionTargetException(
                 "TRACE target event must have been active in the preceding action round");
+    }
+
+    public static InvalidActionTargetException stalledEventTarget(UUID eventId) {
+        return new InvalidActionTargetException(
+                "Action target " + eventId + " is stalled and cannot be targeted for the rest of the era");
     }
 }
