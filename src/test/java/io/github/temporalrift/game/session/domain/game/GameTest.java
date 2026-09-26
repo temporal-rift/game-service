@@ -245,7 +245,7 @@ class GameTest {
     void recordCascadedParadox_gameOver_throws() {
         var game = newGame();
         game.end();
-        assertThatExceptionOfType(GameAlreadyOverException.class).isThrownBy(() -> game.recordCascadedParadox());
+        assertThatExceptionOfType(GameAlreadyOverException.class).isThrownBy(game::recordCascadedParadox);
     }
 
     @Test
