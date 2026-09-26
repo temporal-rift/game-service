@@ -355,6 +355,77 @@ class EraScoringContextRepositoryAdapterTest {
     }
 
     @Test
+    void getRequired_excludesStalledTerminalAnnihilationsFromFactsAndEndingCounts() {
+        var gameId = UUID.randomUUID();
+        var stalledEventId = UUID.randomUUID();
+        var activeEventId = UUID.randomUUID();
+        var eraser = UUID.randomUUID();
+
+        var playerEntity = new ScoringContextPlayerJpaEntity();
+        playerEntity.setId(UUID.randomUUID());
+        playerEntity.setGameId(gameId);
+        playerEntity.setPlayerId(eraser);
+        playerEntity.setFaction(Faction.ERASERS.name());
+        given(playerJpaRepository.findAllByGameId(gameId)).willReturn(List.of(playerEntity));
+
+        var stalledBaseline = new ScoringContextEventOutcomeJpaEntity();
+        stalledBaseline.setId(UUID.randomUUID());
+        stalledBaseline.setGameId(gameId);
+        stalledBaseline.setEraNumber(2);
+        stalledBaseline.setEventId(stalledEventId);
+        stalledBaseline.setStartingOutcomeCount(3);
+        var activeBaseline = new ScoringContextEventOutcomeJpaEntity();
+        activeBaseline.setId(UUID.randomUUID());
+        activeBaseline.setGameId(gameId);
+        activeBaseline.setEraNumber(2);
+        activeBaseline.setEventId(activeEventId);
+        activeBaseline.setStartingOutcomeCount(3);
+        given(eventOutcomeJpaRepository.findAllByGameIdAndEraNumber(gameId, 2))
+                .willReturn(List.of(stalledBaseline, activeBaseline));
+
+        var stalledAnnihilation = new ScoringContextAnnihilatedOutcomeJpaEntity();
+        stalledAnnihilation.setId(UUID.randomUUID());
+        stalledAnnihilation.setGameId(gameId);
+        stalledAnnihilation.setEraNumber(2);
+        stalledAnnihilation.setEventId(stalledEventId);
+        stalledAnnihilation.setOutcomeId(UUID.randomUUID());
+        stalledAnnihilation.setPlayerId(eraser);
+        var activeAnnihilation = new ScoringContextAnnihilatedOutcomeJpaEntity();
+        activeAnnihilation.setId(UUID.randomUUID());
+        activeAnnihilation.setGameId(gameId);
+        activeAnnihilation.setEraNumber(2);
+        activeAnnihilation.setEventId(activeEventId);
+        activeAnnihilation.setOutcomeId(UUID.randomUUID());
+        activeAnnihilation.setPlayerId(eraser);
+        given(annihilatedOutcomeJpaRepository.findAllByGameIdAndEraNumber(gameId, 2))
+                .willReturn(List.of(stalledAnnihilation, activeAnnihilation));
+
+        var barrier = new EraResolutionCompleted(
+                gameId,
+                2,
+                List.of(
+                        new EraResolutionCompleted.TerminalResolution(
+                                stalledEventId, 0, EraResolutionCompleted.TerminalState.STALLED, null),
+                        new EraResolutionCompleted.TerminalResolution(
+                                activeEventId,
+                                1,
+                                EraResolutionCompleted.TerminalState.OUTCOME_APPLIED,
+                                UUID.randomUUID())));
+        given(resolutionBarrierJpaRepository.findByGameIdAndEraNumber(gameId, 2))
+                .willReturn(Optional.of(ScoringTimelineResolutionBarrierJpaEntity.fromDomain(barrier)));
+
+        var context = adapter.getRequired(gameId, 2);
+
+        assertThat(context.annihilationFacts())
+                .extracting(fact -> fact.eventId())
+                .containsExactly(activeEventId);
+        assertThat(context.eventOutcomes())
+                .containsExactlyInAnyOrder(
+                        new EventOutcomeFact(stalledEventId, null, null, 3, 3),
+                        new EventOutcomeFact(activeEventId, null, null, 3, 2));
+    }
+
+    @Test
     void upsertEventOutcomeBaseline_delegatesToAtomicUpsert() {
         var gameId = UUID.randomUUID();
         var eventId = UUID.randomUUID();

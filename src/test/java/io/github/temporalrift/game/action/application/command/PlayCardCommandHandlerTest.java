@@ -79,6 +79,9 @@ class PlayCardCommandHandlerTest {
     GameParticipantValidator gameParticipantValidator;
 
     @Mock
+    io.github.temporalrift.game.action.application.StalledEventTargetLock stalledEventTargetLock;
+
+    @Mock
     io.github.temporalrift.game.shared.domain.port.out.GameRulesPort gameRules;
 
     @Spy
@@ -559,6 +562,58 @@ class PlayCardCommandHandlerTest {
 
         handler.handle(command);
 
+        then(round).should().submit(any(SubmittedAction.CardAction.class));
+    }
+
+    @Test
+    @DisplayName("handle — stalled event target — rejects without consuming the card or recording a submission")
+    void handleStalledEventTargetIsRejectedWithoutConsuming() {
+        var targetEventId = UUID.randomUUID();
+        var command = new PlayCardUseCase.Command(
+                GAME_ID, ERA, 2, PLAYER_ID, CARD_INSTANCE_ID, targetEventId, null, null, null);
+        given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA, 2))
+                .willReturn(Optional.of(round));
+        given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(playerState));
+        given(playerState.hand()).willReturn(List.of(new PlayerState.CardInstance(CARD_INSTANCE_ID, CardType.PUSH)));
+        given(actionTargetValidator.validateCardTargets(GAME_ID, ERA, targetEventId, null, null, null))
+                .willReturn(Set.of(targetEventId));
+        willThrow(InvalidActionTargetException.stalledEventTarget(targetEventId))
+                .given(stalledEventTargetLock)
+                .requireEventNotStalled(GAME_ID, ERA, 2, targetEventId);
+
+        assertThatExceptionOfType(InvalidActionTargetException.class)
+                .isThrownBy(() -> handler.handle(command))
+                .withMessageContaining(targetEventId.toString());
+
+        then(round).should(never()).submit(any());
+        then(playerState).should(never()).removeCard(any());
+        then(actionRoundRepository).should(never()).save(any());
+        then(playerStateRepository).should(never()).save(any());
+        then(actionEventPublisher).shouldHaveNoInteractions();
+    }
+
+    @Test
+    @DisplayName("handle — SCAN — does not consult the stalled-event lock")
+    void handleScanDoesNotConsultStalledLock() {
+        var event1 = UUID.randomUUID();
+        var targets = List.of(event1);
+        var command = new PlayCardUseCase.Command(
+                GAME_ID, ERA, 2, PLAYER_ID, CARD_INSTANCE_ID, null, targets, null, null, null, null, null);
+        given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA, 2))
+                .willReturn(Optional.of(round));
+        given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(playerState));
+        given(playerState.hand())
+                .willReturn(List.of(new PlayerState.CardInstance(CARD_INSTANCE_ID, CardType.SCAN, CardGrade.I)));
+        given(actionTargetValidator.validateCardTargets(GAME_ID, ERA, null, targets, null, null))
+                .willReturn(Set.of(event1));
+        given(round.submit(any())).willReturn(false);
+        given(round.id()).willReturn(UUID.randomUUID());
+        given(round.gameId()).willReturn(GAME_ID);
+        given(round.pullEvents()).willReturn(List.of(cardPlayedEvent()));
+
+        handler.handle(command);
+
+        then(stalledEventTargetLock).shouldHaveNoInteractions();
         then(round).should().submit(any(SubmittedAction.CardAction.class));
     }
 

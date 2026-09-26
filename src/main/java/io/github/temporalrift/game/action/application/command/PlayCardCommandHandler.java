@@ -9,6 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 import io.github.temporalrift.game.action.application.ActionRoundEventPublication;
 import io.github.temporalrift.game.action.application.ActionTargetValidator;
 import io.github.temporalrift.game.action.application.GameParticipantValidator;
+import io.github.temporalrift.game.action.application.StalledEventTargetLock;
 import io.github.temporalrift.game.action.application.port.in.PlayCardUseCase;
 import io.github.temporalrift.game.action.domain.CardNotInHandException;
 import io.github.temporalrift.game.action.domain.actionround.RoundNotFoundException;
@@ -17,6 +18,7 @@ import io.github.temporalrift.game.action.domain.playerstate.PlayerStateNotFound
 import io.github.temporalrift.game.action.domain.port.out.ActionEventPublisher;
 import io.github.temporalrift.game.action.domain.port.out.ActionRoundRepository;
 import io.github.temporalrift.game.action.domain.port.out.PlayerStateRepository;
+import io.github.temporalrift.game.shared.domain.model.CardType;
 import io.github.temporalrift.game.shared.domain.port.out.GameRulesPort;
 
 @Service
@@ -33,6 +35,8 @@ class PlayCardCommandHandler implements PlayCardUseCase {
 
     private final GameParticipantValidator gameParticipantValidator;
 
+    private final StalledEventTargetLock stalledEventTargetLock;
+
     private final GameRulesPort gameRules;
 
     private final Clock clock;
@@ -43,6 +47,7 @@ class PlayCardCommandHandler implements PlayCardUseCase {
             ActionEventPublisher actionEventPublisher,
             ActionTargetValidator actionTargetValidator,
             GameParticipantValidator gameParticipantValidator,
+            StalledEventTargetLock stalledEventTargetLock,
             GameRulesPort gameRules,
             Clock clock) {
         this.actionRoundRepository = actionRoundRepository;
@@ -50,6 +55,7 @@ class PlayCardCommandHandler implements PlayCardUseCase {
         this.actionEventPublisher = actionEventPublisher;
         this.actionTargetValidator = actionTargetValidator;
         this.gameParticipantValidator = gameParticipantValidator;
+        this.stalledEventTargetLock = stalledEventTargetLock;
         this.gameRules = gameRules;
         this.clock = clock;
     }
@@ -90,6 +96,10 @@ class PlayCardCommandHandler implements PlayCardUseCase {
                 command.disguiseCategory());
         action.validateFinalEra(command.eraNumber(), command.roundNumber(), gameRules.maxEras());
         action.validateCurrentEraTargets(currentEraEventIds);
+        if (submittedCard.cardType() != CardType.SCAN) {
+            stalledEventTargetLock.requireEventNotStalled(
+                    command.gameId(), command.eraNumber(), command.roundNumber(), command.targetEventId());
+        }
         actionTargetValidator.validateTraceTargetInPrecedingRound(
                 command.gameId(),
                 command.eraNumber(),
