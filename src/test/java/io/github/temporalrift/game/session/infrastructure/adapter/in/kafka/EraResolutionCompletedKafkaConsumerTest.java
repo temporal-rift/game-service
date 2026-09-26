@@ -2,14 +2,12 @@ package io.github.temporalrift.game.session.infrastructure.adapter.in.kafka;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.never;
 
 import java.nio.charset.StandardCharsets;
-import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -19,10 +17,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.support.MessageBuilder;
 import tools.jackson.databind.json.JsonMapper;
@@ -30,19 +26,14 @@ import tools.jackson.databind.json.JsonMapper;
 import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.AdjustedBandsPublishedPayload;
 import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.EraResolutionCompletedPayload;
 import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.EraTerminalResolution;
-import io.github.temporalrift.game.session.domain.event.TimelineCollapsed;
+import io.github.temporalrift.game.session.application.saga.TimelineCollapsePublisher;
 import io.github.temporalrift.game.session.domain.game.Game;
 import io.github.temporalrift.game.session.domain.game.GameStatus;
-import io.github.temporalrift.game.session.domain.lobby.Lobby;
-import io.github.temporalrift.game.session.domain.lobby.LobbyConfig;
-import io.github.temporalrift.game.session.domain.lobby.LobbyPlayer;
-import io.github.temporalrift.game.session.domain.lobby.LobbyStatus;
+import io.github.temporalrift.game.session.domain.port.out.EraSagaRepository;
 import io.github.temporalrift.game.session.domain.port.out.GameRepository;
-import io.github.temporalrift.game.session.domain.port.out.LobbyRepository;
-import io.github.temporalrift.game.session.domain.port.out.SessionActivistDeclarationRepository;
-import io.github.temporalrift.game.session.domain.port.out.SessionEventPublisher;
 import io.github.temporalrift.game.session.domain.port.out.SessionGameRulesPort;
-import io.github.temporalrift.game.shared.domain.model.Faction;
+import io.github.temporalrift.game.session.domain.saga.EraSagaState;
+import io.github.temporalrift.game.session.domain.saga.EraSagaStatus;
 import io.github.temporalrift.game.shared.domain.port.out.ProcessedEventRepository;
 
 @ExtendWith(MockitoExtension.class)
@@ -61,19 +52,13 @@ class EraResolutionCompletedKafkaConsumerTest {
     ProcessedEventRepository processedEventRepository;
 
     @Mock
+    EraSagaRepository eraSagaRepository;
+
+    @Mock
     GameRepository gameRepository;
 
     @Mock
-    LobbyRepository lobbyRepository;
-
-    @Mock
-    SessionActivistDeclarationRepository declarationRepository;
-
-    @Mock
-    SessionEventPublisher eventPublisher;
-
-    @Mock
-    ApplicationEventPublisher applicationEventPublisher;
+    TimelineCollapsePublisher collapsePublisher;
 
     @Mock
     SessionGameRulesPort gameRules;
@@ -84,15 +69,12 @@ class EraResolutionCompletedKafkaConsumerTest {
     void setUp() {
         consumer = new EraResolutionCompletedKafkaConsumer(
                 processedEventRepository,
+                eraSagaRepository,
                 gameRepository,
-                lobbyRepository,
-                declarationRepository,
-                eventPublisher,
-                applicationEventPublisher,
+                collapsePublisher,
                 gameRules,
                 new TimelineSessionWireMapperImpl(),
-                JSON_MAPPER,
-                Clock.systemUTC());
+                JSON_MAPPER);
     }
 
     @Test
@@ -111,8 +93,7 @@ class EraResolutionCompletedKafkaConsumerTest {
         assertThat(game.pendingCarryOverEvents())
                 .containsExactly(new io.github.temporalrift.game.session.domain.game.PendingCarryOverEvent(
                         cascadedEventId, io.github.temporalrift.game.shared.domain.model.CarryOverState.CASCADED));
-        then(eventPublisher).should(never()).publish(any());
-        then(applicationEventPublisher).should(never()).publishEvent(any());
+        then(collapsePublisher).should(never()).publishCollapse(any(), any(Integer.class), any());
     }
 
     @Test
@@ -140,7 +121,7 @@ class EraResolutionCompletedKafkaConsumerTest {
                                 secondStalledId,
                                 io.github.temporalrift.game.shared.domain.model.CarryOverState.STALLED));
         assertThat(game.cascadedParadoxCounter()).isEqualTo(2);
-        then(eventPublisher).should(never()).publish(any());
+        then(collapsePublisher).should(never()).publishCollapse(any(), any(Integer.class), any());
     }
 
     @Test
@@ -159,65 +140,50 @@ class EraResolutionCompletedKafkaConsumerTest {
                 .containsExactly(new io.github.temporalrift.game.session.domain.game.PendingCarryOverEvent(
                         stalledId, io.github.temporalrift.game.shared.domain.model.CarryOverState.STALLED));
         assertThat(game.cascadedParadoxCounter()).isEqualTo(initialCascadeCount);
-        then(eventPublisher).should(never()).publish(any());
-        then(applicationEventPublisher).should(never()).publishEvent(any());
+        then(collapsePublisher).should(never()).publishCollapse(any(), any(Integer.class), any());
     }
 
     @Test
-    @DisplayName("reveal-ordered cascades choose the entry that crosses the global threshold")
-    void handle_thresholdCrossed_usesRevealOrderedCollapsingEventForActivistWinners() {
+    @DisplayName("threshold crossed while the era awaits scoring — collapse defers to the scoring decision")
+    void handle_thresholdCrossedWhileAwaitingScoring_defersWithoutPublishingOrEnding() {
         var firstCascadedEvent = UUID.randomUUID();
         var collapsingEvent = UUID.randomUUID();
         // The contract requires EventsDrawn order, but this consumer still sorts by revealIndex so
-        // a malformed/reordered transport list cannot award collapse winners for the wrong event.
+        // a malformed/reordered transport list cannot misidentify the threshold-crossing event.
         var resolution = resolution(2, cascaded(collapsingEvent, 1), cascaded(firstCascadedEvent, 0));
         var game = Game.reconstitute(GAME_ID, LOBBY_ID, List.of(), 2, 1, GameStatus.IN_PROGRESS);
         givenClaimedBarrier();
         given(gameRepository.findByIdWithLock(GAME_ID)).willReturn(Optional.of(game));
         given(gameRules.maxCascadedParadoxes()).willReturn(MAX_CASCADED);
-        given(declarationRepository.findPlayerIdsTargeting(GAME_ID, 2, collapsingEvent))
-                .willReturn(List.of(PLAYER_2));
-        given(lobbyRepository.findById(LOBBY_ID)).willReturn(Optional.of(startedLobby()));
-        var captor = ArgumentCaptor.forClass(Object.class);
+        given(eraSagaRepository.findByGameIdWithLock(GAME_ID))
+                .willReturn(Optional.of(new EraSagaState(
+                        GAME_ID, 2, EraSagaStatus.WAITING_SCORES, List.of(PLAYER_1, PLAYER_2, PLAYER_3))));
 
         consumer.handle(messageFor(resolution));
 
-        then(declarationRepository).should().findPlayerIdsTargeting(GAME_ID, 2, collapsingEvent);
-        then(applicationEventPublisher).should().publishEvent(captor.capture());
-        var collapsed = (TimelineCollapsed) captor.getValue();
-        assertThat(collapsed.winners())
-                .extracting(TimelineCollapsed.PlayerFactionResult::playerId)
-                .containsExactly(PLAYER_2);
-        assertThat(collapsed.losers())
-                .extracting(TimelineCollapsed.PlayerFactionResult::playerId)
-                .containsExactlyInAnyOrder(PLAYER_1, PLAYER_3);
-        then(eventPublisher).should().publish(argThat(event -> event.payload() instanceof TimelineCollapsed));
+        assertThat(game.cascadedParadoxCounter()).isEqualTo(MAX_CASCADED);
+        assertThat(game.status()).isEqualTo(GameStatus.IN_PROGRESS);
+        then(collapsePublisher).should(never()).publishCollapse(any(), any(Integer.class), any());
     }
 
     @Test
-    @DisplayName("collapse winners are Activists targeting the collapsing event — other factions do not win")
-    void handle_thresholdCrossed_onlyTargetingActivistsWin() {
+    @DisplayName("threshold crossed after the era left scoring — late collapse ends the game immediately")
+    void handle_thresholdCrossedAfterScoring_publishesCollapseImmediately() {
+        var firstCascadedEvent = UUID.randomUUID();
         var collapsingEvent = UUID.randomUUID();
-        var resolution = resolution(2, cascaded(collapsingEvent, 0));
-        var game = Game.reconstitute(GAME_ID, LOBBY_ID, List.of(), 2, 2, GameStatus.IN_PROGRESS);
+        var resolution = resolution(2, cascaded(collapsingEvent, 1), cascaded(firstCascadedEvent, 0));
+        var game = Game.reconstitute(GAME_ID, LOBBY_ID, List.of(), 2, 1, GameStatus.IN_PROGRESS);
         givenClaimedBarrier();
         given(gameRepository.findByIdWithLock(GAME_ID)).willReturn(Optional.of(game));
         given(gameRules.maxCascadedParadoxes()).willReturn(MAX_CASCADED);
-        // PLAYER_1 (Erasers) targets the collapsing event: the declaration matches the event but
-        // the faction does not qualify for the Activist collapse win.
-        given(declarationRepository.findPlayerIdsTargeting(GAME_ID, 2, collapsingEvent))
-                .willReturn(List.of(PLAYER_1));
-        given(lobbyRepository.findById(LOBBY_ID)).willReturn(Optional.of(startedLobby()));
-        var captor = ArgumentCaptor.forClass(Object.class);
+        given(eraSagaRepository.findByGameIdWithLock(GAME_ID))
+                .willReturn(Optional.of(
+                        new EraSagaState(GAME_ID, 2, EraSagaStatus.COMPLETED, List.of(PLAYER_1, PLAYER_2, PLAYER_3))));
 
         consumer.handle(messageFor(resolution));
 
-        then(applicationEventPublisher).should().publishEvent(captor.capture());
-        var collapsed = (TimelineCollapsed) captor.getValue();
-        assertThat(collapsed.winners()).isEmpty();
-        assertThat(collapsed.losers())
-                .extracting(TimelineCollapsed.PlayerFactionResult::playerId)
-                .containsExactlyInAnyOrder(PLAYER_1, PLAYER_2, PLAYER_3);
+        assertThat(game.status()).isEqualTo(GameStatus.ENDED_BY_COLLAPSE);
+        then(collapsePublisher).should().publishCollapse(game, 2, collapsingEvent);
     }
 
     @Test
@@ -230,7 +196,7 @@ class EraResolutionCompletedKafkaConsumerTest {
 
         then(gameRepository).should(never()).findByIdWithLock(any());
         then(gameRepository).should(never()).save(any());
-        then(eventPublisher).should(never()).publish(any());
+        then(collapsePublisher).should(never()).publishCollapse(any(), any(Integer.class), any());
     }
 
     @Test
@@ -243,7 +209,7 @@ class EraResolutionCompletedKafkaConsumerTest {
         consumer.handle(message);
 
         then(gameRepository).should(never()).findByIdWithLock(any());
-        then(eventPublisher).should(never()).publish(any());
+        then(collapsePublisher).should(never()).publishCollapse(any(), any(Integer.class), any());
     }
 
     @Test
@@ -266,7 +232,7 @@ class EraResolutionCompletedKafkaConsumerTest {
 
         then(gameRepository).should(never()).findByIdWithLock(any());
         then(gameRepository).should(never()).save(any());
-        then(eventPublisher).should(never()).publish(any());
+        then(collapsePublisher).should(never()).publishCollapse(any(), any(Integer.class), any());
     }
 
     @Test
@@ -301,7 +267,7 @@ class EraResolutionCompletedKafkaConsumerTest {
 
         then(processedEventRepository).should(never()).tryMarkProcessed(any(), any());
         then(gameRepository).should(never()).findByIdWithLock(any());
-        then(eventPublisher).should(never()).publish(any());
+        then(collapsePublisher).should(never()).publishCollapse(any(), any(Integer.class), any());
     }
 
     private void givenClaimedBarrier() {
@@ -346,14 +312,5 @@ class EraResolutionCompletedKafkaConsumerTest {
                 .setHeader("occurredAt", Instant.now().toString())
                 .setHeader("version", String.valueOf(version))
                 .build();
-    }
-
-    private static Lobby startedLobby() {
-        var players = List.of(
-                new LobbyPlayer(PLAYER_1, "P1", Faction.ERASERS, Instant.EPOCH, true),
-                new LobbyPlayer(PLAYER_2, "P2", Faction.ACTIVISTS, Instant.EPOCH, true),
-                new LobbyPlayer(PLAYER_3, "P3", Faction.REVISIONISTS, Instant.EPOCH, true));
-        var config = new LobbyConfig("ABCD2345", 3, 5, Clock.systemUTC());
-        return Lobby.reconstitute(LOBBY_ID, GAME_ID, PLAYER_1, players, LobbyStatus.STARTED, config);
     }
 }

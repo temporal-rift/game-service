@@ -12,6 +12,8 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -44,6 +46,7 @@ import io.github.temporalrift.game.shared.domain.model.Faction;
 @Component
 class EraSagaAdvancer {
 
+    private static final Logger log = LoggerFactory.getLogger(EraSagaAdvancer.class);
     private static final int FINAL_ROUND = 3;
     private static final String RESOLUTION_FAILED_REASON = "resolution-failed";
 
@@ -53,6 +56,7 @@ class EraSagaAdvancer {
     private final SessionEventPublisher eventPublisher;
     private final ApplicationEventPublisher applicationEventPublisher;
     private final SagaHandoffPublisher sagaHandoffPublisher;
+    private final TimelineCollapsePublisher collapsePublisher;
     private final SessionGameRulesPort gameRules;
     private final SessionFactionObjectivePort factionObjectives;
     private final Clock clock;
@@ -63,6 +67,7 @@ class EraSagaAdvancer {
             GameRepository gameRepository,
             SessionEventPublisher eventPublisher,
             ApplicationEventPublisher applicationEventPublisher,
+            TimelineCollapsePublisher collapsePublisher,
             SessionGameRulesPort gameRules,
             SessionFactionObjectivePort factionObjectives,
             Clock clock) {
@@ -72,6 +77,7 @@ class EraSagaAdvancer {
         this.eventPublisher = eventPublisher;
         this.applicationEventPublisher = applicationEventPublisher;
         this.sagaHandoffPublisher = new SagaHandoffPublisher(applicationEventPublisher);
+        this.collapsePublisher = collapsePublisher;
         this.gameRules = gameRules;
         this.factionObjectives = factionObjectives;
         this.clock = clock;
@@ -143,9 +149,11 @@ class EraSagaAdvancer {
     private void processScoresUpdated(UUID gameId, EraSagaState state, ScoresUpdated su) {
         var qualifiers = findQualifiers(gameId, su);
         if (!qualifiers.isEmpty()) {
-            // Mirrors the collapse/stabilization branch below: the aggregate is transitioned
-            // and saved here, at detection time, so EndGameSagaImpl never mutates Game itself
-            // -- it only reads the already-correct terminal status for every trigger alike.
+            // Normal victory outranks a same-era collapse: the resolution consumer defers the
+            // collapse decision while this saga awaits scoring, so reaching this branch with
+            // qualifiers means victory wins regardless of which fact was processed first.
+            // The ENDED_BY_COLLAPSE guard below only covers a late collapse that already
+            // published and committed before this branch acquired the lock.
             var game = gameRepository.findByIdWithLock(gameId).orElseThrow(() -> new GameNotFoundException(gameId));
             // A concurrent paradox-resolution collapse (a separate saga entirely) can win the
             // lock on this same aggregate first: same race the no-winner branch below already
@@ -175,6 +183,14 @@ class EraSagaAdvancer {
         var game = gameRepository.findByIdWithLock(gameId).orElseThrow(() -> new GameNotFoundException(gameId));
         if (game.status() == GameStatus.ENDED_BY_COLLAPSE) {
             eraSagaRepository.save(state.withStatus(EraSagaStatus.COMPLETED));
+            return;
+        }
+        var collapsingEventId = game.findCollapsingEvent(gameRules.maxCascadedParadoxes());
+        if (collapsingEventId != null) {
+            game.endByCollapse();
+            gameRepository.save(game);
+            eraSagaRepository.save(state.withStatus(EraSagaStatus.COMPLETED));
+            collapsePublisher.publishCollapse(game, su.eraNumber(), collapsingEventId);
             return;
         }
         game.endEra(gameRules.maxEras());
