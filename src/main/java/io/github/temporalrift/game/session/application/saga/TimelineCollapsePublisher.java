@@ -11,6 +11,7 @@ import org.springframework.stereotype.Component;
 import io.github.temporalrift.game.session.domain.event.TimelineCollapsed;
 import io.github.temporalrift.game.session.domain.game.Game;
 import io.github.temporalrift.game.session.domain.lobby.LobbyNotFoundException;
+import io.github.temporalrift.game.session.domain.lobby.LobbyPlayer;
 import io.github.temporalrift.game.session.domain.port.out.LobbyRepository;
 import io.github.temporalrift.game.session.domain.port.out.SessionActivistDeclarationRepository;
 import io.github.temporalrift.game.session.domain.port.out.SessionEventPublisher;
@@ -55,7 +56,7 @@ public class TimelineCollapsePublisher {
         // event has no resolved winner.
         var winnerIds = players.stream()
                 .filter(player -> player.faction() == Faction.ACTIVISTS)
-                .map(player -> player.playerId())
+                .map(LobbyPlayer::playerId)
                 .filter(targeting::contains)
                 .toList();
         var winners = new ArrayList<TimelineCollapsed.PlayerFactionResult>();

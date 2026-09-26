@@ -217,16 +217,16 @@ class GameTest {
     @Test
     void recordCascadedParadox_incrementsCounter() {
         var game = newGame();
-        game.recordCascadedParadox(MAX_CASCADED_PARADOXES);
+        game.recordCascadedParadox();
         assertThat(game.cascadedParadoxCounter()).isEqualTo(1);
     }
 
     @Test
     void recordCascadedParadox_thirdParadox_statusRemainsInProgressUntilExplicitCollapse() {
         var game = newGame();
-        game.recordCascadedParadox(MAX_CASCADED_PARADOXES);
-        game.recordCascadedParadox(MAX_CASCADED_PARADOXES);
-        game.recordCascadedParadox(MAX_CASCADED_PARADOXES);
+        game.recordCascadedParadox();
+        game.recordCascadedParadox();
+        game.recordCascadedParadox();
         assertThat(game.cascadedParadoxCounter()).isEqualTo(3);
         assertThat(game.status()).isEqualTo(GameStatus.IN_PROGRESS);
         game.endByCollapse();
@@ -236,8 +236,8 @@ class GameTest {
     @Test
     void recordCascadedParadox_secondParadox_statusRemainsInProgress() {
         var game = newGame();
-        game.recordCascadedParadox(MAX_CASCADED_PARADOXES);
-        game.recordCascadedParadox(MAX_CASCADED_PARADOXES);
+        game.recordCascadedParadox();
+        game.recordCascadedParadox();
         assertThat(game.status()).isEqualTo(GameStatus.IN_PROGRESS);
     }
 
@@ -245,15 +245,14 @@ class GameTest {
     void recordCascadedParadox_gameOver_throws() {
         var game = newGame();
         game.end();
-        assertThatExceptionOfType(GameAlreadyOverException.class)
-                .isThrownBy(() -> game.recordCascadedParadox(MAX_CASCADED_PARADOXES));
+        assertThatExceptionOfType(GameAlreadyOverException.class).isThrownBy(() -> game.recordCascadedParadox());
     }
 
     @Test
     void recordCascadedParadox_counterAlreadyBeyondThreshold_staysInProgressUntilExplicitCollapse() {
         var game = Game.reconstitute(
                 GAME_ID, LOBBY_ID, new ArrayList<>(), 1, MAX_CASCADED_PARADOXES + 1, GameStatus.IN_PROGRESS);
-        game.recordCascadedParadox(MAX_CASCADED_PARADOXES);
+        game.recordCascadedParadox();
         assertThat(game.status()).isEqualTo(GameStatus.IN_PROGRESS);
     }
 

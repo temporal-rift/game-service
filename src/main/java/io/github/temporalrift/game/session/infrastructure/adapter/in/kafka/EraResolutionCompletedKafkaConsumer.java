@@ -3,6 +3,8 @@ package io.github.temporalrift.game.session.infrastructure.adapter.in.kafka;
 import static org.springframework.transaction.annotation.Propagation.REQUIRES_NEW;
 
 import java.util.Comparator;
+import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import org.slf4j.Logger;
@@ -17,6 +19,7 @@ import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract;
 import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.EraResolutionCompletedPayload;
 import io.github.temporalrift.game.session.application.saga.TimelineCollapsePublisher;
 import io.github.temporalrift.game.session.domain.event.EraResolutionCompleted;
+import io.github.temporalrift.game.session.domain.game.Game;
 import io.github.temporalrift.game.session.domain.game.GameAlreadyOverException;
 import io.github.temporalrift.game.session.domain.game.GameNotFoundException;
 import io.github.temporalrift.game.session.domain.game.GameStatus;
@@ -24,6 +27,7 @@ import io.github.temporalrift.game.session.domain.game.PendingCarryOverEvent;
 import io.github.temporalrift.game.session.domain.port.out.EraSagaRepository;
 import io.github.temporalrift.game.session.domain.port.out.GameRepository;
 import io.github.temporalrift.game.session.domain.port.out.SessionGameRulesPort;
+import io.github.temporalrift.game.session.domain.saga.EraSagaState;
 import io.github.temporalrift.game.session.domain.saga.EraSagaStatus;
 import io.github.temporalrift.game.shared.domain.messaging.DomainEventEnvelope;
 import io.github.temporalrift.game.shared.domain.model.CarryOverState;
@@ -92,22 +96,11 @@ class EraResolutionCompletedKafkaConsumer {
         if (!envelope.matchesGameId(resolution.gameId())) {
             return;
         }
-        var carryOverEvents = resolution.terminalResolutions().stream()
-                .filter(entry -> entry.terminalState() == EraResolutionCompleted.TerminalState.CASCADED
-                        || entry.terminalState() == EraResolutionCompleted.TerminalState.STALLED)
-                .sorted(Comparator.comparingInt(EraResolutionCompleted.TerminalResolution::revealIndex))
-                .map(entry -> new PendingCarryOverEvent(
-                        entry.eventId(),
-                        CarryOverState.valueOf(entry.terminalState().name())))
-                .toList();
+        var carryOverEvents = carryOverEvents(resolution);
         if (carryOverEvents.isEmpty()) {
             return;
         }
-        var cascadedEventIds = resolution.terminalResolutions().stream()
-                .filter(entry -> entry.terminalState() == EraResolutionCompleted.TerminalState.CASCADED)
-                .sorted(Comparator.comparingInt(EraResolutionCompleted.TerminalResolution::revealIndex))
-                .map(EraResolutionCompleted.TerminalResolution::eventId)
-                .toList();
+        var cascadedEventIds = cascadedEventIds(resolution);
 
         // Lock in saga-then-game order to match EraSagaAdvancer and avoid lock-order deadlocks.
         var saga = eraSagaRepository.findByGameIdWithLock(resolution.gameId());
@@ -134,6 +127,30 @@ class EraResolutionCompletedKafkaConsumer {
         if (collapsingEventId == null) {
             return;
         }
+        finishCollapse(game, saga, resolution, collapsingEventId);
+    }
+
+    private static List<PendingCarryOverEvent> carryOverEvents(EraResolutionCompleted resolution) {
+        return resolution.terminalResolutions().stream()
+                .filter(entry -> entry.terminalState() == EraResolutionCompleted.TerminalState.CASCADED
+                        || entry.terminalState() == EraResolutionCompleted.TerminalState.STALLED)
+                .sorted(Comparator.comparingInt(EraResolutionCompleted.TerminalResolution::revealIndex))
+                .map(entry -> new PendingCarryOverEvent(
+                        entry.eventId(),
+                        CarryOverState.valueOf(entry.terminalState().name())))
+                .toList();
+    }
+
+    private static List<UUID> cascadedEventIds(EraResolutionCompleted resolution) {
+        return resolution.terminalResolutions().stream()
+                .filter(entry -> entry.terminalState() == EraResolutionCompleted.TerminalState.CASCADED)
+                .sorted(Comparator.comparingInt(EraResolutionCompleted.TerminalResolution::revealIndex))
+                .map(EraResolutionCompleted.TerminalResolution::eventId)
+                .toList();
+    }
+
+    private void finishCollapse(
+            Game game, Optional<EraSagaState> saga, EraResolutionCompleted resolution, UUID collapsingEventId) {
         // Normal victory outranks same-era collapse: while the era saga still awaits this era's
         // scoring, the collapse fact stays recorded but undecided and EraSagaAdvancer makes the
         // single era-end decision once qualifiers are known. Only a late collapse — arriving after

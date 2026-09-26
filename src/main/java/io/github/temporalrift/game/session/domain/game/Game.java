@@ -80,7 +80,7 @@ public class Game extends AggregateRoot {
         return Collections.unmodifiableList(drawn);
     }
 
-    public void recordCascadedParadox(int maxCascadedParadoxes) {
+    public void recordCascadedParadox() {
         requireInProgress();
         cascadedParadoxCounter++;
     }
