@@ -12,8 +12,6 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -46,7 +44,6 @@ import io.github.temporalrift.game.shared.domain.model.Faction;
 @Component
 class EraSagaAdvancer {
 
-    private static final Logger log = LoggerFactory.getLogger(EraSagaAdvancer.class);
     private static final int FINAL_ROUND = 3;
     private static final String RESOLUTION_FAILED_REASON = "resolution-failed";
 
