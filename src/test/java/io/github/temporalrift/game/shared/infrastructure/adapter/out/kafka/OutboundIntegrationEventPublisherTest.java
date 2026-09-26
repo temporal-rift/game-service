@@ -83,6 +83,7 @@ class OutboundIntegrationEventPublisherTest {
                 null,
                 null,
                 null,
+                null,
                 null);
 
         var envelope = envelope(gameId);

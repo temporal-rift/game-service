@@ -158,6 +158,11 @@ record StoredSubmittedAction(
                 if (resolvedPlayerIds == null && resolvedCardType == CardType.NULLIFY && targetPlayerId != null) {
                     resolvedPlayerIds = List.of(targetPlayerId);
                 }
+                // Rows stored before Decoy declared a disguise carry none; they keep Decoy's own category.
+                var resolvedDisguise = disguiseCategory == null ? null : CardCategory.valueOf(disguiseCategory);
+                if (resolvedDisguise == null && resolvedCardType == CardType.DECOY) {
+                    resolvedDisguise = CardType.DECOY.getCategory();
+                }
                 yield new SubmittedAction.CardAction(
                         playerId,
                         cardInstanceId,
@@ -169,7 +174,7 @@ record StoredSubmittedAction(
                         targetOutcomeId,
                         targetPlayerId,
                         resolvedPlayerIds,
-                        disguiseCategory == null ? null : CardCategory.valueOf(disguiseCategory));
+                        resolvedDisguise);
             }
             case "SPECIAL" ->
                 new SubmittedAction.SpecialActionSubmission(
