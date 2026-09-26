@@ -110,6 +110,10 @@ public class Game extends AggregateRoot {
      * Finds the event whose cascade crossed the global threshold, derived from the pending
      * carry-over list (kept in reveal order) and the current counter. Returns {@code null} when the
      * threshold has not been reached.
+     *
+     * <p>When the counter already reached the threshold before this era's cascades (the rule value
+     * was lowered mid-game), the first newly recorded cascade is returned, matching the previous
+     * {@code >=} auto-end choice of crossing event.
      */
     public UUID findCollapsingEvent(int maxCascadedParadoxes) {
         var cascadedInOrder = pendingCarryOverEvents.stream()
@@ -120,6 +124,9 @@ public class Game extends AggregateRoot {
             return null;
         }
         int priorCount = cascadedParadoxCounter - cascadedInOrder.size();
+        if (priorCount >= maxCascadedParadoxes) {
+            return cascadedInOrder.getFirst();
+        }
         int crossingIndexOneBased = maxCascadedParadoxes - priorCount;
         if (crossingIndexOneBased < 1 || crossingIndexOneBased > cascadedInOrder.size()) {
             return null;

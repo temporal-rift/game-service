@@ -138,6 +138,9 @@ class EraResolutionCompletedKafkaConsumer {
         // scoring, the collapse fact stays recorded but undecided and EraSagaAdvancer makes the
         // single era-end decision once qualifiers are known. Only a late collapse — arriving after
         // the saga already left WAITING_SCORES for this era — ends the game immediately.
+        // A pre-scoring saga state for this era is not reachable here: timeline-service resolves
+        // an era only on ResolutionStarted, which is relayed only after this same WAITING_SCORES
+        // save commits (same transaction, Modulith outbox), so the barrier causally follows it.
         var awaitingScoring = saga.filter(candidate -> candidate.status() == EraSagaStatus.WAITING_SCORES
                         && candidate.eraNumber() == resolution.eraNumber())
                 .isPresent();
