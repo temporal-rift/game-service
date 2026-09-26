@@ -9,6 +9,7 @@ import java.util.Objects;
 import java.util.UUID;
 
 import io.github.temporalrift.game.shared.domain.AggregateRoot;
+import io.github.temporalrift.game.shared.domain.model.CarryOverState;
 
 public class Game extends AggregateRoot {
 
@@ -79,17 +80,17 @@ public class Game extends AggregateRoot {
         return Collections.unmodifiableList(drawn);
     }
 
-    public void recordCascadedParadox(int maxCascadedParadoxes) {
+    public void recordCascadedParadox() {
         requireInProgress();
         cascadedParadoxCounter++;
-        // >= so a threshold lowered mid-game (or a counter past the limit) still ends the game.
-        if (cascadedParadoxCounter >= maxCascadedParadoxes) {
-            status = GameStatus.ENDED_BY_COLLAPSE;
-        }
     }
 
     /**
      * Applies a complete era's cascades in the rules-defined reveal order.
+     *
+     * <p>Recording never ends the game: the era-end decision (normal victory first, then collapse)
+     * is made once scoring for the era is known, so the same era always ends the same way regardless
+     * of whether the collapse fact or the scoring fact is processed first.
      *
      * @return the event that crossed the global cascade threshold, or {@code null} when the threshold was not reached
      */
@@ -99,11 +100,43 @@ public class Game extends AggregateRoot {
         for (var eventId : cascadedEventIds) {
             cascadedParadoxCounter++;
             if (collapsingEventId == null && cascadedParadoxCounter >= maxCascadedParadoxes) {
-                status = GameStatus.ENDED_BY_COLLAPSE;
                 collapsingEventId = eventId;
             }
         }
         return collapsingEventId;
+    }
+
+    /**
+     * Finds the event whose cascade crossed the global threshold, derived from the pending
+     * carry-over list (kept in reveal order) and the current counter. Returns {@code null} when the
+     * threshold has not been reached.
+     *
+     * <p>When the counter already reached the threshold before this era's cascades (the rule value
+     * was lowered mid-game), the first newly recorded cascade is returned, matching the previous
+     * {@code >=} auto-end choice of crossing event.
+     */
+    public UUID findCollapsingEvent(int maxCascadedParadoxes) {
+        var cascadedInOrder = pendingCarryOverEvents.stream()
+                .filter(entry -> entry.carryOverState() == CarryOverState.CASCADED)
+                .map(PendingCarryOverEvent::eventId)
+                .toList();
+        if (cascadedInOrder.isEmpty()) {
+            return null;
+        }
+        int priorCount = cascadedParadoxCounter - cascadedInOrder.size();
+        if (priorCount >= maxCascadedParadoxes) {
+            return cascadedInOrder.getFirst();
+        }
+        int crossingIndexOneBased = maxCascadedParadoxes - priorCount;
+        if (crossingIndexOneBased < 1 || crossingIndexOneBased > cascadedInOrder.size()) {
+            return null;
+        }
+        return cascadedInOrder.get(crossingIndexOneBased - 1);
+    }
+
+    public void endByCollapse() {
+        requireInProgress();
+        status = GameStatus.ENDED_BY_COLLAPSE;
     }
 
     public void recordPendingCarryOverEvents(List<PendingCarryOverEvent> carryOverEvents) {
