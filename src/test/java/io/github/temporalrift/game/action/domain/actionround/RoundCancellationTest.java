@@ -66,7 +66,17 @@ class RoundCancellationTest {
 
     private static SubmittedAction.CardAction nullify(UUID playerId, CardGrade grade, List<UUID> targetPlayerIds) {
         return new SubmittedAction.CardAction(
-                playerId, UUID.randomUUID(), CardType.NULLIFY, grade, null, null, null, null, null, targetPlayerIds);
+                playerId,
+                UUID.randomUUID(),
+                CardType.NULLIFY,
+                grade,
+                null,
+                null,
+                null,
+                null,
+                null,
+                targetPlayerIds,
+                null);
     }
 
     private static SubmittedAction.CardAction push(UUID playerId) {

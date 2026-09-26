@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test;
 import tools.jackson.databind.ObjectMapper;
 
 import io.github.temporalrift.game.action.domain.actionround.SubmittedAction;
+import io.github.temporalrift.game.shared.domain.model.CardCategory;
 import io.github.temporalrift.game.shared.domain.model.CardGrade;
 import io.github.temporalrift.game.shared.domain.model.CardType;
 
@@ -40,6 +41,7 @@ class StoredSubmittedActionTest {
                 null,
                 null,
                 null,
+                null,
                 null);
 
         var stored = StoredSubmittedAction.fromDomain(action);
@@ -49,6 +51,28 @@ class StoredSubmittedActionTest {
 
         assertThat(rehydrated).isEqualTo(action);
         assertThat(json).contains("targetEventIds");
+    }
+
+    @Test
+    void decoyDisguiseSurvivesJsonRoundTripAndDomainRehydration() throws Exception {
+        var action = new SubmittedAction.CardAction(
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                CardType.DECOY,
+                CardGrade.I,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                CardCategory.PARADOX);
+
+        var json = objectMapper.writeValueAsString(StoredSubmittedAction.fromDomain(action));
+        var rehydrated =
+                objectMapper.readValue(json, StoredSubmittedAction.class).toDomain();
+
+        assertThat(rehydrated).isEqualTo(action);
     }
 
     @Test
@@ -88,7 +112,8 @@ class StoredSubmittedActionTest {
                 null,
                 null,
                 null,
-                targets);
+                targets,
+                null);
 
         var stored = StoredSubmittedAction.fromDomain(action);
         var json = objectMapper.writeValueAsString(stored);

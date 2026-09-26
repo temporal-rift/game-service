@@ -33,6 +33,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 
+import io.github.temporalrift.game.action.domain.actionround.ActionFamily;
 import io.github.temporalrift.game.action.domain.actionround.ActionRound;
 import io.github.temporalrift.game.action.domain.actionround.ActionRoundConfig;
 import io.github.temporalrift.game.action.domain.actionround.ActionRoundParticipants;
@@ -147,7 +148,8 @@ class ActionRoundSagaImplTest {
                 null,
                 null,
                 null,
-                List.of(targetPlayerId));
+                List.of(targetPlayerId),
+                null);
     }
 
     @Nested
@@ -1349,8 +1351,8 @@ class ActionRoundSagaImplTest {
                     .orElseThrow();
             assertThat(cardSummary).satisfies(s -> {
                 assertThat(s.playerId()).isEqualTo(PLAYER_1);
-                assertThat(s.actionCategory()).isEqualTo("PUSH");
-                assertThat(s.actionFamily()).isEqualTo("CARD");
+                assertThat(s.actionCategory()).isEqualTo(CardCategory.PROBABILITY_SHIFTER);
+                assertThat(s.actionFamily()).isEqualTo(ActionFamily.CARD);
                 assertThat(s.skipped()).isFalse();
             });
         }
@@ -1400,8 +1402,8 @@ class ActionRoundSagaImplTest {
                     .orElseThrow();
             assertThat(cardSummary).satisfies(s -> {
                 assertThat(s.playerId()).isEqualTo(PLAYER_1);
-                assertThat(s.actionCategory()).isEqualTo("JAM");
-                assertThat(s.actionFamily()).isEqualTo("CARD");
+                assertThat(s.actionCategory()).isEqualTo(CardCategory.DISRUPTION);
+                assertThat(s.actionFamily()).isEqualTo(ActionFamily.CARD);
                 assertThat(s.skipped()).isFalse();
             });
         }
@@ -1462,10 +1464,67 @@ class ActionRoundSagaImplTest {
                     .orElseThrow();
             assertThat(specialSummary).satisfies(s -> {
                 assertThat(s.playerId()).isEqualTo(PLAYER_1);
-                assertThat(s.actionCategory()).isEqualTo("SPECIAL");
-                assertThat(s.actionFamily()).isEqualTo("SPECIAL");
+                assertThat(s.actionCategory()).isNull();
+                assertThat(s.actionFamily()).isEqualTo(ActionFamily.SPECIAL);
                 assertThat(s.skipped()).isFalse();
             });
+        }
+
+        @Test
+        @DisplayName("a Decoy shows its declared disguise category, never its own")
+        void roundSummary_decoyShowsDisguise() {
+            // given
+            var round = new ActionRound(
+                    UUID.randomUUID(),
+                    new ActionRoundConfig(GAME_ID, ERA_NUMBER, ROUND_NUMBER, TIMER_SECONDS),
+                    List.of(PLAYER_1, PLAYER_2, PLAYER_3));
+            round.submit(new SubmittedAction.CardAction(
+                    PLAYER_1,
+                    UUID.randomUUID(),
+                    CardType.DECOY,
+                    CardGrade.I,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    CardCategory.PROBABILITY_SHIFTER));
+
+            given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(
+                            GAME_ID, ERA_NUMBER, ROUND_NUMBER))
+                    .willReturn(Optional.of(round));
+
+            // when
+            var updatedState = new ActionRoundSagaState(
+                    UUID.randomUUID(),
+                    GAME_ID,
+                    ERA_NUMBER,
+                    ROUND_NUMBER,
+                    ActionRoundSagaStatus.WAITING,
+                    List.of(),
+                    TIMER_EXPIRES_AT);
+            given(stateManager.markSubmitted(GAME_ID, ERA_NUMBER, ROUND_NUMBER, PLAYER_1))
+                    .willReturn(Optional.of(updatedState));
+            saga.handlePlayerSubmitted(GAME_ID, ERA_NUMBER, ROUND_NUMBER, PLAYER_1);
+
+            // then
+            var captor = ArgumentCaptor.<DomainEventEnvelope>captor();
+            then(actionEventPublisher).should(atLeastOnce()).publish(captor.capture());
+            var summary = captor.getAllValues().stream()
+                    .map(DomainEventEnvelope::payload)
+                    .filter(RoundSummaryPublished.class::isInstance)
+                    .map(RoundSummaryPublished.class::cast)
+                    .findFirst()
+                    .orElseThrow();
+            assertThat(summary.actionSummaries())
+                    .filteredOn(s -> !s.skipped())
+                    .singleElement()
+                    .satisfies(s -> {
+                        assertThat(s.playerId()).isEqualTo(PLAYER_1);
+                        assertThat(s.actionCategory()).isEqualTo(CardCategory.PROBABILITY_SHIFTER);
+                        assertThat(s.actionFamily()).isEqualTo(ActionFamily.CARD);
+                    });
         }
 
         @Test
@@ -1505,6 +1564,7 @@ class ActionRoundSagaImplTest {
             var summary = (RoundSummaryPublished) summaryEnvelope.payload();
             assertThat(summary.actionSummaries()).hasSize(2);
             assertThat(summary.actionSummaries()).allMatch(ActionSummary::skipped);
+            assertThat(summary.actionSummaries()).allMatch(s -> s.actionCategory() == null && s.actionFamily() == null);
             assertThat(summary.actionSummaries())
                     .extracting(ActionSummary::playerId)
                     .containsExactlyInAnyOrder(PLAYER_2, PLAYER_3);
@@ -1847,18 +1907,28 @@ class ActionRoundSagaImplTest {
         @Test
         @DisplayName("excludes DECOY and returns an empty result for an absent predecessor event")
         void excludesDecoyAndReturnsEmptyResultForAbsentEvent() {
-            var decoyTargetId = UUID.randomUUID();
+            var tracedEventId = UUID.randomUUID();
             var absentTargetId = UUID.randomUUID();
             var previousRound = new ActionRound(
                     UUID.randomUUID(), new ActionRoundConfig(GAME_ID, ERA_NUMBER, 1, TIMER_SECONDS), List.of(PLAYER_2));
             previousRound.submit(new SubmittedAction.CardAction(
-                    PLAYER_2, UUID.randomUUID(), CardType.DECOY, decoyTargetId, null, null));
+                    PLAYER_2,
+                    UUID.randomUUID(),
+                    CardType.DECOY,
+                    CardGrade.I,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    CardCategory.PROBABILITY_SHIFTER));
             var currentRound = new ActionRound(
                     UUID.randomUUID(),
                     new ActionRoundConfig(GAME_ID, ERA_NUMBER, 2, TIMER_SECONDS),
                     List.of(PLAYER_1, PLAYER_2));
             currentRound.submit(new SubmittedAction.CardAction(
-                    PLAYER_1, UUID.randomUUID(), CardType.TRACE, CardGrade.I, decoyTargetId, null, null, null));
+                    PLAYER_1, UUID.randomUUID(), CardType.TRACE, CardGrade.I, tracedEventId, null, null, null));
             currentRound.submit(new SubmittedAction.CardAction(
                     PLAYER_2, UUID.randomUUID(), CardType.TRACE, CardGrade.I, absentTargetId, null, null, null));
 
@@ -1872,7 +1942,7 @@ class ActionRoundSagaImplTest {
 
             assertThat(tracedEvents())
                     .containsExactlyInAnyOrder(
-                            new InfluenceTraced(GAME_ID, ERA_NUMBER, 2, PLAYER_1, decoyTargetId, List.of()),
+                            new InfluenceTraced(GAME_ID, ERA_NUMBER, 2, PLAYER_1, tracedEventId, List.of()),
                             new InfluenceTraced(GAME_ID, ERA_NUMBER, 2, PLAYER_2, absentTargetId, List.of()));
         }
 

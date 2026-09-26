@@ -1,5 +1,6 @@
 package io.github.temporalrift.game.action.infrastructure.adapter.in.rest;
 
+import io.github.temporalrift.game.action.infrastructure.adapter.in.rest.v1.model.CardCategory;
 import io.github.temporalrift.game.action.infrastructure.adapter.in.rest.v1.model.SpecialAction;
 
 /** Maps generated action API values to their domain representation. */
@@ -24,6 +25,19 @@ final class ActionRestMapper {
             case RALLY -> io.github.temporalrift.game.shared.domain.model.SpecialAction.RALLY;
             case EXPOSE -> io.github.temporalrift.game.shared.domain.model.SpecialAction.EXPOSE;
             case MOMENTUM -> io.github.temporalrift.game.shared.domain.model.SpecialAction.MOMENTUM;
+        };
+    }
+
+    static io.github.temporalrift.game.shared.domain.model.CardCategory toDomain(CardCategory category) {
+        if (category == null) {
+            return null;
+        }
+        return switch (category) {
+            case PROBABILITY_SHIFTER ->
+                io.github.temporalrift.game.shared.domain.model.CardCategory.PROBABILITY_SHIFTER;
+            case INFORMATION -> io.github.temporalrift.game.shared.domain.model.CardCategory.INFORMATION;
+            case DISRUPTION -> io.github.temporalrift.game.shared.domain.model.CardCategory.DISRUPTION;
+            case PARADOX -> io.github.temporalrift.game.shared.domain.model.CardCategory.PARADOX;
         };
     }
 

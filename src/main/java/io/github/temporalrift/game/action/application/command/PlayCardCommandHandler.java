@@ -86,7 +86,8 @@ class PlayCardCommandHandler implements PlayCardUseCase {
                 command.sourceOutcomeId(),
                 command.targetOutcomeId(),
                 command.targetPlayerId(),
-                command.targetPlayerIds());
+                command.targetPlayerIds(),
+                command.disguiseCategory());
         action.validateFinalEra(command.eraNumber(), command.roundNumber(), gameRules.maxEras());
         action.validateCurrentEraTargets(currentEraEventIds);
         actionTargetValidator.validateTraceTargetInPrecedingRound(

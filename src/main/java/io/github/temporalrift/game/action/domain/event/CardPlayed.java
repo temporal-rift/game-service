@@ -3,6 +3,7 @@ package io.github.temporalrift.game.action.domain.event;
 import java.util.List;
 import java.util.UUID;
 
+import io.github.temporalrift.game.shared.domain.model.CardCategory;
 import io.github.temporalrift.game.shared.domain.model.CardGrade;
 import io.github.temporalrift.game.shared.domain.model.CardType;
 
@@ -19,7 +20,8 @@ public record CardPlayed(
         UUID sourceOutcomeId,
         UUID targetOutcomeId,
         UUID targetPlayerId,
-        List<UUID> targetPlayerIds)
+        List<UUID> targetPlayerIds,
+        CardCategory disguiseCategory)
         implements ActionEventPayload {
 
     public CardPlayed {
@@ -52,6 +54,7 @@ public record CardPlayed(
                 sourceOutcomeId,
                 targetOutcomeId,
                 targetPlayerId,
+                null,
                 null);
     }
 
@@ -79,6 +82,7 @@ public record CardPlayed(
                 sourceOutcomeId,
                 targetOutcomeId,
                 targetPlayerId,
+                null,
                 null);
     }
 }

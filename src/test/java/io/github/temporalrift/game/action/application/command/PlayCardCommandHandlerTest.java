@@ -424,7 +424,7 @@ class PlayCardCommandHandlerTest {
         var event3 = UUID.randomUUID();
         var targets = List.of(event1, event3);
         var command = new PlayCardUseCase.Command(
-                GAME_ID, ERA, ROUND, PLAYER_ID, CARD_INSTANCE_ID, null, targets, null, null, null, null);
+                GAME_ID, ERA, ROUND, PLAYER_ID, CARD_INSTANCE_ID, null, targets, null, null, null, null, null);
         given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA, ROUND))
                 .willReturn(Optional.of(round));
         given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(playerState));
@@ -451,6 +451,7 @@ class PlayCardCommandHandlerTest {
                         null,
                         null,
                         null,
+                        null,
                         null)));
     }
 
@@ -461,7 +462,7 @@ class PlayCardCommandHandlerTest {
         var secondTarget = UUID.randomUUID();
         var targets = List.of(firstTarget, secondTarget);
         var command = new PlayCardUseCase.Command(
-                GAME_ID, ERA, ROUND, PLAYER_ID, CARD_INSTANCE_ID, null, null, null, null, null, targets);
+                GAME_ID, ERA, ROUND, PLAYER_ID, CARD_INSTANCE_ID, null, null, null, null, null, targets, null);
         given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA, ROUND))
                 .willReturn(Optional.of(round));
         given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(playerState));
@@ -489,7 +490,8 @@ class PlayCardCommandHandlerTest {
                         null,
                         null,
                         null,
-                        targets)));
+                        targets,
+                        null)));
     }
 
     @Test
@@ -499,7 +501,7 @@ class PlayCardCommandHandlerTest {
 
         assertThatExceptionOfType(UnknownActionTargetException.class)
                 .isThrownBy(() -> new PlayCardUseCase.Command(
-                        GAME_ID, ERA, ROUND, PLAYER_ID, CARD_INSTANCE_ID, null, null, null, null, null, targets));
+                        GAME_ID, ERA, ROUND, PLAYER_ID, CARD_INSTANCE_ID, null, null, null, null, null, targets, null));
     }
 
     @Test
@@ -509,7 +511,7 @@ class PlayCardCommandHandlerTest {
 
         assertThatExceptionOfType(UnknownActionTargetException.class)
                 .isThrownBy(() -> new PlayCardUseCase.Command(
-                        GAME_ID, ERA, ROUND, PLAYER_ID, CARD_INSTANCE_ID, null, targets, null, null, null, null));
+                        GAME_ID, ERA, ROUND, PLAYER_ID, CARD_INSTANCE_ID, null, targets, null, null, null, null, null));
     }
 
     @Test

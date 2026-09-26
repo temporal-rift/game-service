@@ -49,6 +49,7 @@ import io.github.temporalrift.game.action.domain.paradoxresolutionphase.Duplicat
 import io.github.temporalrift.game.action.domain.paradoxresolutionphase.ParadoxResolutionPhaseNotFoundException;
 import io.github.temporalrift.game.action.domain.paradoxresolutionphase.ParadoxResolutionPhaseNotOpenException;
 import io.github.temporalrift.game.action.domain.specialactionerausage.SpecialActionEraBudgetExhaustedException;
+import io.github.temporalrift.game.shared.domain.model.CardCategory;
 import io.github.temporalrift.game.shared.domain.model.CardType;
 import io.github.temporalrift.game.shared.domain.model.SpecialAction;
 import io.github.temporalrift.game.shared.infrastructure.config.PlayerAuthenticationToken;
@@ -276,6 +277,35 @@ class ActionControllerTest {
         assertThat(captor.getValue().targetEventIds()).isNull();
         assertThat(captor.getValue().targetPlayerId()).isNull();
         assertThat(captor.getValue().targetPlayerIds()).containsExactly(TARGET_PLAYER_ID, secondTargetId);
+    }
+
+    @Test
+    @DisplayName("Given DECOY disguise request, when POST action, then passes the disguise and no target")
+    void submitDecoyDisguise() throws Exception {
+        given(playCardUseCase.handle(any()))
+                .willReturn(new PlayCardUseCase.Result(GAME_ID, ERA, ROUND, PLAYER_ID, false));
+
+        mockMvc.perform(post(
+                                "/api/v1/games/{gameId}/eras/{eraNumber}/rounds/{roundNumber}/actions",
+                                GAME_ID,
+                                ERA,
+                                ROUND)
+                        .with(auth())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "actionType": "CARD",
+                                  "cardInstanceId": "%s",
+                                  "disguiseCategory": "DISRUPTION"
+                                }
+                                """.formatted(CARD_INSTANCE_ID)))
+                .andExpect(status().isAccepted());
+
+        var captor = ArgumentCaptor.forClass(PlayCardUseCase.Command.class);
+        org.mockito.BDDMockito.then(playCardUseCase).should().handle(captor.capture());
+        assertThat(captor.getValue().disguiseCategory()).isEqualTo(CardCategory.DISRUPTION);
+        assertThat(captor.getValue().targetEventId()).isNull();
+        assertThat(captor.getValue().targetPlayerId()).isNull();
     }
 
     @Test

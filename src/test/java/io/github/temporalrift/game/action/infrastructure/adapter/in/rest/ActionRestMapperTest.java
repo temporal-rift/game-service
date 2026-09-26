@@ -27,6 +27,14 @@ class ActionRestMapperTest {
     }
 
     @ParameterizedTest
+    @EnumSource(io.github.temporalrift.game.action.infrastructure.adapter.in.rest.v1.model.CardCategory.class)
+    void toDomain_mapsEveryGeneratedCardCategory(
+            io.github.temporalrift.game.action.infrastructure.adapter.in.rest.v1.model.CardCategory apiCategory) {
+        assertThat(ActionRestMapper.toDomain(apiCategory))
+                .isEqualTo(io.github.temporalrift.game.shared.domain.model.CardCategory.valueOf(apiCategory.name()));
+    }
+
+    @ParameterizedTest
     @EnumSource(ActivistDeclarationMode.class)
     void toRest_mapsEveryDomainActivistDeclarationMode(ActivistDeclarationMode domainMode) {
         assertThat(ActionRestMapper.toRest(domainMode).name()).isEqualTo(domainMode.name());

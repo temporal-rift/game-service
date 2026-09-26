@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.UUID;
 
 import io.github.temporalrift.game.action.domain.actionround.SubmittedAction;
+import io.github.temporalrift.game.shared.domain.model.CardCategory;
 import io.github.temporalrift.game.shared.domain.model.CardGrade;
 import io.github.temporalrift.game.shared.domain.model.CardType;
 import io.github.temporalrift.game.shared.domain.model.Faction;
@@ -23,7 +24,8 @@ record StoredSubmittedAction(
         UUID sourceOutcomeId,
         UUID targetOutcomeId,
         UUID targetPlayerId,
-        List<UUID> targetPlayerIds) {
+        List<UUID> targetPlayerIds,
+        String disguiseCategory) {
 
     StoredSubmittedAction {
         targetEventIds = targetEventIds == null ? null : List.copyOf(targetEventIds);
@@ -56,6 +58,7 @@ record StoredSubmittedAction(
                 sourceOutcomeId,
                 targetOutcomeId,
                 targetPlayerId,
+                null,
                 null);
     }
 
@@ -84,6 +87,7 @@ record StoredSubmittedAction(
                 sourceOutcomeId,
                 targetOutcomeId,
                 targetPlayerId,
+                null,
                 null);
     }
 
@@ -99,7 +103,8 @@ record StoredSubmittedAction(
                     UUID sourceOutcomeId,
                     UUID targetOutcomeId,
                     UUID targetPlayerId,
-                    List<UUID> targetPlayerIds) ->
+                    List<UUID> targetPlayerIds,
+                    CardCategory disguiseCategory) ->
                 new StoredSubmittedAction(
                         "CARD",
                         playerId,
@@ -114,7 +119,8 @@ record StoredSubmittedAction(
                         sourceOutcomeId,
                         targetOutcomeId,
                         targetPlayerId,
-                        targetPlayerIds);
+                        targetPlayerIds,
+                        disguiseCategory == null ? null : disguiseCategory.name());
             case SubmittedAction.SpecialActionSubmission(
                     UUID playerId,
                     Faction faction,
@@ -138,6 +144,7 @@ record StoredSubmittedAction(
                         sourceOutcomeId,
                         targetOutcomeId,
                         targetPlayerId,
+                        null,
                         null);
         };
     }
@@ -161,7 +168,8 @@ record StoredSubmittedAction(
                         sourceOutcomeId,
                         targetOutcomeId,
                         targetPlayerId,
-                        resolvedPlayerIds);
+                        resolvedPlayerIds,
+                        disguiseCategory == null ? null : CardCategory.valueOf(disguiseCategory));
             }
             case "SPECIAL" ->
                 new SubmittedAction.SpecialActionSubmission(
