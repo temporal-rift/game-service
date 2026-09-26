@@ -130,7 +130,7 @@ class EndGameSagaImplTest {
     @Test
     @DisplayName("TIMELINE_COLLAPSED trigger — game ends, GameEnded with TIMELINE_COLLAPSED reason")
     void start_timelineCollapsed_endReasonIsTimelineCollapsed() {
-        // given: Game.recordCascadedParadox() already transitioned status to ENDED_BY_COLLAPSE and saved it
+        // given: the collapse decision already transitioned status to ENDED_BY_COLLAPSE and saved it
         // before TimelineCollapsed (and therefore this saga) was ever published -- IN_PROGRESS here would
         // not reproduce the real precondition this saga runs under for this trigger.
         var game = Game.reconstitute(GAME_ID, LOBBY_ID, List.of(), 1, 3, GameStatus.ENDED_BY_COLLAPSE);
