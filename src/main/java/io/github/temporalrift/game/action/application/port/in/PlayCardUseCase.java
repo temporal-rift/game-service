@@ -33,13 +33,18 @@ public interface PlayCardUseCase {
             List<UUID> targetEventIds,
             UUID sourceOutcomeId,
             UUID targetOutcomeId,
-            UUID targetPlayerId) {
+            UUID targetPlayerId,
+            List<UUID> targetPlayerIds) {
 
         public Command {
             if (targetEventIds != null && targetEventIds.stream().anyMatch(Objects::isNull)) {
                 throw new UnknownActionTargetException(null);
             }
             targetEventIds = targetEventIds == null ? null : List.copyOf(targetEventIds);
+            if (targetPlayerIds != null && targetPlayerIds.stream().anyMatch(Objects::isNull)) {
+                throw new UnknownActionTargetException(null);
+            }
+            targetPlayerIds = targetPlayerIds == null ? null : List.copyOf(targetPlayerIds);
         }
 
         public Command(
@@ -62,7 +67,8 @@ public interface PlayCardUseCase {
                     null,
                     sourceOutcomeId,
                     targetOutcomeId,
-                    targetPlayerId);
+                    targetPlayerId,
+                    null);
         }
     }
 

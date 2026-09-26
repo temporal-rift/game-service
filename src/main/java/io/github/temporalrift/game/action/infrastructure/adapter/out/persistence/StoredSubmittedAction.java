@@ -22,10 +22,12 @@ record StoredSubmittedAction(
         List<UUID> targetEventIds,
         UUID sourceOutcomeId,
         UUID targetOutcomeId,
-        UUID targetPlayerId) {
+        UUID targetPlayerId,
+        List<UUID> targetPlayerIds) {
 
     StoredSubmittedAction {
         targetEventIds = targetEventIds == null ? null : List.copyOf(targetEventIds);
+        targetPlayerIds = targetPlayerIds == null ? null : List.copyOf(targetPlayerIds);
     }
 
     StoredSubmittedAction(
@@ -53,7 +55,8 @@ record StoredSubmittedAction(
                 null,
                 sourceOutcomeId,
                 targetOutcomeId,
-                targetPlayerId);
+                targetPlayerId,
+                null);
     }
 
     StoredSubmittedAction(
@@ -80,7 +83,8 @@ record StoredSubmittedAction(
                 null,
                 sourceOutcomeId,
                 targetOutcomeId,
-                targetPlayerId);
+                targetPlayerId,
+                null);
     }
 
     static StoredSubmittedAction fromDomain(SubmittedAction action) {
@@ -94,7 +98,8 @@ record StoredSubmittedAction(
                     List<UUID> targetEventIds,
                     UUID sourceOutcomeId,
                     UUID targetOutcomeId,
-                    UUID targetPlayerId) ->
+                    UUID targetPlayerId,
+                    List<UUID> targetPlayerIds) ->
                 new StoredSubmittedAction(
                         "CARD",
                         playerId,
@@ -108,7 +113,8 @@ record StoredSubmittedAction(
                         targetEventIds,
                         sourceOutcomeId,
                         targetOutcomeId,
-                        targetPlayerId);
+                        targetPlayerId,
+                        targetPlayerIds);
             case SubmittedAction.SpecialActionSubmission(
                     UUID playerId,
                     Faction faction,
@@ -131,23 +137,32 @@ record StoredSubmittedAction(
                         null,
                         sourceOutcomeId,
                         targetOutcomeId,
-                        targetPlayerId);
+                        targetPlayerId,
+                        null);
         };
     }
 
     SubmittedAction toDomain() {
         return switch (type) {
-            case "CARD" ->
-                new SubmittedAction.CardAction(
+            case "CARD" -> {
+                var resolvedCardType = CardType.valueOf(cardType);
+                // Rows stored before the player-target list existed carry a scalar NULLIFY target.
+                var resolvedPlayerIds = targetPlayerIds;
+                if (resolvedPlayerIds == null && resolvedCardType == CardType.NULLIFY && targetPlayerId != null) {
+                    resolvedPlayerIds = List.of(targetPlayerId);
+                }
+                yield new SubmittedAction.CardAction(
                         playerId,
                         cardInstanceId,
-                        CardType.valueOf(cardType),
+                        resolvedCardType,
                         cardGrade == null ? CardGrade.I : CardGrade.valueOf(cardGrade),
                         targetEventId,
                         targetEventIds,
                         sourceOutcomeId,
                         targetOutcomeId,
-                        targetPlayerId);
+                        targetPlayerId,
+                        resolvedPlayerIds);
+            }
             case "SPECIAL" ->
                 new SubmittedAction.SpecialActionSubmission(
                         playerId,

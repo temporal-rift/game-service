@@ -19,9 +19,9 @@ import org.springframework.web.servlet.mvc.method.annotation.RequestBodyAdvice;
 import io.github.temporalrift.game.action.domain.actionround.InvalidActionTargetException;
 import io.github.temporalrift.game.action.infrastructure.adapter.in.rest.v1.model.SubmitActionRequest;
 
-/** Validates SCAN target-list duplicates before generated binding turns the contract's array into a set. */
+/** Validates target-list duplicates before generated binding turns the contract's arrays into sets. */
 @ControllerAdvice(basePackageClasses = ActionController.class)
-class DuplicateTargetEventIdsRequestBodyAdvice implements RequestBodyAdvice {
+class DuplicateTargetListRequestBodyAdvice implements RequestBodyAdvice {
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
@@ -39,7 +39,9 @@ class DuplicateTargetEventIdsRequestBodyAdvice implements RequestBodyAdvice {
             Class<? extends HttpMessageConverter<?>> converterType)
             throws IOException {
         var body = inputMessage.getBody().readAllBytes();
-        rejectDuplicateTargetEventIds(OBJECT_MAPPER.readTree(body));
+        var request = OBJECT_MAPPER.readTree(body);
+        rejectDuplicateTargetEventIds(request);
+        rejectDuplicateTargetPlayerIds(request);
         return new CachedHttpInputMessage(inputMessage, body);
     }
 
@@ -80,6 +82,30 @@ class DuplicateTargetEventIdsRequestBodyAdvice implements RequestBodyAdvice {
             try {
                 if (!seen.add(UUID.fromString(targetEventId.textValue()))) {
                     throw InvalidActionTargetException.scanRequiresDistinctTargets();
+                }
+            } catch (IllegalArgumentException _) {
+                // Generated UUID binding reports malformed target values through the normal request error contract.
+            }
+        }
+    }
+
+    private static void rejectDuplicateTargetPlayerIds(JsonNode request) {
+        if (request == null) {
+            return;
+        }
+        var targetPlayerIds = request.path("targetPlayerIds");
+        if (!targetPlayerIds.isArray()) {
+            return;
+        }
+
+        var seen = new HashSet<UUID>();
+        for (var targetPlayerId : targetPlayerIds) {
+            if (!targetPlayerId.isTextual()) {
+                continue;
+            }
+            try {
+                if (!seen.add(UUID.fromString(targetPlayerId.textValue()))) {
+                    throw InvalidActionTargetException.nullifyRequiresDistinctTargets();
                 }
             } catch (IllegalArgumentException _) {
                 // Generated UUID binding reports malformed target values through the normal request error contract.

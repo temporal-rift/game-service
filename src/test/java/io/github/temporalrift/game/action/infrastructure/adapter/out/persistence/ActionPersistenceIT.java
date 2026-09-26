@@ -41,6 +41,7 @@ import io.github.temporalrift.game.action.domain.saga.ActionRoundSagaState;
 import io.github.temporalrift.game.action.domain.saga.ActionRoundSagaStatus;
 import io.github.temporalrift.game.action.domain.specialactionerausage.SpecialActionEraBudgetExhaustedException;
 import io.github.temporalrift.game.action.domain.specialactionerausage.SpecialActionEraUsage;
+import io.github.temporalrift.game.shared.domain.model.CardGrade;
 import io.github.temporalrift.game.shared.domain.model.CardType;
 import io.github.temporalrift.game.shared.domain.model.Faction;
 import io.github.temporalrift.game.shared.domain.model.SpecialAction;
@@ -220,6 +221,36 @@ class ActionPersistenceIT {
                     assertThat(special.targetEventId()).isEqualTo(specialTargetEventId);
                     assertThat(special.targetOutcomeId()).isEqualTo(specialTargetOutcomeId);
                     assertThat(special.targetPlayerId()).isNull();
+                });
+    }
+
+    @Test
+    void actionRound_save_and_find_roundTripsNullifyTargetList() {
+        var roundId = UUID.randomUUID();
+        var gameId = UUID.randomUUID();
+        var submitter = UUID.randomUUID();
+        var firstTarget = UUID.randomUUID();
+        var secondTarget = UUID.randomUUID();
+        var targets = List.of(firstTarget, secondTarget);
+
+        var round = new ActionRound(
+                roundId, new ActionRoundConfig(gameId, 1, 1, 45), List.of(submitter, firstTarget, secondTarget));
+        round.pullEvents();
+        round.submit(new SubmittedAction.CardAction(
+                submitter, UUID.randomUUID(), CardType.NULLIFY, CardGrade.II, null, null, null, null, null, targets));
+        actionRoundRepository.save(round);
+
+        var loaded = actionRoundRepository.findById(roundId);
+
+        assertThat(loaded).isPresent();
+        assertThat(loaded.get().submittedActions())
+                .filteredOn(SubmittedAction.CardAction.class::isInstance)
+                .singleElement()
+                .isInstanceOfSatisfying(SubmittedAction.CardAction.class, card -> {
+                    assertThat(card.cardType()).isEqualTo(CardType.NULLIFY);
+                    assertThat(card.grade()).isEqualTo(CardGrade.II);
+                    assertThat(card.targetPlayerId()).isNull();
+                    assertThat(card.targetPlayerIds()).containsExactly(firstTarget, secondTarget);
                 });
     }
 

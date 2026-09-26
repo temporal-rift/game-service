@@ -138,7 +138,16 @@ class ActionRoundSagaImplTest {
 
     private static SubmittedAction.CardAction nullify(UUID playerId, UUID targetPlayerId) {
         return new SubmittedAction.CardAction(
-                playerId, UUID.randomUUID(), CardType.NULLIFY, CardGrade.I, null, null, null, targetPlayerId);
+                playerId,
+                UUID.randomUUID(),
+                CardType.NULLIFY,
+                CardGrade.I,
+                null,
+                null,
+                null,
+                null,
+                null,
+                List.of(targetPlayerId));
     }
 
     @Nested

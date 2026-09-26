@@ -77,6 +77,7 @@ class ActionEventWireMapperTest {
                 targets,
                 null,
                 null,
+                null,
                 null);
 
         var wire = mapper.toWire(domain);
@@ -84,6 +85,30 @@ class ActionEventWireMapperTest {
         assertThat(wire.targetEventId()).isNull();
         assertThat(wire.targetEventIds()).containsExactlyElementsOf(targets);
         assertThat(wire.targetPlayerId()).isNull();
+    }
+
+    @Test
+    void cardPlayedMapsNullifyTargetList() {
+        var targets = List.of(UUID.randomUUID(), UUID.randomUUID());
+        var domain = new CardPlayed(
+                UUID.randomUUID(),
+                1,
+                1,
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                CardType.NULLIFY,
+                CardGrade.II,
+                null,
+                null,
+                null,
+                null,
+                null,
+                targets);
+
+        var wire = mapper.toWire(domain);
+
+        assertThat(wire.targetPlayerId()).isNull();
+        assertThat(wire.targetPlayerIds()).containsExactlyElementsOf(targets);
     }
 
     @Test

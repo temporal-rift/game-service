@@ -71,7 +71,8 @@ public sealed interface SubmittedAction permits SubmittedAction.CardAction, Subm
             List<UUID> targetEventIds,
             UUID sourceOutcomeId,
             UUID targetOutcomeId,
-            UUID targetPlayerId)
+            UUID targetPlayerId,
+            List<UUID> targetPlayerIds)
             implements SubmittedAction {
 
         /** The only card types whose resolution (timeline-service's {@code applyShift}) needs two outcomes. */
@@ -87,6 +88,7 @@ public sealed interface SubmittedAction permits SubmittedAction.CardAction, Subm
 
         public CardAction {
             targetEventIds = targetEventIds == null ? null : List.copyOf(targetEventIds);
+            targetPlayerIds = targetPlayerIds == null ? null : List.copyOf(targetPlayerIds);
         }
 
         public CardAction(
@@ -107,7 +109,8 @@ public sealed interface SubmittedAction permits SubmittedAction.CardAction, Subm
                     null,
                     sourceOutcomeId,
                     targetOutcomeId,
-                    targetPlayerId);
+                    targetPlayerId,
+                    null);
         }
 
         public CardAction(
@@ -126,6 +129,7 @@ public sealed interface SubmittedAction permits SubmittedAction.CardAction, Subm
                     null,
                     sourceOutcomeId,
                     targetOutcomeId,
+                    null,
                     null);
         }
 
@@ -147,6 +151,8 @@ public sealed interface SubmittedAction permits SubmittedAction.CardAction, Subm
             }
             if (cardType == CardType.SCAN) {
                 validateScanTargetMode();
+            } else if (cardType == CardType.NULLIFY) {
+                validateNullifyTargetMode();
             } else if (PLAYER_TARGETING_CARD_TYPES.contains(cardType)) {
                 validatePlayerTarget();
             } else {
@@ -173,6 +179,9 @@ public sealed interface SubmittedAction permits SubmittedAction.CardAction, Subm
             if (targetEventId != null || targetEventIds != null || sourceOutcomeId != null || targetOutcomeId != null) {
                 throw InvalidActionTargetException.cardCannotTargetEvent(cardType);
             }
+            if (targetPlayerIds != null) {
+                throw InvalidActionTargetException.cardCannotUsePlayerTargetList(cardType);
+            }
             if (targetPlayerId == null) {
                 throw InvalidActionTargetException.cardRequiresTargetPlayer(cardType);
             }
@@ -181,8 +190,35 @@ public sealed interface SubmittedAction permits SubmittedAction.CardAction, Subm
             }
         }
 
+        private void validateNullifyTargetMode() {
+            if (targetEventId != null
+                    || targetEventIds != null
+                    || targetPlayerId != null
+                    || sourceOutcomeId != null
+                    || targetOutcomeId != null) {
+                throw InvalidActionTargetException.nullifyCannotUseScalarTargets();
+            }
+            if (targetPlayerIds == null || targetPlayerIds.isEmpty()) {
+                throw InvalidActionTargetException.nullifyRequiresTargetPlayers();
+            }
+            if (Set.copyOf(targetPlayerIds).size() != targetPlayerIds.size()) {
+                throw InvalidActionTargetException.nullifyRequiresDistinctTargets();
+            }
+            var requiredCount = switch (grade) {
+                case I -> 1;
+                case II -> 2;
+                case III -> throw InvalidActionTargetException.nullifyUnsupportedGrade(grade);
+            };
+            if (targetPlayerIds.size() != requiredCount) {
+                throw InvalidActionTargetException.nullifyRequiresTargetCount(grade, requiredCount);
+            }
+            if (targetPlayerIds.contains(playerId)) {
+                throw InvalidActionTargetException.cardCannotTargetSelf(cardType);
+            }
+        }
+
         private void validateEventTarget() {
-            if (targetPlayerId != null) {
+            if (targetPlayerId != null || targetPlayerIds != null) {
                 throw InvalidActionTargetException.cardCannotTargetPlayer(cardType);
             }
             if (targetEventIds != null) {
@@ -209,7 +245,11 @@ public sealed interface SubmittedAction permits SubmittedAction.CardAction, Subm
             if (targetEventIds == null || targetEventIds.isEmpty()) {
                 throw InvalidActionTargetException.scanRequiresTargetEvents();
             }
-            if (targetEventId != null || targetPlayerId != null || sourceOutcomeId != null || targetOutcomeId != null) {
+            if (targetEventId != null
+                    || targetPlayerId != null
+                    || targetPlayerIds != null
+                    || sourceOutcomeId != null
+                    || targetOutcomeId != null) {
                 throw InvalidActionTargetException.scanCannotUseScalarTargets();
             }
             if (Set.copyOf(targetEventIds).size() != targetEventIds.size()) {
@@ -261,7 +301,8 @@ public sealed interface SubmittedAction permits SubmittedAction.CardAction, Subm
                     targetEventIds,
                     sourceOutcomeId,
                     targetOutcomeId,
-                    targetPlayerId);
+                    targetPlayerId,
+                    targetPlayerIds);
         }
 
         @Override

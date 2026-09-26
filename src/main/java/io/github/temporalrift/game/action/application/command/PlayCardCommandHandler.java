@@ -85,7 +85,8 @@ class PlayCardCommandHandler implements PlayCardUseCase {
                 command.targetEventIds(),
                 command.sourceOutcomeId(),
                 command.targetOutcomeId(),
-                command.targetPlayerId());
+                command.targetPlayerId(),
+                command.targetPlayerIds());
         action.validateFinalEra(command.eraNumber(), command.roundNumber(), gameRules.maxEras());
         action.validateCurrentEraTargets(currentEraEventIds);
         actionTargetValidator.validateTraceTargetInPrecedingRound(
@@ -95,6 +96,7 @@ class PlayCardCommandHandler implements PlayCardUseCase {
                 submittedCard.cardType(),
                 command.targetEventId());
         gameParticipantValidator.requireParticipant(command.gameId(), command.targetPlayerId());
+        gameParticipantValidator.requireParticipants(command.gameId(), command.targetPlayerIds());
         var allSubmitted = round.submit(action);
         playerState.removeCard(command.cardInstanceId());
         actionRoundRepository.save(round);
