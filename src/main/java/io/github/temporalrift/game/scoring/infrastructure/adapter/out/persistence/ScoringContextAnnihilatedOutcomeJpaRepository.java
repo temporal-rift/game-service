@@ -8,6 +8,8 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import io.github.temporalrift.game.scoring.domain.event.AnnihilationResolved;
+
 interface ScoringContextAnnihilatedOutcomeJpaRepository
         extends JpaRepository<ScoringContextAnnihilatedOutcomeJpaEntity, UUID> {
 
@@ -18,16 +20,11 @@ interface ScoringContextAnnihilatedOutcomeJpaRepository
     @Query(value = """
                     INSERT INTO scoring_context_annihilated_outcome
                         (id, game_id, era_number, event_id, outcome_id, player_id, erased, was_leading)
-                    VALUES (:id, :gameId, :eraNumber, :eventId, :outcomeId, :playerId, :erased, :wasLeading)
+                    VALUES (:id, :#{#resolution.gameId}, :#{#resolution.eraNumber},
+                            :#{#resolution.targetEventId}, :#{#resolution.targetOutcomeId},
+                            :#{#resolution.annihilatingPlayerId}, :#{#resolution.erased},
+                            :#{#resolution.wasLeading})
                     ON CONFLICT (game_id, era_number, event_id, outcome_id, player_id) DO NOTHING
                     """, nativeQuery = true)
-    void insertIfAbsent(
-            @Param("id") UUID id,
-            @Param("gameId") UUID gameId,
-            @Param("eraNumber") int eraNumber,
-            @Param("eventId") UUID eventId,
-            @Param("outcomeId") UUID outcomeId,
-            @Param("playerId") UUID playerId,
-            @Param("erased") boolean erased,
-            @Param("wasLeading") boolean wasLeading);
+    void insertIfAbsent(@Param("id") UUID id, @Param("resolution") AnnihilationResolved resolution);
 }
