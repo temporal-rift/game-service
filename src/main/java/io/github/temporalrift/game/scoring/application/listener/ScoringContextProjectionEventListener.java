@@ -68,14 +68,6 @@ class ScoringContextProjectionEventListener {
     }
 
     @ApplicationModuleListener
-    void onActivistDeclarationRecorded(ActivistDeclarationRecorded event) {
-        // Scoring declarations arrive only via EraActionFactsFinalized, which already omits Round 1-nullified
-        // declarers.
-        publishResolutions(event.gameId(), event.eraNumber());
-        completionChecker.tryComplete(event.gameId(), event.eraNumber());
-    }
-
-    @ApplicationModuleListener
     void onExposeBehaviorChanged(ExposeBehaviorChanged event) {
         contextRepository.recordActionFact(
                 event.gameId(),

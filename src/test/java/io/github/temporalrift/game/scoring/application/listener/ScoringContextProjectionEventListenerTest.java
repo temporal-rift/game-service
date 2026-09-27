@@ -2,7 +2,6 @@ package io.github.temporalrift.game.scoring.application.listener;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
@@ -21,7 +20,6 @@ import io.github.temporalrift.game.scoring.application.command.EraScoringComplet
 import io.github.temporalrift.game.scoring.domain.port.out.EraScoringContextRepository;
 import io.github.temporalrift.game.scoring.domain.port.out.FactionIdentificationRepository;
 import io.github.temporalrift.game.shared.domain.event.ActivistDeclarationRecorded;
-import io.github.temporalrift.game.shared.domain.event.ActivistDeclarationResolved;
 import io.github.temporalrift.game.shared.domain.event.EraActionFactsFinalized;
 import io.github.temporalrift.game.shared.domain.event.EventsDrawn;
 import io.github.temporalrift.game.shared.domain.event.ExposeBehaviorChanged;
@@ -106,21 +104,6 @@ class ScoringContextProjectionEventListenerTest {
         listener.onForesightDeclared(new ForesightDeclared(gameId, 2, eventId, outcomeId, playerId));
 
         then(contextRepository).should().upsertWrittenOutcome(gameId, 2, eventId, outcomeId, playerId);
-    }
-
-    @Test
-    void onActivistDeclarationRecorded_doesNotProjectScoringDeclaration() {
-        var gameId = UUID.randomUUID();
-        var playerId = UUID.randomUUID();
-        var declaration = new ActivistDeclarationRecorded(
-                gameId, 2, 1, playerId, SpecialAction.RALLY, UUID.randomUUID(), UUID.randomUUID());
-        var resolution = new ActivistDeclarationResolved(gameId, 2, playerId, true);
-        given(contextRepository.resolveActivistDeclarations(gameId, 2)).willReturn(List.of(resolution));
-
-        listener.onActivistDeclarationRecorded(declaration);
-
-        then(contextRepository).should(never()).upsertActivistDeclaration(any());
-        then(applicationEventPublisher).should().publishEvent(resolution);
     }
 
     @Test
