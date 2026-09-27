@@ -284,9 +284,10 @@ class GameTest {
     void recordCascadedParadoxesInRevealOrder_gameOver_throws() {
         var game = newGame();
         game.end();
+        var eraCascadedEventIds = List.of(UUID.randomUUID());
         assertThatExceptionOfType(GameAlreadyOverException.class)
-                .isThrownBy(() ->
-                        game.recordCascadedParadoxesInRevealOrder(List.of(UUID.randomUUID()), MAX_CASCADED_PARADOXES));
+                .isThrownBy(
+                        () -> game.recordCascadedParadoxesInRevealOrder(eraCascadedEventIds, MAX_CASCADED_PARADOXES));
     }
 
     @Test
