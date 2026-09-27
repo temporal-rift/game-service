@@ -311,7 +311,6 @@ class EraSagaAdvancerTest {
         given(eraSagaRepository.findByGameIdWithLock(GAME_ID)).willReturn(Optional.of(state));
         given(gameRules.winScoreThreshold()).willReturn(WIN_THRESHOLD);
         given(gameRules.maxEras()).willReturn(MAX_ERAS);
-        given(gameRules.maxCascadedParadoxes()).willReturn(3);
         givenNoObjectivesMet(1);
         var game = Game.reconstitute(GAME_ID, LOBBY_ID, List.of(), 1, 0, GameStatus.IN_PROGRESS);
         given(gameRepository.findByIdWithLock(GAME_ID)).willReturn(Optional.of(game));
@@ -388,7 +387,8 @@ class EraSagaAdvancerTest {
                 List.of(),
                 new GameProgress(
                         3,
-                        3,
+                        Set.of(UUID.randomUUID(), UUID.randomUUID(), collapsingEvent),
+                        collapsingEvent,
                         List.of(new PendingCarryOverEvent(collapsingEvent, CarryOverState.CASCADED)),
                         Map.of(),
                         GameStatus.IN_PROGRESS));
@@ -425,7 +425,8 @@ class EraSagaAdvancerTest {
                 List.of(),
                 new GameProgress(
                         3,
-                        3,
+                        Set.of(UUID.randomUUID(), UUID.randomUUID(), collapsingEvent),
+                        collapsingEvent,
                         List.of(new PendingCarryOverEvent(collapsingEvent, CarryOverState.CASCADED)),
                         Map.of(),
                         GameStatus.IN_PROGRESS));
@@ -453,7 +454,6 @@ class EraSagaAdvancerTest {
         var state = new EraSagaState(GAME_ID, 3, EraSagaStatus.WAITING_SCORES, PLAYER_IDS);
         given(eraSagaRepository.findByGameIdWithLock(GAME_ID)).willReturn(Optional.of(state));
         given(gameRules.winScoreThreshold()).willReturn(WIN_THRESHOLD);
-        given(gameRules.maxCascadedParadoxes()).willReturn(3);
         givenNoObjectivesMet(3);
         var firstCascadedEvent = UUID.randomUUID();
         var collapsingEvent = UUID.randomUUID();
@@ -463,7 +463,8 @@ class EraSagaAdvancerTest {
                 List.of(),
                 new GameProgress(
                         3,
-                        3,
+                        Set.of(UUID.randomUUID(), firstCascadedEvent, collapsingEvent),
+                        collapsingEvent,
                         List.of(
                                 new PendingCarryOverEvent(firstCascadedEvent, CarryOverState.CASCADED),
                                 new PendingCarryOverEvent(collapsingEvent, CarryOverState.CASCADED)),
@@ -491,7 +492,6 @@ class EraSagaAdvancerTest {
         given(eraSagaRepository.findByGameIdWithLock(GAME_ID)).willReturn(Optional.of(state));
         given(gameRules.winScoreThreshold()).willReturn(WIN_THRESHOLD);
         given(gameRules.maxEras()).willReturn(MAX_ERAS);
-        given(gameRules.maxCascadedParadoxes()).willReturn(3);
         givenNoObjectivesMet(1);
         var firstCascadedEvent = UUID.randomUUID();
         var secondCascadedEvent = UUID.randomUUID();
@@ -501,7 +501,8 @@ class EraSagaAdvancerTest {
                 List.of(),
                 new GameProgress(
                         1,
-                        0,
+                        Set.of(),
+                        null,
                         List.of(
                                 new PendingCarryOverEvent(firstCascadedEvent, CarryOverState.CASCADED),
                                 new PendingCarryOverEvent(secondCascadedEvent, CarryOverState.CASCADED)),
@@ -535,7 +536,6 @@ class EraSagaAdvancerTest {
         given(eraSagaRepository.findByGameIdWithLock(GAME_ID)).willReturn(Optional.of(state));
         given(gameRules.winScoreThreshold()).willReturn(WIN_THRESHOLD);
         given(gameRules.maxEras()).willReturn(MAX_ERAS);
-        given(gameRules.maxCascadedParadoxes()).willReturn(3);
         given(gameRules.stabilizationWinnerFactions()).willReturn(Set.of(Faction.PROPHETS, Faction.WEAVERS));
         givenNoObjectivesMet(MAX_ERAS);
         // eraCounter == maxEras so endEra() sets ENDED_BY_STABILIZATION
@@ -560,13 +560,13 @@ class EraSagaAdvancerTest {
         given(eraSagaRepository.findByGameIdWithLock(GAME_ID)).willReturn(Optional.of(state));
         given(gameRules.winScoreThreshold()).willReturn(WIN_THRESHOLD);
         given(gameRules.maxEras()).willReturn(MAX_ERAS);
-        given(gameRules.maxCascadedParadoxes()).willReturn(3);
         given(gameRules.stabilizationWinnerFactions()).willReturn(Set.of(Faction.PROPHETS, Faction.WEAVERS));
         givenNoObjectivesMet(MAX_ERAS);
         var stalledId = UUID.randomUUID();
         var progress = new GameProgress(
                 MAX_ERAS,
-                0,
+                Set.of(),
+                null,
                 List.of(new PendingCarryOverEvent(stalledId, CarryOverState.STALLED)),
                 Map.of(),
                 GameStatus.IN_PROGRESS);
@@ -646,7 +646,6 @@ class EraSagaAdvancerTest {
         given(eraSagaRepository.findByGameIdWithLock(GAME_ID)).willReturn(Optional.of(state));
         given(gameRules.winScoreThreshold()).willReturn(WIN_THRESHOLD);
         given(gameRules.maxEras()).willReturn(MAX_ERAS);
-        given(gameRules.maxCascadedParadoxes()).willReturn(3);
         givenNoObjectivesMet(1);
         var game = Game.reconstitute(GAME_ID, LOBBY_ID, List.of(), 1, 0, GameStatus.IN_PROGRESS);
         given(gameRepository.findByIdWithLock(GAME_ID)).willReturn(Optional.of(game));

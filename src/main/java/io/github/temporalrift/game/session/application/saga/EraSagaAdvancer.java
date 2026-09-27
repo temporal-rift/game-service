@@ -182,7 +182,7 @@ class EraSagaAdvancer {
             eraSagaRepository.save(state.withStatus(EraSagaStatus.COMPLETED));
             return;
         }
-        var collapsingEventId = game.findCollapsingEvent(gameRules.maxCascadedParadoxes());
+        var collapsingEventId = game.pendingCollapsingEventId();
         if (collapsingEventId != null) {
             game.endByCollapse();
             gameRepository.save(game);

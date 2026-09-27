@@ -19,9 +19,7 @@
       <column name="era_counter" type="INT">
         <constraints nullable="false"/>
       </column>
-      <column name="cascaded_paradox_counter" type="INT">
-        <constraints nullable="false"/>
-      </column>
+      <column name="pending_collapsing_event_id" type="UUID"/>
     </createTable>
   </changeSet>
 

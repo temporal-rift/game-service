@@ -48,9 +48,11 @@ class EraScoreEvaluator {
 
     private List<PlayerScoreDecision> paradoxCascadeDecisions(UUID playerId, EraScoringContext context) {
         var decisions = new ArrayList<PlayerScoreDecision>();
-        var scoredEvents = new HashSet<CascadeEventKey>();
+        // Seeded with events already penalized in an earlier era so a still-cascading event is not
+        // charged again; within this era, multiple findings on the same event still collapse to one.
+        var scoredEvents = new HashSet<>(context.priorCascadePenaltyEventIds());
         for (var fact : context.paradoxCascadeFacts()) {
-            boolean alreadyScored = !scoredEvents.add(new CascadeEventKey(fact.eraNumber(), fact.affectedEventId()));
+            boolean alreadyScored = !scoredEvents.add(fact.affectedEventId());
             if (alreadyScored) {
                 continue;
             }
@@ -63,8 +65,6 @@ class EraScoreEvaluator {
         }
         return decisions;
     }
-
-    private record CascadeEventKey(int eraNumber, UUID eventId) {}
 
     private List<PlayerScoreDecision> prophetDecisions(
             UUID playerId, EraScoringContext context, List<OutcomeApplied> outcomes) {

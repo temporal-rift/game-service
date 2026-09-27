@@ -16,4 +16,10 @@ interface ScoringContextParadoxCascadeFactJpaRepository
     @Query("select f from ScoringContextParadoxCascadeFactJpaEntity f where f.gameId = :gameId and f.consumed = false")
     List<ScoringContextParadoxCascadeFactJpaEntity> findAllByGameIdAndConsumedFalseWithLock(
             @Param("gameId") UUID gameId);
+
+    // Distinct events already penalized in an earlier era, so this era's evaluator does not pay the
+    // PARADOX_CASCADE_PENALTY again for one that's still cascading.
+    @Query("select distinct f.affectedEventId from ScoringContextParadoxCascadeFactJpaEntity f "
+            + "where f.gameId = :gameId and f.consumed = true")
+    List<UUID> findDistinctConsumedAffectedEventIds(@Param("gameId") UUID gameId);
 }

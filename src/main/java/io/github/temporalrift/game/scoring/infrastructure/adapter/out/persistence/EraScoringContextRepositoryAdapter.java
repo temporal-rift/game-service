@@ -155,6 +155,10 @@ class EraScoringContextRepositoryAdapter implements EraScoringContextRepository 
                                 entity.getTookEffect()))
                         .toList();
 
+        // Read before marking this era's rows consumed below, so it reflects only strictly earlier eras.
+        var priorCascadePenaltyEventIds =
+                Set.copyOf(paradoxCascadeFactJpaRepository.findDistinctConsumedAffectedEventIds(gameId));
+
         var unconsumedParadoxCascadeFacts =
                 paradoxCascadeFactJpaRepository.findAllByGameIdAndConsumedFalseWithLock(gameId);
         var paradoxCascadeFacts = unconsumedParadoxCascadeFacts.stream()
@@ -177,7 +181,8 @@ class EraScoringContextRepositoryAdapter implements EraScoringContextRepository 
                 annihilationFacts,
                 fulfillmentDeclarations,
                 corruptCorrelations,
-                paradoxCascadeFacts);
+                paradoxCascadeFacts,
+                priorCascadePenaltyEventIds);
     }
 
     private Set<UUID> stalledTerminalEventIds(UUID gameId, int eraNumber) {

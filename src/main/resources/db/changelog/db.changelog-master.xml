@@ -29,6 +29,7 @@
     <include file="db/changelog/session/016-add-era-hand-selection-state.xml"/>
     <include file="db/changelog/session/017-create-session-foresight-reveal.xml"/>
     <include file="db/changelog/session/018-size-lobby-player-name-to-contract-bound.xml"/>
+    <include file="db/changelog/session/019-create-game-cascaded-event.xml"/>
 
     <!-- Action module -->
     <include file="db/changelog/action/001-create-action-round.xml"/>

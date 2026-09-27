@@ -7,13 +7,12 @@ import static org.assertj.core.api.Assertions.assertThatNullPointerException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.IntStream;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-
-import io.github.temporalrift.game.shared.domain.model.CarryOverState;
 
 class GameTest {
 
@@ -212,49 +211,7 @@ class GameTest {
         assertThatExceptionOfType(InsufficientDeckException.class).isThrownBy(() -> game.startEra(0, EVENTS_PER_ERA));
     }
 
-    // --- recordCascadedParadox() ---
-
-    @Test
-    void recordCascadedParadox_incrementsCounter() {
-        var game = newGame();
-        game.recordCascadedParadox();
-        assertThat(game.cascadedParadoxCounter()).isEqualTo(1);
-    }
-
-    @Test
-    void recordCascadedParadox_thirdParadox_statusRemainsInProgressUntilExplicitCollapse() {
-        var game = newGame();
-        game.recordCascadedParadox();
-        game.recordCascadedParadox();
-        game.recordCascadedParadox();
-        assertThat(game.cascadedParadoxCounter()).isEqualTo(3);
-        assertThat(game.status()).isEqualTo(GameStatus.IN_PROGRESS);
-        game.endByCollapse();
-        assertThat(game.status()).isEqualTo(GameStatus.ENDED_BY_COLLAPSE);
-    }
-
-    @Test
-    void recordCascadedParadox_secondParadox_statusRemainsInProgress() {
-        var game = newGame();
-        game.recordCascadedParadox();
-        game.recordCascadedParadox();
-        assertThat(game.status()).isEqualTo(GameStatus.IN_PROGRESS);
-    }
-
-    @Test
-    void recordCascadedParadox_gameOver_throws() {
-        var game = newGame();
-        game.end();
-        assertThatExceptionOfType(GameAlreadyOverException.class).isThrownBy(game::recordCascadedParadox);
-    }
-
-    @Test
-    void recordCascadedParadox_counterAlreadyBeyondThreshold_staysInProgressUntilExplicitCollapse() {
-        var game = Game.reconstitute(
-                GAME_ID, LOBBY_ID, new ArrayList<>(), 1, MAX_CASCADED_PARADOXES + 1, GameStatus.IN_PROGRESS);
-        game.recordCascadedParadox();
-        assertThat(game.status()).isEqualTo(GameStatus.IN_PROGRESS);
-    }
+    // --- recordCascadedParadoxesInRevealOrder() / pendingCollapsingEventId() ---
 
     @Test
     void recordCascadedParadoxesInRevealOrder_returnsTheThresholdCrossingEventWithoutEnding() {
@@ -267,7 +224,93 @@ class GameTest {
 
         assertThat(result).isEqualTo(collapsingEvent);
         assertThat(game.cascadedParadoxCounter()).isEqualTo(MAX_CASCADED_PARADOXES);
+        assertThat(game.pendingCollapsingEventId()).isEqualTo(collapsingEvent);
         assertThat(game.status()).isEqualTo(GameStatus.IN_PROGRESS);
+    }
+
+    @Test
+    @DisplayName("a re-cascading event does not advance the collapse counter a second time")
+    void recordCascadedParadoxesInRevealOrder_reCascadingEventDoesNotCountAgain() {
+        var game = newGame();
+        var reCascadingEvent = UUID.randomUUID();
+
+        game.recordCascadedParadoxesInRevealOrder(List.of(reCascadingEvent), MAX_CASCADED_PARADOXES);
+        var secondEraResult =
+                game.recordCascadedParadoxesInRevealOrder(List.of(reCascadingEvent), MAX_CASCADED_PARADOXES);
+
+        assertThat(secondEraResult).isNull();
+        assertThat(game.cascadedParadoxCounter()).isEqualTo(1);
+        assertThat(game.pendingCollapsingEventId()).isNull();
+    }
+
+    @Test
+    @DisplayName("only a third distinct event, not a repeat of an already-counted one, crosses the threshold")
+    void recordCascadedParadoxesInRevealOrder_onlyDistinctEventsCrossThreshold() {
+        var game = newGame();
+        var reCascadingEvent = UUID.randomUUID();
+        var secondDistinctEvent = UUID.randomUUID();
+        var thirdDistinctEvent = UUID.randomUUID();
+
+        game.recordCascadedParadoxesInRevealOrder(List.of(reCascadingEvent), MAX_CASCADED_PARADOXES);
+        game.recordCascadedParadoxesInRevealOrder(List.of(reCascadingEvent), MAX_CASCADED_PARADOXES);
+        game.recordCascadedParadoxesInRevealOrder(List.of(secondDistinctEvent), MAX_CASCADED_PARADOXES);
+        var result = game.recordCascadedParadoxesInRevealOrder(List.of(thirdDistinctEvent), MAX_CASCADED_PARADOXES);
+
+        assertThat(result).isEqualTo(thirdDistinctEvent);
+        assertThat(game.cascadedParadoxCounter()).isEqualTo(MAX_CASCADED_PARADOXES);
+    }
+
+    @Test
+    void recordCascadedParadoxesInRevealOrder_gameOver_throws() {
+        var game = newGame();
+        game.end();
+        assertThatExceptionOfType(GameAlreadyOverException.class)
+                .isThrownBy(() ->
+                        game.recordCascadedParadoxesInRevealOrder(List.of(UUID.randomUUID()), MAX_CASCADED_PARADOXES));
+    }
+
+    @Test
+    void recordCascadedParadoxesInRevealOrder_counterAlreadyBeyondThreshold_staysInProgressUntilExplicitCollapse() {
+        var game = Game.reconstitute(
+                GAME_ID, LOBBY_ID, new ArrayList<>(), 1, MAX_CASCADED_PARADOXES + 1, GameStatus.IN_PROGRESS);
+        game.recordCascadedParadoxesInRevealOrder(List.of(UUID.randomUUID()), MAX_CASCADED_PARADOXES);
+        assertThat(game.status()).isEqualTo(GameStatus.IN_PROGRESS);
+    }
+
+    @Test
+    void pendingCollapsingEventId_defaultsToNull() {
+        var game = newGame();
+        assertThat(game.pendingCollapsingEventId()).isNull();
+    }
+
+    @Test
+    @DisplayName("an era with no crossing cascade resets pendingCollapsingEventId to null")
+    void pendingCollapsingEventId_resetsToNullWhenAnEraHasNoCrossingCascade() {
+        var game = newGame();
+        game.recordCascadedParadoxesInRevealOrder(
+                List.of(UUID.randomUUID(), UUID.randomUUID()), MAX_CASCADED_PARADOXES);
+
+        var result = game.recordCascadedParadoxesInRevealOrder(List.of(), MAX_CASCADED_PARADOXES);
+
+        assertThat(result).isNull();
+        assertThat(game.pendingCollapsingEventId()).isNull();
+    }
+
+    @Test
+    void reconstitute_fromGameProgress_carriesCascadedEventIdsAndPendingCollapsingEventId() {
+        var cascadedEventIds = Set.of(UUID.randomUUID(), UUID.randomUUID());
+        var pendingCollapsingEventId = UUID.randomUUID();
+
+        var game = Game.reconstitute(
+                GAME_ID,
+                LOBBY_ID,
+                List.of(),
+                new GameProgress(
+                        2, cascadedEventIds, pendingCollapsingEventId, List.of(), Map.of(), GameStatus.IN_PROGRESS));
+
+        assertThat(game.cascadedEventIds()).isEqualTo(cascadedEventIds);
+        assertThat(game.cascadedParadoxCounter()).isEqualTo(2);
+        assertThat(game.pendingCollapsingEventId()).isEqualTo(pendingCollapsingEventId);
     }
 
     @Test
@@ -282,65 +325,6 @@ class GameTest {
         var game = newGame();
         game.end();
         assertThatExceptionOfType(GameAlreadyOverException.class).isThrownBy(game::endByCollapse);
-    }
-
-    @Test
-    void findCollapsingEvent_thresholdReachedInPending_returnsRevealOrderedCrossingEvent() {
-        var first = UUID.randomUUID();
-        var collapsing = UUID.randomUUID();
-        var game = Game.reconstitute(
-                GAME_ID,
-                LOBBY_ID,
-                List.of(),
-                new GameProgress(
-                        2,
-                        3,
-                        List.of(
-                                new PendingCarryOverEvent(first, CarryOverState.CASCADED),
-                                new PendingCarryOverEvent(collapsing, CarryOverState.CASCADED)),
-                        Map.of(),
-                        GameStatus.IN_PROGRESS));
-        // prior count 1 (3 - 2 in this era), max 3 → second cascaded in reveal order crosses.
-        assertThat(game.findCollapsingEvent(MAX_CASCADED_PARADOXES)).isEqualTo(collapsing);
-    }
-
-    @Test
-    void findCollapsingEvent_counterAlreadyPastLimit_returnsFirstNewlyRecordedCascade() {
-        var first = UUID.randomUUID();
-        var game = Game.reconstitute(
-                GAME_ID,
-                LOBBY_ID,
-                List.of(),
-                new GameProgress(
-                        2,
-                        MAX_CASCADED_PARADOXES + 1,
-                        List.of(new PendingCarryOverEvent(first, CarryOverState.CASCADED)),
-                        Map.of(),
-                        GameStatus.IN_PROGRESS));
-        // Threshold already reached before this era's cascade (rule value lowered mid-game):
-        // keep the previous >= auto-end choice of crossing event instead of yielding no collapse.
-        assertThat(game.findCollapsingEvent(MAX_CASCADED_PARADOXES)).isEqualTo(first);
-    }
-
-    @Test
-    void findCollapsingEvent_belowThreshold_returnsNull() {
-        var game = Game.reconstitute(
-                GAME_ID,
-                LOBBY_ID,
-                List.of(),
-                new GameProgress(
-                        1,
-                        2,
-                        List.of(new PendingCarryOverEvent(UUID.randomUUID(), CarryOverState.CASCADED)),
-                        Map.of(),
-                        GameStatus.IN_PROGRESS));
-        assertThat(game.findCollapsingEvent(MAX_CASCADED_PARADOXES)).isNull();
-    }
-
-    @Test
-    void findCollapsingEvent_noCascadedPending_returnsNull() {
-        var game = newGame();
-        assertThat(game.findCollapsingEvent(MAX_CASCADED_PARADOXES)).isNull();
     }
 
     // --- endEra() ---
