@@ -14,7 +14,7 @@ import io.github.temporalrift.game.scoring.domain.port.out.TimelineOutcomeInboxR
  * Decides whether an era is ready to be scored and triggers {@link UpdateScoresCommandHandler} exactly
  * once. Two independent signals must both be true before scoring can run: every expected {@code
  * OutcomeApplied} has arrived, and the action module's Modulith-internal projection facts for the era
- * (e.g. {@code ForesightDeclared}, {@code OutcomeAnnihilated}) are durably recorded. Because
+ * (e.g. {@code ForesightDeclared}, {@code EraActionFactsFinalized}) are durably recorded. Because
  * {@code @ApplicationModuleListener} dispatch is asynchronous, either signal can be the one that arrives
  * last — this class is called from both directions so whichever is last is the one that completes scoring.
  */

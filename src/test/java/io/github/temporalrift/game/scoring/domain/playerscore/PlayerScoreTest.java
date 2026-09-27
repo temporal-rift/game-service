@@ -26,7 +26,6 @@ class PlayerScoreTest {
         return Stream.of(
                 Arguments.of(Faction.ERASERS, ScoreReason.ANNIHILATED_OUTCOME, 3),
                 Arguments.of(Faction.ERASERS, ScoreReason.CORRUPTED_OPPONENT_CARD, 2),
-                Arguments.of(Faction.ERASERS, ScoreReason.ERA_ENDED_WITH_FEWER_OUTCOMES, 5),
                 Arguments.of(Faction.PROPHETS, ScoreReason.EVENT_RESOLVED_AS_WRITTEN, 4),
                 Arguments.of(Faction.PROPHETS, ScoreReason.FULFILLMENT_SUCCEEDED, 8),
                 Arguments.of(Faction.PROPHETS, ScoreReason.EVENT_RESOLVED_DIFFERENTLY_THAN_WRITTEN, -2),

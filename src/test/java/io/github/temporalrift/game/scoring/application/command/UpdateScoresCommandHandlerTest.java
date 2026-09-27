@@ -16,6 +16,7 @@ import io.github.temporalrift.game.scoring.domain.context.EraScoringContext;
 import io.github.temporalrift.game.scoring.domain.context.EventOutcomeFact;
 import io.github.temporalrift.game.scoring.domain.context.ParadoxCascadeScoringFact;
 import io.github.temporalrift.game.scoring.domain.context.PlayerFaction;
+import io.github.temporalrift.game.scoring.domain.event.AnnihilationResolved;
 import io.github.temporalrift.game.scoring.domain.playerscore.PlayerScore;
 import io.github.temporalrift.game.scoring.domain.playerscore.ScoreReason;
 import io.github.temporalrift.game.scoring.domain.port.out.EraScoringContextRepository;
@@ -92,7 +93,7 @@ class UpdateScoresCommandHandlerTest {
                 GAME_ID,
                 ERA,
                 List.of(new PlayerFaction(weaverId, Faction.WEAVERS), new PlayerFaction(eraserId, Faction.ERASERS)),
-                List.of(new EventOutcomeFact(UUID.randomUUID(), UUID.randomUUID(), null, 3, 3)),
+                List.of(new EventOutcomeFact(UUID.randomUUID(), UUID.randomUUID(), null)),
                 List.of(),
                 List.of(new ChainScoringFact(weaverId, chainId, ScoreReason.CHAIN_COMPLETED, ERA)),
                 List.of(),
@@ -299,7 +300,7 @@ class UpdateScoresCommandHandlerTest {
                 GAME_ID,
                 ERA,
                 List.of(new PlayerFaction(playerId, Faction.ERASERS)),
-                List.of(new EventOutcomeFact(UUID.randomUUID(), UUID.randomUUID(), null, 3, 3)),
+                List.of(new EventOutcomeFact(UUID.randomUUID(), UUID.randomUUID(), null)),
                 List.of(),
                 List.of(),
                 List.of(),
@@ -400,17 +401,12 @@ class UpdateScoresCommandHandlerTest {
         }
 
         @Override
-        public void upsertEventOutcomeBaseline(UUID gameId, int eraNumber, UUID eventId, int startingOutcomeCount) {
-            throw new UnsupportedOperationException("not used by UpdateScoresCommandHandler");
-        }
-
-        @Override
         public void upsertWrittenOutcome(UUID gameId, int eraNumber, UUID eventId, UUID outcomeId, UUID playerId) {
             throw new UnsupportedOperationException("not used by UpdateScoresCommandHandler");
         }
 
         @Override
-        public void recordAnnihilatedOutcome(UUID gameId, int eraNumber, UUID eventId, UUID outcomeId, UUID playerId) {
+        public void recordAnnihilation(AnnihilationResolved resolution) {
             throw new UnsupportedOperationException("not used by UpdateScoresCommandHandler");
         }
 

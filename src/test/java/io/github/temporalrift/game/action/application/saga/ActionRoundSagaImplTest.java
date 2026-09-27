@@ -599,51 +599,6 @@ class ActionRoundSagaImplTest {
             assertThat(event.foresightFacts())
                     .containsExactly(
                             new EraActionFactsFinalized.ForesightFact(targetEventId, targetOutcomeId, PLAYER_1));
-            assertThat(event.annihilationFacts()).isEmpty();
-        }
-
-        @Test
-        @DisplayName("Round 3 with an Annihilate submission — bundles an AnnihilationFact")
-        void tryClose_round3WithAnnihilate_bundlesAnnihilationFact() {
-            // given
-            var roundId = UUID.randomUUID();
-            var targetEventId = UUID.randomUUID();
-            var targetOutcomeId = UUID.randomUUID();
-            var round = new ActionRound(
-                    roundId, new ActionRoundConfig(GAME_ID, ERA_NUMBER, 3, TIMER_SECONDS), List.of(PLAYER_1));
-            round.submit(new SubmittedAction.SpecialActionSubmission(
-                    PLAYER_1,
-                    Faction.ERASERS,
-                    SpecialAction.ANNIHILATE,
-                    null,
-                    null,
-                    targetEventId,
-                    targetOutcomeId,
-                    null));
-            given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA_NUMBER, 3))
-                    .willReturn(Optional.of(round));
-
-            var updatedState = new ActionRoundSagaState(
-                    UUID.randomUUID(),
-                    GAME_ID,
-                    ERA_NUMBER,
-                    3,
-                    ActionRoundSagaStatus.WAITING,
-                    List.of(),
-                    TIMER_EXPIRES_AT);
-            given(stateManager.markSubmitted(GAME_ID, ERA_NUMBER, 3, PLAYER_1)).willReturn(Optional.of(updatedState));
-
-            // when
-            saga.handlePlayerSubmitted(GAME_ID, ERA_NUMBER, 3, PLAYER_1);
-
-            // then
-            var captor = ArgumentCaptor.<EraActionFactsFinalized>captor();
-            then(actionEventPublisher).should(times(1)).publishInternally(captor.capture());
-            var event = captor.getValue();
-            assertThat(event.annihilationFacts())
-                    .containsExactly(
-                            new EraActionFactsFinalized.AnnihilationFact(targetEventId, targetOutcomeId, PLAYER_1));
-            assertThat(event.foresightFacts()).isEmpty();
         }
 
         @Test
@@ -849,7 +804,6 @@ class ActionRoundSagaImplTest {
             var captor = ArgumentCaptor.<EraActionFactsFinalized>captor();
             then(actionEventPublisher).should().publishInternally(captor.capture());
             assertThat(captor.getValue().foresightFacts()).isEmpty();
-            assertThat(captor.getValue().annihilationFacts()).isEmpty();
             assertThat(captor.getValue().revisionistFacts()).isEmpty();
             assertThat(captor.getValue().fulfillmentFacts()).isEmpty();
         }
@@ -881,7 +835,6 @@ class ActionRoundSagaImplTest {
             var captor = ArgumentCaptor.<EraActionFactsFinalized>captor();
             then(actionEventPublisher).should(times(1)).publishInternally(captor.capture());
             assertThat(captor.getValue().foresightFacts()).isEmpty();
-            assertThat(captor.getValue().annihilationFacts()).isEmpty();
         }
 
         @Test

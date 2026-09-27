@@ -9,6 +9,7 @@ import java.util.stream.IntStream;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import io.github.temporalrift.game.scoring.domain.context.ActionScoringFact;
@@ -43,7 +44,7 @@ class EraScoreEvaluatorTest {
                 GAME_ID,
                 ERA,
                 List.of(new PlayerFaction(prophetId, Faction.PROPHETS)),
-                List.of(new EventOutcomeFact(eventId, writtenOutcomeId, writtenOutcomeId, 3, 3)),
+                List.of(new EventOutcomeFact(eventId, writtenOutcomeId, writtenOutcomeId)),
                 List.of(),
                 List.of(),
                 List.of(),
@@ -73,7 +74,7 @@ class EraScoreEvaluatorTest {
                 GAME_ID,
                 ERA,
                 List.of(new PlayerFaction(prophetId, Faction.PROPHETS)),
-                List.of(new EventOutcomeFact(eventId, otherOutcomeId, writtenOutcomeId, 3, 3)),
+                List.of(new EventOutcomeFact(eventId, otherOutcomeId, writtenOutcomeId)),
                 List.of(),
                 List.of(),
                 List.of(),
@@ -100,7 +101,7 @@ class EraScoreEvaluatorTest {
                 GAME_ID,
                 ERA,
                 List.of(new PlayerFaction(prophetId, Faction.PROPHETS)),
-                List.of(new EventOutcomeFact(eventId, winningOutcomeId, null, 3, 3)),
+                List.of(new EventOutcomeFact(eventId, winningOutcomeId, null)),
                 List.of(),
                 List.of(),
                 List.of(),
@@ -115,9 +116,10 @@ class EraScoreEvaluatorTest {
         assertThat(decisions).isEmpty();
     }
 
-    @Test
-    @DisplayName("eraser receives ERA_ENDED_WITH_FEWER_OUTCOMES when any event lost outcomes")
-    void eraserEraEndedWithFewerOutcomes() {
+    @ParameterizedTest(name = "erased={0}, wasLeading={1}")
+    @CsvSource({"true, false", "false, true", "false, false"})
+    @DisplayName("eraser receives nothing for an Annihilate that did not erase a leading outcome")
+    void eraserUncreditableAnnihilationScoresNothing(boolean erased, boolean wasLeading) {
         var eraserId = UUID.randomUUID();
         var eventId = UUID.randomUUID();
 
@@ -125,31 +127,29 @@ class EraScoreEvaluatorTest {
                 GAME_ID,
                 ERA,
                 List.of(new PlayerFaction(eraserId, Faction.ERASERS)),
-                List.of(new EventOutcomeFact(eventId, UUID.randomUUID(), null, 3, 2)),
+                List.of(new EventOutcomeFact(eventId, UUID.randomUUID(), null)),
                 List.of(),
                 List.of(),
-                List.of(),
+                List.of(new AnnihilationFact(eventId, UUID.randomUUID(), eraserId, erased, wasLeading)),
                 List.of(),
                 List.of(),
                 List.of());
 
         var decisions = evaluator.evaluate(context, List.of());
 
-        assertThat(decisions).hasSize(1);
-        assertThat(decisions.get(0).reason()).isEqualTo(ScoreReason.ERA_ENDED_WITH_FEWER_OUTCOMES);
-        assertThat(decisions.get(0).eraNumber()).isEqualTo(ERA);
+        assertThat(decisions).isEmpty();
     }
 
     @Test
-    @DisplayName("eraser receives no decision when no event lost outcomes")
-    void eraserNoFewerOutcomes() {
+    @DisplayName("eraser receives no decision without an Annihilate")
+    void eraserWithoutAnnihilationScoresNothing() {
         var eraserId = UUID.randomUUID();
 
         var context = new EraScoringContext(
                 GAME_ID,
                 ERA,
                 List.of(new PlayerFaction(eraserId, Faction.ERASERS)),
-                List.of(new EventOutcomeFact(UUID.randomUUID(), UUID.randomUUID(), null, 3, 3)),
+                List.of(new EventOutcomeFact(UUID.randomUUID(), UUID.randomUUID(), null)),
                 List.of(),
                 List.of(),
                 List.of(),
@@ -347,7 +347,7 @@ class EraScoreEvaluatorTest {
                 GAME_ID,
                 ERA,
                 List.of(new PlayerFaction(prophetId, Faction.PROPHETS)),
-                List.of(new EventOutcomeFact(eventId, writtenOutcomeId, writtenOutcomeId, 3, 3)),
+                List.of(new EventOutcomeFact(eventId, writtenOutcomeId, writtenOutcomeId)),
                 List.of(),
                 List.of(),
                 List.of(),
@@ -377,7 +377,7 @@ class EraScoreEvaluatorTest {
                 GAME_ID,
                 ERA,
                 List.of(new PlayerFaction(prophetId, Faction.PROPHETS)),
-                List.of(new EventOutcomeFact(eventId, otherOutcomeId, writtenOutcomeId, 3, 3)),
+                List.of(new EventOutcomeFact(eventId, otherOutcomeId, writtenOutcomeId)),
                 List.of(),
                 List.of(),
                 List.of(),
@@ -404,7 +404,7 @@ class EraScoreEvaluatorTest {
                 GAME_ID,
                 ERA,
                 List.of(new PlayerFaction(prophetId, Faction.PROPHETS)),
-                List.of(new EventOutcomeFact(eventId, winningOutcomeId, null, 3, 3)),
+                List.of(new EventOutcomeFact(eventId, winningOutcomeId, null)),
                 List.of(),
                 List.of(),
                 List.of(),
@@ -430,7 +430,7 @@ class EraScoreEvaluatorTest {
                 GAME_ID,
                 ERA,
                 List.of(new PlayerFaction(prophetId, Faction.PROPHETS)),
-                List.of(new EventOutcomeFact(eventId, null, writtenOutcomeId, 3, 3)),
+                List.of(new EventOutcomeFact(eventId, null, writtenOutcomeId)),
                 List.of(),
                 List.of(),
                 List.of(),
@@ -454,7 +454,7 @@ class EraScoreEvaluatorTest {
                 GAME_ID,
                 2,
                 players,
-                List.of(new EventOutcomeFact(eventId, null, firstWrittenOutcome, 3, 3)),
+                List.of(new EventOutcomeFact(eventId, null, firstWrittenOutcome)),
                 List.of(),
                 List.of(),
                 List.of(),
@@ -465,7 +465,7 @@ class EraScoreEvaluatorTest {
                 GAME_ID,
                 3,
                 players,
-                List.of(new EventOutcomeFact(eventId, null, laterWrittenOutcome, 3, 3)),
+                List.of(new EventOutcomeFact(eventId, null, laterWrittenOutcome)),
                 List.of(),
                 List.of(),
                 List.of(),
@@ -476,7 +476,7 @@ class EraScoreEvaluatorTest {
                 GAME_ID,
                 4,
                 players,
-                List.of(new EventOutcomeFact(eventId, laterWrittenOutcome, laterWrittenOutcome, 3, 3)),
+                List.of(new EventOutcomeFact(eventId, laterWrittenOutcome, laterWrittenOutcome)),
                 List.of(),
                 List.of(),
                 List.of(),
@@ -503,7 +503,7 @@ class EraScoreEvaluatorTest {
                 GAME_ID,
                 5,
                 List.of(new PlayerFaction(prophetId, Faction.PROPHETS)),
-                List.of(new EventOutcomeFact(eventId, null, UUID.randomUUID(), 3, 3)),
+                List.of(new EventOutcomeFact(eventId, null, UUID.randomUUID())),
                 List.of(),
                 List.of(),
                 List.of(),
@@ -529,8 +529,8 @@ class EraScoreEvaluatorTest {
                 ERA,
                 List.of(new PlayerFaction(prophetId, Faction.PROPHETS)),
                 List.of(
-                        new EventOutcomeFact(eventId1, outcomeId1, outcomeId1, 3, 3),
-                        new EventOutcomeFact(eventId2, outcomeId2, outcomeId2, 3, 3)),
+                        new EventOutcomeFact(eventId1, outcomeId1, outcomeId1),
+                        new EventOutcomeFact(eventId2, outcomeId2, outcomeId2)),
                 List.of(),
                 List.of(),
                 List.of(),
@@ -563,7 +563,7 @@ class EraScoreEvaluatorTest {
                 List.of(
                         new PlayerFaction(prophetId1, Faction.PROPHETS),
                         new PlayerFaction(prophetId2, Faction.PROPHETS)),
-                List.of(new EventOutcomeFact(eventId, writtenOutcomeId, writtenOutcomeId, 3, 3)),
+                List.of(new EventOutcomeFact(eventId, writtenOutcomeId, writtenOutcomeId)),
                 List.of(),
                 List.of(),
                 List.of(),
@@ -595,7 +595,7 @@ class EraScoreEvaluatorTest {
                 GAME_ID,
                 ERA,
                 List.of(new PlayerFaction(declaringProphetId, Faction.PROPHETS)),
-                List.of(new EventOutcomeFact(eventId, writtenOutcomeId, writtenOutcomeId, 3, 3)),
+                List.of(new EventOutcomeFact(eventId, writtenOutcomeId, writtenOutcomeId)),
                 List.of(),
                 List.of(),
                 List.of(),
@@ -612,7 +612,7 @@ class EraScoreEvaluatorTest {
     }
 
     @Test
-    @DisplayName("eraser receives ANNIHILATED_OUTCOME for each annihilation attributed to them")
+    @DisplayName("eraser receives ANNIHILATED_OUTCOME for an Annihilate that erased a leading outcome")
     void eraserReceivesAnnihilatedOutcome() {
         var eraserId = UUID.randomUUID();
         var eventId = UUID.randomUUID();
@@ -622,20 +622,20 @@ class EraScoreEvaluatorTest {
                 GAME_ID,
                 ERA,
                 List.of(new PlayerFaction(eraserId, Faction.ERASERS)),
-                List.of(new EventOutcomeFact(eventId, UUID.randomUUID(), null, 3, 2)),
+                List.of(new EventOutcomeFact(eventId, UUID.randomUUID(), null)),
                 List.of(),
                 List.of(),
-                List.of(new AnnihilationFact(eventId, outcomeId, eraserId)),
+                List.of(new AnnihilationFact(eventId, outcomeId, eraserId, true, true)),
                 List.of(),
                 List.of(),
                 List.of());
 
         var decisions = evaluator.evaluate(context, List.of());
 
-        assertThat(decisions)
-                .hasSize(2)
-                .anyMatch(d -> d.reason() == ScoreReason.ANNIHILATED_OUTCOME)
-                .anyMatch(d -> d.reason() == ScoreReason.ERA_ENDED_WITH_FEWER_OUTCOMES);
+        assertThat(decisions).singleElement().satisfies(d -> {
+            assertThat(d.reason()).isEqualTo(ScoreReason.ANNIHILATED_OUTCOME);
+            assertThat(d.eraNumber()).isEqualTo(ERA);
+        });
     }
 
     @Test
@@ -650,13 +650,13 @@ class EraScoreEvaluatorTest {
                 ERA,
                 List.of(new PlayerFaction(eraserId, Faction.ERASERS)),
                 List.of(
-                        new EventOutcomeFact(eventId1, UUID.randomUUID(), null, 3, 2),
-                        new EventOutcomeFact(eventId2, UUID.randomUUID(), null, 3, 2)),
+                        new EventOutcomeFact(eventId1, UUID.randomUUID(), null),
+                        new EventOutcomeFact(eventId2, UUID.randomUUID(), null)),
                 List.of(),
                 List.of(),
                 List.of(
-                        new AnnihilationFact(eventId1, UUID.randomUUID(), eraserId),
-                        new AnnihilationFact(eventId2, UUID.randomUUID(), eraserId)),
+                        new AnnihilationFact(eventId1, UUID.randomUUID(), eraserId, true, true),
+                        new AnnihilationFact(eventId2, UUID.randomUUID(), eraserId, true, true)),
                 List.of(),
                 List.of(),
                 List.of());
@@ -680,12 +680,12 @@ class EraScoreEvaluatorTest {
                 GAME_ID,
                 ERA,
                 List.of(new PlayerFaction(eraserId1, Faction.ERASERS), new PlayerFaction(eraserId2, Faction.ERASERS)),
-                List.of(new EventOutcomeFact(eventId, UUID.randomUUID(), null, 3, 1)),
+                List.of(new EventOutcomeFact(eventId, UUID.randomUUID(), null)),
                 List.of(),
                 List.of(),
                 List.of(
-                        new AnnihilationFact(eventId, UUID.randomUUID(), eraserId1),
-                        new AnnihilationFact(eventId, UUID.randomUUID(), eraserId2)),
+                        new AnnihilationFact(eventId, UUID.randomUUID(), eraserId1, true, true),
+                        new AnnihilationFact(eventId, UUID.randomUUID(), eraserId2, true, true)),
                 List.of(),
                 List.of(),
                 List.of());
@@ -710,7 +710,7 @@ class EraScoreEvaluatorTest {
                 GAME_ID,
                 ERA,
                 List.of(new PlayerFaction(corruptingPlayerId, Faction.ERASERS)),
-                List.of(new EventOutcomeFact(eventId, UUID.randomUUID(), null, 3, 3)),
+                List.of(new EventOutcomeFact(eventId, UUID.randomUUID(), null)),
                 List.of(),
                 List.of(),
                 List.of(),
@@ -738,7 +738,7 @@ class EraScoreEvaluatorTest {
                 GAME_ID,
                 ERA,
                 List.of(new PlayerFaction(corruptingPlayerId, Faction.ERASERS)),
-                List.of(new EventOutcomeFact(eventId, UUID.randomUUID(), null, 3, 3)),
+                List.of(new EventOutcomeFact(eventId, UUID.randomUUID(), null)),
                 List.of(),
                 List.of(),
                 List.of(),
@@ -764,7 +764,7 @@ class EraScoreEvaluatorTest {
                 GAME_ID,
                 ERA,
                 List.of(new PlayerFaction(corruptingPlayerId, Faction.ERASERS)),
-                List.of(new EventOutcomeFact(eventId, UUID.randomUUID(), null, 3, 3)),
+                List.of(new EventOutcomeFact(eventId, UUID.randomUUID(), null)),
                 List.of(),
                 List.of(),
                 List.of(),

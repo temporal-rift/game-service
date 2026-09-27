@@ -1,5 +1,6 @@
 package io.github.temporalrift.game.scoring.infrastructure.adapter.in.kafka;
 
+import static io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.ANNIHILATION_RESOLVED_EVENT_TYPE;
 import static io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.CHAIN_BROKEN_EVENT_TYPE;
 import static io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.CHAIN_COMPLETED_EVENT_TYPE;
 import static io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.CHAIN_LINK_ADDED_EVENT_TYPE;
@@ -20,6 +21,7 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.ObjectMapper;
 
+import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.AnnihilationResolvedPayload;
 import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.ChainBrokenPayload;
 import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.ChainCompletedPayload;
 import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.ChainLinkAddedPayload;
@@ -49,7 +51,8 @@ class TimelineScoringKafkaConsumer {
             CHAIN_BROKEN_EVENT_TYPE,
             ERA_RESOLUTION_COMPLETED_EVENT_TYPE,
             PARADOX_CASCADED_EVENT_TYPE,
-            CORRUPT_INVERSION_CONFIRMED_EVENT_TYPE);
+            CORRUPT_INVERSION_CONFIRMED_EVENT_TYPE,
+            ANNIHILATION_RESOLVED_EVENT_TYPE);
 
     private final ProcessedEventRepository processedEventRepository;
     private final TimelineOutcomeInboxRepository outcomeInboxRepository;
@@ -110,6 +113,7 @@ class TimelineScoringKafkaConsumer {
             case ERA_RESOLUTION_COMPLETED_EVENT_TYPE -> handleEraResolutionCompleted(message);
             case PARADOX_CASCADED_EVENT_TYPE -> handleParadoxCascaded(message);
             case CORRUPT_INVERSION_CONFIRMED_EVENT_TYPE -> handleCorruptInversionConfirmed(message);
+            case ANNIHILATION_RESOLVED_EVENT_TYPE -> handleAnnihilationResolved(message);
             default -> throw new IllegalStateException("Unreachable event type: " + envelope.eventType());
         }
     }
@@ -160,6 +164,11 @@ class TimelineScoringKafkaConsumer {
                 event.corruptingPlayerId(),
                 event.targetEventId(),
                 event.tookEffect());
+    }
+
+    // Published during round replay, so it precedes the same game's EraResolutionCompleted on this partition.
+    private void handleAnnihilationResolved(Message<Object> message) {
+        contextRepository.recordAnnihilation(wireMapper.fromWire(read(message, AnnihilationResolvedPayload.class)));
     }
 
     private void handleEraResolutionCompleted(Message<Object> message) {

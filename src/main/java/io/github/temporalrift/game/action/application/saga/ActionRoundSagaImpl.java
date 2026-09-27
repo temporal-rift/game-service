@@ -593,8 +593,8 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
 
     // In-process only, published directly (not through ActionRoundEventPublication): built from the
     // final round's own submittedActions, which is complete and final by the time close() returns, so
-    // it cannot race the independently-dispatched per-submission ForesightDeclared/OutcomeAnnihilated
-    // listeners the way onActionRoundClosed alone would.
+    // it cannot race the independently-dispatched per-submission ForesightDeclared listener the way
+    // onActionRoundClosed alone would.
     private void publishFinalRoundActionFacts(
             UUID gameId, int eraNumber, ActionRound round, List<UUID> identifiedPlayerIds) {
         var eraRounds = new ArrayList<ActionRound>();
@@ -607,7 +607,6 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
         var cancelledRoundOnePlayerIds = cancellationForRound(eraRounds, 1);
         var cancelledRoundTwoPlayerIds = cancellationForRound(eraRounds, SIGNATURE_REVEAL_ROUND_NUMBER);
         var foresightFacts = new ArrayList<EraActionFactsFinalized.ForesightFact>();
-        var annihilationFacts = new ArrayList<EraActionFactsFinalized.AnnihilationFact>();
         var mimicFacts = new ArrayList<EraActionFactsFinalized.RevisionistFact>();
         var latestRewriteFacts = new LinkedHashMap<UUID, EraActionFactsFinalized.RevisionistFact>();
         var fulfillmentFacts = new java.util.LinkedHashSet<EraActionFactsFinalized.FulfillmentFact>();
@@ -638,9 +637,6 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
                     case FORESIGHT ->
                         foresightFacts.add(new EraActionFactsFinalized.ForesightFact(
                                 special.targetEventId(), special.targetOutcomeId(), special.playerId()));
-                    case ANNIHILATE ->
-                        annihilationFacts.add(new EraActionFactsFinalized.AnnihilationFact(
-                                special.targetEventId(), special.targetOutcomeId(), special.playerId()));
                     // The latest Rewrite is the player's single era declaration; it replaces any earlier one.
                     case REWRITE ->
                         latestRewriteFacts.put(
@@ -669,7 +665,6 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
                 gameId,
                 eraNumber,
                 foresightFacts,
-                annihilationFacts,
                 exposeFacts,
                 activistDeclarationFacts,
                 java.util.stream.Stream.concat(latestRewriteFacts.values().stream(), mimicFacts.stream())

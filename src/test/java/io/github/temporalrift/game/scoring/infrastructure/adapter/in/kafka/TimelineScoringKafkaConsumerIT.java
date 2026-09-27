@@ -16,6 +16,7 @@ import org.springframework.messaging.Message;
 import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.AnnihilationResolvedPayload;
 import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.EraResolutionCompletedPayload;
 import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.EraTerminalResolution;
 import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.OutcomeAppliedPayload;
@@ -184,7 +185,6 @@ class TimelineScoringKafkaConsumerIT {
                 List.of(),
                 List.of(),
                 List.of(),
-                List.of(),
                 List.of(new EraActionFactsFinalized.RevisionistFact(
                         playerId, SpecialAction.REWRITE, eventId, winningOutcomeId)));
         transactionTemplate.executeWithoutResult(_ -> applicationEventPublisher.publishEvent(finalization));
@@ -199,6 +199,71 @@ class TimelineScoringKafkaConsumerIT {
                                     .extracting(ScoreEntry::reason)
                                     .containsExactly(ScoreReason.SECRET_OUTCOME_WON);
                         }));
+    }
+
+    @Test
+    void handle_annihilationsBeforeBarrier_creditOnlyTheErasedLeaderOnce() {
+        var gameId = UUID.randomUUID();
+        var leaderEraser = UUID.randomUUID();
+        var trailingEraser = UUID.randomUUID();
+        var eraNumber = 1;
+        var eventId = UUID.randomUUID();
+        var winningOutcomeId = UUID.randomUUID();
+        contextRepository.upsertPlayerFaction(gameId, leaderEraser, Faction.ERASERS);
+        contextRepository.upsertPlayerFaction(gameId, trailingEraser, Faction.ERASERS);
+        contextRepository.upsertExpectedOutcomeCount(gameId, eraNumber, 1);
+        contextRepository.markActionFactsReady(gameId, eraNumber);
+
+        var leaderErased = annihilationEnvelope(gameId, eraNumber, leaderEraser, eventId, true, true);
+        consumer.handle(leaderErased);
+        consumer.handle(leaderErased);
+        consumer.handle(annihilationEnvelope(gameId, eraNumber, trailingEraser, eventId, true, false));
+        consumer.handle(outcomeEnvelope(gameId, eraNumber, eventId, winningOutcomeId));
+        consumer.handle(terminalBarrierEnvelope(gameId, eraNumber, eventId, winningOutcomeId));
+
+        assertThat(playerScoreRepository.findAllByGameId(gameId))
+                .filteredOn(score -> score.totalScore() != 0)
+                .singleElement()
+                .satisfies(score -> {
+                    assertThat(score.playerId()).isEqualTo(leaderEraser);
+                    assertThat(score.totalScore()).isEqualTo(3);
+                    assertThat(score.history())
+                            .singleElement()
+                            .satisfies(entry -> assertThat(entry.reason()).isEqualTo(ScoreReason.ANNIHILATED_OUTCOME));
+                });
+    }
+
+    @Test
+    void handle_oneLeaderAnnihilatePerEra_totalsNineAfterThreeEras() {
+        var gameId = UUID.randomUUID();
+        var eraser = UUID.randomUUID();
+        contextRepository.upsertPlayerFaction(gameId, eraser, Faction.ERASERS);
+
+        for (var eraNumber = 1; eraNumber <= 3; eraNumber++) {
+            var eventId = UUID.randomUUID();
+            var winningOutcomeId = UUID.randomUUID();
+            contextRepository.upsertExpectedOutcomeCount(gameId, eraNumber, 1);
+            contextRepository.markActionFactsReady(gameId, eraNumber);
+            consumer.handle(annihilationEnvelope(gameId, eraNumber, eraser, eventId, true, true));
+            consumer.handle(outcomeEnvelope(gameId, eraNumber, eventId, winningOutcomeId));
+            consumer.handle(terminalBarrierEnvelope(gameId, eraNumber, eventId, winningOutcomeId));
+        }
+
+        assertThat(playerScoreRepository.findAllByGameId(gameId))
+                .singleElement()
+                .satisfies(score -> {
+                    assertThat(score.totalScore()).isEqualTo(9).isLessThan(20);
+                    assertThat(score.history())
+                            .extracting(ScoreEntry::reason)
+                            .containsOnly(ScoreReason.ANNIHILATED_OUTCOME);
+                });
+    }
+
+    private static Message<Object> annihilationEnvelope(
+            UUID gameId, int eraNumber, UUID playerId, UUID eventId, boolean erased, boolean wasLeading) {
+        var resolution = new AnnihilationResolvedPayload(
+                gameId, eraNumber, 1, playerId, eventId, UUID.randomUUID(), erased, wasLeading);
+        return message("AnnihilationResolved", gameId, "FutureEvent", resolution);
     }
 
     private void prepareRallyDeclaration(

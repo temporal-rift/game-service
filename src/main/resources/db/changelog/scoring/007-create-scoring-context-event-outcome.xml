@@ -19,9 +19,6 @@
             <column name="event_id" type="UUID">
                 <constraints nullable="false"/>
             </column>
-            <column name="starting_outcome_count" type="INT" defaultValueNumeric="0">
-                <constraints nullable="false"/>
-            </column>
             <column name="written_outcome_id" type="UUID"/>
             <column name="written_by_player_id" type="UUID"/>
         </createTable>

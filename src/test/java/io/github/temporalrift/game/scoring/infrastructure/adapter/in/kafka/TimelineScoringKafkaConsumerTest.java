@@ -33,6 +33,7 @@ import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.O
 import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.ParadoxCascadedPayload;
 import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.ProbabilityStateRevealedPayload;
 import io.github.temporalrift.game.scoring.application.command.EraScoringCompletionChecker;
+import io.github.temporalrift.game.scoring.domain.event.AnnihilationResolved;
 import io.github.temporalrift.game.scoring.domain.event.EraResolutionCompleted;
 import io.github.temporalrift.game.scoring.domain.event.OutcomeApplied;
 import io.github.temporalrift.game.scoring.domain.playerscore.ScoreReason;
@@ -378,6 +379,40 @@ class TimelineScoringKafkaConsumerTest {
                 .should(never())
                 .confirmCorruptInversionForTarget(
                         any(), anyInt(), any(), any(), org.mockito.ArgumentMatchers.anyBoolean());
+    }
+
+    @Test
+    @DisplayName("AnnihilationResolved — records the confirmed Annihilate with both flags")
+    void handle_annihilationResolved_recordsAnnihilation() {
+        var playerId = UUID.randomUUID();
+        var targetEventId = UUID.randomUUID();
+        var targetOutcomeId = UUID.randomUUID();
+        var payload =
+                new io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.AnnihilationResolvedPayload(
+                        GAME_ID, ERA_NUMBER, 2, playerId, targetEventId, targetOutcomeId, true, false);
+        var message = message("AnnihilationResolved", json(payload));
+        givenClaim(message, true);
+
+        consumer.handle(message);
+
+        then(contextRepository)
+                .should()
+                .recordAnnihilation(new AnnihilationResolved(
+                        GAME_ID, ERA_NUMBER, 2, playerId, targetEventId, targetOutcomeId, true, false));
+    }
+
+    @Test
+    @DisplayName("duplicate AnnihilationResolved eventId — claimed as duplicate, nothing recorded")
+    void handle_duplicateAnnihilationResolved_ignored() {
+        var payload =
+                new io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.AnnihilationResolvedPayload(
+                        GAME_ID, ERA_NUMBER, 1, UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), true, true);
+        var message = message("AnnihilationResolved", json(payload));
+        givenClaim(message, false);
+
+        consumer.handle(message);
+
+        then(contextRepository).should(never()).recordAnnihilation(any());
     }
 
     private void givenClaim(Message<Object> message, boolean claimed) {

@@ -15,7 +15,6 @@ import io.github.temporalrift.game.action.domain.event.PlayerSkipped;
 import io.github.temporalrift.game.action.domain.event.SpecialActionPlayed;
 import io.github.temporalrift.game.shared.domain.event.ActionRoundClosed;
 import io.github.temporalrift.game.shared.domain.event.ForesightDeclared;
-import io.github.temporalrift.game.shared.domain.event.OutcomeAnnihilated;
 import io.github.temporalrift.game.shared.domain.model.CardGrade;
 import io.github.temporalrift.game.shared.domain.model.CardType;
 import io.github.temporalrift.game.shared.domain.model.Faction;
@@ -496,29 +495,20 @@ class ActionRoundTest {
     }
 
     @Test
-    @DisplayName("close — live ANNIHILATE with a target — registers OutcomeAnnihilated")
-    void closeLiveAnnihilateWithTargetRegistersOutcomeAnnihilated() {
+    @DisplayName("close — live ANNIHILATE registers no scoring fact; timeline confirms its effect")
+    void closeLiveAnnihilateRegistersNoScoringFact() {
         // given
         var round = openRound(List.of(PLAYER_A));
         round.pullEvents();
-        var eventId = UUID.randomUUID();
-        var outcomeId = UUID.randomUUID();
 
         // when
-        round.submit(special(PLAYER_A, Faction.ERASERS, SpecialAction.ANNIHILATE, eventId, outcomeId, null));
+        round.submit(special(
+                PLAYER_A, Faction.ERASERS, SpecialAction.ANNIHILATE, UUID.randomUUID(), UUID.randomUUID(), null));
         round.pullEvents();
         round.close("ALL_SUBMITTED");
 
         // then
-        var events = round.pullEvents();
-        assertThat(events).hasSize(2);
-        assertThat(events.get(0)).isInstanceOfSatisfying(OutcomeAnnihilated.class, annihilated -> {
-            assertThat(annihilated.gameId()).isEqualTo(GAME_ID);
-            assertThat(annihilated.eraNumber()).isEqualTo(ERA);
-            assertThat(annihilated.eventId()).isEqualTo(eventId);
-            assertThat(annihilated.outcomeId()).isEqualTo(outcomeId);
-            assertThat(annihilated.playerId()).isEqualTo(PLAYER_A);
-        });
+        assertThat(round.pullEvents()).singleElement().isInstanceOf(ActionRoundClosed.class);
     }
 
     @Test

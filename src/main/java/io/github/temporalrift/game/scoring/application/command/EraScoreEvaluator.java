@@ -10,6 +10,7 @@ import java.util.UUID;
 
 import org.springframework.stereotype.Component;
 
+import io.github.temporalrift.game.scoring.domain.context.AnnihilationFact;
 import io.github.temporalrift.game.scoring.domain.context.EraScoringContext;
 import io.github.temporalrift.game.scoring.domain.context.EventOutcomeFact;
 import io.github.temporalrift.game.scoring.domain.event.OutcomeApplied;
@@ -95,6 +96,7 @@ class EraScoreEvaluator {
 
         context.annihilationFacts().stream()
                 .filter(fact -> fact.playerId().equals(playerId))
+                .filter(AnnihilationFact::creditable)
                 .forEach(fact -> decisions.add(
                         new PlayerScoreDecision(playerId, ScoreReason.ANNIHILATED_OUTCOME, context.eraNumber())));
 
@@ -105,13 +107,6 @@ class EraScoreEvaluator {
                 .filter(fact -> Boolean.TRUE.equals(fact.tookEffect()))
                 .forEach(fact -> decisions.add(
                         new PlayerScoreDecision(playerId, ScoreReason.CORRUPTED_OPPONENT_CARD, context.eraNumber())));
-
-        boolean anyFewer = context.eventOutcomes().stream()
-                .anyMatch(fact -> fact.endingOutcomeCount() < fact.startingOutcomeCount());
-        if (anyFewer) {
-            decisions.add(
-                    new PlayerScoreDecision(playerId, ScoreReason.ERA_ENDED_WITH_FEWER_OUTCOMES, context.eraNumber()));
-        }
 
         return decisions;
     }
