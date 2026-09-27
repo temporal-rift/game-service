@@ -109,16 +109,25 @@ public class Game extends AggregateRoot {
      * that deferred decision, since a later re-derivation cannot recover which entries were first-time
      * cascades once this call returns.
      *
+     * <p>When the distinct-event count already reached the threshold before this era (the rule value was
+     * lowered mid-game), this era's first cascaded event — even a repeat — is treated as the crossing
+     * event, matching the previous auto-end choice instead of leaving an already-over-threshold game
+     * running because none of this era's cascades happen to be first-time ones.
+     *
      * @return the event that crossed the global cascade threshold, or {@code null} when the threshold was not reached
      */
     public UUID recordCascadedParadoxesInRevealOrder(List<UUID> eraCascadedEventIds, int maxCascadedParadoxes) {
         requireInProgress();
+        boolean alreadyPastThreshold = cascadedEventIds.size() >= maxCascadedParadoxes;
         UUID collapsingEventId = null;
         for (var eventId : eraCascadedEventIds) {
             boolean firstCascade = cascadedEventIds.add(eventId);
             if (firstCascade && collapsingEventId == null && cascadedEventIds.size() >= maxCascadedParadoxes) {
                 collapsingEventId = eventId;
             }
+        }
+        if (collapsingEventId == null && alreadyPastThreshold && !eraCascadedEventIds.isEmpty()) {
+            collapsingEventId = eraCascadedEventIds.get(0);
         }
         pendingCollapsingEventId = collapsingEventId;
         return collapsingEventId;

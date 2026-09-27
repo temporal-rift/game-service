@@ -144,6 +144,21 @@ class EraResolutionCompletedKafkaConsumerTest {
     }
 
     @Test
+    @DisplayName("a barrier for an already-ended game is ignored instead of throwing")
+    void handle_gameAlreadyOver_ignoredWithoutThrowing() {
+        var game = Game.reconstitute(GAME_ID, LOBBY_ID, List.of(), 1, 1, GameStatus.ENDED_BY_COLLAPSE);
+        var resolution = resolution(1, cascaded(UUID.randomUUID(), 0));
+        givenClaimedBarrier();
+        given(gameRepository.findByIdWithLock(GAME_ID)).willReturn(Optional.of(game));
+        given(gameRules.maxCascadedParadoxes()).willReturn(MAX_CASCADED);
+
+        consumer.handle(messageFor(resolution));
+
+        then(gameRepository).should(never()).save(any());
+        then(collapsePublisher).should(never()).publishCollapse(any(), any(Integer.class), any());
+    }
+
+    @Test
     @DisplayName("the same event cascading again in a later era does not advance the cascade count a second time")
     void handle_reCascadingEventAcrossEras_doesNotCountAgain() {
         var reCascadingEvent = UUID.randomUUID();
