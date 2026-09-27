@@ -565,18 +565,38 @@ class PlayCardCommandHandlerTest {
         then(round).should().submit(any(SubmittedAction.CardAction.class));
     }
 
-    @Test
+    @ParameterizedTest
+    @EnumSource(
+            value = CardType.class,
+            names = {"PUSH", "SUPPRESS", "SWING", "COLLIDE", "STALL", "TRACE"})
     @DisplayName("handle — stalled event target — rejects without consuming the card or recording a submission")
-    void handleStalledEventTargetIsRejectedWithoutConsuming() {
+    void handleStalledEventTargetIsRejectedWithoutConsuming(CardType cardType) {
         var targetEventId = UUID.randomUUID();
+        // SWING and COLLIDE require distinct source and target outcomes; every other scalar
+        // event-targeting card carries no outcome coordinates.
+        var sourceOutcomeId = (cardType == CardType.SWING || cardType == CardType.COLLIDE) ? UUID.randomUUID() : null;
+        var targetOutcomeId = (cardType == CardType.SWING || cardType == CardType.COLLIDE) ? UUID.randomUUID() : null;
         var command = new PlayCardUseCase.Command(
-                GAME_ID, ERA, 2, PLAYER_ID, CARD_INSTANCE_ID, targetEventId, null, null, null);
+                GAME_ID,
+                ERA,
+                2,
+                PLAYER_ID,
+                CARD_INSTANCE_ID,
+                targetEventId,
+                null,
+                sourceOutcomeId,
+                targetOutcomeId,
+                null,
+                null,
+                null);
         given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA, 2))
                 .willReturn(Optional.of(round));
         given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(playerState));
-        given(playerState.hand()).willReturn(List.of(new PlayerState.CardInstance(CARD_INSTANCE_ID, CardType.PUSH)));
-        given(actionTargetValidator.validateCardTargets(GAME_ID, ERA, targetEventId, null, null, null))
+        given(playerState.hand()).willReturn(List.of(new PlayerState.CardInstance(CARD_INSTANCE_ID, cardType)));
+        given(actionTargetValidator.validateCardTargets(
+                        GAME_ID, ERA, targetEventId, null, sourceOutcomeId, targetOutcomeId))
                 .willReturn(Set.of(targetEventId));
+        given(gameRules.maxEras()).willReturn(5);
         willThrow(InvalidActionTargetException.stalledEventTarget(targetEventId))
                 .given(stalledEventTargetLock)
                 .requireEventNotStalled(GAME_ID, ERA, 2, targetEventId);

@@ -21,6 +21,8 @@ import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Spy;
@@ -151,25 +153,31 @@ class PlaySpecialActionCommandHandlerTest {
         assertThat(result.roundClosed()).isFalse();
     }
 
-    @Test
+    @ParameterizedTest
+    @EnumSource(
+            value = SpecialAction.class,
+            names = {
+                "ANNIHILATE",
+                "SEAL",
+                "FORESIGHT",
+                "REWRITE",
+                "MIMIC",
+                "CASCADE",
+                "THREAD",
+                "REWEAVE",
+                "FULFILLMENT"
+            })
     @DisplayName("handle — stalled event target — rejects without spending usage or recording a submission")
-    void handleStalledEventTargetIsRejectedWithoutSpending() {
+    void handleStalledEventTargetIsRejectedWithoutSpending(SpecialAction specialAction) {
+        // RALLY and MOMENTUM are deliberately absent: the submission contract rejects them
+        // unconditionally, so they can never reach the stalled-event lock through this handler.
         var targetEventId = UUID.randomUUID();
         var command = new PlaySpecialActionUseCase.Command(
-                GAME_ID,
-                ERA,
-                2,
-                PLAYER_ID,
-                SpecialAction.ANNIHILATE,
-                null,
-                null,
-                targetEventId,
-                UUID.randomUUID(),
-                null);
+                GAME_ID, ERA, 2, PLAYER_ID, specialAction, null, null, targetEventId, UUID.randomUUID(), null);
         given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA, 2))
                 .willReturn(Optional.of(round));
         given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(playerState));
-        given(playerState.faction()).willReturn(Faction.ERASERS);
+        given(playerState.faction()).willReturn(factionFor(specialAction));
         given(playerState.isJammed()).willReturn(false);
         willThrow(io.github.temporalrift.game.action.domain.actionround.InvalidActionTargetException.stalledEventTarget(
                         targetEventId))
@@ -185,6 +193,16 @@ class PlaySpecialActionCommandHandlerTest {
         then(actionRoundRepository).should(never()).save(any());
         then(specialActionEraUsageRepository).shouldHaveNoInteractions();
         then(actionEventPublisher).shouldHaveNoInteractions();
+    }
+
+    private static Faction factionFor(SpecialAction specialAction) {
+        return switch (specialAction) {
+            case ANNIHILATE, CASCADE -> Faction.ERASERS;
+            case SEAL, FORESIGHT, FULFILLMENT -> Faction.PROPHETS;
+            case REWRITE, MIMIC -> Faction.REVISIONISTS;
+            case THREAD, REWEAVE -> Faction.WEAVERS;
+            default -> throw new IllegalArgumentException("Not an event-targeting special: " + specialAction);
+        };
     }
 
     @Test
