@@ -917,9 +917,10 @@ class PlaySpecialActionCommandHandlerTest {
                 null,
                 UUID.randomUUID());
         stubExposeAgainst(List.of(card));
+        var command = exposeCommand(targetPlayerId);
 
         assertThatExceptionOfType(ExposeTargetNotEligibleException.class)
-                .isThrownBy(() -> handler.handle(exposeCommand(targetPlayerId)))
+                .isThrownBy(() -> handler.handle(command))
                 .withMessageContaining("publicly play a Probability Shifter card");
         then(activistEraStateRepository).shouldHaveNoInteractions();
         then(round).should(never()).submit(any());
@@ -929,9 +930,9 @@ class PlaySpecialActionCommandHandlerTest {
     void handleActivistExposeRejectsRoundOneSkip() {
         var targetPlayerId = UUID.randomUUID();
         stubExposeAgainst(List.of());
+        var command = exposeCommand(targetPlayerId);
 
-        assertThatExceptionOfType(ExposeTargetNotEligibleException.class)
-                .isThrownBy(() -> handler.handle(exposeCommand(targetPlayerId)));
+        assertThatExceptionOfType(ExposeTargetNotEligibleException.class).isThrownBy(() -> handler.handle(command));
         then(activistEraStateRepository).shouldHaveNoInteractions();
         then(round).should(never()).submit(any());
     }
@@ -948,9 +949,9 @@ class PlaySpecialActionCommandHandlerTest {
                 UUID.randomUUID(),
                 UUID.randomUUID(),
                 null)));
+        var command = exposeCommand(targetPlayerId);
 
-        assertThatExceptionOfType(ExposeTargetNotEligibleException.class)
-                .isThrownBy(() -> handler.handle(exposeCommand(targetPlayerId)));
+        assertThatExceptionOfType(ExposeTargetNotEligibleException.class).isThrownBy(() -> handler.handle(command));
         then(activistEraStateRepository).shouldHaveNoInteractions();
         then(round).should(never()).submit(any());
     }

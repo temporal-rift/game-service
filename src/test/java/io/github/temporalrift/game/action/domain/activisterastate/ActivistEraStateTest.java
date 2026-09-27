@@ -75,8 +75,8 @@ class ActivistEraStateTest {
         assertThat(state.recordExposeBehaviorChanged(
                         new ProbabilityInfluenceSignature(CardType.PUSH, UUID.randomUUID(), null, UUID.randomUUID())))
                 .isFalse();
-        assertThatThrownBy(() -> state.expose(UUID.randomUUID(), null))
-                .isInstanceOf(ExposeAlreadyRecordedException.class);
+        var otherPlayerId = UUID.randomUUID();
+        assertThatThrownBy(() -> state.expose(otherPlayerId, null)).isInstanceOf(ExposeAlreadyRecordedException.class);
     }
 
     @Test
