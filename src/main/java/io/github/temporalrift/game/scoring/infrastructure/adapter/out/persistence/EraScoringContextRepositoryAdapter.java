@@ -275,15 +275,7 @@ class EraScoringContextRepositoryAdapter implements EraScoringContextRepository 
     @Override
     @Transactional
     public void recordAnnihilation(AnnihilationResolved resolution) {
-        annihilatedOutcomeJpaRepository.insertIfAbsent(
-                UUID.randomUUID(),
-                resolution.gameId(),
-                resolution.eraNumber(),
-                resolution.targetEventId(),
-                resolution.targetOutcomeId(),
-                resolution.annihilatingPlayerId(),
-                resolution.erased(),
-                resolution.wasLeading());
+        annihilatedOutcomeJpaRepository.insertIfAbsent(UUID.randomUUID(), resolution);
     }
 
     @Override

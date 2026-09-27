@@ -434,19 +434,11 @@ class EraScoringContextRepositoryAdapterTest {
         var outcomeId = UUID.randomUUID();
         var playerId = UUID.randomUUID();
 
-        adapter.recordAnnihilation(new AnnihilationResolved(gameId, 2, 1, playerId, eventId, outcomeId, true, false));
+        var resolution = new AnnihilationResolved(gameId, 2, 1, playerId, eventId, outcomeId, true, false);
 
-        then(annihilatedOutcomeJpaRepository)
-                .should()
-                .insertIfAbsent(
-                        any(UUID.class),
-                        eq(gameId),
-                        eq(2),
-                        eq(eventId),
-                        eq(outcomeId),
-                        eq(playerId),
-                        eq(true),
-                        eq(false));
+        adapter.recordAnnihilation(resolution);
+
+        then(annihilatedOutcomeJpaRepository).should().insertIfAbsent(any(UUID.class), eq(resolution));
     }
 
     @Test
