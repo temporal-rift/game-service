@@ -1,6 +1,7 @@
 package io.github.temporalrift.game.action.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.mockito.BDDMockito.given;
 
@@ -66,7 +67,6 @@ class StalledEventTargetLockTest {
     void sameRoundStallDoesNotLockOwnRound() {
         // The resolver only reads strictly prior rounds, so a Stall submitted in round 2
         // never blocks other round 2 submissions on the same event (simultaneous resolution).
-        var eventId = UUID.randomUUID();
         given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumber(GAME_ID, ERA, 1))
                 .willReturn(Optional.empty());
 
@@ -207,8 +207,9 @@ class StalledEventTargetLockTest {
     @Test
     @DisplayName("null target and round 1 never throw")
     void nullTargetAndRound1NeverThrow() {
-        lock.requireEventNotStalled(GAME_ID, ERA, 2, null);
-        lock.requireEventNotStalled(GAME_ID, ERA, 1, UUID.randomUUID());
+        assertThatCode(() -> lock.requireEventNotStalled(GAME_ID, ERA, 2, null)).doesNotThrowAnyException();
+        assertThatCode(() -> lock.requireEventNotStalled(GAME_ID, ERA, 1, UUID.randomUUID()))
+                .doesNotThrowAnyException();
     }
 
     private static SubmittedAction.CardAction stallAction(UUID playerId, UUID eventId) {
