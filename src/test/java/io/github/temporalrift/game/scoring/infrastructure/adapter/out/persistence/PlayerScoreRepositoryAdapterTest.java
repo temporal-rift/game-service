@@ -71,6 +71,35 @@ class PlayerScoreRepositoryAdapterTest {
     }
 
     @Test
+    void findAllByGameIdWithLock_readsHistoricalExposeReason() {
+        var gameId = UUID.randomUUID();
+        var playerId = UUID.randomUUID();
+        var scoreId = UUID.randomUUID();
+        var entity = new PlayerScoreJpaEntity();
+        entity.setId(scoreId);
+        entity.setGameId(gameId);
+        entity.setPlayerId(playerId);
+        entity.setFaction(Faction.ACTIVISTS.name());
+        entity.setTotalScore(2);
+        given(jpaRepository.findAllByGameIdWithLock(gameId)).willReturn(List.of(entity));
+
+        var history = new PlayerScoreHistoryJpaEntity();
+        history.setPlayerScoreId(scoreId);
+        history.setEraNumber(1);
+        history.setReason("EXPOSE_CHANGED_PLAYER_BEHAVIOR");
+        history.setPointsDelta(2);
+        history.setNewTotal(2);
+        given(historyJpaRepository.findAllByGameIdOrderByEraNumberAsc(gameId)).willReturn(List.of(history));
+
+        assertThat(adapter.findAllByGameIdWithLock(gameId))
+                .singleElement()
+                .satisfies(score -> assertThat(score.history())
+                        .singleElement()
+                        .satisfies(entry ->
+                                assertThat(entry.reason()).isEqualTo(ScoreReason.EXPOSE_CHANGED_PLAYER_BEHAVIOR)));
+    }
+
+    @Test
     void saveAll_upsertsScoreAndPersistsFullHistoryForNewAggregate() {
         var score = new PlayerScore(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), Faction.ACTIVISTS);
         score.apply(1, ScoreReason.DECLARED_OUTCOME_WON, 4);
