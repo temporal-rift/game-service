@@ -1,7 +1,9 @@
 package io.github.temporalrift.game.session.infrastructure.adapter.out.persistence;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 import jakarta.persistence.CollectionTable;
@@ -30,8 +32,13 @@ class GameJpaEntity {
     @Column(name = "era_counter", nullable = false)
     private int eraCounter;
 
-    @Column(name = "cascaded_paradox_counter", nullable = false)
-    private int cascadedParadoxCounter;
+    @Column(name = "pending_collapsing_event_id")
+    private UUID pendingCollapsingEventId;
+
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "game_cascaded_event", joinColumns = @JoinColumn(name = "game_id"))
+    @Column(name = "event_id", nullable = false)
+    private Set<UUID> cascadedEventIds = new HashSet<>();
 
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "game_deck_entry", joinColumns = @JoinColumn(name = "game_id"))
@@ -82,12 +89,20 @@ class GameJpaEntity {
         this.eraCounter = eraCounter;
     }
 
-    int getCascadedParadoxCounter() {
-        return cascadedParadoxCounter;
+    UUID getPendingCollapsingEventId() {
+        return pendingCollapsingEventId;
     }
 
-    void setCascadedParadoxCounter(int cascadedParadoxCounter) {
-        this.cascadedParadoxCounter = cascadedParadoxCounter;
+    void setPendingCollapsingEventId(UUID pendingCollapsingEventId) {
+        this.pendingCollapsingEventId = pendingCollapsingEventId;
+    }
+
+    Set<UUID> getCascadedEventIds() {
+        return cascadedEventIds;
+    }
+
+    void setCascadedEventIds(Set<UUID> cascadedEventIds) {
+        this.cascadedEventIds = new HashSet<>(cascadedEventIds);
     }
 
     List<UUID> getEventDeck() {

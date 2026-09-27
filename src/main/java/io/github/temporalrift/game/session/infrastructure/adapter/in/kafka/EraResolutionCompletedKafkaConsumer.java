@@ -107,17 +107,15 @@ class EraResolutionCompletedKafkaConsumer {
         var game = gameRepository
                 .findByIdWithLock(resolution.gameId())
                 .orElseThrow(() -> new GameNotFoundException(resolution.gameId()));
+        // Called even with an empty list so Game.pendingCollapsingEventId() always reflects this era's
+        // actual cascades, not a stale value left over from an earlier era.
         final UUID collapsingEventId;
-        if (cascadedEventIds.isEmpty()) {
-            collapsingEventId = null;
-        } else {
-            try {
-                collapsingEventId =
-                        game.recordCascadedParadoxesInRevealOrder(cascadedEventIds, gameRules.maxCascadedParadoxes());
-            } catch (GameAlreadyOverException _) {
-                log.info("EraResolutionCompleted ignored for game {} — already over", resolution.gameId());
-                return;
-            }
+        try {
+            collapsingEventId =
+                    game.recordCascadedParadoxesInRevealOrder(cascadedEventIds, gameRules.maxCascadedParadoxes());
+        } catch (GameAlreadyOverException _) {
+            log.info("EraResolutionCompleted ignored for game {} — already over", resolution.gameId());
+            return;
         }
         if (game.status() == GameStatus.IN_PROGRESS) {
             game.recordPendingCarryOverEvents(carryOverEvents);

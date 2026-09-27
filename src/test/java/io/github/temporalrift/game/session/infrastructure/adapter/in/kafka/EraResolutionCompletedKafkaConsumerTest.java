@@ -144,6 +144,25 @@ class EraResolutionCompletedKafkaConsumerTest {
     }
 
     @Test
+    @DisplayName("the same event cascading again in a later era does not advance the cascade count a second time")
+    void handle_reCascadingEventAcrossEras_doesNotCountAgain() {
+        var reCascadingEvent = UUID.randomUUID();
+        var game = new Game(GAME_ID, LOBBY_ID, List.of());
+        givenClaimedBarrier();
+        given(gameRepository.findByIdWithLock(GAME_ID)).willReturn(Optional.of(game));
+        given(gameRules.maxCascadedParadoxes()).willReturn(MAX_CASCADED);
+
+        consumer.handle(messageFor(resolution(1, cascaded(reCascadingEvent, 0))));
+        assertThat(game.cascadedParadoxCounter()).isEqualTo(1);
+
+        consumer.handle(messageFor(resolution(2, cascaded(reCascadingEvent, 0))));
+
+        assertThat(game.cascadedParadoxCounter()).isEqualTo(1);
+        assertThat(game.pendingCollapsingEventId()).isNull();
+        then(collapsePublisher).should(never()).publishCollapse(any(), any(Integer.class), any());
+    }
+
+    @Test
     @DisplayName("threshold crossed while the era awaits scoring — collapse defers to the scoring decision")
     void handle_thresholdCrossedWhileAwaitingScoring_defersWithoutPublishingOrEnding() {
         var firstCascadedEvent = UUID.randomUUID();

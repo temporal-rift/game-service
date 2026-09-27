@@ -139,6 +139,33 @@ class SessionPersistenceIT {
     }
 
     @Test
+    void game_save_and_findById_roundTripsDistinctCascadedEventIdsAndPendingCollapsingEventId() {
+        var id = UUID.randomUUID();
+        var lobbyId = UUID.randomUUID();
+        var eventIds = IntStream.range(0, EVENT_COUNT)
+                .mapToObj(ignored -> UUID.randomUUID())
+                .collect(Collectors.toCollection(ArrayList::new));
+
+        var game = new Game(id, lobbyId, eventIds);
+        var reCascadingEvent = UUID.randomUUID();
+        var collapsingEvent = UUID.randomUUID();
+        game.recordCascadedParadoxesInRevealOrder(List.of(reCascadingEvent), MAX_CASCADED_PARADOXES);
+        gameRepository.save(game);
+        // Re-cascading the same event in a later era must not count it again.
+        game.recordCascadedParadoxesInRevealOrder(
+                List.of(reCascadingEvent, UUID.randomUUID(), collapsingEvent), MAX_CASCADED_PARADOXES);
+        gameRepository.save(game);
+
+        var result = gameRepository.findById(id).orElseThrow();
+
+        assertThat(result.cascadedParadoxCounter()).isEqualTo(MAX_CASCADED_PARADOXES);
+        assertThat(result.cascadedEventIds())
+                .hasSize(MAX_CASCADED_PARADOXES)
+                .contains(reCascadingEvent, collapsingEvent);
+        assertThat(result.pendingCollapsingEventId()).isEqualTo(collapsingEvent);
+    }
+
+    @Test
     void game_save_afterEraStarted_persistsUpdatedState() {
         var id = UUID.randomUUID();
         var eventIds = IntStream.range(0, EVENT_COUNT)

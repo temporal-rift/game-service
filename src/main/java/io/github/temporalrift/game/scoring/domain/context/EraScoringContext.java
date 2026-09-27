@@ -2,6 +2,7 @@ package io.github.temporalrift.game.scoring.domain.context;
 
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 
 public record EraScoringContext(
@@ -14,7 +15,8 @@ public record EraScoringContext(
         List<AnnihilationFact> annihilationFacts,
         List<FulfillmentDeclarationFact> fulfillmentDeclarations,
         List<CorruptCorrelationFact> corruptCorrelations,
-        List<ParadoxCascadeScoringFact> paradoxCascadeFacts) {
+        List<ParadoxCascadeScoringFact> paradoxCascadeFacts,
+        Set<UUID> priorCascadePenaltyEventIds) {
 
     public EraScoringContext {
         Objects.requireNonNull(gameId, "gameId must not be null");
@@ -26,6 +28,7 @@ public record EraScoringContext(
         Objects.requireNonNull(fulfillmentDeclarations, "fulfillmentDeclarations must not be null");
         Objects.requireNonNull(corruptCorrelations, "corruptCorrelations must not be null");
         Objects.requireNonNull(paradoxCascadeFacts, "paradoxCascadeFacts must not be null");
+        Objects.requireNonNull(priorCascadePenaltyEventIds, "priorCascadePenaltyEventIds must not be null");
         players = List.copyOf(players);
         eventOutcomes = List.copyOf(eventOutcomes);
         actionFacts = List.copyOf(actionFacts);
@@ -34,5 +37,6 @@ public record EraScoringContext(
         fulfillmentDeclarations = List.copyOf(fulfillmentDeclarations);
         corruptCorrelations = List.copyOf(corruptCorrelations);
         paradoxCascadeFacts = List.copyOf(paradoxCascadeFacts);
+        priorCascadePenaltyEventIds = Set.copyOf(priorCascadePenaltyEventIds);
     }
 }

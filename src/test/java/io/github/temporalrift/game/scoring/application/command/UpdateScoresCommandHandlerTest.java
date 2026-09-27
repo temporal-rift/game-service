@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 import org.junit.jupiter.api.DisplayName;
@@ -99,7 +100,8 @@ class UpdateScoresCommandHandlerTest {
                 List.of(),
                 List.of(),
                 List.of(),
-                List.of());
+                List.of(),
+                Set.of());
 
         var handler = handler(context, List.<PlayerScore>of());
         handler.handle(new UpdateEraScoresCommand(GAME_ID, ERA, List.of()));
@@ -139,7 +141,8 @@ class UpdateScoresCommandHandlerTest {
                 List.of(),
                 List.of(),
                 List.of(),
-                List.of());
+                List.of(),
+                Set.of());
 
         var handler = handler(context, List.<PlayerScore>of());
         handler.handle(new UpdateEraScoresCommand(GAME_ID, ERA, List.of()));
@@ -167,7 +170,8 @@ class UpdateScoresCommandHandlerTest {
                 List.of(),
                 List.of(),
                 List.of(),
-                List.of(new ParadoxCascadeScoringFact(UUID.randomUUID(), UUID.randomUUID(), playerIds, ERA)));
+                List.of(new ParadoxCascadeScoringFact(UUID.randomUUID(), UUID.randomUUID(), playerIds, ERA)),
+                Set.of());
         var savedScores = new ArrayList<PlayerScore>();
 
         handler(context, List.of(), scoreRules(), savedScores)
@@ -204,7 +208,8 @@ class UpdateScoresCommandHandlerTest {
                 List.of(),
                 List.of(),
                 List.of(),
-                List.of());
+                List.of(),
+                Set.of());
 
         var savedScores = new ArrayList<PlayerScore>();
         PlayerScoreRepository repo = new FakePlayerScoreRepository(List.of(existingScore), savedScores);
@@ -240,7 +245,8 @@ class UpdateScoresCommandHandlerTest {
                 List.of(),
                 List.of(),
                 List.of(),
-                List.of());
+                List.of(),
+                Set.of());
 
         var savedScores = new ArrayList<PlayerScore>();
         var handler =
@@ -274,7 +280,8 @@ class UpdateScoresCommandHandlerTest {
                 List.of(),
                 List.of(),
                 List.of(),
-                List.of());
+                List.of(),
+                Set.of());
 
         var savedScores = new ArrayList<PlayerScore>();
         PlayerScoreRepository repo = new FakePlayerScoreRepository(List.of(), savedScores);
@@ -306,7 +313,8 @@ class UpdateScoresCommandHandlerTest {
                 List.of(),
                 List.of(),
                 List.of(),
-                List.of());
+                List.of(),
+                Set.of());
     }
 
     private UpdateScoresCommandHandler handler(EraScoringContext context, List<PlayerScore> existingScores) {

@@ -3,6 +3,7 @@ package io.github.temporalrift.game.scoring.application.command;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.IntStream;
 
@@ -50,7 +51,8 @@ class EraScoreEvaluatorTest {
                 List.of(),
                 List.of(),
                 List.of(),
-                List.of());
+                List.of(),
+                Set.of());
 
         var outcome = new OutcomeApplied(GAME_ID, ERA, eventId, writtenOutcomeId, List.of());
 
@@ -80,7 +82,8 @@ class EraScoreEvaluatorTest {
                 List.of(),
                 List.of(),
                 List.of(),
-                List.of());
+                List.of(),
+                Set.of());
 
         var outcome = new OutcomeApplied(GAME_ID, ERA, eventId, otherOutcomeId, List.of());
 
@@ -107,7 +110,8 @@ class EraScoreEvaluatorTest {
                 List.of(),
                 List.of(),
                 List.of(),
-                List.of());
+                List.of(),
+                Set.of());
 
         var outcome = new OutcomeApplied(GAME_ID, ERA, eventId, winningOutcomeId, List.of());
 
@@ -133,7 +137,8 @@ class EraScoreEvaluatorTest {
                 List.of(new AnnihilationFact(eventId, UUID.randomUUID(), eraserId, erased, wasLeading)),
                 List.of(),
                 List.of(),
-                List.of());
+                List.of(),
+                Set.of());
 
         var decisions = evaluator.evaluate(context, List.of());
 
@@ -155,7 +160,8 @@ class EraScoreEvaluatorTest {
                 List.of(),
                 List.of(),
                 List.of(),
-                List.of());
+                List.of(),
+                Set.of());
 
         var decisions = evaluator.evaluate(context, List.of());
 
@@ -178,7 +184,8 @@ class EraScoreEvaluatorTest {
                 List.of(),
                 List.of(),
                 List.of(),
-                List.of());
+                List.of(),
+                Set.of());
 
         var decisions = evaluator.evaluate(context, List.of());
 
@@ -202,7 +209,8 @@ class EraScoreEvaluatorTest {
                 List.of(),
                 List.of(),
                 List.of(),
-                List.of());
+                List.of(),
+                Set.of());
 
         var decisions = evaluator.evaluate(context, List.of());
 
@@ -228,7 +236,8 @@ class EraScoreEvaluatorTest {
                 List.of(),
                 List.of(),
                 List.of(),
-                List.of());
+                List.of(),
+                Set.of());
 
         var decisions = evaluator.evaluate(context, List.of());
 
@@ -251,7 +260,8 @@ class EraScoreEvaluatorTest {
                 List.of(),
                 List.of(),
                 List.of(),
-                List.of());
+                List.of(),
+                Set.of());
 
         var decisions = evaluator.evaluate(context, List.of());
 
@@ -275,7 +285,8 @@ class EraScoreEvaluatorTest {
                 List.of(),
                 List.of(),
                 List.of(),
-                List.of());
+                List.of(),
+                Set.of());
 
         var decisions = evaluator.evaluate(context, List.of());
 
@@ -300,7 +311,8 @@ class EraScoreEvaluatorTest {
                 List.of(),
                 List.of(),
                 List.of(),
-                List.of());
+                List.of(),
+                Set.of());
 
         var decisions = evaluator.evaluate(context, List.of());
 
@@ -326,7 +338,8 @@ class EraScoreEvaluatorTest {
                 List.of(),
                 List.of(),
                 List.of(),
-                List.of());
+                List.of(),
+                Set.of());
 
         var decisions = evaluator.evaluate(context, List.of());
 
@@ -353,7 +366,8 @@ class EraScoreEvaluatorTest {
                 List.of(),
                 List.of(new FulfillmentDeclarationFact(prophetId, eventId)),
                 List.of(),
-                List.of());
+                List.of(),
+                Set.of());
 
         var outcome = new OutcomeApplied(GAME_ID, ERA, eventId, writtenOutcomeId, List.of());
 
@@ -383,7 +397,8 @@ class EraScoreEvaluatorTest {
                 List.of(),
                 List.of(new FulfillmentDeclarationFact(prophetId, eventId)),
                 List.of(),
-                List.of());
+                List.of(),
+                Set.of());
 
         var outcome = new OutcomeApplied(GAME_ID, ERA, eventId, otherOutcomeId, List.of());
 
@@ -410,7 +425,8 @@ class EraScoreEvaluatorTest {
                 List.of(),
                 List.of(new FulfillmentDeclarationFact(prophetId, eventId)),
                 List.of(),
-                List.of());
+                List.of(),
+                Set.of());
 
         var outcome = new OutcomeApplied(GAME_ID, ERA, eventId, winningOutcomeId, List.of());
 
@@ -436,7 +452,8 @@ class EraScoreEvaluatorTest {
                 List.of(),
                 List.of(new FulfillmentDeclarationFact(prophetId, eventId)),
                 List.of(),
-                List.of());
+                List.of(),
+                Set.of());
 
         var decisions = evaluator.evaluate(context, List.of());
 
@@ -460,7 +477,8 @@ class EraScoreEvaluatorTest {
                 List.of(),
                 List.of(new FulfillmentDeclarationFact(prophetId, eventId)),
                 List.of(),
-                List.of());
+                List.of(),
+                Set.of());
         var secondEra = new EraScoringContext(
                 GAME_ID,
                 3,
@@ -471,7 +489,8 @@ class EraScoreEvaluatorTest {
                 List.of(),
                 List.of(),
                 List.of(),
-                List.of());
+                List.of(),
+                Set.of());
         var resolvingEra = new EraScoringContext(
                 GAME_ID,
                 4,
@@ -482,7 +501,8 @@ class EraScoreEvaluatorTest {
                 List.of(),
                 List.of(),
                 List.of(),
-                List.of());
+                List.of(),
+                Set.of());
 
         assertThat(evaluator.evaluate(firstEra, List.of())).isEmpty();
         assertThat(evaluator.evaluate(secondEra, List.of())).isEmpty();
@@ -509,7 +529,8 @@ class EraScoreEvaluatorTest {
                 List.of(),
                 List.of(new FulfillmentDeclarationFact(prophetId, eventId)),
                 List.of(),
-                List.of());
+                List.of(),
+                Set.of());
 
         assertThat(evaluator.evaluate(finalEra, List.of())).isEmpty();
     }
@@ -538,7 +559,8 @@ class EraScoreEvaluatorTest {
                         new FulfillmentDeclarationFact(prophetId, eventId1),
                         new FulfillmentDeclarationFact(prophetId, eventId2)),
                 List.of(),
-                List.of());
+                List.of(),
+                Set.of());
 
         var outcomes = List.of(
                 new OutcomeApplied(GAME_ID, ERA, eventId1, outcomeId1, List.of()),
@@ -571,7 +593,8 @@ class EraScoreEvaluatorTest {
                         new FulfillmentDeclarationFact(prophetId1, eventId),
                         new FulfillmentDeclarationFact(prophetId2, eventId)),
                 List.of(),
-                List.of());
+                List.of(),
+                Set.of());
 
         var outcome = new OutcomeApplied(GAME_ID, ERA, eventId, writtenOutcomeId, List.of());
 
@@ -601,7 +624,8 @@ class EraScoreEvaluatorTest {
                 List.of(),
                 List.of(new FulfillmentDeclarationFact(declaringProphetId, eventId)),
                 List.of(),
-                List.of());
+                List.of(),
+                Set.of());
 
         var outcome = new OutcomeApplied(GAME_ID, ERA, eventId, writtenOutcomeId, List.of());
 
@@ -628,7 +652,8 @@ class EraScoreEvaluatorTest {
                 List.of(new AnnihilationFact(eventId, outcomeId, eraserId, true, true)),
                 List.of(),
                 List.of(),
-                List.of());
+                List.of(),
+                Set.of());
 
         var decisions = evaluator.evaluate(context, List.of());
 
@@ -659,7 +684,8 @@ class EraScoreEvaluatorTest {
                         new AnnihilationFact(eventId2, UUID.randomUUID(), eraserId, true, true)),
                 List.of(),
                 List.of(),
-                List.of());
+                List.of(),
+                Set.of());
 
         var decisions = evaluator.evaluate(context, List.of());
 
@@ -688,7 +714,8 @@ class EraScoreEvaluatorTest {
                         new AnnihilationFact(eventId, UUID.randomUUID(), eraserId2, true, true)),
                 List.of(),
                 List.of(),
-                List.of());
+                List.of(),
+                Set.of());
 
         var decisions = evaluator.evaluate(context, List.of());
 
@@ -717,7 +744,8 @@ class EraScoreEvaluatorTest {
                 List.of(),
                 List.of(new CorruptCorrelationFact(
                         corruptingPlayerId, targetPlayerId, UUID.randomUUID(), eventId, null, outcomeId, true)),
-                List.of());
+                List.of(),
+                Set.of());
 
         var decisions = evaluator.evaluate(context, List.of());
 
@@ -745,7 +773,8 @@ class EraScoreEvaluatorTest {
                 List.of(),
                 List.of(new CorruptCorrelationFact(
                         corruptingPlayerId, targetPlayerId, UUID.randomUUID(), eventId, null, outcomeId, false)),
-                List.of());
+                List.of(),
+                Set.of());
 
         var decisions = evaluator.evaluate(context, List.of());
 
@@ -771,7 +800,8 @@ class EraScoreEvaluatorTest {
                 List.of(),
                 List.of(new CorruptCorrelationFact(
                         corruptingPlayerId, targetPlayerId, UUID.randomUUID(), eventId, null, outcomeId, null)),
-                List.of());
+                List.of(),
+                Set.of());
 
         var decisions = evaluator.evaluate(context, List.of());
 
@@ -796,7 +826,8 @@ class EraScoreEvaluatorTest {
                 List.of(),
                 List.of(),
                 List.of(),
-                List.of(new ParadoxCascadeScoringFact(paradoxId, affectedEventId, List.of(), ERA)));
+                List.of(new ParadoxCascadeScoringFact(paradoxId, affectedEventId, List.of(), ERA)),
+                Set.of());
 
         var decisions = evaluator.evaluate(context, List.of());
 
@@ -826,15 +857,38 @@ class EraScoreEvaluatorTest {
                 List.of(
                         new ParadoxCascadeScoringFact(UUID.randomUUID(), eventId, List.of(), 1),
                         new ParadoxCascadeScoringFact(UUID.randomUUID(), eventId, List.of(), 1),
-                        new ParadoxCascadeScoringFact(UUID.randomUUID(), eventId, List.of(), 2)));
+                        new ParadoxCascadeScoringFact(UUID.randomUUID(), eventId, List.of(), 2)),
+                Set.of());
 
         var decisions = evaluator.evaluate(context, List.of());
 
-        assertThat(decisions)
-                .hasSize(2)
-                .allMatch(d -> d.reason() == ScoreReason.PARADOX_CASCADE_PENALTY)
-                .extracting(PlayerScoreDecision::eraNumber)
-                .containsExactlyInAnyOrder(1, 2);
+        assertThat(decisions).singleElement().satisfies(decision -> {
+            assertThat(decision.reason()).isEqualTo(ScoreReason.PARADOX_CASCADE_PENALTY);
+            assertThat(decision.eraNumber()).isEqualTo(1);
+        });
+    }
+
+    @Test
+    @DisplayName("an event already penalized in an earlier, separately-scored era is not penalized again")
+    void reCascadingEventNotPenalizedAcrossSeparateEraScoringPasses() {
+        var playerId = UUID.randomUUID();
+        var eventId = UUID.randomUUID();
+        var context = new EraScoringContext(
+                GAME_ID,
+                2,
+                List.of(new PlayerFaction(playerId, Faction.PROPHETS)),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(new ParadoxCascadeScoringFact(UUID.randomUUID(), eventId, List.of(), 2)),
+                Set.of(eventId));
+
+        var decisions = evaluator.evaluate(context, List.of());
+
+        assertThat(decisions).isEmpty();
     }
 
     @Test
@@ -855,7 +909,8 @@ class EraScoreEvaluatorTest {
                 List.of(),
                 List.of(
                         new ParadoxCascadeScoringFact(UUID.randomUUID(), eventId, List.of(detonatorId), ERA),
-                        new ParadoxCascadeScoringFact(UUID.randomUUID(), eventId, List.of(detonatorId), ERA)));
+                        new ParadoxCascadeScoringFact(UUID.randomUUID(), eventId, List.of(detonatorId), ERA)),
+                Set.of());
 
         var decisions = evaluator.evaluate(context, List.of());
 
@@ -892,7 +947,8 @@ class EraScoreEvaluatorTest {
                 List.of(),
                 List.of(),
                 List.of(),
-                List.of(new ParadoxCascadeScoringFact(paradoxId, affectedEventId, List.of(detonatorId), ERA)));
+                List.of(new ParadoxCascadeScoringFact(paradoxId, affectedEventId, List.of(detonatorId), ERA)),
+                Set.of());
 
         var decisions = evaluator.evaluate(context, List.of());
 
@@ -935,7 +991,8 @@ class EraScoreEvaluatorTest {
                 List.of(),
                 List.of(),
                 List.of(new ParadoxCascadeScoringFact(
-                        paradoxId, affectedEventId, List.of(detonatorId1, detonatorId2), ERA)));
+                        paradoxId, affectedEventId, List.of(detonatorId1, detonatorId2), ERA)),
+                Set.of());
 
         var decisions = evaluator.evaluate(context, List.of());
 
@@ -973,7 +1030,8 @@ class EraScoreEvaluatorTest {
                 List.of(),
                 List.of(),
                 List.of(),
-                List.of(new ParadoxCascadeScoringFact(UUID.randomUUID(), UUID.randomUUID(), playerIds, ERA)));
+                List.of(new ParadoxCascadeScoringFact(UUID.randomUUID(), UUID.randomUUID(), playerIds, ERA)),
+                Set.of());
 
         var decisions = evaluator.evaluate(context, List.of());
 
@@ -1009,7 +1067,8 @@ class EraScoreEvaluatorTest {
                         new ParadoxCascadeScoringFact(UUID.randomUUID(), firstEvent, List.of(detonatorId), ERA),
                         new ParadoxCascadeScoringFact(UUID.randomUUID(), firstEvent, List.of(detonatorId), ERA),
                         new ParadoxCascadeScoringFact(UUID.randomUUID(), UUID.randomUUID(), List.of(), ERA),
-                        new ParadoxCascadeScoringFact(UUID.randomUUID(), UUID.randomUUID(), List.of(), ERA)));
+                        new ParadoxCascadeScoringFact(UUID.randomUUID(), UUID.randomUUID(), List.of(), ERA)),
+                Set.of());
 
         var decisions = evaluator.evaluate(context, List.of());
 
@@ -1044,7 +1103,8 @@ class EraScoreEvaluatorTest {
                 List.of(),
                 List.of(),
                 List.of(),
-                List.of(new ParadoxCascadeScoringFact(UUID.randomUUID(), UUID.randomUUID(), List.of(), factOwnEra)));
+                List.of(new ParadoxCascadeScoringFact(UUID.randomUUID(), UUID.randomUUID(), List.of(), factOwnEra)),
+                Set.of());
 
         var decisions = evaluator.evaluate(context, List.of());
 

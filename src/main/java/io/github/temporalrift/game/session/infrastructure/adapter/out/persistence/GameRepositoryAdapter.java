@@ -43,7 +43,8 @@ class GameRepositoryAdapter implements GameRepository {
         entity.setLobbyId(game.lobbyId());
         entity.setStatus(game.status().name());
         entity.setEraCounter(game.eraCounter());
-        entity.setCascadedParadoxCounter(game.cascadedParadoxCounter());
+        entity.setPendingCollapsingEventId(game.pendingCollapsingEventId());
+        entity.setCascadedEventIds(game.cascadedEventIds());
         entity.setEventDeck(new ArrayList<>(game.eventDeck()));
         entity.setPendingCarryOverEvents(game.pendingCarryOverEvents().stream()
                 .map(PendingCarryOverEventEmbeddable::fromDomain)
@@ -61,7 +62,8 @@ class GameRepositoryAdapter implements GameRepository {
                 new ArrayList<>(entity.getEventDeck()),
                 new GameProgress(
                         entity.getEraCounter(),
-                        entity.getCascadedParadoxCounter(),
+                        entity.getCascadedEventIds(),
+                        entity.getPendingCollapsingEventId(),
                         entity.getPendingCarryOverEvents().stream()
                                 .map(PendingCarryOverEventEmbeddable::toDomain)
                                 .toList(),

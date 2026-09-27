@@ -116,6 +116,8 @@ class EraScoringContextRepositoryAdapterTest {
         chainFactEntity.setConsumed(false);
         given(chainFactJpaRepository.findAllByGameIdAndConsumedFalseWithLock(gameId))
                 .willReturn(List.of(chainFactEntity));
+        given(paradoxCascadeFactJpaRepository.findDistinctConsumedAffectedEventIds(gameId))
+                .willReturn(List.of());
 
         var context = adapter.getRequired(gameId, 2);
 
@@ -126,6 +128,7 @@ class EraScoringContextRepositoryAdapterTest {
                 .containsExactly(new ChainScoringFact(playerId, chainId, ScoreReason.CHAIN_COMPLETED, 1));
         assertThat(context.eventOutcomes()).isEmpty();
         assertThat(context.actionFacts()).isEmpty();
+        assertThat(context.priorCascadePenaltyEventIds()).isEmpty();
     }
 
     @Test
@@ -147,6 +150,8 @@ class EraScoringContextRepositoryAdapterTest {
         chainFactEntity.setConsumed(false);
         given(chainFactJpaRepository.findAllByGameIdAndConsumedFalseWithLock(gameId))
                 .willReturn(List.of(chainFactEntity));
+        given(paradoxCascadeFactJpaRepository.findDistinctConsumedAffectedEventIds(gameId))
+                .willReturn(List.of());
 
         adapter.getRequired(gameId, 1);
 
@@ -334,6 +339,8 @@ class EraScoringContextRepositoryAdapterTest {
                 new OutcomeApplied(gameId, 2, eventIdWithFact, winningOutcomeId, List.of()));
         given(outcomeInboxJpaRepository.findAllByGameIdAndEraNumberOrderByEventIdAsc(gameId, 2))
                 .willReturn(List.of(inboxEntity));
+        given(paradoxCascadeFactJpaRepository.findDistinctConsumedAffectedEventIds(gameId))
+                .willReturn(List.of());
 
         var context = adapter.getRequired(gameId, 2);
 
@@ -1106,6 +1113,8 @@ class EraScoringContextRepositoryAdapterTest {
         correlation.setTookEffect(true);
         given(corruptCorrelationJpaRepository.findAllByGameIdAndEraNumber(gameId, 2))
                 .willReturn(List.of(correlation));
+        given(paradoxCascadeFactJpaRepository.findDistinctConsumedAffectedEventIds(gameId))
+                .willReturn(List.of());
 
         var context = adapter.getRequired(gameId, 2);
 
@@ -1163,6 +1172,8 @@ class EraScoringContextRepositoryAdapterTest {
         oldDeclaration.setTargetEventId(eventId);
         given(fulfillmentDeclarationJpaRepository.findAllByGameIdAndEraNumber(gameId, 2))
                 .willReturn(List.of(oldDeclaration));
+        given(paradoxCascadeFactJpaRepository.findDistinctConsumedAffectedEventIds(gameId))
+                .willReturn(List.of());
 
         var stalledEra = adapter.getRequired(gameId, 2);
         var carriedEra = adapter.getRequired(gameId, 3);
@@ -1197,6 +1208,7 @@ class EraScoringContextRepositoryAdapterTest {
 
         var paradoxId = UUID.randomUUID();
         var affectedEventId = UUID.randomUUID();
+        var alreadyPenalizedEventId = UUID.randomUUID();
         var detonatedByPlayerIds = List.of(UUID.randomUUID());
         var factEntity = new ScoringContextParadoxCascadeFactJpaEntity();
         factEntity.setId(UUID.randomUUID());
@@ -1208,11 +1220,14 @@ class EraScoringContextRepositoryAdapterTest {
         factEntity.setConsumed(false);
         given(paradoxCascadeFactJpaRepository.findAllByGameIdAndConsumedFalseWithLock(gameId))
                 .willReturn(List.of(factEntity));
+        given(paradoxCascadeFactJpaRepository.findDistinctConsumedAffectedEventIds(gameId))
+                .willReturn(List.of(alreadyPenalizedEventId));
 
         var context = adapter.getRequired(gameId, 2);
 
         assertThat(context.paradoxCascadeFacts())
                 .containsExactly(new ParadoxCascadeScoringFact(paradoxId, affectedEventId, detonatedByPlayerIds, 1));
+        assertThat(context.priorCascadePenaltyEventIds()).containsExactly(alreadyPenalizedEventId);
         assertThat(factEntity.isConsumed()).isTrue();
         var captor = ArgumentCaptor.forClass(List.class);
         then(paradoxCascadeFactJpaRepository).should().saveAll(captor.capture());
