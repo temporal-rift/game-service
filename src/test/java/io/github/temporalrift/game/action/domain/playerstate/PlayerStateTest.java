@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 import org.junit.jupiter.api.DisplayName;
@@ -32,7 +33,8 @@ class PlayerStateTest {
     @DisplayName("reconstitute does not register any events")
     void reconstituteRegistersNoEvents() {
         // when
-        var ps = PlayerState.reconstitute(UUID.randomUUID(), GAME_ID, PLAYER_ID, Faction.ERASERS, List.of(), false);
+        var ps = PlayerState.reconstitute(
+                UUID.randomUUID(), GAME_ID, PLAYER_ID, Faction.ERASERS, List.of(), Set.of(), false, false);
 
         // then
         assertThat(ps.pullEvents()).isEmpty();
@@ -168,7 +170,7 @@ class PlayerStateTest {
     void reconstituteObscuredFlagRoundTrips() {
         // when
         var ps = PlayerState.reconstitute(
-                UUID.randomUUID(), GAME_ID, PLAYER_ID, Faction.REVISIONISTS, List.of(), false, true);
+                UUID.randomUUID(), GAME_ID, PLAYER_ID, Faction.REVISIONISTS, List.of(), Set.of(), false, true);
 
         // then
         assertThat(ps.isObscured()).isTrue();
@@ -185,5 +187,60 @@ class PlayerStateTest {
         var c = card(CardType.PUSH);
         var hand = ps.hand();
         assertThatExceptionOfType(UnsupportedOperationException.class).isThrownBy(() -> hand.add(c));
+    }
+
+    @Test
+    @DisplayName("markRevealed records only cards still in the hand, in hand order")
+    void markRevealedTracksHandCards() {
+        var first = card(CardType.PUSH);
+        var second = card(CardType.JAM);
+        var ps = PlayerState.reconstitute(
+                UUID.randomUUID(), GAME_ID, PLAYER_ID, Faction.ERASERS, List.of(first, second), Set.of(), false, false);
+
+        ps.markRevealed(List.of(second, card(CardType.SCAN), first));
+
+        assertThat(ps.revealedCards()).containsExactly(first, second);
+    }
+
+    @Test
+    @DisplayName("a played card leaves the revealed set with the hand")
+    void removeCardForgetsRevealedCard() {
+        var revealed = card(CardType.PUSH);
+        var ps = PlayerState.reconstitute(
+                UUID.randomUUID(),
+                GAME_ID,
+                PLAYER_ID,
+                Faction.ERASERS,
+                List.of(revealed),
+                Set.of(revealed.cardInstanceId()),
+                false,
+                false);
+
+        ps.removeCard(revealed.cardInstanceId());
+
+        assertThat(ps.revealedCards()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("receiveHand replaces the hand and forgets earlier reveals, keeping jam and obscure state")
+    void receiveHandResetsReveals() {
+        var old = card(CardType.PUSH);
+        var fresh = card(CardType.SWING);
+        var ps = PlayerState.reconstitute(
+                UUID.randomUUID(),
+                GAME_ID,
+                PLAYER_ID,
+                Faction.ERASERS,
+                List.of(old),
+                Set.of(old.cardInstanceId()),
+                true,
+                true);
+
+        ps.receiveHand(List.of(fresh));
+
+        assertThat(ps.hand()).containsExactly(fresh);
+        assertThat(ps.revealedCards()).isEmpty();
+        assertThat(ps.isJammed()).isTrue();
+        assertThat(ps.isObscured()).isTrue();
     }
 }

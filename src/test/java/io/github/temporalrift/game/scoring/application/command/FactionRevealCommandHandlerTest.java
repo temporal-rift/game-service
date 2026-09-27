@@ -1,6 +1,6 @@
 package io.github.temporalrift.game.scoring.application.command;
 
-import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.verify;
 
 import java.util.List;
 import java.util.UUID;
@@ -22,24 +22,19 @@ class FactionRevealCommandHandlerTest {
     static final UUID PLAYER_ID = UUID.randomUUID();
 
     @Mock
-    AwardUnidentifiedFactionScores awardUnidentifiedFactionScores;
-
-    @Mock
     ScoringGameVisibilityRepository visibilityRepository;
 
     @InjectMocks
     FactionRevealCommandHandler handler;
 
     @Test
-    @DisplayName("reveal — awards end-game bonuses before making factions visible")
-    void reveal_awardsBeforeMarkingRevealed() {
+    @DisplayName("reveal — makes factions visible without applying any score")
+    void reveal_marksFactionsRevealed() {
         var event =
                 new FactionRevealed(GAME_ID, List.of(new FactionRevealed.PlayerFactionResult(PLAYER_ID, "ERASERS")));
 
         handler.reveal(event);
 
-        var inOrder = inOrder(awardUnidentifiedFactionScores, visibilityRepository);
-        inOrder.verify(awardUnidentifiedFactionScores).award(event);
-        inOrder.verify(visibilityRepository).markFactionsRevealed(GAME_ID);
+        verify(visibilityRepository).markFactionsRevealed(GAME_ID);
     }
 }

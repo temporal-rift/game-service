@@ -1,6 +1,7 @@
 package io.github.temporalrift.game.scoring.application.command;
 
 import java.time.Clock;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -15,6 +16,7 @@ import org.springframework.stereotype.Component;
 
 import io.github.temporalrift.game.scoring.domain.playerscore.PlayerScore;
 import io.github.temporalrift.game.scoring.domain.port.out.EraScoringContextRepository;
+import io.github.temporalrift.game.scoring.domain.port.out.FactionDisclosureRepository;
 import io.github.temporalrift.game.scoring.domain.port.out.PlayerScoreRepository;
 import io.github.temporalrift.game.scoring.domain.port.out.ScoreRulesPort;
 import io.github.temporalrift.game.scoring.domain.port.out.ScoringEventPublisher;
@@ -22,6 +24,7 @@ import io.github.temporalrift.game.shared.application.SagaHandoffPublisher;
 import io.github.temporalrift.game.shared.domain.event.ScoresUpdated;
 import io.github.temporalrift.game.shared.domain.messaging.DomainEventEnvelope;
 import io.github.temporalrift.game.shared.domain.model.Faction;
+import io.github.temporalrift.game.shared.domain.port.out.GameRulesPort;
 
 @Component
 public class UpdateScoresCommandHandler {
@@ -29,6 +32,8 @@ public class UpdateScoresCommandHandler {
     private final PlayerScoreRepository playerScoreRepository;
     private final EraScoringContextRepository contextRepository;
     private final EraScoreEvaluator eraScoreEvaluator;
+    private final FactionDisclosureRepository factionDisclosureRepository;
+    private final GameRulesPort gameRules;
     private final ScoreRulesPort scoreRulesPort;
     private final ScoringEventPublisher scoringEventPublisher;
     private final SagaHandoffPublisher sagaHandoffPublisher;
@@ -38,6 +43,8 @@ public class UpdateScoresCommandHandler {
             PlayerScoreRepository playerScoreRepository,
             EraScoringContextRepository contextRepository,
             EraScoreEvaluator eraScoreEvaluator,
+            FactionDisclosureRepository factionDisclosureRepository,
+            GameRulesPort gameRules,
             ScoreRulesPort scoreRulesPort,
             ScoringEventPublisher scoringEventPublisher,
             ApplicationEventPublisher applicationEventPublisher,
@@ -45,6 +52,8 @@ public class UpdateScoresCommandHandler {
         this.playerScoreRepository = Objects.requireNonNull(playerScoreRepository);
         this.contextRepository = Objects.requireNonNull(contextRepository);
         this.eraScoreEvaluator = Objects.requireNonNull(eraScoreEvaluator);
+        this.factionDisclosureRepository = Objects.requireNonNull(factionDisclosureRepository);
+        this.gameRules = Objects.requireNonNull(gameRules);
         this.scoreRulesPort = Objects.requireNonNull(scoreRulesPort);
         this.scoringEventPublisher = Objects.requireNonNull(scoringEventPublisher);
         this.sagaHandoffPublisher = new SagaHandoffPublisher(Objects.requireNonNull(applicationEventPublisher));
@@ -67,7 +76,12 @@ public class UpdateScoresCommandHandler {
         Map<UUID, Integer> initialTotals = scoresByPlayer.entrySet().stream()
                 .collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().totalScore()));
 
-        var decisions = eraScoreEvaluator.evaluate(context, command.outcomes());
+        var decisions = new ArrayList<>(eraScoreEvaluator.evaluate(context, command.outcomes()));
+        // Scored with the final era, not at game end, so the bonus can still decide the era-end victory check.
+        if (command.eraNumber() == gameRules.maxEras()) {
+            decisions.addAll(eraScoreEvaluator.unidentifiedRevisionistDecisions(
+                    context, factionDisclosureRepository.disclosedPlayerIds(command.gameId())));
+        }
 
         for (var decision : decisions) {
             var score = scoresByPlayer.get(decision.playerId());

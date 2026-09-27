@@ -6,6 +6,7 @@ import static org.mockito.BDDMockito.then;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
@@ -36,7 +37,9 @@ class PlayerStateRepositoryAdapterTest {
                 UUID.randomUUID(),
                 Faction.ACTIVISTS,
                 List.of(new PlayerState.CardInstance(UUID.randomUUID(), CardType.JAM)),
-                true);
+                Set.of(),
+                true,
+                false);
 
         adapter.save(state);
 

@@ -6,6 +6,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 import org.springframework.stereotype.Component;
@@ -13,8 +14,10 @@ import org.springframework.stereotype.Component;
 import io.github.temporalrift.game.scoring.domain.context.AnnihilationFact;
 import io.github.temporalrift.game.scoring.domain.context.EraScoringContext;
 import io.github.temporalrift.game.scoring.domain.context.EventOutcomeFact;
+import io.github.temporalrift.game.scoring.domain.context.FactionIdentification;
 import io.github.temporalrift.game.scoring.domain.event.OutcomeApplied;
 import io.github.temporalrift.game.scoring.domain.playerscore.ScoreReason;
+import io.github.temporalrift.game.shared.domain.model.Faction;
 
 @Component
 class EraScoreEvaluator {
@@ -44,6 +47,19 @@ class EraScoreEvaluator {
                 .thenComparing(d -> d.reason().name()));
 
         return decisions;
+    }
+
+    /** The final era's concealment bonus for every Revisionist no other player can know from public facts. */
+    List<PlayerScoreDecision> unidentifiedRevisionistDecisions(
+            EraScoringContext context, Set<UUID> disclosedPlayerIds) {
+        var playerCount = context.players().size();
+        return context.players().stream()
+                .filter(player -> player.faction() == Faction.REVISIONISTS)
+                .filter(player ->
+                        !FactionIdentification.isIdentified(player.playerId(), playerCount, disclosedPlayerIds))
+                .map(player -> new PlayerScoreDecision(
+                        player.playerId(), ScoreReason.FACTION_UNIDENTIFIED, context.eraNumber()))
+                .toList();
     }
 
     private List<PlayerScoreDecision> paradoxCascadeDecisions(UUID playerId, EraScoringContext context) {

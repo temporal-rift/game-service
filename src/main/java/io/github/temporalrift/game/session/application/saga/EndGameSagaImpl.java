@@ -86,9 +86,6 @@ class EndGameSagaImpl implements EndGameSaga {
                                 player.playerId(), player.faction().name()))
                         .toList());
 
-        // Awards the end-game faction bonus and flips faction visibility before the snapshot below is
-        // taken: GameEnded.finalScores is the only carrier of that bonus to every downstream consumer,
-        // so a snapshot taken first publishes scores that are permanently short by the bonus.
         factionRevealPort.reveal(factionRevealed);
 
         var finalScores = finalScoreQueryPort.getScores(gameId);

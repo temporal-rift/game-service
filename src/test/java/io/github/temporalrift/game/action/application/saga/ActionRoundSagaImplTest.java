@@ -21,6 +21,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -61,7 +62,6 @@ import io.github.temporalrift.game.action.domain.saga.ActionRoundSagaStatus;
 import io.github.temporalrift.game.shared.domain.event.ActionRoundClosed;
 import io.github.temporalrift.game.shared.domain.event.EraActionFactsFinalized;
 import io.github.temporalrift.game.shared.domain.event.ExposeBehaviorChanged;
-import io.github.temporalrift.game.shared.domain.event.PlayersIdentified;
 import io.github.temporalrift.game.shared.domain.messaging.DomainEventEnvelope;
 import io.github.temporalrift.game.shared.domain.model.CardCategory;
 import io.github.temporalrift.game.shared.domain.model.CardGrade;
@@ -1618,8 +1618,8 @@ class ActionRoundSagaImplTest {
         @Test
         @DisplayName("clears Jam when the suppressed round closes without a replacement")
         void clearsJamWhenSuppressedRoundClosesWithoutReplacement() {
-            var target =
-                    PlayerState.reconstitute(UUID.randomUUID(), GAME_ID, PLAYER_2, Faction.ERASERS, List.of(), true);
+            var target = PlayerState.reconstitute(
+                    UUID.randomUUID(), GAME_ID, PLAYER_2, Faction.ERASERS, List.of(), Set.of(), true, false);
             var round = new ActionRound(
                     UUID.randomUUID(), new ActionRoundConfig(GAME_ID, ERA_NUMBER, 2, TIMER_SECONDS), List.of(PLAYER_2));
             given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA_NUMBER, 2))
@@ -1653,8 +1653,8 @@ class ActionRoundSagaImplTest {
         @Test
         @DisplayName("replaces a consecutive Jam without stacking its duration")
         void replacesConsecutiveJamWithoutStackingItsDuration() {
-            var target =
-                    PlayerState.reconstitute(UUID.randomUUID(), GAME_ID, PLAYER_2, Faction.ERASERS, List.of(), true);
+            var target = PlayerState.reconstitute(
+                    UUID.randomUUID(), GAME_ID, PLAYER_2, Faction.ERASERS, List.of(), Set.of(), true, false);
             var round = new ActionRound(
                     UUID.randomUUID(),
                     new ActionRoundConfig(GAME_ID, ERA_NUMBER, 2, TIMER_SECONDS),
@@ -1694,8 +1694,8 @@ class ActionRoundSagaImplTest {
         @Test
         @DisplayName("clears every Jam at the final round boundary")
         void clearsEveryJamAtFinalRoundBoundary() {
-            var target =
-                    PlayerState.reconstitute(UUID.randomUUID(), GAME_ID, PLAYER_2, Faction.ERASERS, List.of(), true);
+            var target = PlayerState.reconstitute(
+                    UUID.randomUUID(), GAME_ID, PLAYER_2, Faction.ERASERS, List.of(), Set.of(), true, false);
             var round = new ActionRound(
                     UUID.randomUUID(), new ActionRoundConfig(GAME_ID, ERA_NUMBER, 3, TIMER_SECONDS), List.of(PLAYER_2));
             given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA_NUMBER, 3))
@@ -1766,7 +1766,7 @@ class ActionRoundSagaImplTest {
         @DisplayName("clears Obscure when the obscured round closes without replacement")
         void clearsObscureWhenObscuredRoundClosesWithoutReplacement() {
             var target = PlayerState.reconstitute(
-                    UUID.randomUUID(), GAME_ID, PLAYER_2, Faction.REVISIONISTS, List.of(), false, true);
+                    UUID.randomUUID(), GAME_ID, PLAYER_2, Faction.REVISIONISTS, List.of(), Set.of(), false, true);
             var round = new ActionRound(
                     UUID.randomUUID(), new ActionRoundConfig(GAME_ID, ERA_NUMBER, 2, TIMER_SECONDS), List.of(PLAYER_2));
             given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA_NUMBER, 2))
@@ -1800,7 +1800,7 @@ class ActionRoundSagaImplTest {
         @DisplayName("clears a carried Obscure at the final round boundary and never crosses the era")
         void clearsEveryObscureAtFinalRoundBoundary() {
             var target = PlayerState.reconstitute(
-                    UUID.randomUUID(), GAME_ID, PLAYER_2, Faction.REVISIONISTS, List.of(), false, true);
+                    UUID.randomUUID(), GAME_ID, PLAYER_2, Faction.REVISIONISTS, List.of(), Set.of(), false, true);
             var round = new ActionRound(
                     UUID.randomUUID(), new ActionRoundConfig(GAME_ID, ERA_NUMBER, 3, TIMER_SECONDS), List.of(PLAYER_2));
             given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA_NUMBER, 3))
@@ -2128,7 +2128,8 @@ class ActionRoundSagaImplTest {
         }
 
         private PlayerState playerState(UUID playerId, List<PlayerState.CardInstance> hand) {
-            return PlayerState.reconstitute(UUID.randomUUID(), GAME_ID, playerId, Faction.ERASERS, hand, false);
+            return PlayerState.reconstitute(
+                    UUID.randomUUID(), GAME_ID, playerId, Faction.ERASERS, hand, Set.of(), false, false);
         }
 
         private Optional<ActionRoundSagaState> waitingState(int roundNumber) {
@@ -2154,17 +2155,17 @@ class ActionRoundSagaImplTest {
     }
 
     @Nested
-    @DisplayName("Obscure disguise and identification")
-    class ObscureDisguiseAndIdentificationTests {
+    @DisplayName("Obscure disguise and faction disclosure")
+    class ObscureDisguiseAndDisclosureTests {
 
         @Test
-        @DisplayName("Intercept of an obscured target reveals decoys of the sampled size and identifies nobody")
+        @DisplayName("Intercept of an obscured target with nothing revealed yet reveals decoys of the sampled size")
         void obscuredInterceptRevealsDecoys() {
             var hand = List.of(
                     new PlayerState.CardInstance(UUID.randomUUID(), CardType.PUSH, CardGrade.I),
                     new PlayerState.CardInstance(UUID.randomUUID(), CardType.SCAN, CardGrade.II),
                     new PlayerState.CardInstance(UUID.randomUUID(), CardType.JAM, CardGrade.I));
-            closeInterceptRound(2, CardGrade.II, obscuredState(PLAYER_2, hand));
+            closeInterceptRound(2, CardGrade.II, obscuredState(PLAYER_2, hand, Set.of()));
 
             var revealed = interceptedEvents().getFirst().revealedCards();
             assertThat(revealed).hasSize(2);
@@ -2177,14 +2178,13 @@ class ActionRoundSagaImplTest {
             assertThat(revealed)
                     .allSatisfy(card ->
                             assertThat(card.cardType().supportedGrades()).contains(card.grade()));
-            assertThat(identifications()).isEmpty();
         }
 
         @Test
         @DisplayName("decoy count matches what a real sample of a short hand would reveal")
         void decoyCountMatchesShortHand() {
             var hand = List.of(new PlayerState.CardInstance(UUID.randomUUID(), CardType.PUSH, CardGrade.I));
-            closeInterceptRound(2, CardGrade.II, obscuredState(PLAYER_2, hand));
+            closeInterceptRound(2, CardGrade.II, obscuredState(PLAYER_2, hand, Set.of()));
 
             var revealed = interceptedEvents().getFirst().revealedCards();
             assertThat(revealed).hasSize(1);
@@ -2193,25 +2193,56 @@ class ActionRoundSagaImplTest {
         }
 
         @Test
-        @DisplayName("Intercept of a non-obscured target reveals its hand and identifies it")
-        void interceptIdentifiesNonObscuredTarget() {
-            var card = new PlayerState.CardInstance(UUID.randomUUID(), CardType.PUSH, CardGrade.I);
+        @DisplayName("two Intercepts on one obscured target at the same close sample one shared decoy hand")
+        void interceptsShareOneDecoyHand() {
+            var hand = List.of(new PlayerState.CardInstance(UUID.randomUUID(), CardType.PUSH, CardGrade.I));
+            closeInterceptRound(2, CardGrade.I, List.of(PLAYER_1, PLAYER_3), obscuredState(PLAYER_2, hand, Set.of()));
+
+            var reveals = interceptedEvents();
+            assertThat(reveals).hasSize(2);
+            assertThat(reveals.get(0).revealedCards())
+                    .as("a one-card decoy hand shows the same decoy to every Intercept, as a real hand would")
+                    .isEqualTo(reveals.get(1).revealedCards())
+                    .extracting(HandCardIntercepted.RevealedCard::cardInstanceId)
+                    .doesNotContain(hand.getFirst().cardInstanceId());
+        }
+
+        @Test
+        @DisplayName("a real card revealed earlier this era stays in the obscured target's decoy hand")
+        void earlierRevealedCardStaysInDecoyHand() {
+            var revealedEarlier = new PlayerState.CardInstance(UUID.randomUUID(), CardType.SWING, CardGrade.II);
+            var unseen = new PlayerState.CardInstance(UUID.randomUUID(), CardType.JAM, CardGrade.I);
             closeInterceptRound(
                     2,
-                    CardGrade.I,
-                    PlayerState.reconstitute(
-                            UUID.randomUUID(), GAME_ID, PLAYER_2, Faction.REVISIONISTS, List.of(card), false));
+                    CardGrade.II,
+                    obscuredState(
+                            PLAYER_2, List.of(revealedEarlier, unseen), Set.of(revealedEarlier.cardInstanceId())));
+
+            var revealed = interceptedEvents().getFirst().revealedCards();
+            assertThat(revealed).hasSize(2);
+            assertThat(revealed)
+                    .extracting(HandCardIntercepted.RevealedCard::cardInstanceId)
+                    .contains(revealedEarlier.cardInstanceId())
+                    .doesNotContain(unseen.cardInstanceId());
+        }
+
+        @Test
+        @DisplayName("Intercept of a non-obscured target reveals its hand and marks the revealed cards")
+        void interceptMarksRevealedCardsOfNonObscuredTarget() {
+            var card = new PlayerState.CardInstance(UUID.randomUUID(), CardType.PUSH, CardGrade.I);
+            var target = PlayerState.reconstitute(
+                    UUID.randomUUID(), GAME_ID, PLAYER_2, Faction.REVISIONISTS, List.of(card), Set.of(), false, false);
+            closeInterceptRound(2, CardGrade.I, target);
 
             assertThat(interceptedEvents().getFirst().revealedCards())
                     .containsExactly(
                             new HandCardIntercepted.RevealedCard(card.cardInstanceId(), card.cardType(), card.grade()));
-            assertThat(identifications())
-                    .containsExactly(new PlayersIdentified(GAME_ID, ERA_NUMBER, 2, List.of(PLAYER_2)));
+            assertThat(target.revealedCards()).containsExactly(card);
+            then(playerStateRepository).should().save(target);
         }
 
         @Test
-        @DisplayName("Trace omits an influencer obscured during the traced round and identifies the rest, "
-                + "repeating final-round identifications on EraActionFactsFinalized")
+        @DisplayName("Trace omits an influencer obscured during the traced round and discloses nobody")
         void traceOmitsObscuredInfluencer() {
             var eventId = UUID.randomUUID();
             var roundOne = new ActionRound(
@@ -2241,12 +2272,10 @@ class ActionRoundSagaImplTest {
 
             assertThat(tracedEvents())
                     .containsExactly(new InfluenceTraced(GAME_ID, ERA_NUMBER, 3, PLAYER_1, eventId, List.of(PLAYER_3)));
-            assertThat(identifications())
-                    .containsExactly(new PlayersIdentified(GAME_ID, ERA_NUMBER, 3, List.of(PLAYER_3)));
             assertThat(internallyPublished(EraActionFactsFinalized.class))
                     .singleElement()
-                    .extracting(EraActionFactsFinalized::identifiedPlayerIds)
-                    .isEqualTo(List.of(PLAYER_3));
+                    .extracting(EraActionFactsFinalized::disclosedPlayerIds)
+                    .isEqualTo(List.of());
         }
 
         @Test
@@ -2276,47 +2305,78 @@ class ActionRoundSagaImplTest {
 
             assertThat(tracedEvents())
                     .containsExactly(new InfluenceTraced(GAME_ID, 2, 1, PLAYER_1, eventId, List.of()));
-            assertThat(identifications()).isEmpty();
         }
 
         @Test
-        @DisplayName("revealing an Expose signature at Round 2 close identifies the exposed player")
-        void exposeRevealIdentifiesExposedPlayer() {
-            var activistState = new ActivistEraState(UUID.randomUUID(), GAME_ID, ERA_NUMBER, PLAYER_1, false);
-            activistState.expose(
+        @DisplayName("Round 3 discloses every declared Activist and every live Exposer, never the exposed target")
+        void finalRoundDisclosesDeclarersAndLiveExposers() {
+            var declarer = new ActivistEraState(UUID.randomUUID(), GAME_ID, ERA_NUMBER, PLAYER_1, false);
+            declarer.declare(ActivistDeclarationMode.RALLY, UUID.randomUUID(), UUID.randomUUID());
+            var exposer = new ActivistEraState(UUID.randomUUID(), GAME_ID, ERA_NUMBER, PLAYER_3, false);
+            exposer.expose(
+                    PLAYER_2,
+                    new ProbabilityInfluenceSignature(CardType.PUSH, UUID.randomUUID(), null, UUID.randomUUID()));
+            given(activistEraStateRepository.findDeclaredByGameIdAndEraNumber(GAME_ID, ERA_NUMBER))
+                    .willReturn(List.of(declarer));
+            given(activistEraStateRepository.findExposedByGameIdAndEraNumber(GAME_ID, ERA_NUMBER))
+                    .willReturn(List.of(exposer));
+            closeRoundThree(new ActionRound(
+                    UUID.randomUUID(), new ActionRoundConfig(GAME_ID, ERA_NUMBER, 2, TIMER_SECONDS), List.of()));
+
+            assertThat(internallyPublished(EraActionFactsFinalized.class))
+                    .singleElement()
+                    .extracting(EraActionFactsFinalized::disclosedPlayerIds)
+                    .isEqualTo(List.of(PLAYER_1, PLAYER_3));
+        }
+
+        @Test
+        @DisplayName("an Expose cancelled in Round 2 was never revealed, so it discloses nobody")
+        void cancelledExposeDisclosesNobody() {
+            var exposer = new ActivistEraState(UUID.randomUUID(), GAME_ID, ERA_NUMBER, PLAYER_3, false);
+            exposer.expose(
                     PLAYER_2,
                     new ProbabilityInfluenceSignature(CardType.PUSH, UUID.randomUUID(), null, UUID.randomUUID()));
             given(activistEraStateRepository.findExposedByGameIdAndEraNumber(GAME_ID, ERA_NUMBER))
-                    .willReturn(List.of(activistState));
+                    .willReturn(List.of(exposer));
             var roundTwo = new ActionRound(
-                    UUID.randomUUID(), new ActionRoundConfig(GAME_ID, ERA_NUMBER, 2, TIMER_SECONDS), List.of(PLAYER_1));
+                    UUID.randomUUID(),
+                    new ActionRoundConfig(GAME_ID, ERA_NUMBER, 2, TIMER_SECONDS),
+                    List.of(PLAYER_2, PLAYER_3));
             roundTwo.submit(new SubmittedAction.SpecialActionSubmission(
-                    PLAYER_1, Faction.ACTIVISTS, SpecialAction.EXPOSE, null, null, null, null, PLAYER_2));
-            given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA_NUMBER, 2))
+                    PLAYER_3, Faction.ACTIVISTS, SpecialAction.EXPOSE, null, null, null, null, PLAYER_2));
+            roundTwo.submit(nullify(PLAYER_2, PLAYER_3));
+            closeRoundThree(roundTwo);
+
+            assertThat(internallyPublished(EraActionFactsFinalized.class))
+                    .singleElement()
+                    .extracting(EraActionFactsFinalized::disclosedPlayerIds)
+                    .isEqualTo(List.of());
+        }
+
+        private void closeRoundThree(ActionRound roundTwo) {
+            var roundThree = new ActionRound(
+                    UUID.randomUUID(), new ActionRoundConfig(GAME_ID, ERA_NUMBER, 3, TIMER_SECONDS), List.of());
+            given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA_NUMBER, 3))
+                    .willReturn(Optional.of(roundThree));
+            given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumber(GAME_ID, ERA_NUMBER, 2))
                     .willReturn(Optional.of(roundTwo));
-            given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumber(GAME_ID, ERA_NUMBER, 1))
-                    .willReturn(Optional.of(new ActionRound(
-                            UUID.randomUUID(),
-                            new ActionRoundConfig(GAME_ID, ERA_NUMBER, 1, TIMER_SECONDS),
-                            List.of())));
-            given(futureEventDefinitionPort.findByGameIdAndEraNumber(GAME_ID, ERA_NUMBER))
-                    .willReturn(List.of());
-            given(bandCalculator.computeBands(any(), any(), any())).willReturn(List.of());
-            given(stateManager.markSubmitted(GAME_ID, ERA_NUMBER, 2, PLAYER_1)).willReturn(waitingState(ERA_NUMBER, 2));
+            given(stateManager.markSubmitted(GAME_ID, ERA_NUMBER, 3, PLAYER_1)).willReturn(waitingState(ERA_NUMBER, 3));
 
-            saga.handlePlayerSubmitted(GAME_ID, ERA_NUMBER, 2, PLAYER_1);
-
-            assertThat(identifications())
-                    .containsExactly(new PlayersIdentified(GAME_ID, ERA_NUMBER, 2, List.of(PLAYER_2)));
+            saga.handlePlayerSubmitted(GAME_ID, ERA_NUMBER, 3, PLAYER_1);
         }
 
         private void closeInterceptRound(int roundNumber, CardGrade grade, PlayerState target) {
+            closeInterceptRound(roundNumber, grade, List.of(PLAYER_1), target);
+        }
+
+        private void closeInterceptRound(
+                int roundNumber, CardGrade grade, List<UUID> interceptorIds, PlayerState target) {
             var round = new ActionRound(
                     UUID.randomUUID(),
                     new ActionRoundConfig(GAME_ID, ERA_NUMBER, roundNumber, TIMER_SECONDS),
-                    List.of(PLAYER_1));
-            round.submit(new SubmittedAction.CardAction(
-                    PLAYER_1, UUID.randomUUID(), CardType.INTERCEPT, grade, null, null, null, PLAYER_2));
+                    interceptorIds);
+            interceptorIds.forEach(interceptorId -> round.submit(new SubmittedAction.CardAction(
+                    interceptorId, UUID.randomUUID(), CardType.INTERCEPT, grade, null, null, null, PLAYER_2)));
             given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(
                             GAME_ID, ERA_NUMBER, roundNumber))
                     .willReturn(Optional.of(round));
@@ -2344,7 +2404,14 @@ class ActionRoundSagaImplTest {
             given(playerStateRepository.findAllByGameId(GAME_ID))
                     .willReturn(List.of(
                             PlayerState.reconstitute(
-                                    UUID.randomUUID(), GAME_ID, PLAYER_1, Faction.ERASERS, List.of(), false),
+                                    UUID.randomUUID(),
+                                    GAME_ID,
+                                    PLAYER_1,
+                                    Faction.ERASERS,
+                                    List.of(),
+                                    Set.of(),
+                                    false,
+                                    false),
                             target));
             given(stateManager.markSubmitted(GAME_ID, ERA_NUMBER, roundNumber, PLAYER_1))
                     .willReturn(waitingState(ERA_NUMBER, roundNumber));
@@ -2352,9 +2419,17 @@ class ActionRoundSagaImplTest {
             saga.handlePlayerSubmitted(GAME_ID, ERA_NUMBER, roundNumber, PLAYER_1);
         }
 
-        private PlayerState obscuredState(UUID playerId, List<PlayerState.CardInstance> hand) {
+        private PlayerState obscuredState(
+                UUID playerId, List<PlayerState.CardInstance> hand, Set<UUID> revealedCardInstanceIds) {
             return PlayerState.reconstitute(
-                    UUID.randomUUID(), GAME_ID, playerId, Faction.REVISIONISTS, hand, false, true);
+                    UUID.randomUUID(),
+                    GAME_ID,
+                    playerId,
+                    Faction.REVISIONISTS,
+                    hand,
+                    revealedCardInstanceIds,
+                    false,
+                    true);
         }
 
         private SubmittedAction.SpecialActionSubmission obscure(UUID playerId) {
@@ -2380,10 +2455,6 @@ class ActionRoundSagaImplTest {
                     .filter(type::isInstance)
                     .map(type::cast)
                     .toList();
-        }
-
-        private List<PlayersIdentified> identifications() {
-            return internallyPublished(PlayersIdentified.class);
         }
 
         private List<HandCardIntercepted> interceptedEvents() {
