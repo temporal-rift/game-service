@@ -16,11 +16,14 @@ import org.springframework.messaging.Message;
 import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract;
 import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.AnnihilationResolvedPayload;
 import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.EraResolutionCompletedPayload;
 import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.EraTerminalResolution;
 import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.OutcomeAppliedPayload;
+import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.SpecialRejectedPayload;
 import io.github.temporalrift.game.GameServiceIntegrationTest;
+import io.github.temporalrift.game.scoring.FactionObjectiveQuery;
 import io.github.temporalrift.game.scoring.domain.playerscore.ScoreEntry;
 import io.github.temporalrift.game.scoring.domain.playerscore.ScoreReason;
 import io.github.temporalrift.game.scoring.domain.port.out.EraScoringContextRepository;
@@ -40,6 +43,9 @@ class TimelineScoringKafkaConsumerIT {
 
     @Autowired
     PlayerScoreRepository playerScoreRepository;
+
+    @Autowired
+    FactionObjectiveQuery factionObjectiveQuery;
 
     @Autowired
     JdbcTemplate jdbcTemplate;
@@ -234,6 +240,89 @@ class TimelineScoringKafkaConsumerIT {
     }
 
     @Test
+    void handle_rejectedFinalAnnihilate_scoresNothingAndDoesNotAdvanceObjective() {
+        var gameId = UUID.randomUUID();
+        var eraser = UUID.randomUUID();
+        var eraNumber = 1;
+        var eventId = UUID.randomUUID();
+        var winningOutcomeId = UUID.randomUUID();
+        prepareEraserScoring(gameId, eraNumber, eraser);
+
+        consumer.handle(rejectedSpecialEnvelope(
+                gameId,
+                eraNumber,
+                eraser,
+                eventId,
+                UUID.randomUUID(),
+                GeneratedChannelContract.SpecialAction.ANNIHILATE,
+                "LAST_ELIGIBLE_OUTCOME"));
+        consumer.handle(outcomeEnvelope(gameId, eraNumber, eventId, winningOutcomeId));
+        consumer.handle(terminalBarrierEnvelope(gameId, eraNumber, eventId, winningOutcomeId));
+
+        assertEraserScoreAndProgress(gameId, eraNumber, eraser, 0, 0);
+    }
+
+    @Test
+    void handle_acceptedAndRejectedAnnihilates_creditsOnlyTheAcceptedErasure() {
+        var gameId = UUID.randomUUID();
+        var acceptedEraser = UUID.randomUUID();
+        var rejectedEraser = UUID.randomUUID();
+        var eraNumber = 1;
+        var eventId = UUID.randomUUID();
+        var winningOutcomeId = UUID.randomUUID();
+        prepareEraserScoring(gameId, eraNumber, acceptedEraser);
+        contextRepository.upsertPlayerFaction(gameId, rejectedEraser, Faction.ERASERS);
+
+        consumer.handle(annihilationEnvelope(gameId, eraNumber, acceptedEraser, eventId, true, true));
+        consumer.handle(rejectedSpecialEnvelope(
+                gameId,
+                eraNumber,
+                rejectedEraser,
+                eventId,
+                UUID.randomUUID(),
+                GeneratedChannelContract.SpecialAction.ANNIHILATE,
+                "LAST_ELIGIBLE_OUTCOME"));
+        consumer.handle(outcomeEnvelope(gameId, eraNumber, eventId, winningOutcomeId));
+        consumer.handle(terminalBarrierEnvelope(gameId, eraNumber, eventId, winningOutcomeId));
+
+        assertThat(playerScoreRepository.findAllByGameId(gameId)).hasSize(2);
+        assertEraserScoreAndProgress(gameId, eraNumber, acceptedEraser, 3, 1);
+        assertEraserScoreAndProgress(gameId, eraNumber, rejectedEraser, 0, 0);
+    }
+
+    @Test
+    void handle_cascadeAgainstRejectedAnnihilate_scoresNothing() {
+        var gameId = UUID.randomUUID();
+        var eraser = UUID.randomUUID();
+        var eraNumber = 1;
+        var eventId = UUID.randomUUID();
+        var targetOutcomeId = UUID.randomUUID();
+        var winningOutcomeId = UUID.randomUUID();
+        prepareEraserScoring(gameId, eraNumber, eraser);
+
+        consumer.handle(rejectedSpecialEnvelope(
+                gameId,
+                eraNumber,
+                eraser,
+                eventId,
+                targetOutcomeId,
+                GeneratedChannelContract.SpecialAction.ANNIHILATE,
+                "LAST_ELIGIBLE_OUTCOME"));
+        consumer.handle(rejectedSpecialEnvelope(
+                gameId,
+                eraNumber,
+                eraser,
+                eventId,
+                targetOutcomeId,
+                GeneratedChannelContract.SpecialAction.CASCADE,
+                "TARGET_NOT_ERASED"));
+        consumer.handle(outcomeEnvelope(gameId, eraNumber, eventId, winningOutcomeId));
+        consumer.handle(terminalBarrierEnvelope(gameId, eraNumber, eventId, winningOutcomeId));
+
+        assertEraserScoreAndProgress(gameId, eraNumber, eraser, 0, 0);
+    }
+
+    @Test
     void handle_oneLeaderAnnihilatePerEra_totalsNineAfterThreeEras() {
         var gameId = UUID.randomUUID();
         var eraser = UUID.randomUUID();
@@ -264,6 +353,50 @@ class TimelineScoringKafkaConsumerIT {
         var resolution = new AnnihilationResolvedPayload(
                 gameId, eraNumber, 1, playerId, eventId, UUID.randomUUID(), erased, wasLeading);
         return message("AnnihilationResolved", gameId, "FutureEvent", resolution);
+    }
+
+    private static Message<Object> rejectedSpecialEnvelope(
+            UUID gameId,
+            int eraNumber,
+            UUID playerId,
+            UUID eventId,
+            UUID outcomeId,
+            GeneratedChannelContract.SpecialAction specialAction,
+            String reason) {
+        return message(
+                "SpecialRejected",
+                gameId,
+                "FutureEvent",
+                new SpecialRejectedPayload(
+                        gameId, eraNumber, playerId, specialAction, null, eventId, outcomeId, reason));
+    }
+
+    private void prepareEraserScoring(UUID gameId, int eraNumber, UUID eraser) {
+        contextRepository.upsertPlayerFaction(gameId, eraser, Faction.ERASERS);
+        contextRepository.upsertExpectedOutcomeCount(gameId, eraNumber, 1);
+        contextRepository.markActionFactsReady(gameId, eraNumber);
+    }
+
+    private void assertEraserScoreAndProgress(
+            UUID gameId, int eraNumber, UUID eraser, int expectedScore, int expectedAnnihilations) {
+        assertThat(playerScoreRepository.findAllByGameId(gameId))
+                .filteredOn(score -> score.playerId().equals(eraser))
+                .singleElement()
+                .satisfies(score -> {
+                    assertThat(score.playerId()).isEqualTo(eraser);
+                    assertThat(score.totalScore()).isEqualTo(expectedScore);
+                    assertThat(score.history())
+                            .filteredOn(entry -> entry.reason() == ScoreReason.ANNIHILATED_OUTCOME)
+                            .hasSize(expectedAnnihilations);
+                });
+        assertThat(factionObjectiveQuery.evaluate(gameId, eraNumber))
+                .filteredOn(progress -> progress.playerId().equals(eraser))
+                .singleElement()
+                .satisfies(progress -> {
+                    assertThat(progress.playerId()).isEqualTo(eraser);
+                    assertThat(progress.progressCount()).isEqualTo(expectedAnnihilations);
+                    assertThat(progress.objectiveMet()).isFalse();
+                });
     }
 
     private void prepareRallyDeclaration(
