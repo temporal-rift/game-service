@@ -261,6 +261,26 @@ class GameTest {
     }
 
     @Test
+    @DisplayName("a lowered threshold already met collapses on this era's first cascade even if it's a repeat")
+    void recordCascadedParadoxesInRevealOrder_thresholdAlreadyMetByRepeatsOnly_stillReturnsCollapsingEvent() {
+        var repeatingEvent = UUID.randomUUID();
+        var alreadyCascaded = Set.of(repeatingEvent, UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID());
+        var game = Game.reconstitute(
+                GAME_ID,
+                LOBBY_ID,
+                List.of(),
+                new GameProgress(1, alreadyCascaded, null, List.of(), Map.of(), GameStatus.IN_PROGRESS));
+
+        // No entry here is a first-time cascade (repeatingEvent is already counted), yet the distinct
+        // count already exceeds MAX_CASCADED_PARADOXES from a mid-game rule decrease — the game must
+        // still get a chance to collapse instead of running indefinitely.
+        var result = game.recordCascadedParadoxesInRevealOrder(List.of(repeatingEvent), MAX_CASCADED_PARADOXES);
+
+        assertThat(result).isEqualTo(repeatingEvent);
+        assertThat(game.pendingCollapsingEventId()).isEqualTo(repeatingEvent);
+    }
+
+    @Test
     void recordCascadedParadoxesInRevealOrder_gameOver_throws() {
         var game = newGame();
         game.end();
