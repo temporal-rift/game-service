@@ -37,7 +37,7 @@ class PlayerScoreTest {
                 Arguments.of(Faction.WEAVERS, ScoreReason.CHAIN_BROKEN, -3),
                 Arguments.of(Faction.ACTIVISTS, ScoreReason.DECLARED_OUTCOME_WON_WITH_RALLY, 8),
                 Arguments.of(Faction.ACTIVISTS, ScoreReason.DECLARED_OUTCOME_WON, 4),
-                Arguments.of(Faction.ACTIVISTS, ScoreReason.EXPOSE_CHANGED_PLAYER_BEHAVIOR, 2));
+                Arguments.of(Faction.ACTIVISTS, ScoreReason.EXPOSE_SIGNATURE_REVEALED, 2));
     }
 
     @Test

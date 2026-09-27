@@ -16,7 +16,6 @@ import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -46,7 +45,6 @@ import io.github.temporalrift.game.action.domain.port.out.FutureEventDefinitionP
 import io.github.temporalrift.game.action.domain.port.out.PlayerStateRepository;
 import io.github.temporalrift.game.action.domain.saga.ActionRoundSagaState;
 import io.github.temporalrift.game.action.domain.saga.ActionRoundSagaStatus;
-import io.github.temporalrift.game.shared.application.SagaHandoffPublisher;
 import io.github.temporalrift.game.shared.domain.event.EraActionFactsFinalized;
 import io.github.temporalrift.game.shared.domain.event.PlayersIdentified;
 import io.github.temporalrift.game.shared.domain.messaging.DomainEventEnvelope;
@@ -75,7 +73,6 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
     private final ActivistEraStateRepository activistEraStateRepository;
     private final PlayerStateRepository playerStateRepository;
     private final ActionEventPublisher actionEventPublisher;
-    private final SagaHandoffPublisher sagaHandoffPublisher;
     private final ActionRoundSagaStateManager stateManager;
     private final GameRulesPort gameRules;
     private final FutureEventDefinitionPort futureEventDefinitionPort;
@@ -88,7 +85,6 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
             ActivistEraStateRepository activistEraStateRepository,
             PlayerStateRepository playerStateRepository,
             ActionEventPublisher actionEventPublisher,
-            ApplicationEventPublisher applicationEventPublisher,
             ActionRoundSagaStateManager stateManager,
             GameRulesPort gameRules,
             FutureEventDefinitionPort futureEventDefinitionPort,
@@ -99,7 +95,6 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
         this.activistEraStateRepository = activistEraStateRepository;
         this.playerStateRepository = playerStateRepository;
         this.actionEventPublisher = actionEventPublisher;
-        this.sagaHandoffPublisher = new SagaHandoffPublisher(applicationEventPublisher);
         this.stateManager = stateManager;
         this.gameRules = gameRules;
         this.futureEventDefinitionPort = futureEventDefinitionPort;
@@ -531,6 +526,7 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
                 .collect(java.util.stream.Collectors.toSet());
         var exposedStates = activistEraStateRepository.findExposedByGameIdAndEraNumber(gameId, eraNumber).stream()
                 .filter(state -> liveExposePlayerIds.contains(state.activistPlayerId()))
+                .filter(state -> state.exposedSignature() != null)
                 .toList();
         exposedStates.forEach(state -> actionEventPublisher.publish(DomainEventEnvelope.create(
                 state.id(),
@@ -582,11 +578,7 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
                                         state.activistPlayerId(),
                                         state.exposedPlayerId()),
                                 clock);
-                        sagaHandoffPublisher.publish(
-                                actionEventPublisher::publish,
-                                envelope,
-                                new io.github.temporalrift.game.shared.domain.event.ExposeBehaviorChanged(
-                                        gameId, eraNumber, state.activistPlayerId(), state.exposedPlayerId()));
+                        actionEventPublisher.publish(envelope);
                     }
                 });
     }
@@ -612,9 +604,7 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
         var fulfillmentFacts = new java.util.LinkedHashSet<EraActionFactsFinalized.FulfillmentFact>();
         var exposeFacts = activistEraStateRepository.findExposedByGameIdAndEraNumber(gameId, eraNumber).stream()
                 .filter(state -> !cancelledRoundTwoPlayerIds.contains(state.activistPlayerId()))
-                .filter(
-                        io.github.temporalrift.game.action.domain.activisterastate.ActivistEraState
-                                ::exposeBehaviorChanged)
+                .filter(state -> state.exposedSignature() != null)
                 .map(state -> new EraActionFactsFinalized.ExposeFact(state.activistPlayerId(), state.exposedPlayerId()))
                 .toList();
         var activistDeclarationFacts =

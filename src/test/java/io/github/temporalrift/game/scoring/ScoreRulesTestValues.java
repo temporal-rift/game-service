@@ -9,8 +9,7 @@ public final class ScoreRulesTestValues {
     public static int pointsDelta(ScoreReason reason) {
         return switch (reason) {
             case ANNIHILATED_OUTCOME -> 3;
-            case CORRUPTED_OPPONENT_CARD, CHAIN_LINK_ADDED, MIMIC_CONTRIBUTED_TO_WIN, EXPOSE_CHANGED_PLAYER_BEHAVIOR ->
-                2;
+            case CORRUPTED_OPPONENT_CARD, CHAIN_LINK_ADDED, MIMIC_CONTRIBUTED_TO_WIN, EXPOSE_SIGNATURE_REVEALED -> 2;
             case EVENT_RESOLVED_AS_WRITTEN, SECRET_OUTCOME_WON, DECLARED_OUTCOME_WON -> 4;
             case FULFILLMENT_SUCCEEDED, DECLARED_OUTCOME_WON_WITH_RALLY -> 8;
             case EVENT_RESOLVED_DIFFERENTLY_THAN_WRITTEN, PARADOX_CASCADE_PENALTY -> -2;

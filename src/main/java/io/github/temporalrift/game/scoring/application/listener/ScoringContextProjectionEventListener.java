@@ -14,7 +14,6 @@ import io.github.temporalrift.game.scoring.domain.port.out.FactionIdentification
 import io.github.temporalrift.game.shared.domain.event.ActivistDeclarationRecorded;
 import io.github.temporalrift.game.shared.domain.event.EraActionFactsFinalized;
 import io.github.temporalrift.game.shared.domain.event.EventsDrawn;
-import io.github.temporalrift.game.shared.domain.event.ExposeBehaviorChanged;
 import io.github.temporalrift.game.shared.domain.event.FactionAssigned;
 import io.github.temporalrift.game.shared.domain.event.ForesightDeclared;
 import io.github.temporalrift.game.shared.domain.event.PlayersIdentified;
@@ -75,16 +74,6 @@ class ScoringContextProjectionEventListener {
     }
 
     @ApplicationModuleListener
-    void onExposeBehaviorChanged(ExposeBehaviorChanged event) {
-        contextRepository.recordActionFact(
-                event.gameId(),
-                event.eraNumber(),
-                event.activistPlayerId(),
-                Faction.ACTIVISTS,
-                io.github.temporalrift.game.scoring.domain.playerscore.ScoreReason.EXPOSE_CHANGED_PLAYER_BEHAVIOR);
-    }
-
-    @ApplicationModuleListener
     void onPlayersIdentified(PlayersIdentified event) {
         event.playerIds()
                 .forEach(playerId -> factionIdentificationRepository.recordIdentification(event.gameId(), playerId));
@@ -105,8 +94,7 @@ class ScoringContextProjectionEventListener {
                         event.eraNumber(),
                         fact.activistPlayerId(),
                         Faction.ACTIVISTS,
-                        io.github.temporalrift.game.scoring.domain.playerscore.ScoreReason
-                                .EXPOSE_CHANGED_PLAYER_BEHAVIOR));
+                        io.github.temporalrift.game.scoring.domain.playerscore.ScoreReason.EXPOSE_SIGNATURE_REVEALED));
         event.activistDeclarationFacts()
                 .forEach(fact -> contextRepository.upsertActivistDeclaration(new ActivistDeclarationRecorded(
                         event.gameId(),

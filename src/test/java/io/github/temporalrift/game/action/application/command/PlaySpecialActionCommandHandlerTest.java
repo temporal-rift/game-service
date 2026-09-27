@@ -44,6 +44,7 @@ import io.github.temporalrift.game.action.domain.actionround.SpecialActionNotEli
 import io.github.temporalrift.game.action.domain.actionround.SubmittedAction;
 import io.github.temporalrift.game.action.domain.actionround.UnknownActionTargetException;
 import io.github.temporalrift.game.action.domain.activisterastate.ActivistEraState;
+import io.github.temporalrift.game.action.domain.activisterastate.ExposeTargetNotEligibleException;
 import io.github.temporalrift.game.action.domain.activisterastate.ExposeUnavailableException;
 import io.github.temporalrift.game.action.domain.event.SpecialActionPlayed;
 import io.github.temporalrift.game.action.domain.playerstate.PlayerState;
@@ -55,6 +56,8 @@ import io.github.temporalrift.game.action.domain.port.out.PlayerStateRepository;
 import io.github.temporalrift.game.action.domain.port.out.SpecialActionEraUsageRepository;
 import io.github.temporalrift.game.action.domain.specialactionerausage.SpecialActionEraBudgetExhaustedException;
 import io.github.temporalrift.game.action.domain.specialactionerausage.SpecialActionEraUsage;
+import io.github.temporalrift.game.shared.domain.model.CardCategory;
+import io.github.temporalrift.game.shared.domain.model.CardGrade;
 import io.github.temporalrift.game.shared.domain.model.CardType;
 import io.github.temporalrift.game.shared.domain.model.Faction;
 import io.github.temporalrift.game.shared.domain.model.SpecialAction;
@@ -859,6 +862,126 @@ class PlaySpecialActionCommandHandlerTest {
         assertThat(state.getValue().exposedSignature())
                 .isEqualTo(new io.github.temporalrift.game.action.domain.activisterastate.ProbabilityInfluenceSignature(
                         CardType.PUSH, targetEventId, sourceOutcomeId, targetOutcomeId));
+    }
+
+    @ParameterizedTest
+    @EnumSource(
+            value = CardType.class,
+            names = {"SUPPRESS", "SWING", "AMPLIFY", "DECOY"})
+    void handleActivistExposeAcceptsEveryPublicProbabilityShifterCard(CardType cardType) {
+        var targetPlayerId = UUID.randomUUID();
+        SubmittedAction.CardAction roundOneCard = cardType == CardType.DECOY
+                ? new SubmittedAction.CardAction(
+                        targetPlayerId,
+                        UUID.randomUUID(),
+                        cardType,
+                        CardGrade.I,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        CardCategory.PROBABILITY_SHIFTER)
+                : new SubmittedAction.CardAction(
+                        targetPlayerId,
+                        UUID.randomUUID(),
+                        cardType,
+                        UUID.randomUUID(),
+                        cardType == CardType.SWING ? UUID.randomUUID() : null,
+                        UUID.randomUUID());
+        stubExposeAgainst(List.of(roundOneCard));
+
+        handler.handle(exposeCommand(targetPlayerId));
+
+        var state = org.mockito.ArgumentCaptor.forClass(ActivistEraState.class);
+        then(activistEraStateRepository).should().save(state.capture());
+        assertThat(state.getValue().exposedPlayerId()).isEqualTo(targetPlayerId);
+        if (cardType == CardType.AMPLIFY || cardType == CardType.DECOY) {
+            assertThat(state.getValue().exposedSignature()).isNull();
+        } else {
+            assertThat(state.getValue().exposedSignature().type()).isEqualTo(cardType);
+        }
+    }
+
+    @Test
+    void handleActivistExposeRejectsNonProbabilityCardUsingItsPublicCategory() {
+        var targetPlayerId = UUID.randomUUID();
+        var card = new SubmittedAction.CardAction(
+                targetPlayerId,
+                UUID.randomUUID(),
+                CardType.INTERCEPT,
+                CardGrade.I,
+                null,
+                null,
+                null,
+                UUID.randomUUID());
+        stubExposeAgainst(List.of(card));
+
+        assertThatExceptionOfType(ExposeTargetNotEligibleException.class)
+                .isThrownBy(() -> handler.handle(exposeCommand(targetPlayerId)))
+                .withMessageContaining("publicly play a Probability Shifter card");
+        then(activistEraStateRepository).shouldHaveNoInteractions();
+        then(round).should(never()).submit(any());
+    }
+
+    @Test
+    void handleActivistExposeRejectsRoundOneSkip() {
+        var targetPlayerId = UUID.randomUUID();
+        stubExposeAgainst(List.of());
+
+        assertThatExceptionOfType(ExposeTargetNotEligibleException.class)
+                .isThrownBy(() -> handler.handle(exposeCommand(targetPlayerId)));
+        then(activistEraStateRepository).shouldHaveNoInteractions();
+        then(round).should(never()).submit(any());
+    }
+
+    @Test
+    void handleActivistExposeRejectsRoundOneSpecial() {
+        var targetPlayerId = UUID.randomUUID();
+        stubExposeAgainst(List.of(new SubmittedAction.SpecialActionSubmission(
+                targetPlayerId,
+                Faction.ERASERS,
+                SpecialAction.SEAL,
+                null,
+                null,
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                null)));
+
+        assertThatExceptionOfType(ExposeTargetNotEligibleException.class)
+                .isThrownBy(() -> handler.handle(exposeCommand(targetPlayerId)));
+        then(activistEraStateRepository).shouldHaveNoInteractions();
+        then(round).should(never()).submit(any());
+    }
+
+    private PlaySpecialActionUseCase.Command exposeCommand(UUID targetPlayerId) {
+        return new PlaySpecialActionUseCase.Command(
+                GAME_ID, 2, 2, PLAYER_ID, SpecialAction.EXPOSE, null, null, null, null, targetPlayerId);
+    }
+
+    private void stubExposeAgainst(List<SubmittedAction> roundOneActions) {
+        var roundOne = mock(ActionRound.class);
+        given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, 2, 2))
+                .willReturn(Optional.of(round));
+        given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumber(GAME_ID, 2, 1))
+                .willReturn(Optional.of(roundOne));
+        given(roundOne.submittedActions()).willReturn(roundOneActions);
+        given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(playerState));
+        given(playerState.faction()).willReturn(Faction.ACTIVISTS);
+        given(playerState.isJammed()).willReturn(false);
+        given(gameRules.onceEraBudgetedSpecials()).willReturn(Set.of());
+        if (!roundOneActions.isEmpty()
+                && roundOneActions.getFirst().publicCategory().orElse(null) == CardCategory.PROBABILITY_SHIFTER) {
+            given(activistEraStateRepository.findByGameIdAndEraNumberAndActivistPlayerId(GAME_ID, 2, PLAYER_ID))
+                    .willReturn(Optional.empty());
+            given(activistEraStateRepository.findByGameIdAndEraNumberAndActivistPlayerId(GAME_ID, 1, PLAYER_ID))
+                    .willReturn(Optional.empty());
+            given(round.submit(any())).willReturn(false);
+            given(round.id()).willReturn(UUID.randomUUID());
+            given(round.gameId()).willReturn(GAME_ID);
+            given(round.pullEvents()).willReturn(List.of(specialActionPlayedEvent()));
+        }
     }
 
     @Test

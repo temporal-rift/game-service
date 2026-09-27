@@ -172,7 +172,7 @@ class FactionObjectiveEvaluatorTest {
         score.apply(1, ScoreReason.DECLARED_OUTCOME_WON, 4);
         score.apply(2, ScoreReason.DECLARED_OUTCOME_WON, 4);
         score.apply(3, ScoreReason.DECLARED_OUTCOME_WON, 4);
-        score.apply(5, ScoreReason.EXPOSE_CHANGED_PLAYER_BEHAVIOR, 2);
+        score.apply(5, ScoreReason.EXPOSE_SIGNATURE_REVEALED, 2);
 
         assertThat(FactionObjectiveEvaluator.evaluate(score, 5, RULES).objectiveMet())
                 .isFalse();

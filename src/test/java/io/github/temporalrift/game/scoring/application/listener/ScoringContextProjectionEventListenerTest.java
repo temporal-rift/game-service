@@ -24,7 +24,6 @@ import io.github.temporalrift.game.shared.domain.event.ActivistDeclarationRecord
 import io.github.temporalrift.game.shared.domain.event.ActivistDeclarationResolved;
 import io.github.temporalrift.game.shared.domain.event.EraActionFactsFinalized;
 import io.github.temporalrift.game.shared.domain.event.EventsDrawn;
-import io.github.temporalrift.game.shared.domain.event.ExposeBehaviorChanged;
 import io.github.temporalrift.game.shared.domain.event.FactionAssigned;
 import io.github.temporalrift.game.shared.domain.event.ForesightDeclared;
 import io.github.temporalrift.game.shared.domain.event.PlayersIdentified;
@@ -124,24 +123,6 @@ class ScoringContextProjectionEventListenerTest {
     }
 
     @Test
-    void onExposeBehaviorChanged_recordsExactlyTheActivistExposeFact() {
-        var gameId = UUID.randomUUID();
-        var activistPlayerId = UUID.randomUUID();
-
-        listener.onExposeBehaviorChanged(new ExposeBehaviorChanged(gameId, 2, activistPlayerId, UUID.randomUUID()));
-
-        then(contextRepository)
-                .should()
-                .recordActionFact(
-                        gameId,
-                        2,
-                        activistPlayerId,
-                        Faction.ACTIVISTS,
-                        io.github.temporalrift.game.scoring.domain.playerscore.ScoreReason
-                                .EXPOSE_CHANGED_PLAYER_BEHAVIOR);
-    }
-
-    @Test
     void onEraActionFactsFinalized_appliesBundledFactsThenMarksReadyAndTriesCompletion() {
         var gameId = UUID.randomUUID();
         var foresightEventId = UUID.randomUUID();
@@ -158,7 +139,7 @@ class ScoringContextProjectionEventListenerTest {
                 2,
                 List.of(new EraActionFactsFinalized.ForesightFact(
                         foresightEventId, foresightOutcomeId, foresightPlayerId)),
-                List.of(),
+                List.of(new EraActionFactsFinalized.ExposeFact(activistPlayerId, UUID.randomUUID())),
                 List.of(new EraActionFactsFinalized.ActivistDeclarationFact(
                         activistPlayerId, SpecialAction.RALLY, activistEventId, activistOutcomeId)),
                 List.of(new EraActionFactsFinalized.RevisionistFact(
@@ -169,6 +150,14 @@ class ScoringContextProjectionEventListenerTest {
         then(contextRepository)
                 .should()
                 .upsertWrittenOutcome(gameId, 2, foresightEventId, foresightOutcomeId, foresightPlayerId);
+        then(contextRepository)
+                .should()
+                .recordActionFact(
+                        gameId,
+                        2,
+                        activistPlayerId,
+                        Faction.ACTIVISTS,
+                        io.github.temporalrift.game.scoring.domain.playerscore.ScoreReason.EXPOSE_SIGNATURE_REVEALED);
         then(contextRepository)
                 .should()
                 .upsertActivistDeclaration(new ActivistDeclarationRecorded(
