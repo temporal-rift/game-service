@@ -622,6 +622,28 @@ class EraScoringContextRepositoryAdapterTest {
     }
 
     @Test
+    void resolveActivistDeclarations_absentDeclarationRowResolvesNothingEvenWhenOutcomeWins() {
+        // A Round 1-nullified declaration is never projected into scoring context, so a winning
+        // outcome for its target must still produce no resolution and no score fact.
+        var gameId = UUID.randomUUID();
+        var eventId = UUID.randomUUID();
+        var winningOutcomeId = UUID.randomUUID();
+        given(activistDeclarationJpaRepository.findAllUnresolvedWithLock(gameId, 2))
+                .willReturn(List.of());
+        var barrier = new EraResolutionCompleted(
+                gameId,
+                2,
+                List.of(new EraResolutionCompleted.TerminalResolution(
+                        eventId, 0, EraResolutionCompleted.TerminalState.OUTCOME_APPLIED, winningOutcomeId)));
+        given(resolutionBarrierJpaRepository.findByGameIdAndEraNumber(gameId, 2))
+                .willReturn(Optional.of(ScoringTimelineResolutionBarrierJpaEntity.fromDomain(barrier)));
+
+        assertThat(adapter.resolveActivistDeclarations(gameId, 2)).isEmpty();
+        then(outcomeInboxJpaRepository).shouldHaveNoInteractions();
+        then(actionFactJpaRepository).shouldHaveNoInteractions();
+    }
+
+    @Test
     void recordActionFact_and_upsertActivistDeclaration_delegateToIdempotentInserts() {
         var gameId = UUID.randomUUID();
         var playerId = UUID.randomUUID();

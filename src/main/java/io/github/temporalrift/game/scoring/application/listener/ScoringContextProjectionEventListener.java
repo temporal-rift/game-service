@@ -67,13 +67,6 @@ class ScoringContextProjectionEventListener {
     }
 
     @ApplicationModuleListener
-    void onActivistDeclarationRecorded(ActivistDeclarationRecorded event) {
-        contextRepository.upsertActivistDeclaration(event);
-        publishResolutions(event.gameId(), event.eraNumber());
-        completionChecker.tryComplete(event.gameId(), event.eraNumber());
-    }
-
-    @ApplicationModuleListener
     void onPlayersIdentified(PlayersIdentified event) {
         event.playerIds()
                 .forEach(playerId -> factionIdentificationRepository.recordIdentification(event.gameId(), playerId));
