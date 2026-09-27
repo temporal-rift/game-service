@@ -36,10 +36,8 @@ class PlayerStateRepositoryAdapterTest {
                 UUID.randomUUID(),
                 UUID.randomUUID(),
                 Faction.ACTIVISTS,
-                List.of(new PlayerState.CardInstance(UUID.randomUUID(), CardType.JAM)),
-                Set.of(),
-                true,
-                false);
+                new PlayerState.PersistedState(
+                        List.of(new PlayerState.CardInstance(UUID.randomUUID(), CardType.JAM)), Set.of(), true, false));
 
         adapter.save(state);
 

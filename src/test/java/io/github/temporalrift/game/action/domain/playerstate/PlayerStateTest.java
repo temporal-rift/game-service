@@ -34,7 +34,11 @@ class PlayerStateTest {
     void reconstituteRegistersNoEvents() {
         // when
         var ps = PlayerState.reconstitute(
-                UUID.randomUUID(), GAME_ID, PLAYER_ID, Faction.ERASERS, List.of(), Set.of(), false, false);
+                UUID.randomUUID(),
+                GAME_ID,
+                PLAYER_ID,
+                Faction.ERASERS,
+                new PlayerState.PersistedState(List.of(), Set.of(), false, false));
 
         // then
         assertThat(ps.pullEvents()).isEmpty();
@@ -170,7 +174,11 @@ class PlayerStateTest {
     void reconstituteObscuredFlagRoundTrips() {
         // when
         var ps = PlayerState.reconstitute(
-                UUID.randomUUID(), GAME_ID, PLAYER_ID, Faction.REVISIONISTS, List.of(), Set.of(), false, true);
+                UUID.randomUUID(),
+                GAME_ID,
+                PLAYER_ID,
+                Faction.REVISIONISTS,
+                new PlayerState.PersistedState(List.of(), Set.of(), false, true));
 
         // then
         assertThat(ps.isObscured()).isTrue();
@@ -195,7 +203,11 @@ class PlayerStateTest {
         var first = card(CardType.PUSH);
         var second = card(CardType.JAM);
         var ps = PlayerState.reconstitute(
-                UUID.randomUUID(), GAME_ID, PLAYER_ID, Faction.ERASERS, List.of(first, second), Set.of(), false, false);
+                UUID.randomUUID(),
+                GAME_ID,
+                PLAYER_ID,
+                Faction.ERASERS,
+                new PlayerState.PersistedState(List.of(first, second), Set.of(), false, false));
 
         ps.markRevealed(List.of(second, card(CardType.SCAN), first));
 
@@ -211,10 +223,7 @@ class PlayerStateTest {
                 GAME_ID,
                 PLAYER_ID,
                 Faction.ERASERS,
-                List.of(revealed),
-                Set.of(revealed.cardInstanceId()),
-                false,
-                false);
+                new PlayerState.PersistedState(List.of(revealed), Set.of(revealed.cardInstanceId()), false, false));
 
         ps.removeCard(revealed.cardInstanceId());
 
@@ -231,10 +240,7 @@ class PlayerStateTest {
                 GAME_ID,
                 PLAYER_ID,
                 Faction.ERASERS,
-                List.of(old),
-                Set.of(old.cardInstanceId()),
-                true,
-                true);
+                new PlayerState.PersistedState(List.of(old), Set.of(old.cardInstanceId()), true, true));
 
         ps.receiveHand(List.of(fresh));
 

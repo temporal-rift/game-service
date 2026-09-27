@@ -40,36 +40,30 @@ public class PlayerState extends AggregateRoot {
         this.obscured = false;
     }
 
-    private PlayerState(
-            UUID id,
-            UUID gameId,
-            UUID playerId,
-            Faction faction,
-            List<CardInstance> hand,
-            Set<UUID> revealedCardInstanceIds,
-            boolean jammed,
-            boolean obscured) {
+    private PlayerState(UUID id, UUID gameId, UUID playerId, Faction faction, PersistedState state) {
         this.id = id;
         this.gameId = gameId;
         this.playerId = playerId;
         this.faction = faction;
-        this.hand = new ArrayList<>(hand);
-        this.revealedCardInstanceIds = new LinkedHashSet<>(revealedCardInstanceIds);
-        this.revealedCardInstanceIds.retainAll(cardInstanceIds(hand));
-        this.jammed = jammed;
-        this.obscured = obscured;
+        this.hand = new ArrayList<>(state.hand());
+        this.revealedCardInstanceIds = new LinkedHashSet<>(state.revealedCardInstanceIds());
+        this.revealedCardInstanceIds.retainAll(cardInstanceIds(state.hand()));
+        this.jammed = state.jammed();
+        this.obscured = state.obscured();
     }
 
-    public static PlayerState reconstitute(
-            UUID id,
-            UUID gameId,
-            UUID playerId,
-            Faction faction,
-            List<CardInstance> hand,
-            Set<UUID> revealedCardInstanceIds,
-            boolean jammed,
-            boolean obscured) {
-        return new PlayerState(id, gameId, playerId, faction, hand, revealedCardInstanceIds, jammed, obscured);
+    public static PlayerState reconstitute(UUID id, UUID gameId, UUID playerId, Faction faction, PersistedState state) {
+        return new PlayerState(id, gameId, playerId, faction, state);
+    }
+
+    /** The mutable per-player state a repository restores alongside the player's identity and faction. */
+    public record PersistedState(
+            List<CardInstance> hand, Set<UUID> revealedCardInstanceIds, boolean jammed, boolean obscured) {
+
+        public PersistedState {
+            hand = List.copyOf(hand);
+            revealedCardInstanceIds = Set.copyOf(revealedCardInstanceIds);
+        }
     }
 
     public void assignFaction(Faction faction) {

@@ -332,7 +332,14 @@ class UpdateScoresCommandHandlerTest {
         assertThat(update.newTotal())
                 .as("the bonus lands before the era-end victory check reads the total")
                 .isEqualTo(21);
-        assertThat(savedScores.getFirst().history().getLast().eraNumber()).isEqualTo(FINAL_ERA);
+        assertThat(savedScores.stream()
+                        .filter(score -> score.playerId().equals(revisionistId))
+                        .findFirst()
+                        .orElseThrow()
+                        .history()
+                        .getLast()
+                        .eraNumber())
+                .isEqualTo(FINAL_ERA);
     }
 
     @Test

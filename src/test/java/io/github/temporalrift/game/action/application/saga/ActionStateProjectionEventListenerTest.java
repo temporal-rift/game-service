@@ -77,10 +77,7 @@ class ActionStateProjectionEventListenerTest {
                 UUID.randomUUID(),
                 UUID.randomUUID(),
                 Faction.ERASERS,
-                List.of(),
-                Set.of(),
-                false,
-                false);
+                new PlayerState.PersistedState(List.of(), Set.of(), false, false));
         var event = new HandDealt(
                 existing.gameId(),
                 1,
@@ -142,10 +139,8 @@ class ActionStateProjectionEventListenerTest {
                 UUID.randomUUID(),
                 UUID.randomUUID(),
                 null,
-                List.of(new PlayerState.CardInstance(UUID.randomUUID(), CardType.JAM)),
-                Set.of(),
-                true,
-                false);
+                new PlayerState.PersistedState(
+                        List.of(new PlayerState.CardInstance(UUID.randomUUID(), CardType.JAM)), Set.of(), true, false));
         given(playerStateRepository.findOrCreateWithLock(existing.gameId(), existing.playerId()))
                 .willReturn(existing);
 
@@ -183,10 +178,11 @@ class ActionStateProjectionEventListenerTest {
                 UUID.randomUUID(),
                 UUID.randomUUID(),
                 Faction.PROPHETS,
-                List.of(new PlayerState.CardInstance(UUID.randomUUID(), CardType.TRACE)),
-                Set.of(),
-                false,
-                false);
+                new PlayerState.PersistedState(
+                        List.of(new PlayerState.CardInstance(UUID.randomUUID(), CardType.TRACE)),
+                        Set.of(),
+                        false,
+                        false));
         given(playerStateRepository.findOrCreateWithLock(existing.gameId(), existing.playerId()))
                 .willReturn(existing);
 
@@ -225,10 +221,7 @@ class ActionStateProjectionEventListenerTest {
                 UUID.randomUUID(),
                 UUID.randomUUID(),
                 Faction.ERASERS,
-                List.of(),
-                Set.of(),
-                false,
-                false);
+                new PlayerState.PersistedState(List.of(), Set.of(), false, false));
         willReturn(existing).given(playerStateRepository).findOrCreateWithLock(existing.gameId(), existing.playerId());
 
         assertThatIllegalStateException()

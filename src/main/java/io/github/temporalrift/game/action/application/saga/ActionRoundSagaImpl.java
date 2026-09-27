@@ -400,15 +400,15 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
         var revealedTargets = new LinkedHashSet<PlayerState>();
         for (var intercept : intercepts) {
             var target = java.util.Optional.ofNullable(statesByPlayer.get(intercept.targetPlayerId()));
-            var sample = target.map(state -> state.isObscured()
-                            ? InterceptHandSampler.select(
-                                    decoyHands.computeIfAbsent(
+            var sample = target.map(state -> InterceptHandSampler.select(
+                            state.isObscured()
+                                    ? decoyHands.computeIfAbsent(
                                             state.playerId(),
                                             ignored -> InterceptHandSampler.decoyHand(
-                                                    state, cardDrawWeights(), INTERCEPT_RANDOMNESS)),
-                                    intercept.grade(),
-                                    INTERCEPT_RANDOMNESS)
-                            : InterceptHandSampler.select(state.hand(), intercept.grade(), INTERCEPT_RANDOMNESS))
+                                                    state, cardDrawWeights(), INTERCEPT_RANDOMNESS))
+                                    : state.hand(),
+                            intercept.grade(),
+                            INTERCEPT_RANDOMNESS))
                     .orElseGet(List::of);
             target.filter(state -> !state.isObscured()).ifPresent(state -> {
                 state.markRevealed(sample);

@@ -295,10 +295,11 @@ class ActionPersistenceIT {
                 state.gameId(),
                 state.playerId(),
                 Faction.REVISIONISTS,
-                List.of(new PlayerState.CardInstance(UUID.randomUUID(), CardType.SUPPRESS)),
-                Set.of(),
-                true,
-                false);
+                new PlayerState.PersistedState(
+                        List.of(new PlayerState.CardInstance(UUID.randomUUID(), CardType.SUPPRESS)),
+                        Set.of(),
+                        true,
+                        false));
         playerStateRepository.save(updated);
 
         var all = playerStateRepository.findAllByGameId(state.gameId());

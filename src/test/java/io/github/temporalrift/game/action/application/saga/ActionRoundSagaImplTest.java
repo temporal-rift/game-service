@@ -1619,7 +1619,11 @@ class ActionRoundSagaImplTest {
         @DisplayName("clears Jam when the suppressed round closes without a replacement")
         void clearsJamWhenSuppressedRoundClosesWithoutReplacement() {
             var target = PlayerState.reconstitute(
-                    UUID.randomUUID(), GAME_ID, PLAYER_2, Faction.ERASERS, List.of(), Set.of(), true, false);
+                    UUID.randomUUID(),
+                    GAME_ID,
+                    PLAYER_2,
+                    Faction.ERASERS,
+                    new PlayerState.PersistedState(List.of(), Set.of(), true, false));
             var round = new ActionRound(
                     UUID.randomUUID(), new ActionRoundConfig(GAME_ID, ERA_NUMBER, 2, TIMER_SECONDS), List.of(PLAYER_2));
             given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA_NUMBER, 2))
@@ -1654,7 +1658,11 @@ class ActionRoundSagaImplTest {
         @DisplayName("replaces a consecutive Jam without stacking its duration")
         void replacesConsecutiveJamWithoutStackingItsDuration() {
             var target = PlayerState.reconstitute(
-                    UUID.randomUUID(), GAME_ID, PLAYER_2, Faction.ERASERS, List.of(), Set.of(), true, false);
+                    UUID.randomUUID(),
+                    GAME_ID,
+                    PLAYER_2,
+                    Faction.ERASERS,
+                    new PlayerState.PersistedState(List.of(), Set.of(), true, false));
             var round = new ActionRound(
                     UUID.randomUUID(),
                     new ActionRoundConfig(GAME_ID, ERA_NUMBER, 2, TIMER_SECONDS),
@@ -1695,7 +1703,11 @@ class ActionRoundSagaImplTest {
         @DisplayName("clears every Jam at the final round boundary")
         void clearsEveryJamAtFinalRoundBoundary() {
             var target = PlayerState.reconstitute(
-                    UUID.randomUUID(), GAME_ID, PLAYER_2, Faction.ERASERS, List.of(), Set.of(), true, false);
+                    UUID.randomUUID(),
+                    GAME_ID,
+                    PLAYER_2,
+                    Faction.ERASERS,
+                    new PlayerState.PersistedState(List.of(), Set.of(), true, false));
             var round = new ActionRound(
                     UUID.randomUUID(), new ActionRoundConfig(GAME_ID, ERA_NUMBER, 3, TIMER_SECONDS), List.of(PLAYER_2));
             given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA_NUMBER, 3))
@@ -1766,7 +1778,11 @@ class ActionRoundSagaImplTest {
         @DisplayName("clears Obscure when the obscured round closes without replacement")
         void clearsObscureWhenObscuredRoundClosesWithoutReplacement() {
             var target = PlayerState.reconstitute(
-                    UUID.randomUUID(), GAME_ID, PLAYER_2, Faction.REVISIONISTS, List.of(), Set.of(), false, true);
+                    UUID.randomUUID(),
+                    GAME_ID,
+                    PLAYER_2,
+                    Faction.REVISIONISTS,
+                    new PlayerState.PersistedState(List.of(), Set.of(), false, true));
             var round = new ActionRound(
                     UUID.randomUUID(), new ActionRoundConfig(GAME_ID, ERA_NUMBER, 2, TIMER_SECONDS), List.of(PLAYER_2));
             given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA_NUMBER, 2))
@@ -1800,7 +1816,11 @@ class ActionRoundSagaImplTest {
         @DisplayName("clears a carried Obscure at the final round boundary and never crosses the era")
         void clearsEveryObscureAtFinalRoundBoundary() {
             var target = PlayerState.reconstitute(
-                    UUID.randomUUID(), GAME_ID, PLAYER_2, Faction.REVISIONISTS, List.of(), Set.of(), false, true);
+                    UUID.randomUUID(),
+                    GAME_ID,
+                    PLAYER_2,
+                    Faction.REVISIONISTS,
+                    new PlayerState.PersistedState(List.of(), Set.of(), false, true));
             var round = new ActionRound(
                     UUID.randomUUID(), new ActionRoundConfig(GAME_ID, ERA_NUMBER, 3, TIMER_SECONDS), List.of(PLAYER_2));
             given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA_NUMBER, 3))
@@ -2129,7 +2149,11 @@ class ActionRoundSagaImplTest {
 
         private PlayerState playerState(UUID playerId, List<PlayerState.CardInstance> hand) {
             return PlayerState.reconstitute(
-                    UUID.randomUUID(), GAME_ID, playerId, Faction.ERASERS, hand, Set.of(), false, false);
+                    UUID.randomUUID(),
+                    GAME_ID,
+                    playerId,
+                    Faction.ERASERS,
+                    new PlayerState.PersistedState(hand, Set.of(), false, false));
         }
 
         private Optional<ActionRoundSagaState> waitingState(int roundNumber) {
@@ -2231,7 +2255,11 @@ class ActionRoundSagaImplTest {
         void interceptMarksRevealedCardsOfNonObscuredTarget() {
             var card = new PlayerState.CardInstance(UUID.randomUUID(), CardType.PUSH, CardGrade.I);
             var target = PlayerState.reconstitute(
-                    UUID.randomUUID(), GAME_ID, PLAYER_2, Faction.REVISIONISTS, List.of(card), Set.of(), false, false);
+                    UUID.randomUUID(),
+                    GAME_ID,
+                    PLAYER_2,
+                    Faction.REVISIONISTS,
+                    new PlayerState.PersistedState(List.of(card), Set.of(), false, false));
             closeInterceptRound(2, CardGrade.I, target);
 
             assertThat(interceptedEvents().getFirst().revealedCards())
@@ -2408,10 +2436,7 @@ class ActionRoundSagaImplTest {
                                     GAME_ID,
                                     PLAYER_1,
                                     Faction.ERASERS,
-                                    List.of(),
-                                    Set.of(),
-                                    false,
-                                    false),
+                                    new PlayerState.PersistedState(List.of(), Set.of(), false, false)),
                             target));
             given(stateManager.markSubmitted(GAME_ID, ERA_NUMBER, roundNumber, PLAYER_1))
                     .willReturn(waitingState(ERA_NUMBER, roundNumber));
@@ -2426,10 +2451,7 @@ class ActionRoundSagaImplTest {
                     GAME_ID,
                     playerId,
                     Faction.REVISIONISTS,
-                    hand,
-                    revealedCardInstanceIds,
-                    false,
-                    true);
+                    new PlayerState.PersistedState(hand, revealedCardInstanceIds, false, true));
         }
 
         private SubmittedAction.SpecialActionSubmission obscure(UUID playerId) {
