@@ -109,7 +109,7 @@ class ScoringContextProjectionEventListenerTest {
     }
 
     @Test
-    void onActivistDeclarationRecorded_projectsThenPublishesOnlyDurableResolution() {
+    void onActivistDeclarationRecorded_doesNotProjectScoringDeclaration() {
         var gameId = UUID.randomUUID();
         var playerId = UUID.randomUUID();
         var declaration = new ActivistDeclarationRecorded(
@@ -119,7 +119,7 @@ class ScoringContextProjectionEventListenerTest {
 
         listener.onActivistDeclarationRecorded(declaration);
 
-        then(contextRepository).should().upsertActivistDeclaration(declaration);
+        then(contextRepository).should(never()).upsertActivistDeclaration(any());
         then(applicationEventPublisher).should().publishEvent(resolution);
     }
 
@@ -232,6 +232,7 @@ class ScoringContextProjectionEventListenerTest {
         listener.onEraActionFactsFinalized(new EraActionFactsFinalized(gameId, 2, List.of(), List.of()));
 
         then(contextRepository).should(never()).upsertWrittenOutcome(any(), anyInt(), any(), any(), any());
+        then(contextRepository).should(never()).upsertActivistDeclaration(any());
         then(contextRepository).should(never()).recordRevisionistAction(any(), anyInt(), any(), any(), any(), any());
         then(contextRepository).should().markActionFactsReady(gameId, 2);
         then(completionChecker).should().tryComplete(gameId, 2);
