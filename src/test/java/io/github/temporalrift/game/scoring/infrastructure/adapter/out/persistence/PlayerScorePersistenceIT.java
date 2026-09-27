@@ -66,18 +66,18 @@ class PlayerScorePersistenceIT {
 
         var reloaded = PlayerScore.reconstitute(
                 firstLoad.id(), gameId, playerId, Faction.ERASERS, firstLoad.totalScore(), firstLoad.history());
-        reloaded.apply(2, ScoreReason.ERA_ENDED_WITH_FEWER_OUTCOMES, 5);
-        assertThat(reloaded.totalScore()).isEqualTo(8);
+        reloaded.apply(2, ScoreReason.CORRUPTED_OPPONENT_CARD, 2);
+        assertThat(reloaded.totalScore()).isEqualTo(5);
         transactionTemplate.executeWithoutResult(_ -> playerScoreRepository.saveAll(List.of(reloaded)));
 
         var rawTotalScore = jdbcTemplate.queryForObject(
                 "SELECT total_score FROM player_score WHERE id = ?", Integer.class, firstLoad.id());
-        assertThat(rawTotalScore).as("raw DB value via JdbcTemplate").isEqualTo(8);
+        assertThat(rawTotalScore).as("raw DB value via JdbcTemplate").isEqualTo(5);
 
         var secondLoad = transactionTemplate.execute(_ -> playerScoreRepository.findAllByGameId(gameId));
         assertThat(secondLoad).singleElement().satisfies(persisted -> {
             assertThat(persisted.id()).isEqualTo(firstLoad.id());
-            assertThat(persisted.totalScore()).isEqualTo(8);
+            assertThat(persisted.totalScore()).isEqualTo(5);
             assertThat(persisted.history()).hasSize(2);
         });
     }

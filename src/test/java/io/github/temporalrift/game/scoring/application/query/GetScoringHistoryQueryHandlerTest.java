@@ -136,9 +136,9 @@ class GetScoringHistoryQueryHandlerTest {
         authorize(PLAYER_1);
         given(scoringReadRepository.findScoreHistory(GAME_ID))
                 .willReturn(List.of(
-                        // Two uniquely Eraser-sized awards in one era: must not appear as +3/+5 rows.
+                        // Two uniquely Eraser-sized awards in one era: must not appear as +3/+2 rows.
                         new ScoreHistoryRow(GAME_ID, 1, PLAYER_2, 3, ScoreReason.ANNIHILATED_OUTCOME),
-                        new ScoreHistoryRow(GAME_ID, 1, PLAYER_2, 5, ScoreReason.ERA_ENDED_WITH_FEWER_OUTCOMES),
+                        new ScoreHistoryRow(GAME_ID, 1, PLAYER_2, 2, ScoreReason.CORRUPTED_OPPONENT_CARD),
                         // Uniquely Weaver-sized award on its own in another era: net equals the magnitude
                         // (the same total-score information already public via current scores) but carries
                         // no reason and no confirmation that exactly one reason produced it.
@@ -153,7 +153,7 @@ class GetScoringHistoryQueryHandlerTest {
                 .containsExactly(1, 2);
         assertThat(result.history().get(0).deltas()).singleElement().satisfies(delta -> {
             assertThat(delta.playerId()).isEqualTo(PLAYER_2);
-            assertThat(delta.pointsDelta()).isEqualTo(8);
+            assertThat(delta.pointsDelta()).isEqualTo(5);
             assertThat(delta.reason()).isNull();
         });
         assertThat(result.history().get(1).deltas()).singleElement().satisfies(delta -> {

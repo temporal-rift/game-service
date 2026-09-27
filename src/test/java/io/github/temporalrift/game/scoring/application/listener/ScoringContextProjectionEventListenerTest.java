@@ -27,7 +27,6 @@ import io.github.temporalrift.game.shared.domain.event.EventsDrawn;
 import io.github.temporalrift.game.shared.domain.event.ExposeBehaviorChanged;
 import io.github.temporalrift.game.shared.domain.event.FactionAssigned;
 import io.github.temporalrift.game.shared.domain.event.ForesightDeclared;
-import io.github.temporalrift.game.shared.domain.event.OutcomeAnnihilated;
 import io.github.temporalrift.game.shared.domain.event.PlayersIdentified;
 import io.github.temporalrift.game.shared.domain.model.CarryOverState;
 import io.github.temporalrift.game.shared.domain.model.Faction;
@@ -98,37 +97,6 @@ class ScoringContextProjectionEventListenerTest {
     }
 
     @Test
-    void onEventsDrawn_upsertsPerEventOutcomeBaseline() {
-        var gameId = UUID.randomUUID();
-        var eventId1 = UUID.randomUUID();
-        var eventId2 = UUID.randomUUID();
-        var event = new EventsDrawn(
-                gameId,
-                2,
-                List.of(
-                        new EventsDrawn.FutureEvent(
-                                eventId1,
-                                "Title 1",
-                                List.of(
-                                        new EventsDrawn.Outcome(UUID.randomUUID(), "A", 33),
-                                        new EventsDrawn.Outcome(UUID.randomUUID(), "B", 33),
-                                        new EventsDrawn.Outcome(UUID.randomUUID(), "C", 34)),
-                                CarryOverState.FRESH),
-                        new EventsDrawn.FutureEvent(
-                                eventId2,
-                                "Title 2",
-                                List.of(
-                                        new EventsDrawn.Outcome(UUID.randomUUID(), "A", 50),
-                                        new EventsDrawn.Outcome(UUID.randomUUID(), "B", 50)),
-                                CarryOverState.FRESH)));
-
-        listener.onEventsDrawn(event);
-
-        then(contextRepository).should().upsertEventOutcomeBaseline(gameId, 2, eventId1, 3);
-        then(contextRepository).should().upsertEventOutcomeBaseline(gameId, 2, eventId2, 2);
-    }
-
-    @Test
     void onForesightDeclared_upsertsWrittenOutcome() {
         var gameId = UUID.randomUUID();
         var eventId = UUID.randomUUID();
@@ -138,18 +106,6 @@ class ScoringContextProjectionEventListenerTest {
         listener.onForesightDeclared(new ForesightDeclared(gameId, 2, eventId, outcomeId, playerId));
 
         then(contextRepository).should().upsertWrittenOutcome(gameId, 2, eventId, outcomeId, playerId);
-    }
-
-    @Test
-    void onOutcomeAnnihilated_recordsAnnihilatedOutcome() {
-        var gameId = UUID.randomUUID();
-        var eventId = UUID.randomUUID();
-        var outcomeId = UUID.randomUUID();
-        var playerId = UUID.randomUUID();
-
-        listener.onOutcomeAnnihilated(new OutcomeAnnihilated(gameId, 2, eventId, outcomeId, playerId));
-
-        then(contextRepository).should().recordAnnihilatedOutcome(gameId, 2, eventId, outcomeId, playerId);
     }
 
     @Test
@@ -186,14 +142,11 @@ class ScoringContextProjectionEventListenerTest {
     }
 
     @Test
-    void onEraActionFactsFinalized_appliesForesightAndAnnihilationFactsThenMarksReadyAndTriesCompletion() {
+    void onEraActionFactsFinalized_appliesBundledFactsThenMarksReadyAndTriesCompletion() {
         var gameId = UUID.randomUUID();
         var foresightEventId = UUID.randomUUID();
         var foresightOutcomeId = UUID.randomUUID();
         var foresightPlayerId = UUID.randomUUID();
-        var annihilatedEventId = UUID.randomUUID();
-        var annihilatedOutcomeId = UUID.randomUUID();
-        var annihilatingPlayerId = UUID.randomUUID();
         var activistPlayerId = UUID.randomUUID();
         var activistEventId = UUID.randomUUID();
         var activistOutcomeId = UUID.randomUUID();
@@ -205,8 +158,6 @@ class ScoringContextProjectionEventListenerTest {
                 2,
                 List.of(new EraActionFactsFinalized.ForesightFact(
                         foresightEventId, foresightOutcomeId, foresightPlayerId)),
-                List.of(new EraActionFactsFinalized.AnnihilationFact(
-                        annihilatedEventId, annihilatedOutcomeId, annihilatingPlayerId)),
                 List.of(),
                 List.of(new EraActionFactsFinalized.ActivistDeclarationFact(
                         activistPlayerId, SpecialAction.RALLY, activistEventId, activistOutcomeId)),
@@ -218,9 +169,6 @@ class ScoringContextProjectionEventListenerTest {
         then(contextRepository)
                 .should()
                 .upsertWrittenOutcome(gameId, 2, foresightEventId, foresightOutcomeId, foresightPlayerId);
-        then(contextRepository)
-                .should()
-                .recordAnnihilatedOutcome(gameId, 2, annihilatedEventId, annihilatedOutcomeId, annihilatingPlayerId);
         then(contextRepository)
                 .should()
                 .upsertActivistDeclaration(new ActivistDeclarationRecorded(
@@ -251,7 +199,6 @@ class ScoringContextProjectionEventListenerTest {
                 List.of(),
                 List.of(),
                 List.of(),
-                List.of(),
                 List.of(new EraActionFactsFinalized.FulfillmentFact(playerId, targetEventId)));
 
         listener.onEraActionFactsFinalized(event);
@@ -271,7 +218,7 @@ class ScoringContextProjectionEventListenerTest {
         var correlation = new EraActionFactsFinalized.CorruptCorrelationFact(
                 corruptingPlayerId, targetPlayerId, cardInstanceId, targetEventId, sourceOutcomeId, targetOutcomeId);
         var event = new EraActionFactsFinalized(
-                gameId, 2, List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(correlation));
+                gameId, 2, List.of(), List.of(), List.of(), List.of(), List.of(), List.of(correlation));
 
         listener.onEraActionFactsFinalized(event);
 
@@ -285,7 +232,6 @@ class ScoringContextProjectionEventListenerTest {
         listener.onEraActionFactsFinalized(new EraActionFactsFinalized(gameId, 2, List.of(), List.of()));
 
         then(contextRepository).should(never()).upsertWrittenOutcome(any(), anyInt(), any(), any(), any());
-        then(contextRepository).should(never()).recordAnnihilatedOutcome(any(), anyInt(), any(), any(), any());
         then(contextRepository).should(never()).recordRevisionistAction(any(), anyInt(), any(), any(), any(), any());
         then(contextRepository).should().markActionFactsReady(gameId, 2);
         then(completionChecker).should().tryComplete(gameId, 2);
@@ -308,16 +254,7 @@ class ScoringContextProjectionEventListenerTest {
         var gameId = UUID.randomUUID();
         var identified = UUID.randomUUID();
         var event = new EraActionFactsFinalized(
-                gameId,
-                2,
-                List.of(),
-                List.of(),
-                List.of(),
-                List.of(),
-                List.of(),
-                List.of(),
-                List.of(),
-                List.of(identified));
+                gameId, 2, List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(identified));
 
         listener.onEraActionFactsFinalized(event);
 

@@ -21,6 +21,12 @@ class ScoringContextAnnihilatedOutcomeJpaEntity extends GameEraScopedJpaEntity {
     @Column(name = "player_id", nullable = false)
     private UUID playerId;
 
+    @Column(name = "erased", nullable = false)
+    private boolean erased;
+
+    @Column(name = "was_leading", nullable = false)
+    private boolean wasLeading;
+
     protected ScoringContextAnnihilatedOutcomeJpaEntity() {}
 
     UUID getEventId() {
@@ -45,5 +51,21 @@ class ScoringContextAnnihilatedOutcomeJpaEntity extends GameEraScopedJpaEntity {
 
     void setPlayerId(UUID playerId) {
         this.playerId = playerId;
+    }
+
+    boolean isErased() {
+        return erased;
+    }
+
+    void setErased(boolean erased) {
+        this.erased = erased;
+    }
+
+    boolean isWasLeading() {
+        return wasLeading;
+    }
+
+    void setWasLeading(boolean wasLeading) {
+        this.wasLeading = wasLeading;
     }
 }

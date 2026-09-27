@@ -25,11 +25,17 @@
             <column name="player_id" type="UUID">
                 <constraints nullable="false"/>
             </column>
+            <column name="erased" type="BOOLEAN">
+                <constraints nullable="false"/>
+            </column>
+            <column name="was_leading" type="BOOLEAN">
+                <constraints nullable="false"/>
+            </column>
         </createTable>
         <addUniqueConstraint
                 tableName="scoring_context_annihilated_outcome"
-                columnNames="game_id,era_number,event_id,outcome_id"
-                constraintName="uq_scoring_context_annihilated_outcome_game_era_event_outcome"/>
+                columnNames="game_id,era_number,event_id,outcome_id,player_id"
+                constraintName="uq_scoring_context_annihilated_outcome_game_era_event_outcome_player"/>
     </changeSet>
 
 </databaseChangeLog>

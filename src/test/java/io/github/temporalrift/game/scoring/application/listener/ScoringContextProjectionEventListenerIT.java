@@ -16,7 +16,6 @@ import org.springframework.transaction.support.TransactionTemplate;
 import io.github.temporalrift.game.GameServiceIntegrationTest;
 import io.github.temporalrift.game.scoring.application.command.EraScoringCompletionChecker;
 import io.github.temporalrift.game.scoring.domain.context.EraScoringContextNotFoundException;
-import io.github.temporalrift.game.scoring.domain.context.EventOutcomeFact;
 import io.github.temporalrift.game.scoring.domain.context.PendingEraScoringCompletion;
 import io.github.temporalrift.game.scoring.domain.context.PlayerFaction;
 import io.github.temporalrift.game.scoring.domain.event.EraResolutionCompleted;
@@ -26,7 +25,6 @@ import io.github.temporalrift.game.shared.domain.event.EraActionFactsFinalized;
 import io.github.temporalrift.game.shared.domain.event.EventsDrawn;
 import io.github.temporalrift.game.shared.domain.event.FactionAssigned;
 import io.github.temporalrift.game.shared.domain.event.ForesightDeclared;
-import io.github.temporalrift.game.shared.domain.event.OutcomeAnnihilated;
 import io.github.temporalrift.game.shared.domain.event.PlayersIdentified;
 import io.github.temporalrift.game.shared.domain.model.CarryOverState;
 import io.github.temporalrift.game.shared.domain.model.Faction;
@@ -69,16 +67,7 @@ class ScoringContextProjectionEventListenerIT {
         var gameId = UUID.randomUUID();
         var playerId = UUID.randomUUID();
         var event = new EraActionFactsFinalized(
-                gameId,
-                1,
-                List.of(),
-                List.of(),
-                List.of(),
-                List.of(),
-                List.of(),
-                List.of(),
-                List.of(),
-                List.of(playerId));
+                gameId, 1, List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(playerId));
 
         transactionTemplate.executeWithoutResult(_ -> applicationEventPublisher.publishEvent(event));
 
@@ -132,36 +121,6 @@ class ScoringContextProjectionEventListenerIT {
     }
 
     @Test
-    void eventsDrawn_populatesPerEventOutcomeBaseline() {
-        var gameId = UUID.randomUUID();
-        var playerId = UUID.randomUUID();
-        var eraNumber = 1;
-        var eventId = UUID.randomUUID();
-        var event = new EventsDrawn(
-                gameId,
-                eraNumber,
-                List.of(new EventsDrawn.FutureEvent(
-                        eventId,
-                        "A",
-                        List.of(
-                                new EventsDrawn.Outcome(UUID.randomUUID(), "1", 33),
-                                new EventsDrawn.Outcome(UUID.randomUUID(), "2", 33),
-                                new EventsDrawn.Outcome(UUID.randomUUID(), "3", 34)),
-                        CarryOverState.FRESH)));
-
-        transactionTemplate.executeWithoutResult(_ -> {
-            applicationEventPublisher.publishEvent(new FactionAssigned(gameId, playerId, Faction.PROPHETS.name()));
-            applicationEventPublisher.publishEvent(event);
-        });
-
-        await().atMost(Duration.ofSeconds(10))
-                .ignoreException(EraScoringContextNotFoundException.class)
-                .untilAsserted(() -> assertThat(
-                                contextRepository.getRequired(gameId, eraNumber).eventOutcomes())
-                        .containsExactly(new EventOutcomeFact(eventId, null, null, 3, 3)));
-    }
-
-    @Test
     void foresightDeclared_populatesWrittenOutcome() {
         var gameId = UUID.randomUUID();
         var playerId = UUID.randomUUID();
@@ -187,40 +146,6 @@ class ScoringContextProjectionEventListenerIT {
     }
 
     @Test
-    void outcomeAnnihilated_reducesEndingOutcomeCount() {
-        var gameId = UUID.randomUUID();
-        var playerId = UUID.randomUUID();
-        var eraNumber = 1;
-        var eventId = UUID.randomUUID();
-        var outcomeId = UUID.randomUUID();
-        var event = new EventsDrawn(
-                gameId,
-                eraNumber,
-                List.of(new EventsDrawn.FutureEvent(
-                        eventId,
-                        "A",
-                        List.of(
-                                new EventsDrawn.Outcome(outcomeId, "1", 33),
-                                new EventsDrawn.Outcome(UUID.randomUUID(), "2", 33),
-                                new EventsDrawn.Outcome(UUID.randomUUID(), "3", 34)),
-                        CarryOverState.FRESH)));
-
-        transactionTemplate.executeWithoutResult(_ -> {
-            applicationEventPublisher.publishEvent(new FactionAssigned(gameId, playerId, Faction.ERASERS.name()));
-            applicationEventPublisher.publishEvent(event);
-        });
-        transactionTemplate.executeWithoutResult(_ -> applicationEventPublisher.publishEvent(
-                new OutcomeAnnihilated(gameId, eraNumber, eventId, outcomeId, playerId)));
-
-        await().atMost(Duration.ofSeconds(10))
-                .ignoreException(EraScoringContextNotFoundException.class)
-                .untilAsserted(() -> assertThat(
-                                contextRepository.getRequired(gameId, eraNumber).eventOutcomes())
-                        .singleElement()
-                        .satisfies(fact -> assertThat(fact.endingOutcomeCount()).isEqualTo(2)));
-    }
-
-    @Test
     void eraActionFactsFinalized_marksActionFactsReady() {
         var gameId = UUID.randomUUID();
         var eraNumber = 1;
@@ -235,7 +160,7 @@ class ScoringContextProjectionEventListenerIT {
 
     @Test
     void eraActionFactsFinalized_bundledFactsAloneAreSufficient_noPerSubmissionEventNeeded() {
-        // Proves the fix for the race where the final round's own ForesightDeclared/OutcomeAnnihilated
+        // Proves the fix for the race where the final round's own ForesightDeclared
         // listener could still be in flight when scoring decides the era is ready: this test never
         // publishes those per-submission events at all, only the close-time bundle, and the fact still
         // lands correctly.
@@ -268,49 +193,6 @@ class ScoringContextProjectionEventListenerIT {
                             .satisfies(
                                     fact -> assertThat(fact.writtenOutcomeId()).isEqualTo(outcomeId));
                 });
-    }
-
-    @Test
-    void eraActionFactsFinalized_appliesBundledForesightAndAnnihilationFacts() {
-        var gameId = UUID.randomUUID();
-        var playerId = UUID.randomUUID();
-        var eraNumber = 1;
-        var eventId = UUID.randomUUID();
-        var writtenOutcomeId = UUID.randomUUID();
-        var annihilatedOutcomeId = UUID.randomUUID();
-        var event = new EventsDrawn(
-                gameId,
-                eraNumber,
-                List.of(new EventsDrawn.FutureEvent(
-                        eventId,
-                        "A",
-                        List.of(
-                                new EventsDrawn.Outcome(annihilatedOutcomeId, "1", 33),
-                                new EventsDrawn.Outcome(UUID.randomUUID(), "2", 33),
-                                new EventsDrawn.Outcome(UUID.randomUUID(), "3", 34)),
-                        CarryOverState.FRESH)));
-
-        transactionTemplate.executeWithoutResult(_ -> {
-            applicationEventPublisher.publishEvent(new FactionAssigned(gameId, playerId, Faction.PROPHETS.name()));
-            applicationEventPublisher.publishEvent(event);
-        });
-        transactionTemplate.executeWithoutResult(
-                _ -> applicationEventPublisher.publishEvent(new EraActionFactsFinalized(
-                        gameId,
-                        eraNumber,
-                        List.of(new EraActionFactsFinalized.ForesightFact(eventId, writtenOutcomeId, playerId)),
-                        List.of(new EraActionFactsFinalized.AnnihilationFact(
-                                eventId, annihilatedOutcomeId, playerId)))));
-
-        await().atMost(Duration.ofSeconds(10))
-                .ignoreException(EraScoringContextNotFoundException.class)
-                .untilAsserted(() -> assertThat(
-                                contextRepository.getRequired(gameId, eraNumber).eventOutcomes())
-                        .singleElement()
-                        .satisfies(fact -> {
-                            assertThat(fact.writtenOutcomeId()).isEqualTo(writtenOutcomeId);
-                            assertThat(fact.endingOutcomeCount()).isEqualTo(2);
-                        }));
     }
 
     @Test

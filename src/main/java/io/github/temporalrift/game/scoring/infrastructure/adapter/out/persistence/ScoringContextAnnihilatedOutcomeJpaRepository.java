@@ -13,15 +13,13 @@ interface ScoringContextAnnihilatedOutcomeJpaRepository
 
     List<ScoringContextAnnihilatedOutcomeJpaEntity> findAllByGameIdAndEraNumber(UUID gameId, int eraNumber);
 
-    // Idempotent on (game_id, era_number, event_id, outcome_id): redelivery of the same
-    // OutcomeAnnihilated event, or a redundant Annihilate replayed against an already-annihilated
-    // outcome, must never double-count toward endingOutcomeCount.
+    // Two Erasers can erase the same outcome in one round, so each acting player keeps their own row.
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query(value = """
                     INSERT INTO scoring_context_annihilated_outcome
-                        (id, game_id, era_number, event_id, outcome_id, player_id)
-                    VALUES (:id, :gameId, :eraNumber, :eventId, :outcomeId, :playerId)
-                    ON CONFLICT (game_id, era_number, event_id, outcome_id) DO NOTHING
+                        (id, game_id, era_number, event_id, outcome_id, player_id, erased, was_leading)
+                    VALUES (:id, :gameId, :eraNumber, :eventId, :outcomeId, :playerId, :erased, :wasLeading)
+                    ON CONFLICT (game_id, era_number, event_id, outcome_id, player_id) DO NOTHING
                     """, nativeQuery = true)
     void insertIfAbsent(
             @Param("id") UUID id,
@@ -29,5 +27,7 @@ interface ScoringContextAnnihilatedOutcomeJpaRepository
             @Param("eraNumber") int eraNumber,
             @Param("eventId") UUID eventId,
             @Param("outcomeId") UUID outcomeId,
-            @Param("playerId") UUID playerId);
+            @Param("playerId") UUID playerId,
+            @Param("erased") boolean erased,
+            @Param("wasLeading") boolean wasLeading);
 }

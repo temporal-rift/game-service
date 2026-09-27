@@ -24,6 +24,7 @@ import io.github.temporalrift.game.scoring.domain.context.FulfillmentDeclaration
 import io.github.temporalrift.game.scoring.domain.context.ParadoxCascadeScoringFact;
 import io.github.temporalrift.game.scoring.domain.context.PendingEraScoringCompletion;
 import io.github.temporalrift.game.scoring.domain.context.PlayerFaction;
+import io.github.temporalrift.game.scoring.domain.event.AnnihilationResolved;
 import io.github.temporalrift.game.scoring.domain.event.EraResolutionCompleted;
 import io.github.temporalrift.game.scoring.domain.playerscore.ScoreReason;
 import io.github.temporalrift.game.scoring.domain.port.out.EraScoringContextRepository;
@@ -101,7 +102,7 @@ class EraScoringContextRepositoryAdapter implements EraScoringContextRepository 
         }
 
         var stalledEventIds = stalledTerminalEventIds(gameId, eraNumber);
-        var eventOutcomes = buildEventOutcomeFacts(gameId, eraNumber, stalledEventIds);
+        var eventOutcomes = buildEventOutcomeFacts(gameId, eraNumber);
 
         var unconsumedChainFacts = chainFactJpaRepository.findAllByGameIdAndConsumedFalseWithLock(gameId);
         var chainFacts = unconsumedChainFacts.stream()
@@ -125,11 +126,16 @@ class EraScoringContextRepositoryAdapter implements EraScoringContextRepository 
         actionFactJpaRepository.saveAll(unconsumedActionFacts);
 
         // A stalled event carries into the next era without a winner and its erasures are cleared
-        // on carry, so annihilations on a STALLED terminal score nothing and contribute nothing to the
-        // fewer-outcomes rule. Filtered here so the evaluator only ever sees scorable facts.
+        // on carry, so annihilations on a STALLED terminal score nothing. Filtered here so the
+        // evaluator only ever sees scorable facts.
         var annihilationFacts = annihilatedOutcomeJpaRepository.findAllByGameIdAndEraNumber(gameId, eraNumber).stream()
                 .filter(entity -> !stalledEventIds.contains(entity.getEventId()))
-                .map(entity -> new AnnihilationFact(entity.getEventId(), entity.getOutcomeId(), entity.getPlayerId()))
+                .map(entity -> new AnnihilationFact(
+                        entity.getEventId(),
+                        entity.getOutcomeId(),
+                        entity.getPlayerId(),
+                        entity.isErased(),
+                        entity.isWasLeading()))
                 .toList();
 
         var fulfillmentDeclarations =
@@ -186,38 +192,23 @@ class EraScoringContextRepositoryAdapter implements EraScoringContextRepository 
                 .collect(Collectors.toUnmodifiableSet());
     }
 
-    private List<EventOutcomeFact> buildEventOutcomeFacts(UUID gameId, int eraNumber, Set<UUID> stalledEventIds) {
-        var baselines = eventOutcomeJpaRepository.findAllByGameIdAndEraNumber(gameId, eraNumber);
-        if (baselines.isEmpty()) {
+    private List<EventOutcomeFact> buildEventOutcomeFacts(UUID gameId, int eraNumber) {
+        var writtenEvents = eventOutcomeJpaRepository.findAllByGameIdAndEraNumber(gameId, eraNumber);
+        if (writtenEvents.isEmpty()) {
             return List.of();
         }
 
-        Map<UUID, Long> annihilatedCountsByEvent =
-                annihilatedOutcomeJpaRepository.findAllByGameIdAndEraNumber(gameId, eraNumber).stream()
-                        .filter(entity -> !stalledEventIds.contains(entity.getEventId()))
-                        .collect(Collectors.groupingBy(
-                                ScoringContextAnnihilatedOutcomeJpaEntity::getEventId, Collectors.counting()));
-
-        // endingOutcomeCount is derived from this distinct-annihilation ledger, not from any
-        // OutcomeApplied.finalProbabilities payload — that list can still include annihilated outcomes.
         Map<UUID, UUID> winningOutcomesByEvent =
                 outcomeInboxJpaRepository.findAllByGameIdAndEraNumberOrderByEventIdAsc(gameId, eraNumber).stream()
                         .collect(Collectors.toMap(
                                 ScoringTimelineOutcomeInboxJpaEntity::getEventId,
                                 ScoringTimelineOutcomeInboxJpaEntity::getWinningOutcomeId));
 
-        return baselines.stream()
-                .map(baseline -> {
-                    var annihilatedCount = annihilatedCountsByEvent
-                            .getOrDefault(baseline.getEventId(), 0L)
-                            .intValue();
-                    return new EventOutcomeFact(
-                            baseline.getEventId(),
-                            winningOutcomesByEvent.get(baseline.getEventId()),
-                            baseline.getWrittenOutcomeId(),
-                            baseline.getStartingOutcomeCount(),
-                            baseline.getStartingOutcomeCount() - annihilatedCount);
-                })
+        return writtenEvents.stream()
+                .map(written -> new EventOutcomeFact(
+                        written.getEventId(),
+                        winningOutcomesByEvent.get(written.getEventId()),
+                        written.getWrittenOutcomeId()))
                 .toList();
     }
 
@@ -271,12 +262,6 @@ class EraScoringContextRepositoryAdapter implements EraScoringContextRepository 
     }
 
     @Override
-    @Transactional
-    public void upsertEventOutcomeBaseline(UUID gameId, int eraNumber, UUID eventId, int startingOutcomeCount) {
-        eventOutcomeJpaRepository.upsertBaseline(UUID.randomUUID(), gameId, eraNumber, eventId, startingOutcomeCount);
-    }
-
-    @Override
     // REQUIRES_NEW, not the default REQUIRED: onEraActionFactsFinalized calls this and then
     // markActionFactsReady/tryComplete() in the same @ApplicationModuleListener transaction. If
     // tryComplete() throws — e.g. a transient EraScoringContextNotFoundException while EventsDrawn's
@@ -288,11 +273,17 @@ class EraScoringContextRepositoryAdapter implements EraScoringContextRepository 
     }
 
     @Override
-    // REQUIRES_NEW for the same reason as upsertWrittenOutcome above.
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void recordAnnihilatedOutcome(UUID gameId, int eraNumber, UUID eventId, UUID outcomeId, UUID playerId) {
+    @Transactional
+    public void recordAnnihilation(AnnihilationResolved resolution) {
         annihilatedOutcomeJpaRepository.insertIfAbsent(
-                UUID.randomUUID(), gameId, eraNumber, eventId, outcomeId, playerId);
+                UUID.randomUUID(),
+                resolution.gameId(),
+                resolution.eraNumber(),
+                resolution.targetEventId(),
+                resolution.targetOutcomeId(),
+                resolution.annihilatingPlayerId(),
+                resolution.erased(),
+                resolution.wasLeading());
     }
 
     @Override
@@ -480,7 +471,7 @@ class EraScoringContextRepositoryAdapter implements EraScoringContextRepository 
     }
 
     @Override
-    // REQUIRES_NEW for the same reason as upsertWrittenOutcome/recordAnnihilatedOutcome above:
+    // REQUIRES_NEW for the same reason as upsertWrittenOutcome above:
     // onEraActionFactsFinalized calls this and then markActionFactsReady/tryComplete() in the same
     // listener transaction. If tryComplete() throws, that must not roll back a declaration this
     // method already wrote.

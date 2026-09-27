@@ -17,7 +17,6 @@ import io.github.temporalrift.game.shared.domain.event.EventsDrawn;
 import io.github.temporalrift.game.shared.domain.event.ExposeBehaviorChanged;
 import io.github.temporalrift.game.shared.domain.event.FactionAssigned;
 import io.github.temporalrift.game.shared.domain.event.ForesightDeclared;
-import io.github.temporalrift.game.shared.domain.event.OutcomeAnnihilated;
 import io.github.temporalrift.game.shared.domain.event.PlayersIdentified;
 import io.github.temporalrift.game.shared.domain.model.Faction;
 
@@ -60,23 +59,11 @@ class ScoringContextProjectionEventListener {
     void onEventsDrawn(EventsDrawn event) {
         contextRepository.upsertExpectedOutcomeCount(
                 event.gameId(), event.eraNumber(), event.events().size());
-        event.events()
-                .forEach(futureEvent -> contextRepository.upsertEventOutcomeBaseline(
-                        event.gameId(),
-                        event.eraNumber(),
-                        futureEvent.eventId(),
-                        futureEvent.outcomes().size()));
     }
 
     @ApplicationModuleListener
     void onForesightDeclared(ForesightDeclared event) {
         contextRepository.upsertWrittenOutcome(
-                event.gameId(), event.eraNumber(), event.eventId(), event.outcomeId(), event.playerId());
-    }
-
-    @ApplicationModuleListener
-    void onOutcomeAnnihilated(OutcomeAnnihilated event) {
-        contextRepository.recordAnnihilatedOutcome(
                 event.gameId(), event.eraNumber(), event.eventId(), event.outcomeId(), event.playerId());
     }
 
@@ -105,15 +92,12 @@ class ScoringContextProjectionEventListener {
 
     @ApplicationModuleListener
     void onEraActionFactsFinalized(EraActionFactsFinalized event) {
-        // Redundant with onForesightDeclared/onOutcomeAnnihilated for this same round, but harmless:
+        // Redundant with onForesightDeclared for this same round, but harmless:
         // both paths are idempotent upserts. This is the path that is *guaranteed* complete for the
         // final round, since it is built from the round's own submittedActions at close() time rather
         // than raced against independently-dispatched per-submission listeners.
         event.foresightFacts()
                 .forEach(fact -> contextRepository.upsertWrittenOutcome(
-                        event.gameId(), event.eraNumber(), fact.eventId(), fact.outcomeId(), fact.playerId()));
-        event.annihilationFacts()
-                .forEach(fact -> contextRepository.recordAnnihilatedOutcome(
                         event.gameId(), event.eraNumber(), fact.eventId(), fact.outcomeId(), fact.playerId()));
         event.exposeFacts()
                 .forEach(fact -> contextRepository.recordActionFact(

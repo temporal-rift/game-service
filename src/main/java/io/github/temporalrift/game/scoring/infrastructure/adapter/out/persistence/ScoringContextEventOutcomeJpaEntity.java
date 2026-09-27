@@ -15,9 +15,6 @@ class ScoringContextEventOutcomeJpaEntity extends GameEraScopedJpaEntity {
     @Column(name = "event_id", nullable = false)
     private UUID eventId;
 
-    @Column(name = "starting_outcome_count", nullable = false)
-    private int startingOutcomeCount;
-
     @Column(name = "written_outcome_id")
     private UUID writtenOutcomeId;
 
@@ -32,14 +29,6 @@ class ScoringContextEventOutcomeJpaEntity extends GameEraScopedJpaEntity {
 
     void setEventId(UUID eventId) {
         this.eventId = eventId;
-    }
-
-    int getStartingOutcomeCount() {
-        return startingOutcomeCount;
-    }
-
-    void setStartingOutcomeCount(int startingOutcomeCount) {
-        this.startingOutcomeCount = startingOutcomeCount;
     }
 
     UUID getWrittenOutcomeId() {

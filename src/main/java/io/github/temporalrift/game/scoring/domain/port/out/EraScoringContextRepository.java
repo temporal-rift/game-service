@@ -5,6 +5,7 @@ import java.util.UUID;
 
 import io.github.temporalrift.game.scoring.domain.context.EraScoringContext;
 import io.github.temporalrift.game.scoring.domain.context.PendingEraScoringCompletion;
+import io.github.temporalrift.game.scoring.domain.event.AnnihilationResolved;
 import io.github.temporalrift.game.scoring.domain.event.EraResolutionCompleted;
 import io.github.temporalrift.game.scoring.domain.playerscore.ScoreReason;
 import io.github.temporalrift.game.shared.domain.event.ActivistDeclarationRecorded;
@@ -28,11 +29,10 @@ public interface EraScoringContextRepository {
     void recordParadoxCascadeFact(
             UUID gameId, int eraNumber, UUID paradoxId, UUID affectedEventId, List<UUID> detonatedByPlayerIds);
 
-    void upsertEventOutcomeBaseline(UUID gameId, int eraNumber, UUID eventId, int startingOutcomeCount);
-
     void upsertWrittenOutcome(UUID gameId, int eraNumber, UUID eventId, UUID outcomeId, UUID playerId);
 
-    void recordAnnihilatedOutcome(UUID gameId, int eraNumber, UUID eventId, UUID outcomeId, UUID playerId);
+    /** Records a timeline-confirmed Annihilate once per game, era, target, and acting player. */
+    void recordAnnihilation(AnnihilationResolved resolution);
 
     void recordActionFact(UUID gameId, int eraNumber, UUID playerId, Faction faction, ScoreReason reason);
 

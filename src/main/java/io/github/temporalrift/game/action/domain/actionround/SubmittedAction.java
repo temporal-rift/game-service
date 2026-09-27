@@ -8,7 +8,6 @@ import java.util.UUID;
 import io.github.temporalrift.game.action.domain.event.CardPlayed;
 import io.github.temporalrift.game.action.domain.event.SpecialActionPlayed;
 import io.github.temporalrift.game.shared.domain.event.ForesightDeclared;
-import io.github.temporalrift.game.shared.domain.event.OutcomeAnnihilated;
 import io.github.temporalrift.game.shared.domain.model.CardCategory;
 import io.github.temporalrift.game.shared.domain.model.CardGrade;
 import io.github.temporalrift.game.shared.domain.model.CardType;
@@ -451,8 +450,6 @@ public sealed interface SubmittedAction permits SubmittedAction.CardAction, Subm
             return switch (specialAction) {
                 case FORESIGHT ->
                     Optional.of(new ForesightDeclared(gameId, eraNumber, targetEventId, targetOutcomeId, playerId));
-                case ANNIHILATE ->
-                    Optional.of(new OutcomeAnnihilated(gameId, eraNumber, targetEventId, targetOutcomeId, playerId));
                 default -> Optional.empty();
             };
         }

@@ -5,7 +5,6 @@ import io.github.temporalrift.game.shared.domain.model.Faction;
 public enum ScoreReason {
     ANNIHILATED_OUTCOME(Faction.ERASERS),
     CORRUPTED_OPPONENT_CARD(Faction.ERASERS),
-    ERA_ENDED_WITH_FEWER_OUTCOMES(Faction.ERASERS),
     EVENT_RESOLVED_AS_WRITTEN(Faction.PROPHETS),
     FULFILLMENT_SUCCEEDED(Faction.PROPHETS),
     EVENT_RESOLVED_DIFFERENTLY_THAN_WRITTEN(Faction.PROPHETS),
