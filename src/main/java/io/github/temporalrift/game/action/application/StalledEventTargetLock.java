@@ -56,6 +56,24 @@ public class StalledEventTargetLock {
     }
 
     private static Set<UUID> uncancelledStalls(java.util.List<SubmittedAction> submittedActions) {
+        var cancelledPlayerIds = cancelledPlayerIds(submittedActions);
+        var stalled = new HashSet<UUID>();
+        for (var action : submittedActions) {
+            if (isLiveStall(action, cancelledPlayerIds)) {
+                stalled.add(((SubmittedAction.CardAction) action).targetEventId());
+            }
+        }
+        return stalled;
+    }
+
+    private static boolean isLiveStall(SubmittedAction action, Set<UUID> cancelledPlayerIds) {
+        return action instanceof SubmittedAction.CardAction card
+                && card.cardType() == CardType.STALL
+                && card.targetEventId() != null
+                && !cancelledPlayerIds.contains(card.playerId());
+    }
+
+    private static Set<UUID> cancelledPlayerIds(java.util.List<SubmittedAction> submittedActions) {
         var byPlayer = new HashMap<UUID, SubmittedAction>();
         for (var action : submittedActions) {
             byPlayer.putIfAbsent(action.playerId(), action);
@@ -72,15 +90,6 @@ public class StalledEventTargetLock {
                 }
             }
         }
-        var stalled = new HashSet<UUID>();
-        for (var action : submittedActions) {
-            if (action instanceof SubmittedAction.CardAction card
-                    && card.cardType() == CardType.STALL
-                    && card.targetEventId() != null
-                    && !cancelledPlayerIds.contains(card.playerId())) {
-                stalled.add(card.targetEventId());
-            }
-        }
-        return stalled;
+        return cancelledPlayerIds;
     }
 }
