@@ -12,8 +12,6 @@ import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.EnumSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -24,7 +22,6 @@ import io.github.temporalrift.game.action.domain.actionround.SubmittedAction;
 import io.github.temporalrift.game.action.domain.port.out.ActionRoundRepository;
 import io.github.temporalrift.game.shared.domain.model.CardGrade;
 import io.github.temporalrift.game.shared.domain.model.CardType;
-import io.github.temporalrift.game.shared.domain.model.SpecialAction;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("StalledEventTargetLock")
@@ -162,46 +159,47 @@ class StalledEventTargetLockTest {
         assertThat(lock.stalledEventIds(GAME_ID, ERA, 3)).containsExactlyInAnyOrder(eventA, eventB);
     }
 
-    @ParameterizedTest
-    @EnumSource(
-            value = CardType.class,
-            names = {"PUSH", "SUPPRESS", "SWING", "COLLIDE", "STALL", "TRACE"})
-    @DisplayName("every scalar event-targeting card is rejected on a stalled event")
-    void everyEventTargetingCardIsRejected(CardType cardType) {
-        var eventId = UUID.randomUUID();
+    @Test
+    @DisplayName("stalled event is rejected; anything else passes")
+    void stalledEventIsRejected() {
+        var stalledEventId = UUID.randomUUID();
+        var liveEventId = UUID.randomUUID();
         given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumber(GAME_ID, ERA, 1))
                 .willReturn(Optional.of(round1));
-        given(round1.submittedActions()).willReturn(List.of(stallAction(UUID.randomUUID(), eventId)));
+        given(round1.submittedActions()).willReturn(List.of(stallAction(UUID.randomUUID(), stalledEventId)));
 
         assertThatExceptionOfType(InvalidActionTargetException.class)
-                .isThrownBy(() -> lock.requireEventNotStalled(GAME_ID, ERA, 2, eventId))
-                .withMessageContaining(eventId.toString());
+                .isThrownBy(() -> lock.requireEventNotStalled(GAME_ID, ERA, 2, stalledEventId))
+                .withMessageContaining(stalledEventId.toString());
+        assertThatCode(() -> lock.requireEventNotStalled(GAME_ID, ERA, 2, liveEventId))
+                .doesNotThrowAnyException();
     }
 
-    @ParameterizedTest
-    @EnumSource(
-            value = SpecialAction.class,
-            names = {
-                "ANNIHILATE",
-                "SEAL",
-                "FORESIGHT",
-                "REWRITE",
-                "MIMIC",
-                "CASCADE",
-                "THREAD",
-                "REWEAVE",
-                "FULFILLMENT"
-            })
-    @DisplayName("every event-targeting special is rejected on a stalled event")
-    void everyEventTargetingSpecialIsRejected(SpecialAction specialAction) {
+    @Test
+    @DisplayName("legacy scalar-target NULLIFY still cancels the Stall")
+    void legacyScalarNullifyStillCancelsStall() {
+        // Rows stored before the player-target list existed carry a scalar NULLIFY target;
+        // the shared cancellation rule honors them, so the Stall does not lock the event.
         var eventId = UUID.randomUUID();
+        var staller = UUID.randomUUID();
+        var nullifier = UUID.randomUUID();
+        var legacyNullify = new SubmittedAction.CardAction(
+                nullifier,
+                UUID.randomUUID(),
+                CardType.NULLIFY,
+                CardGrade.I,
+                null,
+                null,
+                null,
+                null,
+                staller,
+                null,
+                null);
         given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumber(GAME_ID, ERA, 1))
                 .willReturn(Optional.of(round1));
-        given(round1.submittedActions()).willReturn(List.of(stallAction(UUID.randomUUID(), eventId)));
+        given(round1.submittedActions()).willReturn(List.of(stallAction(staller, eventId), legacyNullify));
 
-        assertThatExceptionOfType(InvalidActionTargetException.class)
-                .isThrownBy(() -> lock.requireEventNotStalled(GAME_ID, ERA, 2, eventId))
-                .withMessageContaining(eventId.toString());
+        assertThat(lock.stalledEventIds(GAME_ID, ERA, 2)).isEmpty();
     }
 
     @Test
