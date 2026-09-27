@@ -912,6 +912,84 @@ class ActionRoundSagaImplTest {
         }
 
         @Test
+        @DisplayName("Round 3 — re-bundles a Momentum declaration for idempotent scoring projection")
+        void tryClose_round3_rebundlesMomentumDeclaration() {
+            var round = new ActionRound(
+                    UUID.randomUUID(), new ActionRoundConfig(GAME_ID, ERA_NUMBER, 3, TIMER_SECONDS), List.of());
+            var targetEventId = UUID.randomUUID();
+            var targetOutcomeId = UUID.randomUUID();
+            var declaration = new ActivistEraState(UUID.randomUUID(), GAME_ID, ERA_NUMBER, PLAYER_1, true);
+            declaration.declare(ActivistDeclarationMode.MOMENTUM, targetEventId, targetOutcomeId);
+            given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA_NUMBER, 3))
+                    .willReturn(Optional.of(round));
+            given(activistEraStateRepository.findDeclaredByGameIdAndEraNumber(GAME_ID, ERA_NUMBER))
+                    .willReturn(List.of(declaration));
+            var updatedState = new ActionRoundSagaState(
+                    UUID.randomUUID(),
+                    GAME_ID,
+                    ERA_NUMBER,
+                    3,
+                    ActionRoundSagaStatus.WAITING,
+                    List.of(),
+                    TIMER_EXPIRES_AT);
+            given(stateManager.markSubmitted(GAME_ID, ERA_NUMBER, 3, PLAYER_1)).willReturn(Optional.of(updatedState));
+
+            saga.handlePlayerSubmitted(GAME_ID, ERA_NUMBER, 3, PLAYER_1);
+
+            var captor = ArgumentCaptor.<EraActionFactsFinalized>captor();
+            then(actionEventPublisher).should(times(1)).publishInternally(captor.capture());
+            assertThat(captor.getValue().activistDeclarationFacts())
+                    .containsExactly(new EraActionFactsFinalized.ActivistDeclarationFact(
+                            PLAYER_1, SpecialAction.MOMENTUM, targetEventId, targetOutcomeId));
+        }
+
+        @Test
+        @DisplayName("Round 3 — omits a Momentum declaration cancelled in Round 1")
+        void tryClose_round3OmitsNullifiedMomentumDeclaration() {
+            var targetEventId = UUID.randomUUID();
+            var targetOutcomeId = UUID.randomUUID();
+            var declarationAction = new SubmittedAction.SpecialActionSubmission(
+                    PLAYER_1,
+                    Faction.ACTIVISTS,
+                    SpecialAction.MOMENTUM,
+                    null,
+                    null,
+                    targetEventId,
+                    targetOutcomeId,
+                    null);
+            var roundOne = new ActionRound(
+                    UUID.randomUUID(),
+                    new ActionRoundConfig(GAME_ID, ERA_NUMBER, 1, TIMER_SECONDS),
+                    new ActionRoundParticipants(List.of(PLAYER_1, PLAYER_2), List.of(declarationAction)));
+            roundOne.submit(nullify(PLAYER_2, PLAYER_1));
+            var roundThree = new ActionRound(
+                    UUID.randomUUID(), new ActionRoundConfig(GAME_ID, ERA_NUMBER, 3, TIMER_SECONDS), List.of());
+            var declaration = new ActivistEraState(UUID.randomUUID(), GAME_ID, ERA_NUMBER, PLAYER_1, true);
+            declaration.declare(ActivistDeclarationMode.MOMENTUM, targetEventId, targetOutcomeId);
+            given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA_NUMBER, 3))
+                    .willReturn(Optional.of(roundThree));
+            given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumber(GAME_ID, ERA_NUMBER, 1))
+                    .willReturn(Optional.of(roundOne));
+            given(activistEraStateRepository.findDeclaredByGameIdAndEraNumber(GAME_ID, ERA_NUMBER))
+                    .willReturn(List.of(declaration));
+            given(stateManager.markSubmitted(GAME_ID, ERA_NUMBER, 3, PLAYER_1))
+                    .willReturn(Optional.of(new ActionRoundSagaState(
+                            UUID.randomUUID(),
+                            GAME_ID,
+                            ERA_NUMBER,
+                            3,
+                            ActionRoundSagaStatus.WAITING,
+                            List.of(),
+                            TIMER_EXPIRES_AT)));
+
+            saga.handlePlayerSubmitted(GAME_ID, ERA_NUMBER, 3, PLAYER_1);
+
+            var captor = ArgumentCaptor.<EraActionFactsFinalized>captor();
+            then(actionEventPublisher).should(times(1)).publishInternally(captor.capture());
+            assertThat(captor.getValue().activistDeclarationFacts()).isEmpty();
+        }
+
+        @Test
         @DisplayName("Round 1 and 2 — never publish EraActionFactsFinalized")
         void tryClose_nonFinalRounds_neverPublishesBundle() {
             // given — round 1

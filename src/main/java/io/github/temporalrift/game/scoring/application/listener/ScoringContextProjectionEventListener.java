@@ -67,14 +67,6 @@ class ScoringContextProjectionEventListener {
     }
 
     @ApplicationModuleListener
-    void onActivistDeclarationRecorded(ActivistDeclarationRecorded event) {
-        factionDisclosureRepository.recordDisclosure(event.gameId(), event.playerId());
-        contextRepository.upsertActivistDeclaration(event);
-        publishResolutions(event.gameId(), event.eraNumber());
-        completionChecker.tryComplete(event.gameId(), event.eraNumber());
-    }
-
-    @ApplicationModuleListener
     void onExposeBehaviorChanged(ExposeBehaviorChanged event) {
         contextRepository.recordActionFact(
                 event.gameId(),
