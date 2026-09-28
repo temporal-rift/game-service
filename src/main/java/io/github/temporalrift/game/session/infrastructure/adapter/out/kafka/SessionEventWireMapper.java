@@ -112,6 +112,10 @@ interface SessionEventWireMapper {
 
     GameEndedAbnormallyPayload toWire(GameEndedAbnormally event);
 
+    default String toWire(GameEndedAbnormally.Reason reason) {
+        return reason.wireValue();
+    }
+
     GameEndedPayload toWire(GameEnded event);
 
     GameEndedPlayerScoreResult toWire(GameEnded.PlayerScoreResult result);

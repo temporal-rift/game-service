@@ -338,6 +338,9 @@ class EraSagaImplTest {
         assertThat(game.status()).isEqualTo(GameStatus.ENDED_ABNORMALLY);
         then(gameRepository).should().save(game);
         then(eventPublisher).should().publish(envelopeWithPayload(GameEndedAbnormally.class));
+        then(applicationEventPublisher)
+                .should()
+                .publishEvent(new GameEndedAbnormally(GAME_ID, GameEndedAbnormally.Reason.DECK_EXHAUSTED));
         then(stateManager).should(never()).advanceTo(any(), any());
     }
 

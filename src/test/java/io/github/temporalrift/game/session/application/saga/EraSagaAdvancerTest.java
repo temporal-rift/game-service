@@ -876,7 +876,10 @@ class EraSagaAdvancerTest {
                 .extracting(DomainEventEnvelope::payload)
                 .containsExactly(
                         new EraFailed(GAME_ID, 1, "resolution-failed"),
-                        new GameEndedAbnormally(GAME_ID, "resolution-failed"));
+                        new GameEndedAbnormally(GAME_ID, GameEndedAbnormally.Reason.RESOLUTION_FAILED));
+        then(applicationEventPublisher)
+                .should()
+                .publishEvent(new GameEndedAbnormally(GAME_ID, GameEndedAbnormally.Reason.RESOLUTION_FAILED));
     }
 
     @Test
