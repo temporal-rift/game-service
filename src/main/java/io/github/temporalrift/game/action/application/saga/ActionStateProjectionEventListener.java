@@ -1,7 +1,5 @@
 package io.github.temporalrift.game.action.application.saga;
 
-import java.util.List;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.modulith.events.ApplicationModuleListener;
@@ -50,15 +48,10 @@ class ActionStateProjectionEventListener {
         // post-commit transactions and both save the whole row, so an unlocked (or unguarded-create)
         // read-modify-write lets the last writer erase the other's field.
         var state = playerStateRepository.findOrCreateWithLock(event.gameId(), event.playerId());
-        playerStateRepository.save(PlayerState.reconstitute(
-                state.id(),
-                state.gameId(),
-                state.playerId(),
-                state.faction(),
-                event.cards().stream()
-                        .map(card -> new PlayerState.CardInstance(card.cardInstanceId(), card.cardType(), card.grade()))
-                        .toList(),
-                state.isJammed()));
+        state.receiveHand(event.cards().stream()
+                .map(card -> new PlayerState.CardInstance(card.cardInstanceId(), card.cardType(), card.grade()))
+                .toList());
+        playerStateRepository.save(state);
     }
 
     @ApplicationModuleListener
@@ -79,7 +72,7 @@ class ActionStateProjectionEventListener {
         if (state.faction() != null) {
             throw new IllegalStateException("Conflicting faction assignment for player " + event.playerId());
         }
-        playerStateRepository.save(PlayerState.reconstitute(
-                state.id(), state.gameId(), state.playerId(), faction, List.copyOf(state.hand()), state.isJammed()));
+        state.assignFaction(faction);
+        playerStateRepository.save(state);
     }
 }

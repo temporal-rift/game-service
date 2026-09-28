@@ -3,7 +3,9 @@ package io.github.temporalrift.game.scoring.application.command;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
@@ -21,6 +23,7 @@ import io.github.temporalrift.game.scoring.domain.event.AnnihilationResolved;
 import io.github.temporalrift.game.scoring.domain.playerscore.PlayerScore;
 import io.github.temporalrift.game.scoring.domain.playerscore.ScoreReason;
 import io.github.temporalrift.game.scoring.domain.port.out.EraScoringContextRepository;
+import io.github.temporalrift.game.scoring.domain.port.out.FactionDisclosureRepository;
 import io.github.temporalrift.game.scoring.domain.port.out.PlayerScoreRepository;
 import io.github.temporalrift.game.scoring.domain.port.out.ScoreRulesPort;
 import io.github.temporalrift.game.scoring.domain.port.out.ScoringEventPublisher;
@@ -31,18 +34,22 @@ import io.github.temporalrift.game.shared.domain.event.ScoresUpdated;
 import io.github.temporalrift.game.shared.domain.messaging.DomainEventEnvelope;
 import io.github.temporalrift.game.shared.domain.model.Faction;
 import io.github.temporalrift.game.shared.domain.model.SpecialAction;
+import io.github.temporalrift.game.shared.domain.port.out.GameRulesPort;
 
 @DisplayName("UpdateScoresCommandHandler")
 class UpdateScoresCommandHandlerTest {
 
     static final UUID GAME_ID = UUID.randomUUID();
     static final int ERA = 1;
+    static final int FINAL_ERA = 5;
 
     final List<DomainEventEnvelope> publishedEnvelopes = new ArrayList<>();
     final List<Object> internalEvents = new ArrayList<>();
 
     ScoringEventPublisher scoringPublisher = publishedEnvelopes::add;
     ApplicationEventPublisher appPublisher = internalEvents::add;
+    final FakeFactionDisclosureRepository disclosures = new FakeFactionDisclosureRepository();
+    final GameRulesPort gameRules = new FinalEraRules();
 
     @Test
     @DisplayName("creates new PlayerScore aggregates for players with no existing score rows")
@@ -58,6 +65,8 @@ class UpdateScoresCommandHandlerTest {
                 repo,
                 ctxRepo,
                 new EraScoreEvaluator(),
+                disclosures,
+                gameRules,
                 scoreRules(),
                 scoringPublisher,
                 appPublisher,
@@ -219,6 +228,8 @@ class UpdateScoresCommandHandlerTest {
                 repo,
                 ctxRepo,
                 new EraScoreEvaluator(),
+                disclosures,
+                gameRules,
                 scoreRules(),
                 scoringPublisher,
                 appPublisher,
@@ -291,6 +302,8 @@ class UpdateScoresCommandHandlerTest {
                 repo,
                 ctxRepo,
                 new EraScoreEvaluator(),
+                disclosures,
+                gameRules,
                 scoreRules(),
                 scoringPublisher,
                 appPublisher,
@@ -300,6 +313,82 @@ class UpdateScoresCommandHandlerTest {
         assertThat(savedScores).hasSize(1);
         assertThat(savedScores.get(0).history()).hasSize(1);
         assertThat(savedScores.get(0).history().get(0).eraNumber()).isEqualTo(factOwnEra);
+    }
+
+    @Test
+    @DisplayName("final era — an unidentified Revisionist receives FACTION_UNIDENTIFIED with the era's scores")
+    void finalEra_awardsUnidentifiedRevisionist() {
+        var revisionistId = UUID.randomUUID();
+        var existing = new PlayerScore(UUID.randomUUID(), GAME_ID, revisionistId, Faction.REVISIONISTS);
+        existing.apply(1, ScoreReason.SECRET_OUTCOME_WON, 15);
+        var savedScores = new ArrayList<PlayerScore>();
+
+        handler(concealmentContext(FINAL_ERA, revisionistId), List.of(existing), scoreRules(), savedScores)
+                .handle(new UpdateEraScoresCommand(GAME_ID, FINAL_ERA, List.of()));
+
+        var update = revisionistUpdate(revisionistId);
+        assertThat(update.reason()).isEqualTo("FACTION_UNIDENTIFIED");
+        assertThat(update.pointsDelta()).isEqualTo(6);
+        assertThat(update.newTotal())
+                .as("the bonus lands before the era-end victory check reads the total")
+                .isEqualTo(21);
+        assertThat(savedScores.stream()
+                        .filter(score -> score.playerId().equals(revisionistId))
+                        .findFirst()
+                        .orElseThrow()
+                        .history()
+                        .getLast()
+                        .eraNumber())
+                .isEqualTo(FINAL_ERA);
+    }
+
+    @Test
+    @DisplayName("final era — an identified Revisionist receives no bonus")
+    void finalEra_identifiedRevisionistReceivesNothing() {
+        var revisionistId = UUID.randomUUID();
+        var context = concealmentContext(FINAL_ERA, revisionistId);
+        disclosures.recordDisclosure(GAME_ID, context.players().get(1).playerId());
+
+        handler(context, List.of()).handle(new UpdateEraScoresCommand(GAME_ID, FINAL_ERA, List.of()));
+
+        assertThat(revisionistUpdate(revisionistId).reason()).isEqualTo("NO_SCORE_CHANGE");
+    }
+
+    @Test
+    @DisplayName("earlier era — no Revisionist receives the bonus")
+    void earlierEra_awardsNothing() {
+        var revisionistId = UUID.randomUUID();
+
+        handler(concealmentContext(FINAL_ERA - 1, revisionistId), List.of())
+                .handle(new UpdateEraScoresCommand(GAME_ID, FINAL_ERA - 1, List.of()));
+
+        assertThat(revisionistUpdate(revisionistId).reason()).isEqualTo("NO_SCORE_CHANGE");
+    }
+
+    private EraScoringContext concealmentContext(int eraNumber, UUID revisionistId) {
+        return new EraScoringContext(
+                GAME_ID,
+                eraNumber,
+                List.of(
+                        new PlayerFaction(revisionistId, Faction.REVISIONISTS),
+                        new PlayerFaction(UUID.randomUUID(), Faction.ACTIVISTS),
+                        new PlayerFaction(UUID.randomUUID(), Faction.ERASERS)),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                Set.of());
+    }
+
+    private ScoresUpdated.ScoreUpdate revisionistUpdate(UUID revisionistId) {
+        return ((ScoresUpdated) internalEvents.getFirst())
+                .updates().stream()
+                        .filter(update -> update.playerId().equals(revisionistId))
+                        .findFirst()
+                        .orElseThrow();
     }
 
     private EraScoringContext contextWithEraserPlayer(UUID playerId) {
@@ -332,6 +421,8 @@ class UpdateScoresCommandHandlerTest {
                 repo,
                 ctxRepo,
                 new EraScoreEvaluator(),
+                disclosures,
+                gameRules,
                 scoreRules,
                 scoringPublisher,
                 appPublisher,
@@ -340,6 +431,59 @@ class UpdateScoresCommandHandlerTest {
 
     private ScoreRulesPort scoreRules() {
         return io.github.temporalrift.game.scoring.ScoreRulesTestValues::pointsDelta;
+    }
+
+    static class FakeFactionDisclosureRepository implements FactionDisclosureRepository {
+
+        private final Set<UUID> disclosed = new HashSet<>();
+
+        @Override
+        public void recordDisclosure(UUID gameId, UUID playerId) {
+            disclosed.add(playerId);
+        }
+
+        @Override
+        public Set<UUID> disclosedPlayerIds(UUID gameId) {
+            return Set.copyOf(disclosed);
+        }
+    }
+
+    static class FinalEraRules implements GameRulesPort {
+
+        @Override
+        public int maxEras() {
+            return FINAL_ERA;
+        }
+
+        @Override
+        public int actionRoundTimerSeconds(int playerCount) {
+            throw new UnsupportedOperationException("not used by UpdateScoresCommandHandler");
+        }
+
+        @Override
+        public int declarationTimerSeconds(int playerCount) {
+            throw new UnsupportedOperationException("not used by UpdateScoresCommandHandler");
+        }
+
+        @Override
+        public Set<SpecialAction> onceEraBudgetedSpecials() {
+            throw new UnsupportedOperationException("not used by UpdateScoresCommandHandler");
+        }
+
+        @Override
+        public int sealMaxUsesPerGame() {
+            throw new UnsupportedOperationException("not used by UpdateScoresCommandHandler");
+        }
+
+        @Override
+        public Map<io.github.temporalrift.game.shared.domain.model.CardCategory, Integer> cardCategoryWeights() {
+            throw new UnsupportedOperationException("not used by UpdateScoresCommandHandler");
+        }
+
+        @Override
+        public Map<io.github.temporalrift.game.shared.domain.model.CardGrade, Integer> cardGradeWeights() {
+            throw new UnsupportedOperationException("not used by UpdateScoresCommandHandler");
+        }
     }
 
     static class FakePlayerScoreRepository implements PlayerScoreRepository {

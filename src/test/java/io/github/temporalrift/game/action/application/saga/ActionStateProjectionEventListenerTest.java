@@ -11,6 +11,7 @@ import static org.mockito.BDDMockito.willReturn;
 import static org.mockito.Mockito.never;
 
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
@@ -72,7 +73,11 @@ class ActionStateProjectionEventListenerTest {
     @Test
     void onHandSelected_replacesPlayerHandAndPreservesFaction() {
         var existing = PlayerState.reconstitute(
-                UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), Faction.ERASERS, List.of(), false);
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                Faction.ERASERS,
+                new PlayerState.PersistedState(List.of(), Set.of(), false, false));
         var event = new HandDealt(
                 existing.gameId(),
                 1,
@@ -134,8 +139,8 @@ class ActionStateProjectionEventListenerTest {
                 UUID.randomUUID(),
                 UUID.randomUUID(),
                 null,
-                List.of(new PlayerState.CardInstance(UUID.randomUUID(), CardType.JAM)),
-                true);
+                new PlayerState.PersistedState(
+                        List.of(new PlayerState.CardInstance(UUID.randomUUID(), CardType.JAM)), Set.of(), true, false));
         given(playerStateRepository.findOrCreateWithLock(existing.gameId(), existing.playerId()))
                 .willReturn(existing);
 
@@ -173,8 +178,11 @@ class ActionStateProjectionEventListenerTest {
                 UUID.randomUUID(),
                 UUID.randomUUID(),
                 Faction.PROPHETS,
-                List.of(new PlayerState.CardInstance(UUID.randomUUID(), CardType.TRACE)),
-                false);
+                new PlayerState.PersistedState(
+                        List.of(new PlayerState.CardInstance(UUID.randomUUID(), CardType.TRACE)),
+                        Set.of(),
+                        false,
+                        false));
         given(playerStateRepository.findOrCreateWithLock(existing.gameId(), existing.playerId()))
                 .willReturn(existing);
 
@@ -209,7 +217,11 @@ class ActionStateProjectionEventListenerTest {
     @Test
     void onFactionAssigned_rejectsConflictingFaction() {
         var existing = PlayerState.reconstitute(
-                UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), Faction.ERASERS, List.of(), false);
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                Faction.ERASERS,
+                new PlayerState.PersistedState(List.of(), Set.of(), false, false));
         willReturn(existing).given(playerStateRepository).findOrCreateWithLock(existing.gameId(), existing.playerId());
 
         assertThatIllegalStateException()

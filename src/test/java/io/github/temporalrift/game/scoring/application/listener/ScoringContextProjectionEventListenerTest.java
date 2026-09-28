@@ -18,13 +18,12 @@ import org.springframework.context.ApplicationEventPublisher;
 
 import io.github.temporalrift.game.scoring.application.command.EraScoringCompletionChecker;
 import io.github.temporalrift.game.scoring.domain.port.out.EraScoringContextRepository;
-import io.github.temporalrift.game.scoring.domain.port.out.FactionIdentificationRepository;
+import io.github.temporalrift.game.scoring.domain.port.out.FactionDisclosureRepository;
 import io.github.temporalrift.game.shared.domain.event.ActivistDeclarationRecorded;
 import io.github.temporalrift.game.shared.domain.event.EraActionFactsFinalized;
 import io.github.temporalrift.game.shared.domain.event.EventsDrawn;
 import io.github.temporalrift.game.shared.domain.event.FactionAssigned;
 import io.github.temporalrift.game.shared.domain.event.ForesightDeclared;
-import io.github.temporalrift.game.shared.domain.event.PlayersIdentified;
 import io.github.temporalrift.game.shared.domain.model.CarryOverState;
 import io.github.temporalrift.game.shared.domain.model.Faction;
 import io.github.temporalrift.game.shared.domain.model.SpecialAction;
@@ -42,7 +41,7 @@ class ScoringContextProjectionEventListenerTest {
     ApplicationEventPublisher applicationEventPublisher;
 
     @Mock
-    FactionIdentificationRepository factionIdentificationRepository;
+    FactionDisclosureRepository factionDisclosureRepository;
 
     @InjectMocks
     ScoringContextProjectionEventListener listener;
@@ -211,28 +210,16 @@ class ScoringContextProjectionEventListenerTest {
     }
 
     @Test
-    void onPlayersIdentified_recordsEveryIdentifiedPlayer() {
+    void onEraActionFactsFinalized_recordsEraDisclosuresBeforeMarkingReady() {
         var gameId = UUID.randomUUID();
-        var first = UUID.randomUUID();
-        var second = UUID.randomUUID();
-
-        listener.onPlayersIdentified(new PlayersIdentified(gameId, 1, 2, List.of(first, second)));
-
-        then(factionIdentificationRepository).should().recordIdentification(gameId, first);
-        then(factionIdentificationRepository).should().recordIdentification(gameId, second);
-    }
-
-    @Test
-    void onEraActionFactsFinalized_recordsFinalRoundIdentificationsBeforeMarkingReady() {
-        var gameId = UUID.randomUUID();
-        var identified = UUID.randomUUID();
+        var disclosed = UUID.randomUUID();
         var event = new EraActionFactsFinalized(
-                gameId, 2, List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(identified));
+                gameId, 2, List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(disclosed));
 
         listener.onEraActionFactsFinalized(event);
 
-        var ordered = inOrder(factionIdentificationRepository, contextRepository);
-        then(factionIdentificationRepository).should(ordered).recordIdentification(gameId, identified);
+        var ordered = inOrder(factionDisclosureRepository, contextRepository);
+        then(factionDisclosureRepository).should(ordered).recordDisclosure(gameId, disclosed);
         then(contextRepository).should(ordered).markActionFactsReady(gameId, 2);
     }
 }
