@@ -6,16 +6,15 @@ import java.time.Clock;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
-import java.util.Set;
 import java.util.UUID;
 
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import io.github.temporalrift.game.session.domain.ending.SpecialEndingPolicy;
 import io.github.temporalrift.game.session.domain.event.EraEnded;
 import io.github.temporalrift.game.session.domain.event.EraFailed;
 import io.github.temporalrift.game.session.domain.event.EraStarted;
@@ -182,12 +181,11 @@ class EraSagaAdvancer {
             eraSagaRepository.save(state.withStatus(EraSagaStatus.COMPLETED));
             return;
         }
-        var collapsingEventId = game.pendingCollapsingEventId();
-        if (collapsingEventId != null) {
+        if (game.collapsePending()) {
             game.endByCollapse();
             gameRepository.save(game);
             eraSagaRepository.save(state.withStatus(EraSagaStatus.COMPLETED));
-            collapsePublisher.publishCollapse(game, su.eraNumber(), collapsingEventId);
+            collapsePublisher.publishCollapse(game, su.eraNumber());
             return;
         }
         game.endEra(gameRules.maxEras());
@@ -240,43 +238,34 @@ class EraSagaAdvancer {
     }
 
     private TimelineStabilized buildTimelineStabilized(UUID gameId, ScoresUpdated su) {
-        var qualifiedWeavers = new HashSet<UUID>();
-        var weaverChainLength = new HashMap<UUID, Integer>();
+        var progressByPlayer = new HashMap<UUID, Integer>();
         for (var progress : factionObjectives.evaluate(gameId, su.eraNumber())) {
-            if (progress.faction() == Faction.WEAVERS) {
-                weaverChainLength.put(progress.playerId(), progress.threshold());
-                if (progress.objectiveMet()) {
-                    qualifiedWeavers.add(progress.playerId());
-                }
-            }
+            progressByPlayer.put(progress.playerId(), progress.progressCount());
         }
+        var standings = su.updates().stream()
+                .map(update -> new SpecialEndingPolicy.Standing(
+                        update.playerId(),
+                        update.faction(),
+                        update.newTotal(),
+                        progressByPlayer.getOrDefault(update.playerId(), 0)))
+                .toList();
+        var thresholds = gameRules.stabilizationThresholds();
+        var winnerIds = SpecialEndingPolicy.stabilizationWinners(standings, thresholds);
         var winners = new ArrayList<TimelineStabilized.PlayerFactionResult>();
         var losers = new ArrayList<TimelineStabilized.PlayerFactionResult>();
-        for (var update : su.updates()) {
-            // qualifiedWeavers only ever holds Weaver ids already recorded in weaverChainLength,
-            // so membership alone decides the reported length.
-            Integer activeChainLength =
-                    qualifiedWeavers.contains(update.playerId()) ? weaverChainLength.get(update.playerId()) : null;
+        for (var standing : standings) {
+            boolean qualifyingWeaver = standing.faction() == Faction.WEAVERS
+                    && SpecialEndingPolicy.qualifiesForStabilization(standing, thresholds);
             var result = new TimelineStabilized.PlayerFactionResult(
-                    update.playerId(), update.faction().name(), activeChainLength);
-            if (isStabilizationWinner(update, qualifiedWeavers)) {
+                    standing.playerId(),
+                    standing.faction().name(),
+                    qualifyingWeaver ? standing.objectiveProgress() : null);
+            if (winnerIds.contains(standing.playerId())) {
                 winners.add(result);
             } else {
                 losers.add(result);
             }
         }
         return new TimelineStabilized(gameId, winners, losers);
-    }
-
-    private boolean isStabilizationWinner(ScoresUpdated.ScoreUpdate update, Set<UUID> qualifiedWeavers) {
-        if (!gameRules.stabilizationWinnerFactions().contains(update.faction())) {
-            return false;
-        }
-        // Weavers win stabilization only with a qualifying active chain; other allowlisted
-        // factions keep the configured behavior.
-        if (update.faction() == Faction.WEAVERS) {
-            return qualifiedWeavers.contains(update.playerId());
-        }
-        return true;
     }
 }

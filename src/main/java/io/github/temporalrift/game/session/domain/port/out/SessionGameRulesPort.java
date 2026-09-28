@@ -2,8 +2,8 @@ package io.github.temporalrift.game.session.domain.port.out;
 
 import java.util.Set;
 
+import io.github.temporalrift.game.session.domain.ending.StabilizationThresholds;
 import io.github.temporalrift.game.shared.domain.model.CardType;
-import io.github.temporalrift.game.shared.domain.model.Faction;
 import io.github.temporalrift.game.shared.domain.port.out.GameRulesPort;
 
 public interface SessionGameRulesPort extends GameRulesPort {
@@ -28,7 +28,7 @@ public interface SessionGameRulesPort extends GameRulesPort {
 
     int handSelectionTimerSeconds(int playerCount);
 
-    Set<Faction> stabilizationWinnerFactions();
+    StabilizationThresholds stabilizationThresholds();
 
     /**
      * Card types that a deal must include, regardless of the configured category/grade weights. Empty in

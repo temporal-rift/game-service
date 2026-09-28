@@ -56,7 +56,7 @@ class GameRepositoryAdapterTest {
         assertThat(saved.getStatus()).isEqualTo(GameStatus.IN_PROGRESS.name());
         assertThat(saved.getEraCounter()).isZero();
         assertThat(saved.getCascadedEventIds()).containsExactly(cascadedEventId);
-        assertThat(saved.getPendingCollapsingEventId()).isNull();
+        assertThat(saved.isCollapsePending()).isFalse();
         assertThat(saved.getEventDeck()).containsExactly(eventId);
         assertThat(saved.getPendingCarryOverEvents())
                 .singleElement()
@@ -74,7 +74,6 @@ class GameRepositoryAdapterTest {
         var lobbyId = UUID.randomUUID();
         var eventId = UUID.randomUUID();
         var cascadedEventId = UUID.randomUUID();
-        var pendingCollapsingEventId = UUID.randomUUID();
         var cardId = UUID.randomUUID();
         var outcomeIds = List.of(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID());
         var entity = new GameJpaEntity();
@@ -83,7 +82,7 @@ class GameRepositoryAdapterTest {
         entity.setStatus(GameStatus.IN_PROGRESS.name());
         entity.setEraCounter(2);
         entity.setCascadedEventIds(Set.of(cascadedEventId));
-        entity.setPendingCollapsingEventId(pendingCollapsingEventId);
+        entity.setCollapsePending(true);
         entity.setEventDeck(List.of(eventId));
         entity.setPendingCarryOverEvents(List.of(PendingCarryOverEventEmbeddable.fromDomain(
                 new PendingCarryOverEvent(eventId, CarryOverState.CASCADED))));
@@ -97,7 +96,7 @@ class GameRepositoryAdapterTest {
         assertThat(result.status()).isEqualTo(GameStatus.IN_PROGRESS);
         assertThat(result.eraCounter()).isEqualTo(2);
         assertThat(result.cascadedEventIds()).containsExactly(cascadedEventId);
-        assertThat(result.pendingCollapsingEventId()).isEqualTo(pendingCollapsingEventId);
+        assertThat(result.collapsePending()).isTrue();
         assertThat(result.eventDeck()).containsExactly(eventId);
         assertThat(result.pendingCarryOverEvents())
                 .containsExactly(new PendingCarryOverEvent(eventId, CarryOverState.CASCADED));

@@ -3,17 +3,18 @@ package io.github.temporalrift.game.session.infrastructure.adapter.out.config;
 import java.util.Map;
 import java.util.Set;
 
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotEmpty;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.bind.DefaultValue;
 import org.springframework.validation.annotation.Validated;
 
+import io.github.temporalrift.game.session.domain.ending.StabilizationThresholds;
 import io.github.temporalrift.game.session.domain.port.out.SessionGameRulesPort;
 import io.github.temporalrift.game.shared.domain.model.CardCategory;
 import io.github.temporalrift.game.shared.domain.model.CardGrade;
 import io.github.temporalrift.game.shared.domain.model.CardType;
-import io.github.temporalrift.game.shared.domain.model.Faction;
 import io.github.temporalrift.game.shared.domain.model.SpecialAction;
 
 @ConfigurationProperties("game.rules")
@@ -33,7 +34,7 @@ public record SessionRulesProperties(
         Map<Integer, Integer> declarationTimerSeconds,
         @NotEmpty Map<CardCategory, Integer> cardCategoryWeights,
         @NotEmpty Map<CardGrade, Integer> cardGradeWeights,
-        @NotEmpty Set<Faction> stabilizationWinnerFactions,
+        @DefaultValue @Valid Stabilization stabilization,
         @NotEmpty Set<SpecialAction> onceEraBudgetedSpecials,
         @DefaultValue("2") @Min(1) int sealMaxUsesPerGame,
         Set<CardType> handDealForcedTypes)
@@ -41,6 +42,10 @@ public record SessionRulesProperties(
 
     private static final int DEFAULT_ACTION_ROUND_TIMER_SECONDS = 60;
     private static final int DEFAULT_DECLARATION_TIMER_SECONDS = 30;
+
+    public record Stabilization(
+            @DefaultValue("3") @Min(1) int prophetWrittenResolutions,
+            @DefaultValue("2") @Min(1) int weaverActiveChainLinks) {}
 
     public SessionRulesProperties {
         if (cardsPerDeal < cardsPerHand) {
@@ -59,6 +64,12 @@ public record SessionRulesProperties(
         validatePositiveValues(declarationTimerSeconds, "declaration-timer-seconds");
         validateWeights(cardCategoryWeights, "card-category-weights");
         validateWeights(cardGradeWeights, "card-grade-weights");
+    }
+
+    @Override
+    public StabilizationThresholds stabilizationThresholds() {
+        return new StabilizationThresholds(
+                stabilization.prophetWrittenResolutions(), stabilization.weaverActiveChainLinks());
     }
 
     @Override

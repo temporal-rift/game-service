@@ -10,7 +10,7 @@ import java.util.UUID;
 public record GameProgress(
         int eraCounter,
         Set<UUID> cascadedEventIds,
-        UUID pendingCollapsingEventId,
+        boolean collapsePending,
         List<PendingCarryOverEvent> pendingCarryOverEvents,
         Map<UUID, DrawnFutureEvent> drawnEvents,
         GameStatus status) {

@@ -26,8 +26,8 @@ public class Game extends AggregateRoot {
     private final Set<UUID> cascadedEventIds;
 
     private int eraCounter;
-    /** The event whose cascade last crossed the collapse threshold, or {@code null}; recomputed every era. */
-    private UUID pendingCollapsingEventId;
+    /** Whether the latest era's cascades reached the collapse threshold; recomputed every era. */
+    private boolean collapsePending;
 
     private GameStatus status;
 
@@ -39,7 +39,7 @@ public class Game extends AggregateRoot {
         this.drawnEvents = new HashMap<>();
         this.cascadedEventIds = new HashSet<>();
         this.eraCounter = 0;
-        this.pendingCollapsingEventId = null;
+        this.collapsePending = false;
         this.status = GameStatus.IN_PROGRESS;
     }
 
@@ -51,14 +51,14 @@ public class Game extends AggregateRoot {
         this.drawnEvents = new HashMap<>(progress.drawnEvents());
         this.cascadedEventIds = new HashSet<>(progress.cascadedEventIds());
         this.eraCounter = progress.eraCounter();
-        this.pendingCollapsingEventId = progress.pendingCollapsingEventId();
+        this.collapsePending = progress.collapsePending();
         this.status = progress.status();
     }
 
     /**
      * Test/legacy convenience: reconstitutes a game with {@code cascadedParadoxCounter} synthetic, distinct
      * cascaded-event IDs rather than real ones — callers that only assert on the counter's value, not on which
-     * events cascaded, do not need real IDs. Callers that do (e.g. collapsing-event selection) should build a
+     * events cascaded, do not need real IDs. Callers that do (e.g. distinct-event counting) should build a
      * {@link GameProgress} with explicit IDs instead.
      */
     public static Game reconstitute(
@@ -76,7 +76,7 @@ public class Game extends AggregateRoot {
                 id,
                 lobbyId,
                 eventDeck,
-                new GameProgress(eraCounter, cascadedEventIds, null, List.of(), Map.of(), status));
+                new GameProgress(eraCounter, cascadedEventIds, false, List.of(), Map.of(), status));
     }
 
     public static Game reconstitute(UUID id, UUID lobbyId, List<UUID> eventDeck, GameProgress progress) {
@@ -104,41 +104,31 @@ public class Game extends AggregateRoot {
      *
      * <p>Recording never ends the game: the era-end decision (normal victory first, then collapse)
      * is made once scoring for the era is known, so the same era always ends the same way regardless
-     * of whether the collapse fact or the scoring fact is processed first. The crossing event computed
-     * here (or {@code null} when none crosses) is retained in {@link #pendingCollapsingEventId()} for
-     * that deferred decision, since a later re-derivation cannot recover which entries were first-time
-     * cascades once this call returns.
+     * of whether the collapse fact or the scoring fact is processed first. Whether this era reached the
+     * threshold is retained in {@link #collapsePending()} for that deferred decision, since a later
+     * re-derivation cannot recover which entries were first-time cascades once this call returns.
      *
      * <p>When the distinct-event count already reached the threshold before this era (the rule value was
-     * lowered mid-game), this era's first cascaded event — even a repeat — is treated as the crossing
-     * event, matching the previous auto-end choice instead of leaving an already-over-threshold game
-     * running because none of this era's cascades happen to be first-time ones.
+     * lowered mid-game), any cascade this era — even a repeat — reaches it, instead of leaving an
+     * already-over-threshold game running because none of this era's cascades happen to be first-time ones.
      *
-     * @return the event that crossed the global cascade threshold, or {@code null} when the threshold was not reached
+     * @return whether this era's cascades reached the global cascade threshold
      */
-    public UUID recordCascadedParadoxesInRevealOrder(List<UUID> eraCascadedEventIds, int maxCascadedParadoxes) {
+    public boolean recordCascadedParadoxesInRevealOrder(List<UUID> eraCascadedEventIds, int maxCascadedParadoxes) {
         requireInProgress();
         boolean alreadyPastThreshold = cascadedEventIds.size() >= maxCascadedParadoxes;
-        UUID collapsingEventId = null;
+        boolean crossed = false;
         for (var eventId : eraCascadedEventIds) {
             boolean firstCascade = cascadedEventIds.add(eventId);
-            if (firstCascade && collapsingEventId == null && cascadedEventIds.size() >= maxCascadedParadoxes) {
-                collapsingEventId = eventId;
-            }
+            crossed |= firstCascade && cascadedEventIds.size() >= maxCascadedParadoxes;
         }
-        if (collapsingEventId == null && alreadyPastThreshold && !eraCascadedEventIds.isEmpty()) {
-            collapsingEventId = eraCascadedEventIds.get(0);
-        }
-        pendingCollapsingEventId = collapsingEventId;
-        return collapsingEventId;
+        collapsePending = crossed || (alreadyPastThreshold && !eraCascadedEventIds.isEmpty());
+        return collapsePending;
     }
 
-    /**
-     * The event whose cascade last crossed the global collapse threshold, as decided by the most recent
-     * {@link #recordCascadedParadoxesInRevealOrder}. {@code null} when that era's cascades did not cross it.
-     */
-    public UUID pendingCollapsingEventId() {
-        return pendingCollapsingEventId;
+    /** Whether the most recent {@link #recordCascadedParadoxesInRevealOrder} reached the global collapse threshold. */
+    public boolean collapsePending() {
+        return collapsePending;
     }
 
     public void endByCollapse() {

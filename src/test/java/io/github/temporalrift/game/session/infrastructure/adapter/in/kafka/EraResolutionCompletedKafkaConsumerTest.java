@@ -2,6 +2,7 @@ package io.github.temporalrift.game.session.infrastructure.adapter.in.kafka;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
@@ -93,7 +94,7 @@ class EraResolutionCompletedKafkaConsumerTest {
         assertThat(game.pendingCarryOverEvents())
                 .containsExactly(new io.github.temporalrift.game.session.domain.game.PendingCarryOverEvent(
                         cascadedEventId, io.github.temporalrift.game.shared.domain.model.CarryOverState.CASCADED));
-        then(collapsePublisher).should(never()).publishCollapse(any(), any(Integer.class), any());
+        then(collapsePublisher).should(never()).publishCollapse(any(), anyInt());
     }
 
     @Test
@@ -121,7 +122,7 @@ class EraResolutionCompletedKafkaConsumerTest {
                                 secondStalledId,
                                 io.github.temporalrift.game.shared.domain.model.CarryOverState.STALLED));
         assertThat(game.cascadedParadoxCounter()).isEqualTo(2);
-        then(collapsePublisher).should(never()).publishCollapse(any(), any(Integer.class), any());
+        then(collapsePublisher).should(never()).publishCollapse(any(), anyInt());
     }
 
     @Test
@@ -140,7 +141,7 @@ class EraResolutionCompletedKafkaConsumerTest {
                 .containsExactly(new io.github.temporalrift.game.session.domain.game.PendingCarryOverEvent(
                         stalledId, io.github.temporalrift.game.shared.domain.model.CarryOverState.STALLED));
         assertThat(game.cascadedParadoxCounter()).isEqualTo(initialCascadeCount);
-        then(collapsePublisher).should(never()).publishCollapse(any(), any(Integer.class), any());
+        then(collapsePublisher).should(never()).publishCollapse(any(), anyInt());
     }
 
     @Test
@@ -155,7 +156,7 @@ class EraResolutionCompletedKafkaConsumerTest {
         consumer.handle(messageFor(resolution));
 
         then(gameRepository).should(never()).save(any());
-        then(collapsePublisher).should(never()).publishCollapse(any(), any(Integer.class), any());
+        then(collapsePublisher).should(never()).publishCollapse(any(), anyInt());
     }
 
     @Test
@@ -173,18 +174,16 @@ class EraResolutionCompletedKafkaConsumerTest {
         consumer.handle(messageFor(resolution(2, cascaded(reCascadingEvent, 0))));
 
         assertThat(game.cascadedParadoxCounter()).isEqualTo(1);
-        assertThat(game.pendingCollapsingEventId()).isNull();
-        then(collapsePublisher).should(never()).publishCollapse(any(), any(Integer.class), any());
+        assertThat(game.collapsePending()).isFalse();
+        then(collapsePublisher).should(never()).publishCollapse(any(), anyInt());
     }
 
     @Test
     @DisplayName("threshold crossed while the era awaits scoring — collapse defers to the scoring decision")
     void handle_thresholdCrossedWhileAwaitingScoring_defersWithoutPublishingOrEnding() {
         var firstCascadedEvent = UUID.randomUUID();
-        var collapsingEvent = UUID.randomUUID();
-        // The contract requires EventsDrawn order, but this consumer still sorts by revealIndex so
-        // a malformed/reordered transport list cannot misidentify the threshold-crossing event.
-        var resolution = resolution(2, cascaded(collapsingEvent, 1), cascaded(firstCascadedEvent, 0));
+        var thresholdCrossingEvent = UUID.randomUUID();
+        var resolution = resolution(2, cascaded(thresholdCrossingEvent, 1), cascaded(firstCascadedEvent, 0));
         var game = Game.reconstitute(GAME_ID, LOBBY_ID, List.of(), 2, 1, GameStatus.IN_PROGRESS);
         givenClaimedBarrier();
         given(gameRepository.findByIdWithLock(GAME_ID)).willReturn(Optional.of(game));
@@ -196,16 +195,17 @@ class EraResolutionCompletedKafkaConsumerTest {
         consumer.handle(messageFor(resolution));
 
         assertThat(game.cascadedParadoxCounter()).isEqualTo(MAX_CASCADED);
+        assertThat(game.collapsePending()).isTrue();
         assertThat(game.status()).isEqualTo(GameStatus.IN_PROGRESS);
-        then(collapsePublisher).should(never()).publishCollapse(any(), any(Integer.class), any());
+        then(collapsePublisher).should(never()).publishCollapse(any(), anyInt());
     }
 
     @Test
     @DisplayName("threshold crossed after the era left scoring — late collapse ends the game immediately")
     void handle_thresholdCrossedAfterScoring_publishesCollapseImmediately() {
         var firstCascadedEvent = UUID.randomUUID();
-        var collapsingEvent = UUID.randomUUID();
-        var resolution = resolution(2, cascaded(collapsingEvent, 1), cascaded(firstCascadedEvent, 0));
+        var thresholdCrossingEvent = UUID.randomUUID();
+        var resolution = resolution(2, cascaded(thresholdCrossingEvent, 1), cascaded(firstCascadedEvent, 0));
         var game = Game.reconstitute(GAME_ID, LOBBY_ID, List.of(), 2, 1, GameStatus.IN_PROGRESS);
         givenClaimedBarrier();
         given(gameRepository.findByIdWithLock(GAME_ID)).willReturn(Optional.of(game));
@@ -217,7 +217,7 @@ class EraResolutionCompletedKafkaConsumerTest {
         consumer.handle(messageFor(resolution));
 
         assertThat(game.status()).isEqualTo(GameStatus.ENDED_BY_COLLAPSE);
-        then(collapsePublisher).should().publishCollapse(game, 2, collapsingEvent);
+        then(collapsePublisher).should().publishCollapse(game, 2);
     }
 
     @Test
@@ -230,7 +230,7 @@ class EraResolutionCompletedKafkaConsumerTest {
 
         then(gameRepository).should(never()).findByIdWithLock(any());
         then(gameRepository).should(never()).save(any());
-        then(collapsePublisher).should(never()).publishCollapse(any(), any(Integer.class), any());
+        then(collapsePublisher).should(never()).publishCollapse(any(), anyInt());
     }
 
     @Test
@@ -243,7 +243,7 @@ class EraResolutionCompletedKafkaConsumerTest {
         consumer.handle(message);
 
         then(gameRepository).should(never()).findByIdWithLock(any());
-        then(collapsePublisher).should(never()).publishCollapse(any(), any(Integer.class), any());
+        then(collapsePublisher).should(never()).publishCollapse(any(), anyInt());
     }
 
     @Test
@@ -266,7 +266,7 @@ class EraResolutionCompletedKafkaConsumerTest {
 
         then(gameRepository).should(never()).findByIdWithLock(any());
         then(gameRepository).should(never()).save(any());
-        then(collapsePublisher).should(never()).publishCollapse(any(), any(Integer.class), any());
+        then(collapsePublisher).should(never()).publishCollapse(any(), anyInt());
     }
 
     @Test
@@ -301,7 +301,7 @@ class EraResolutionCompletedKafkaConsumerTest {
 
         then(processedEventRepository).should(never()).tryMarkProcessed(any(), any());
         then(gameRepository).should(never()).findByIdWithLock(any());
-        then(collapsePublisher).should(never()).publishCollapse(any(), any(Integer.class), any());
+        then(collapsePublisher).should(never()).publishCollapse(any(), anyInt());
     }
 
     private void givenClaimedBarrier() {
