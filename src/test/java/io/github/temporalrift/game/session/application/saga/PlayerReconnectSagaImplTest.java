@@ -95,7 +95,7 @@ class PlayerReconnectSagaImplTest {
                 gameRepository,
                 eraSagaRepository,
                 eventPublisher,
-                applicationEventPublisher,
+                new LastPlayerStandingPublisher(eventPublisher, applicationEventPublisher, TEST_CLOCK),
                 finalScoreQueryPort,
                 stateManager,
                 gameRules,
@@ -274,6 +274,29 @@ class PlayerReconnectSagaImplTest {
         var expected = new WinConditionMet(GAME_ID, OTHER_1, Faction.WEAVERS.name(), 7, "LAST_PLAYER_STANDING");
         then(eventPublisher).should().publish(argThat(envelope -> expected.equals(envelope.payload())));
         then(applicationEventPublisher).should().publishEvent(expected);
+    }
+
+    @Test
+    @DisplayName("handleTimerExpiry — one contender left while the era's scoring is in flight defers the ending")
+    void handleTimerExpiry_oneContenderLeftDuringScoring_defersToEraBoundary() {
+        // given
+        givenExpiredGracePeriod();
+        var game = stubGameWithLock(GameStatus.IN_PROGRESS);
+        var lobby = stubThreePlayerLobbyWithLock(OTHER_2);
+        var eraSaga = new EraSagaState(GAME_ID, 2, EraSagaStatus.WAITING_SCORES, List.of(PLAYER_ID, OTHER_1, OTHER_2));
+        given(eraSagaRepository.findByGameIdWithLock(GAME_ID)).willReturn(Optional.of(eraSaga));
+
+        // when
+        saga.handleTimerExpiry(SAGA_ID);
+
+        // then — the forfeit is recorded; the era-end decision ends the game once scoring commits
+        assertThat(lobby.isAbandoned(PLAYER_ID)).isTrue();
+        then(eventPublisher).should().publish(envelopeWithPayload(PlayerAbandoned.class));
+        assertThat(game.status()).isEqualTo(GameStatus.IN_PROGRESS);
+        then(gameRepository).should(never()).save(any());
+        then(eraSagaRepository).should(never()).save(any());
+        then(finalScoreQueryPort).shouldHaveNoInteractions();
+        then(applicationEventPublisher).shouldHaveNoInteractions();
     }
 
     @Test
