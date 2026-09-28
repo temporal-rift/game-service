@@ -25,6 +25,9 @@
             <column name="submitted_player_ids" type="UUID[]">
                 <constraints nullable="false"/>
             </column>
+            <column name="affected_event_ids" type="UUID[]" defaultValueComputed="'{}'::uuid[]">
+                <constraints nullable="false"/>
+            </column>
         </createTable>
         <addUniqueConstraint
                 tableName="paradox_resolution_phase"

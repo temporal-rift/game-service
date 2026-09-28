@@ -20,6 +20,9 @@
             <column name="jammed" type="BOOLEAN">
                 <constraints nullable="false"/>
             </column>
+            <column name="obscured" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
         </createTable>
         <createTable tableName="player_state_hand_card">
             <column name="player_state_id" type="UUID">
@@ -33,6 +36,12 @@
                 <constraints nullable="false"/>
             </column>
             <column name="card_type" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="card_grade" type="VARCHAR(3)" defaultValue="I">
+                <constraints nullable="false"/>
+            </column>
+            <column name="revealed" type="BOOLEAN" defaultValueBoolean="false">
                 <constraints nullable="false"/>
             </column>
         </createTable>

@@ -19,6 +19,9 @@
             <column name="player_ids" type="UUID[]">
                 <constraints nullable="false"/>
             </column>
+            <column name="hand_selected_player_ids" type="UUID[]" defaultValueComputed="ARRAY[]::UUID[]">
+                <constraints nullable="false"/>
+            </column>
         </createTable>
     </changeSet>
 
