@@ -17,6 +17,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import io.github.temporalrift.game.GameServiceIntegrationTest;
+import io.github.temporalrift.game.session.domain.lobby.ConnectionStatus;
 import io.github.temporalrift.game.session.domain.lobby.Lobby;
 import io.github.temporalrift.game.session.domain.lobby.LobbyConfig;
 import io.github.temporalrift.game.session.domain.lobby.LobbyPlayer;
@@ -61,8 +62,8 @@ class StartGameSagaCompensationIT {
         var lobbyId = UUID.randomUUID();
         var gameId = UUID.randomUUID();
         var hostPlayerId = UUID.randomUUID();
-        var host = new LobbyPlayer(hostPlayerId, "Host", null, Instant.now(clock), true);
-        var second = new LobbyPlayer(UUID.randomUUID(), "Second", null, Instant.now(clock), true);
+        var host = new LobbyPlayer(hostPlayerId, "Host", null, Instant.now(clock), ConnectionStatus.CONNECTED);
+        var second = new LobbyPlayer(UUID.randomUUID(), "Second", null, Instant.now(clock), ConnectionStatus.CONNECTED);
         var lobby = new Lobby(
                 lobbyId,
                 gameId,

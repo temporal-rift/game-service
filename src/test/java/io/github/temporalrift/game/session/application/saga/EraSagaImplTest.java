@@ -135,7 +135,7 @@ class EraSagaImplTest {
         // given
         var deck = buildDeck(DECK_SIZE);
         var game = new Game(GAME_ID, LOBBY_ID, deck);
-        given(gameRepository.findById(GAME_ID)).willReturn(Optional.of(game));
+        given(gameRepository.findByIdWithLock(GAME_ID)).willReturn(Optional.of(game));
         given(gameRules.eventsPerEra()).willReturn(EVENTS_PER_ERA);
         var catalogDefs = IntStream.range(0, EVENTS_PER_ERA)
                 .mapToObj(i -> buildEventDef())
@@ -163,7 +163,7 @@ class EraSagaImplTest {
         given(futureEventCatalog.findByEventIds(any())).willReturn(List.of(catalogDef));
 
         var gameA = new Game(GAME_ID, LOBBY_ID, buildDeck(1));
-        given(gameRepository.findById(GAME_ID)).willReturn(Optional.of(gameA));
+        given(gameRepository.findByIdWithLock(GAME_ID)).willReturn(Optional.of(gameA));
         var captorA = ArgumentCaptor.<DomainEventEnvelope>captor();
         eraSaga.start(GAME_ID, ERA_NUMBER, PLAYER_IDS, List.of());
         then(eventPublisher).should(atLeastOnce()).publish(captorA.capture());
@@ -171,7 +171,7 @@ class EraSagaImplTest {
 
         var gameBId = UUID.randomUUID();
         var gameB = new Game(gameBId, LOBBY_ID, buildDeck(1));
-        given(gameRepository.findById(gameBId)).willReturn(Optional.of(gameB));
+        given(gameRepository.findByIdWithLock(gameBId)).willReturn(Optional.of(gameB));
         var captorB = ArgumentCaptor.<DomainEventEnvelope>captor();
         eraSaga.start(gameBId, ERA_NUMBER, PLAYER_IDS, List.of());
         then(eventPublisher).should(atLeastOnce()).publish(captorB.capture());
@@ -205,7 +205,7 @@ class EraSagaImplTest {
     void start_happyPath_handDealtCarriesCorrectPlayerIdAndCardCount() {
         // given
         var game = new Game(GAME_ID, LOBBY_ID, buildDeck(DECK_SIZE));
-        given(gameRepository.findById(GAME_ID)).willReturn(Optional.of(game));
+        given(gameRepository.findByIdWithLock(GAME_ID)).willReturn(Optional.of(game));
         given(gameRules.eventsPerEra()).willReturn(EVENTS_PER_ERA);
         given(futureEventCatalog.findByEventIds(any()))
                 .willReturn(IntStream.range(0, EVENTS_PER_ERA)
@@ -238,7 +238,7 @@ class EraSagaImplTest {
         // given — a large hand size makes a regression (drawing either card by chance) astronomically unlikely
         var largeHandSize = 2000;
         var game = new Game(GAME_ID, LOBBY_ID, buildDeck(DECK_SIZE));
-        given(gameRepository.findById(GAME_ID)).willReturn(Optional.of(game));
+        given(gameRepository.findByIdWithLock(GAME_ID)).willReturn(Optional.of(game));
         given(gameRules.eventsPerEra()).willReturn(EVENTS_PER_ERA);
         given(gameRules.cardsPerDeal()).willReturn(largeHandSize);
         given(futureEventCatalog.findByEventIds(any()))
@@ -277,7 +277,7 @@ class EraSagaImplTest {
         game.recordDrawnEvents(Map.of(
                 cascadedId, new DrawnFutureEvent(cascadedCardId, cascadedOutcomeIds),
                 stalledId, new DrawnFutureEvent(stalledCardId, stalledOutcomeIds)));
-        given(gameRepository.findById(GAME_ID)).willReturn(Optional.of(game));
+        given(gameRepository.findByIdWithLock(GAME_ID)).willReturn(Optional.of(game));
         given(gameRules.eventsPerEra()).willReturn(3);
         // drawn IDs come from the deck; carried-over cards are looked up by their catalog cardId
         given(futureEventCatalog.findByEventIds(
@@ -327,7 +327,7 @@ class EraSagaImplTest {
     void start_insufficientDeck_marksFailedAndPublishesGameEndedAbnormally() {
         // given
         var game = new Game(GAME_ID, LOBBY_ID, List.of()); // empty deck
-        given(gameRepository.findById(GAME_ID)).willReturn(Optional.of(game));
+        given(gameRepository.findByIdWithLock(GAME_ID)).willReturn(Optional.of(game));
         given(gameRules.eventsPerEra()).willReturn(EVENTS_PER_ERA);
 
         // when
@@ -335,8 +335,27 @@ class EraSagaImplTest {
 
         // then
         then(stateManager).should().fail(GAME_ID);
+        assertThat(game.status()).isEqualTo(GameStatus.ENDED_ABNORMALLY);
+        then(gameRepository).should().save(game);
         then(eventPublisher).should().publish(envelopeWithPayload(GameEndedAbnormally.class));
         then(stateManager).should(never()).advanceTo(any(), any());
+    }
+
+    @Test
+    @DisplayName("game already over when the era starts - era saga completes, nothing is drawn or published")
+    void start_gameAlreadyOver_completesWithoutDrawing() {
+        // given
+        var game = Game.reconstitute(GAME_ID, LOBBY_ID, buildDeck(DECK_SIZE), 1, 0, GameStatus.ENDED_BY_WIN);
+        given(gameRepository.findByIdWithLock(GAME_ID)).willReturn(Optional.of(game));
+
+        // when
+        eraSaga.start(GAME_ID, ERA_NUMBER, PLAYER_IDS, List.of());
+
+        // then
+        then(stateManager).should().advanceTo(GAME_ID, EraSagaStatus.COMPLETED);
+        then(gameRepository).should(never()).save(any());
+        then(eventPublisher).shouldHaveNoInteractions();
+        then(applicationEventPublisher).shouldHaveNoInteractions();
     }
 
     @Test
@@ -344,7 +363,7 @@ class EraSagaImplTest {
     void start_insufficientDeck_doesNotRethrow() {
         // given
         var game = new Game(GAME_ID, LOBBY_ID, List.of());
-        given(gameRepository.findById(GAME_ID)).willReturn(Optional.of(game));
+        given(gameRepository.findByIdWithLock(GAME_ID)).willReturn(Optional.of(game));
         given(gameRules.eventsPerEra()).willReturn(EVENTS_PER_ERA);
 
         // when / then — no exception expected
@@ -356,7 +375,7 @@ class EraSagaImplTest {
     void start_happyPath_publishesTypedEventsDrawn() {
         // given
         var game = new Game(GAME_ID, LOBBY_ID, buildDeck(DECK_SIZE));
-        given(gameRepository.findById(GAME_ID)).willReturn(Optional.of(game));
+        given(gameRepository.findByIdWithLock(GAME_ID)).willReturn(Optional.of(game));
         given(gameRules.eventsPerEra()).willReturn(EVENTS_PER_ERA);
         given(futureEventCatalog.findByEventIds(any()))
                 .willReturn(IntStream.range(0, EVENTS_PER_ERA)
@@ -384,7 +403,7 @@ class EraSagaImplTest {
     void start_happyPath_publishesTypedHandDealtPerPlayer() {
         // given
         var game = new Game(GAME_ID, LOBBY_ID, buildDeck(DECK_SIZE));
-        given(gameRepository.findById(GAME_ID)).willReturn(Optional.of(game));
+        given(gameRepository.findByIdWithLock(GAME_ID)).willReturn(Optional.of(game));
         given(gameRules.eventsPerEra()).willReturn(EVENTS_PER_ERA);
         given(futureEventCatalog.findByEventIds(any()))
                 .willReturn(IntStream.range(0, EVENTS_PER_ERA)
@@ -410,7 +429,7 @@ class EraSagaImplTest {
     void start_initRunningCalledFirst() {
         // given
         var game = new Game(GAME_ID, LOBBY_ID, buildDeck(DECK_SIZE));
-        given(gameRepository.findById(GAME_ID)).willReturn(Optional.of(game));
+        given(gameRepository.findByIdWithLock(GAME_ID)).willReturn(Optional.of(game));
         given(gameRules.eventsPerEra()).willReturn(EVENTS_PER_ERA);
         given(futureEventCatalog.findByEventIds(any()))
                 .willReturn(IntStream.range(0, EVENTS_PER_ERA)

@@ -18,6 +18,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import io.github.temporalrift.game.GameServiceIntegrationTest;
+import io.github.temporalrift.game.session.domain.lobby.ConnectionStatus;
 import io.github.temporalrift.game.session.domain.lobby.Lobby;
 import io.github.temporalrift.game.session.domain.lobby.LobbyConfig;
 import io.github.temporalrift.game.session.domain.lobby.LobbyPlayer;
@@ -56,8 +57,8 @@ class StartGameSagaRosterIT {
                 gameId,
                 hostPlayerId,
                 new ArrayList<>(List.of(
-                        new LobbyPlayer(hostPlayerId, "Ada", null, Instant.now(clock), true),
-                        new LobbyPlayer(secondPlayerId, "Ben", null, Instant.now(clock), true))),
+                        new LobbyPlayer(hostPlayerId, "Ada", null, Instant.now(clock), ConnectionStatus.CONNECTED),
+                        new LobbyPlayer(secondPlayerId, "Ben", null, Instant.now(clock), ConnectionStatus.CONNECTED))),
                 new LobbyConfig("ROSTER", 2, 5, clock));
         transactionTemplate.executeWithoutResult(_ -> lobbyRepository.save(lobby));
         given(futureEventCatalog.allEventIds())

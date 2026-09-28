@@ -9,6 +9,7 @@ import java.util.stream.Collectors;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 
+import io.github.temporalrift.game.session.domain.lobby.ConnectionStatus;
 import io.github.temporalrift.game.session.domain.lobby.Lobby;
 import io.github.temporalrift.game.session.domain.lobby.LobbyConfig;
 import io.github.temporalrift.game.session.domain.lobby.LobbyPlayer;
@@ -97,7 +98,7 @@ class LobbyRepositoryAdapter implements LobbyRepository {
         entity.setPlayerName(player.playerName());
         entity.setFaction(player.faction() != null ? player.faction().name() : null);
         entity.setJoinedAt(player.joinedAt());
-        entity.setConnected(player.connected());
+        entity.setConnectionStatus(player.connection().name());
         return entity;
     }
 
@@ -108,7 +109,7 @@ class LobbyRepositoryAdapter implements LobbyRepository {
                         p.getPlayerName(),
                         p.getFaction() != null ? Faction.valueOf(p.getFaction()) : null,
                         p.getJoinedAt(),
-                        p.isConnected()))
+                        ConnectionStatus.valueOf(p.getConnectionStatus())))
                 .collect(Collectors.toCollection(ArrayList::new));
 
         var config = new LobbyConfig(entity.getJoinCode(), entity.getMinPlayers(), entity.getMaxPlayers(), clock);

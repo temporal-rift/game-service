@@ -24,6 +24,4 @@ public interface PlayerReconnectSagaRepository {
      * sweep, or concurrent instances) runs the transition's consequences exactly once.
      */
     boolean compareAndSetStatus(UUID sagaId, PlayerReconnectSagaStatus expected, PlayerReconnectSagaStatus next);
-
-    long countByGameIdAndStatus(UUID gameId, PlayerReconnectSagaStatus status);
 }

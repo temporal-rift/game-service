@@ -24,6 +24,7 @@ import io.github.temporalrift.game.session.domain.event.GameEndedAbnormally;
 import io.github.temporalrift.game.session.domain.game.DrawnFutureEvent;
 import io.github.temporalrift.game.session.domain.game.Game;
 import io.github.temporalrift.game.session.domain.game.GameNotFoundException;
+import io.github.temporalrift.game.session.domain.game.GameStatus;
 import io.github.temporalrift.game.session.domain.game.InsufficientDeckException;
 import io.github.temporalrift.game.session.domain.game.PendingCarryOverEvent;
 import io.github.temporalrift.game.session.domain.port.out.FutureEventCatalogPort;
@@ -75,7 +76,14 @@ class EraSagaImpl implements EraSaga {
     public void start(UUID gameId, int eraNumber, List<UUID> playerIds, List<PendingCarryOverEvent> carryOverEvents) {
         stateManager.initRunning(gameId, eraNumber, playerIds);
 
-        var game = gameRepository.findById(gameId).orElseThrow(() -> new GameNotFoundException(gameId));
+        // Locked after the era saga row, matching every ending path: last player standing can end the
+        // game between the era-end decision that published EraStarted and this start.
+        var game = gameRepository.findByIdWithLock(gameId).orElseThrow(() -> new GameNotFoundException(gameId));
+        if (game.status() != GameStatus.IN_PROGRESS) {
+            log.info("Era {} not started for game {} — game already over", eraNumber, gameId);
+            stateManager.advanceTo(gameId, EraSagaStatus.COMPLETED);
+            return;
+        }
 
         try {
             var drawnIds = game.startEra(carryOverEvents.size(), gameRules.eventsPerEra());
@@ -90,6 +98,8 @@ class EraSagaImpl implements EraSaga {
         } catch (InsufficientDeckException e) {
             log.warn("Deck exhausted for game {} era {} — ending game abnormally", gameId, eraNumber, e);
             stateManager.fail(gameId);
+            game.endAbnormally();
+            gameRepository.save(game);
             eventPublisher.publish(DomainEventEnvelope.create(
                     game.id(),
                     Game.AGGREGATE_TYPE,

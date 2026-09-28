@@ -55,7 +55,11 @@ public class TimelineCollapsePublisher {
                 .collect(Collectors.toMap(GameEnded.PlayerScoreResult::playerId, GameEnded.PlayerScoreResult::score));
         var standings = players.stream()
                 .map(player -> new SpecialEndingPolicy.Standing(
-                        player.playerId(), player.faction(), scores.getOrDefault(player.playerId(), 0), 0))
+                        player.playerId(),
+                        player.faction(),
+                        scores.getOrDefault(player.playerId(), 0),
+                        0,
+                        player.abandoned()))
                 .toList();
         var winnerIds = SpecialEndingPolicy.collapseWinners(standings);
         var winners = new ArrayList<TimelineCollapsed.PlayerFactionResult>();

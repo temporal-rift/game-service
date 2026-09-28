@@ -402,4 +402,21 @@ class GameTest {
         game.end();
         assertThatExceptionOfType(GameAlreadyOverException.class).isThrownBy(game::end);
     }
+
+    // --- endAbnormally() ---
+
+    @Test
+    void endAbnormally_statusBecomesEndedAbnormally() {
+        var game = newGame();
+        game.endAbnormally();
+        assertThat(game.status()).isEqualTo(GameStatus.ENDED_ABNORMALLY);
+    }
+
+    @Test
+    void endAbnormally_gameAlreadyOver_blocksLaterEndings() {
+        var game = newGame();
+        game.endAbnormally();
+        assertThatExceptionOfType(GameAlreadyOverException.class).isThrownBy(game::end);
+        assertThatExceptionOfType(GameAlreadyOverException.class).isThrownBy(game::endAbnormally);
+    }
 }

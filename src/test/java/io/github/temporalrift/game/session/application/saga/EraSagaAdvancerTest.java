@@ -8,11 +8,13 @@ import static org.mockito.ArgumentMatchers.isA;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 import java.time.Clock;
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -41,9 +43,15 @@ import io.github.temporalrift.game.session.domain.game.Game;
 import io.github.temporalrift.game.session.domain.game.GameProgress;
 import io.github.temporalrift.game.session.domain.game.GameStatus;
 import io.github.temporalrift.game.session.domain.game.PendingCarryOverEvent;
+import io.github.temporalrift.game.session.domain.lobby.ConnectionStatus;
+import io.github.temporalrift.game.session.domain.lobby.Lobby;
+import io.github.temporalrift.game.session.domain.lobby.LobbyConfig;
+import io.github.temporalrift.game.session.domain.lobby.LobbyPlayer;
+import io.github.temporalrift.game.session.domain.lobby.LobbyStatus;
 import io.github.temporalrift.game.session.domain.port.out.EraSagaRepository;
 import io.github.temporalrift.game.session.domain.port.out.EraSagaScoresUpdatedInboxRepository;
 import io.github.temporalrift.game.session.domain.port.out.GameRepository;
+import io.github.temporalrift.game.session.domain.port.out.LobbyRepository;
 import io.github.temporalrift.game.session.domain.port.out.SessionEventPublisher;
 import io.github.temporalrift.game.session.domain.port.out.SessionFactionObjectivePort;
 import io.github.temporalrift.game.session.domain.port.out.SessionGameRulesPort;
@@ -63,6 +71,7 @@ class EraSagaAdvancerTest {
     static final UUID LOBBY_ID = UUID.randomUUID();
     static final UUID PLAYER_1 = UUID.randomUUID();
     static final UUID PLAYER_2 = UUID.randomUUID();
+    static final UUID PLAYER_3 = UUID.randomUUID();
     static final List<UUID> PLAYER_IDS = List.of(PLAYER_1, PLAYER_2);
     static final int MAX_ERAS = 5;
     static final int WIN_THRESHOLD = 20;
@@ -76,6 +85,9 @@ class EraSagaAdvancerTest {
 
     @Mock
     GameRepository gameRepository;
+
+    @Mock
+    LobbyRepository lobbyRepository;
 
     @Mock
     SessionEventPublisher eventPublisher;
@@ -103,12 +115,36 @@ class EraSagaAdvancerTest {
                 eraSagaRepository,
                 scoresUpdatedInbox,
                 gameRepository,
+                lobbyRepository,
                 eventPublisher,
                 applicationEventPublisher,
                 collapsePublisher,
                 gameRules,
                 factionObjectives,
                 clock);
+        lenient().when(lobbyRepository.findById(LOBBY_ID)).thenReturn(Optional.of(lobby()));
+    }
+
+    private static Lobby lobby(UUID... abandonedPlayerIds) {
+        var players = List.of(
+                new LobbyPlayer(PLAYER_1, "Alice", Faction.PROPHETS, Instant.EPOCH, ConnectionStatus.CONNECTED),
+                new LobbyPlayer(PLAYER_2, "Bob", Faction.WEAVERS, Instant.EPOCH, ConnectionStatus.CONNECTED),
+                new LobbyPlayer(PLAYER_3, "Carol", Faction.ERASERS, Instant.EPOCH, ConnectionStatus.CONNECTED));
+        var lobby = Lobby.reconstitute(
+                LOBBY_ID,
+                GAME_ID,
+                PLAYER_1,
+                players,
+                LobbyStatus.STARTED,
+                new LobbyConfig("ABCD", 3, 5, Clock.systemUTC()));
+        for (var playerId : abandonedPlayerIds) {
+            lobby.markPlayerAbandoned(playerId);
+        }
+        return lobby;
+    }
+
+    private void givenAbandoned(UUID... playerIds) {
+        given(lobbyRepository.findById(LOBBY_ID)).willReturn(Optional.of(lobby(playerIds)));
     }
 
     private void givenNoObjectivesMet(int eraNumber) {
@@ -336,8 +372,6 @@ class EraSagaAdvancerTest {
         // branch acquired findByIdWithLock's row lock -- mirrors the sibling no-winner-branch race below.
         var state = new EraSagaState(GAME_ID, 1, EraSagaStatus.WAITING_SCORES, PLAYER_IDS);
         given(eraSagaRepository.findByGameIdWithLock(GAME_ID)).willReturn(Optional.of(state));
-        given(gameRules.winScoreThreshold()).willReturn(WIN_THRESHOLD);
-        givenNoObjectivesMet(1);
         var game = Game.reconstitute(GAME_ID, LOBBY_ID, List.of(), 1, 3, GameStatus.ENDED_BY_COLLAPSE);
         given(gameRepository.findByIdWithLock(GAME_ID)).willReturn(Optional.of(game));
         var updates =
@@ -360,8 +394,6 @@ class EraSagaAdvancerTest {
         // given
         var state = new EraSagaState(GAME_ID, 1, EraSagaStatus.WAITING_SCORES, PLAYER_IDS);
         given(eraSagaRepository.findByGameIdWithLock(GAME_ID)).willReturn(Optional.of(state));
-        given(gameRules.winScoreThreshold()).willReturn(WIN_THRESHOLD);
-        givenNoObjectivesMet(1);
         var game = Game.reconstitute(GAME_ID, LOBBY_ID, List.of(), 1, 3, GameStatus.ENDED_BY_COLLAPSE);
         given(gameRepository.findByIdWithLock(GAME_ID)).willReturn(Optional.of(game));
 
@@ -670,9 +702,8 @@ class EraSagaAdvancerTest {
     void handleScoresUpdated_stabilization_qualifiedWeaverWinsNormallyFirst() {
         // given — a Weaver holding a completed chain at the boundary satisfies the faction
         // objective, so normal victory fires and the stabilization branch is never reached
-        var player3 = UUID.randomUUID();
-        var state =
-                new EraSagaState(GAME_ID, MAX_ERAS, EraSagaStatus.WAITING_SCORES, List.of(PLAYER_1, PLAYER_2, player3));
+        var state = new EraSagaState(
+                GAME_ID, MAX_ERAS, EraSagaStatus.WAITING_SCORES, List.of(PLAYER_1, PLAYER_2, PLAYER_3));
         given(eraSagaRepository.findByGameIdWithLock(GAME_ID)).willReturn(Optional.of(state));
         given(gameRules.winScoreThreshold()).willReturn(WIN_THRESHOLD);
         var game = Game.reconstitute(GAME_ID, LOBBY_ID, List.of(), MAX_ERAS, 0, GameStatus.IN_PROGRESS);
@@ -684,7 +715,7 @@ class EraSagaAdvancerTest {
         var updates = List.of(
                 new ScoresUpdated.ScoreUpdate(PLAYER_1, Faction.PROPHETS, 2, "bonus", 10),
                 new ScoresUpdated.ScoreUpdate(PLAYER_2, Faction.WEAVERS, 1, "bonus", 8),
-                new ScoresUpdated.ScoreUpdate(player3, Faction.ERASERS, 3, "bonus", 12));
+                new ScoresUpdated.ScoreUpdate(PLAYER_3, Faction.ERASERS, 3, "bonus", 12));
         var su = new ScoresUpdated(GAME_ID, MAX_ERAS, updates);
 
         var captor = ArgumentCaptor.<DomainEventEnvelope>captor();
@@ -829,11 +860,15 @@ class EraSagaAdvancerTest {
         // given
         var state = new EraSagaState(GAME_ID, 1, EraSagaStatus.WAITING_SCORES, PLAYER_IDS);
         given(eraSagaRepository.findByGameIdWithLock(GAME_ID)).willReturn(Optional.of(state));
+        var game = Game.reconstitute(GAME_ID, LOBBY_ID, List.of(), 1, 0, GameStatus.IN_PROGRESS);
+        given(gameRepository.findByIdWithLock(GAME_ID)).willReturn(Optional.of(game));
 
         // when
         advancer.handleResolutionFailed(GAME_ID, 1);
 
         // then
+        assertThat(game.status()).isEqualTo(GameStatus.ENDED_ABNORMALLY);
+        then(gameRepository).should().save(game);
         then(eraSagaRepository).should().save(argThat(s -> s.status() == EraSagaStatus.FAILED));
         var captor = ArgumentCaptor.<DomainEventEnvelope>captor();
         then(eventPublisher).should(times(2)).publish(captor.capture());
@@ -871,6 +906,170 @@ class EraSagaAdvancerTest {
 
         // then
         then(eraSagaRepository).should(never()).save(any());
+        then(eventPublisher).should(never()).publish(any());
+    }
+
+    @Test
+    @DisplayName("resolution failure after the game already ended publishes no second ending")
+    void handleResolutionFailed_gameAlreadyOver_noAbnormalEnding() {
+        // given
+        var state = new EraSagaState(GAME_ID, 1, EraSagaStatus.WAITING_SCORES, PLAYER_IDS);
+        given(eraSagaRepository.findByGameIdWithLock(GAME_ID)).willReturn(Optional.of(state));
+        var game = Game.reconstitute(GAME_ID, LOBBY_ID, List.of(), 1, 0, GameStatus.ENDED_BY_WIN);
+        given(gameRepository.findByIdWithLock(GAME_ID)).willReturn(Optional.of(game));
+
+        // when
+        advancer.handleResolutionFailed(GAME_ID, 1);
+
+        // then
+        then(gameRepository).should(never()).save(any());
+        then(eventPublisher).should(never()).publish(envelopeWithPayload(GameEndedAbnormally.class));
+    }
+
+    // --- abandonment ---
+
+    private Game givenWaitingScores(int eraNumber) {
+        var state = new EraSagaState(GAME_ID, eraNumber, EraSagaStatus.WAITING_SCORES, PLAYER_IDS);
+        given(eraSagaRepository.findByGameIdWithLock(GAME_ID)).willReturn(Optional.of(state));
+        var game = Game.reconstitute(GAME_ID, LOBBY_ID, List.of(), eraNumber, 0, GameStatus.IN_PROGRESS);
+        given(gameRepository.findByIdWithLock(GAME_ID)).willReturn(Optional.of(game));
+        return game;
+    }
+
+    @Test
+    @DisplayName("abandoned after reaching the threshold - no victory, the game continues")
+    void handleScoresUpdated_abandonedAfterReachingThreshold_doesNotWin() {
+        // given - PLAYER_1 banked the threshold before abandoning and scored nothing since
+        var game = givenWaitingScores(1);
+        givenAbandoned(PLAYER_1);
+        given(gameRules.winScoreThreshold()).willReturn(WIN_THRESHOLD);
+        given(gameRules.maxEras()).willReturn(MAX_ERAS);
+        givenNoObjectivesMet(1);
+        var su = new ScoresUpdated(
+                GAME_ID,
+                1,
+                List.of(
+                        new ScoresUpdated.ScoreUpdate(PLAYER_1, Faction.PROPHETS, 0, "none", WIN_THRESHOLD + 2),
+                        new ScoresUpdated.ScoreUpdate(PLAYER_2, Faction.WEAVERS, 1, "bonus", 8)));
+
+        // when
+        advancer.handleScoresUpdated(GAME_ID, su);
+
+        // then
+        assertThat(game.status()).isEqualTo(GameStatus.IN_PROGRESS);
+        then(eventPublisher).should(never()).publish(envelopeWithPayload(WinConditionMet.class));
+        then(eventPublisher).should().publish(envelopeWithPayload(EraStarted.class));
+    }
+
+    @Test
+    @DisplayName("abandoned before reaching the threshold - crossing it later does not win")
+    void handleScoresUpdated_abandonedThenCrossesThreshold_doesNotWin() {
+        // given
+        var game = givenWaitingScores(2);
+        givenAbandoned(PLAYER_1);
+        given(gameRules.winScoreThreshold()).willReturn(WIN_THRESHOLD);
+        given(gameRules.maxEras()).willReturn(MAX_ERAS);
+        givenNoObjectivesMet(2);
+        var su = new ScoresUpdated(
+                GAME_ID,
+                2,
+                List.of(
+                        new ScoresUpdated.ScoreUpdate(PLAYER_1, Faction.PROPHETS, 6, "written", WIN_THRESHOLD + 1),
+                        new ScoresUpdated.ScoreUpdate(PLAYER_2, Faction.WEAVERS, 1, "bonus", 8)));
+
+        // when
+        advancer.handleScoresUpdated(GAME_ID, su);
+
+        // then
+        assertThat(game.status()).isEqualTo(GameStatus.IN_PROGRESS);
+        then(eventPublisher).should(never()).publish(envelopeWithPayload(WinConditionMet.class));
+    }
+
+    @Test
+    @DisplayName("abandoned and connected players both at the threshold - only the connected player wins")
+    void handleScoresUpdated_abandonedAndConnectedQualify_onlyConnectedWins() {
+        // given
+        var game = givenWaitingScores(1);
+        givenAbandoned(PLAYER_1);
+        given(gameRules.winScoreThreshold()).willReturn(WIN_THRESHOLD);
+        givenNoObjectivesMet(1);
+        var su = new ScoresUpdated(
+                GAME_ID,
+                1,
+                List.of(
+                        new ScoresUpdated.ScoreUpdate(PLAYER_1, Faction.PROPHETS, 5, "bonus", 25),
+                        new ScoresUpdated.ScoreUpdate(PLAYER_2, Faction.WEAVERS, 5, "bonus", 21)));
+        var captor = ArgumentCaptor.<DomainEventEnvelope>captor();
+
+        // when
+        advancer.handleScoresUpdated(GAME_ID, su);
+
+        // then
+        assertThat(game.status()).isEqualTo(GameStatus.ENDED_BY_WIN);
+        then(eventPublisher).should().publish(captor.capture());
+        assertThat(((WinConditionMet) captor.getValue().payload()).winnerId()).isEqualTo(PLAYER_2);
+    }
+
+    @Test
+    @DisplayName("an abandoned player with a satisfied faction objective does not win")
+    void handleScoresUpdated_abandonedObjectiveMet_doesNotWin() {
+        // given
+        givenWaitingScores(1);
+        givenAbandoned(PLAYER_1);
+        given(gameRules.winScoreThreshold()).willReturn(WIN_THRESHOLD);
+        given(gameRules.maxEras()).willReturn(MAX_ERAS);
+        given(factionObjectives.evaluate(GAME_ID, 1))
+                .willReturn(List.of(
+                        new SessionFactionObjectivePort.ObjectiveProgress(PLAYER_1, Faction.PROPHETS, 5, 5, true),
+                        new SessionFactionObjectivePort.ObjectiveProgress(PLAYER_2, Faction.WEAVERS, 0, 3, false)));
+
+        // when
+        advancer.handleScoresUpdated(GAME_ID, noWinnerScores());
+
+        // then
+        then(eventPublisher).should(never()).publish(envelopeWithPayload(WinConditionMet.class));
+        then(eventPublisher).should().publish(envelopeWithPayload(EraStarted.class));
+    }
+
+    @Test
+    @DisplayName("TimelineStabilized - an abandoned qualifying Prophet loses and the rest are ranked")
+    void handleScoresUpdated_stabilization_abandonedProphetLoses() {
+        givenFinalEraWithoutQualifier();
+        givenAbandoned(PLAYER_1);
+        given(factionObjectives.evaluate(GAME_ID, MAX_ERAS))
+                .willReturn(List.of(
+                        new SessionFactionObjectivePort.ObjectiveProgress(PLAYER_1, Faction.PROPHETS, 4, 5, false),
+                        new SessionFactionObjectivePort.ObjectiveProgress(PLAYER_2, Faction.WEAVERS, 1, 3, false)));
+        var su = new ScoresUpdated(
+                GAME_ID,
+                MAX_ERAS,
+                List.of(
+                        new ScoresUpdated.ScoreUpdate(PLAYER_1, Faction.PROPHETS, 2, "bonus", 19),
+                        new ScoresUpdated.ScoreUpdate(PLAYER_2, Faction.WEAVERS, 1, "bonus", 15)));
+
+        var stabilized = stabilizedFrom(su);
+
+        assertThat(stabilized.winners())
+                .containsExactly(new TimelineStabilized.PlayerFactionResult(PLAYER_2, Faction.WEAVERS.name(), null));
+        assertThat(stabilized.losers())
+                .containsExactly(new TimelineStabilized.PlayerFactionResult(PLAYER_1, Faction.PROPHETS.name(), null));
+    }
+
+    @Test
+    @DisplayName("game already ended by last player standing - scores complete the saga with no events")
+    void handleScoresUpdated_gameAlreadyWon_completesWithoutEvents() {
+        // given
+        var state = new EraSagaState(GAME_ID, 1, EraSagaStatus.WAITING_SCORES, PLAYER_IDS);
+        given(eraSagaRepository.findByGameIdWithLock(GAME_ID)).willReturn(Optional.of(state));
+        var game = Game.reconstitute(GAME_ID, LOBBY_ID, List.of(), 1, 0, GameStatus.ENDED_BY_WIN);
+        given(gameRepository.findByIdWithLock(GAME_ID)).willReturn(Optional.of(game));
+
+        // when
+        advancer.handleScoresUpdated(GAME_ID, noWinnerScores());
+
+        // then
+        then(eraSagaRepository).should().save(state.withStatus(EraSagaStatus.COMPLETED));
+        then(gameRepository).should(never()).save(any());
         then(eventPublisher).should(never()).publish(any());
     }
 

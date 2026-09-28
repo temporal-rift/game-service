@@ -32,8 +32,8 @@ class LobbyPlayerJpaEntity {
     @Column(name = "joined_at", nullable = false)
     private Instant joinedAt;
 
-    @Column(name = "connected", nullable = false)
-    private boolean connected;
+    @Column(name = "connection_status", nullable = false, length = 20)
+    private String connectionStatus;
 
     protected LobbyPlayerJpaEntity() {}
 
@@ -77,11 +77,11 @@ class LobbyPlayerJpaEntity {
         this.joinedAt = joinedAt;
     }
 
-    boolean isConnected() {
-        return connected;
+    String getConnectionStatus() {
+        return connectionStatus;
     }
 
-    void setConnected(boolean connected) {
-        this.connected = connected;
+    void setConnectionStatus(String connectionStatus) {
+        this.connectionStatus = connectionStatus;
     }
 }

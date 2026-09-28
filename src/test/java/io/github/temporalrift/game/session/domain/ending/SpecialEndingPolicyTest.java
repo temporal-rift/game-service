@@ -18,7 +18,11 @@ class SpecialEndingPolicyTest {
     private static final StabilizationThresholds THRESHOLDS = new StabilizationThresholds(3, 2);
 
     private static Standing standing(Faction faction, int score, int objectiveProgress) {
-        return new Standing(UUID.randomUUID(), faction, score, objectiveProgress);
+        return new Standing(UUID.randomUUID(), faction, score, objectiveProgress, false);
+    }
+
+    private static Standing forfeited(Faction faction, int score, int objectiveProgress) {
+        return new Standing(UUID.randomUUID(), faction, score, objectiveProgress, true);
     }
 
     @Nested
@@ -126,6 +130,32 @@ class SpecialEndingPolicyTest {
                         .isFalse();
             }
         }
+
+        @Test
+        @DisplayName("abandoned Prophet meeting the threshold does not win; remaining players are ranked")
+        void abandonedProphet_doesNotWin() {
+            var prophet = forfeited(Faction.PROPHETS, 8, 3);
+            var eraser = standing(Faction.ERASERS, 18, 4);
+            var activist = standing(Faction.ACTIVISTS, 12, 2);
+
+            var winners = SpecialEndingPolicy.stabilizationWinners(List.of(prophet, eraser, activist), THRESHOLDS);
+
+            assertThat(winners).containsExactly(eraser.playerId());
+            assertThat(SpecialEndingPolicy.qualifiesForStabilization(prophet, THRESHOLDS))
+                    .isFalse();
+        }
+
+        @Test
+        @DisplayName("abandoned leader does not win the highest-score fallback")
+        void abandonedLeader_doesNotWinFallback() {
+            var eraser = forfeited(Faction.ERASERS, 18, 0);
+            var revisionist = standing(Faction.REVISIONISTS, 12, 0);
+            var activist = standing(Faction.ACTIVISTS, 11, 0);
+
+            var winners = SpecialEndingPolicy.stabilizationWinners(List.of(eraser, revisionist, activist), THRESHOLDS);
+
+            assertThat(winners).containsExactly(revisionist.playerId());
+        }
     }
 
     @Nested
@@ -165,6 +195,18 @@ class SpecialEndingPolicyTest {
 
             assertThat(SpecialEndingPolicy.collapseWinners(List.of(prophet, weaver, eraser, revisionist, activist)))
                     .containsExactlyInAnyOrder(prophet.playerId(), eraser.playerId());
+        }
+
+        @Test
+        @DisplayName("abandoned leader does not win collapse")
+        void abandonedLeader_doesNotWinCollapse() {
+            var leader = forfeited(Faction.ERASERS, 20, 0);
+            var second = standing(Faction.PROPHETS, 14, 0);
+            var third = standing(Faction.ACTIVISTS, 9, 0);
+
+            var winners = SpecialEndingPolicy.collapseWinners(List.of(leader, second, third));
+
+            assertThat(winners).containsExactly(second.playerId());
         }
     }
 

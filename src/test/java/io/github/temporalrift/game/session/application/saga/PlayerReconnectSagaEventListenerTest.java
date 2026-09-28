@@ -17,6 +17,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import io.github.temporalrift.game.session.domain.game.Game;
+import io.github.temporalrift.game.session.domain.game.GameStatus;
+import io.github.temporalrift.game.session.domain.lobby.ConnectionStatus;
 import io.github.temporalrift.game.session.domain.lobby.Lobby;
 import io.github.temporalrift.game.session.domain.lobby.LobbyConfig;
 import io.github.temporalrift.game.session.domain.lobby.LobbyPlayer;
@@ -48,7 +50,8 @@ class PlayerReconnectSagaEventListenerTest {
     LobbyRepository lobbyRepository;
 
     private Lobby startedLobby() {
-        var player = new LobbyPlayer(PLAYER_ID, "Alice", null, Instant.parse("2026-01-01T00:00:00Z"), false);
+        var player = new LobbyPlayer(
+                PLAYER_ID, "Alice", null, Instant.parse("2026-01-01T00:00:00Z"), ConnectionStatus.DISCONNECTED);
         return Lobby.reconstitute(
                 LOBBY_ID,
                 GAME_ID,
@@ -110,7 +113,8 @@ class PlayerReconnectSagaEventListenerTest {
                 saga, timerScheduler, stateManager, gameRepository, lobbyRepository);
         var event = new PlayerDisconnectedApplicationEvent(GAME_ID, PLAYER_ID);
         var game = new Game(GAME_ID, LOBBY_ID, List.of());
-        var player = new LobbyPlayer(PLAYER_ID, "Alice", null, Instant.parse("2026-01-01T00:00:00Z"), false);
+        var player = new LobbyPlayer(
+                PLAYER_ID, "Alice", null, Instant.parse("2026-01-01T00:00:00Z"), ConnectionStatus.DISCONNECTED);
         var waitingLobby = Lobby.reconstitute(
                 LOBBY_ID,
                 GAME_ID,
@@ -127,6 +131,45 @@ class PlayerReconnectSagaEventListenerTest {
         // then
         then(saga).should(never()).start(GAME_ID, PLAYER_ID);
         then(timerScheduler).shouldHaveNoInteractions();
+    }
+
+    @Test
+    @DisplayName("onPlayerDisconnected does nothing for a player who already abandoned")
+    void onPlayerDisconnected_abandonedPlayer_doesNothing() {
+        // given
+        var listener = new PlayerReconnectSagaEventListener(
+                saga, timerScheduler, stateManager, gameRepository, lobbyRepository);
+        var event = new PlayerDisconnectedApplicationEvent(GAME_ID, PLAYER_ID);
+        var game = new Game(GAME_ID, LOBBY_ID, List.of());
+        var lobby = startedLobby();
+        lobby.markPlayerAbandoned(PLAYER_ID);
+        given(gameRepository.findById(GAME_ID)).willReturn(Optional.of(game));
+        given(lobbyRepository.findById(LOBBY_ID)).willReturn(Optional.of(lobby));
+
+        // when
+        listener.onPlayerDisconnected(event);
+
+        // then
+        then(saga).should(never()).start(GAME_ID, PLAYER_ID);
+        then(timerScheduler).shouldHaveNoInteractions();
+    }
+
+    @Test
+    @DisplayName("onPlayerDisconnected does nothing once the game has ended")
+    void onPlayerDisconnected_gameEnded_doesNothing() {
+        // given
+        var listener = new PlayerReconnectSagaEventListener(
+                saga, timerScheduler, stateManager, gameRepository, lobbyRepository);
+        var event = new PlayerDisconnectedApplicationEvent(GAME_ID, PLAYER_ID);
+        var game = Game.reconstitute(GAME_ID, LOBBY_ID, List.of(), 2, 0, GameStatus.ENDED_BY_WIN);
+        given(gameRepository.findById(GAME_ID)).willReturn(Optional.of(game));
+
+        // when
+        listener.onPlayerDisconnected(event);
+
+        // then
+        then(saga).should(never()).start(GAME_ID, PLAYER_ID);
+        then(lobbyRepository).shouldHaveNoInteractions();
     }
 
     @Test

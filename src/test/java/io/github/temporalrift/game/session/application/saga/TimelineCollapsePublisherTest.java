@@ -22,6 +22,7 @@ import org.springframework.context.ApplicationEventPublisher;
 import io.github.temporalrift.game.session.domain.event.TimelineCollapsed;
 import io.github.temporalrift.game.session.domain.game.Game;
 import io.github.temporalrift.game.session.domain.game.GameStatus;
+import io.github.temporalrift.game.session.domain.lobby.ConnectionStatus;
 import io.github.temporalrift.game.session.domain.lobby.Lobby;
 import io.github.temporalrift.game.session.domain.lobby.LobbyConfig;
 import io.github.temporalrift.game.session.domain.lobby.LobbyPlayer;
@@ -103,6 +104,28 @@ class TimelineCollapsePublisherTest {
                 .containsExactly(PLAYER_1);
     }
 
+    @Test
+    @DisplayName("an abandoned leader loses collapse to the highest-scoring remaining player")
+    void publishCollapse_abandonedLeaderLoses() {
+        var game = Game.reconstitute(GAME_ID, LOBBY_ID, List.of(), 2, 3, GameStatus.IN_PROGRESS);
+        var lobby = startedLobby();
+        lobby.markPlayerAbandoned(PLAYER_1);
+        given(lobbyRepository.findById(LOBBY_ID)).willReturn(Optional.of(lobby));
+        given(scoreQueryPort.getScores(GAME_ID)).willReturn(scores(12, 4, 6));
+        var captor = ArgumentCaptor.<DomainEventEnvelope>captor();
+
+        publisher.publishCollapse(game, 2);
+
+        then(eventPublisher).should().publish(captor.capture());
+        var collapsed = (TimelineCollapsed) captor.getValue().payload();
+        assertThat(collapsed.winners())
+                .extracting(TimelineCollapsed.PlayerFactionResult::playerId)
+                .containsExactly(PLAYER_3);
+        assertThat(collapsed.losers())
+                .extracting(TimelineCollapsed.PlayerFactionResult::playerId)
+                .containsExactlyInAnyOrder(PLAYER_1, PLAYER_2);
+    }
+
     private static List<GameEnded.PlayerScoreResult> scores(int eraser, int activist, int revisionist) {
         return List.of(
                 new GameEnded.PlayerScoreResult(PLAYER_1, Faction.ERASERS.name(), eraser),
@@ -112,9 +135,9 @@ class TimelineCollapsePublisherTest {
 
     private static Lobby startedLobby() {
         var players = List.of(
-                new LobbyPlayer(PLAYER_1, "P1", Faction.ERASERS, Instant.EPOCH, true),
-                new LobbyPlayer(PLAYER_2, "P2", Faction.ACTIVISTS, Instant.EPOCH, true),
-                new LobbyPlayer(PLAYER_3, "P3", Faction.REVISIONISTS, Instant.EPOCH, true));
+                new LobbyPlayer(PLAYER_1, "P1", Faction.ERASERS, Instant.EPOCH, ConnectionStatus.CONNECTED),
+                new LobbyPlayer(PLAYER_2, "P2", Faction.ACTIVISTS, Instant.EPOCH, ConnectionStatus.CONNECTED),
+                new LobbyPlayer(PLAYER_3, "P3", Faction.REVISIONISTS, Instant.EPOCH, ConnectionStatus.CONNECTED));
         var config = new LobbyConfig("ABCD2345", 3, 5, Clock.systemUTC());
         return Lobby.reconstitute(LOBBY_ID, GAME_ID, PLAYER_1, players, LobbyStatus.STARTED, config);
     }

@@ -57,11 +57,6 @@ public class PlayerReconnectSagaAdapter implements PlayerReconnectSagaRepository
         return jpaRepository.compareAndSetStatus(sagaId, expected.name(), next.name()) == 1;
     }
 
-    @Override
-    public long countByGameIdAndStatus(UUID gameId, PlayerReconnectSagaStatus status) {
-        return jpaRepository.countByGameIdAndStatus(gameId, status.name());
-    }
-
     private PlayerReconnectSagaStateJpaEntity toEntity(PlayerReconnectSagaState state) {
         var entity = new PlayerReconnectSagaStateJpaEntity();
         entity.setSagaId(state.sagaId());

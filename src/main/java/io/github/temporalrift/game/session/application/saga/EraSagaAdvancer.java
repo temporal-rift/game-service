@@ -25,9 +25,12 @@ import io.github.temporalrift.game.session.domain.event.WinConditionMet;
 import io.github.temporalrift.game.session.domain.game.Game;
 import io.github.temporalrift.game.session.domain.game.GameNotFoundException;
 import io.github.temporalrift.game.session.domain.game.GameStatus;
+import io.github.temporalrift.game.session.domain.lobby.Lobby;
+import io.github.temporalrift.game.session.domain.lobby.LobbyNotFoundException;
 import io.github.temporalrift.game.session.domain.port.out.EraSagaRepository;
 import io.github.temporalrift.game.session.domain.port.out.EraSagaScoresUpdatedInboxRepository;
 import io.github.temporalrift.game.session.domain.port.out.GameRepository;
+import io.github.temporalrift.game.session.domain.port.out.LobbyRepository;
 import io.github.temporalrift.game.session.domain.port.out.SessionEventPublisher;
 import io.github.temporalrift.game.session.domain.port.out.SessionFactionObjectivePort;
 import io.github.temporalrift.game.session.domain.port.out.SessionGameRulesPort;
@@ -49,6 +52,7 @@ class EraSagaAdvancer {
     private final EraSagaRepository eraSagaRepository;
     private final EraSagaScoresUpdatedInboxRepository scoresUpdatedInbox;
     private final GameRepository gameRepository;
+    private final LobbyRepository lobbyRepository;
     private final SessionEventPublisher eventPublisher;
     private final ApplicationEventPublisher applicationEventPublisher;
     private final SagaHandoffPublisher sagaHandoffPublisher;
@@ -61,6 +65,7 @@ class EraSagaAdvancer {
             EraSagaRepository eraSagaRepository,
             EraSagaScoresUpdatedInboxRepository scoresUpdatedInbox,
             GameRepository gameRepository,
+            LobbyRepository lobbyRepository,
             SessionEventPublisher eventPublisher,
             ApplicationEventPublisher applicationEventPublisher,
             TimelineCollapsePublisher collapsePublisher,
@@ -70,6 +75,7 @@ class EraSagaAdvancer {
         this.eraSagaRepository = eraSagaRepository;
         this.scoresUpdatedInbox = scoresUpdatedInbox;
         this.gameRepository = gameRepository;
+        this.lobbyRepository = lobbyRepository;
         this.eventPublisher = eventPublisher;
         this.applicationEventPublisher = applicationEventPublisher;
         this.sagaHandoffPublisher = new SagaHandoffPublisher(applicationEventPublisher);
@@ -125,7 +131,14 @@ class EraSagaAdvancer {
                 .ifPresent(state -> {
                     eraSagaRepository.save(state.withStatus(EraSagaStatus.FAILED));
                     publishEvent(gameId, new EraFailed(gameId, state.eraNumber(), RESOLUTION_FAILED_REASON));
-                    publishEvent(gameId, new GameEndedAbnormally(gameId, RESOLUTION_FAILED_REASON));
+                    var game = gameRepository
+                            .findByIdWithLock(gameId)
+                            .orElseThrow(() -> new GameNotFoundException(gameId));
+                    if (game.status() == GameStatus.IN_PROGRESS) {
+                        game.endAbnormally();
+                        gameRepository.save(game);
+                        publishEvent(gameId, new GameEndedAbnormally(gameId, RESOLUTION_FAILED_REASON));
+                    }
                 });
     }
 
@@ -143,23 +156,22 @@ class EraSagaAdvancer {
     }
 
     private void processScoresUpdated(UUID gameId, EraSagaState state, ScoresUpdated su) {
-        var qualifiers = findQualifiers(gameId, su);
+        // Locked before qualifiers are evaluated, so an abandonment committed first is always
+        // visible here: it records the forfeit and can itself end the game under this same lock.
+        var game = gameRepository.findByIdWithLock(gameId).orElseThrow(() -> new GameNotFoundException(gameId));
+        // A late collapse (a separate saga) or last player standing can end the game before this
+        // era's scoring lands; both already published their ending.
+        if (game.status() != GameStatus.IN_PROGRESS) {
+            eraSagaRepository.save(state.withStatus(EraSagaStatus.COMPLETED));
+            return;
+        }
+        var lobby =
+                lobbyRepository.findById(game.lobbyId()).orElseThrow(() -> new LobbyNotFoundException(game.lobbyId()));
+        var qualifiers = findQualifiers(gameId, su, lobby);
         if (!qualifiers.isEmpty()) {
             // Normal victory outranks a same-era collapse: the resolution consumer defers the
             // collapse decision while this saga awaits scoring, so reaching this branch with
             // qualifiers means victory wins regardless of which fact was processed first.
-            // The ENDED_BY_COLLAPSE guard below only covers a late collapse that already
-            // published and committed before this branch acquired the lock.
-            var game = gameRepository.findByIdWithLock(gameId).orElseThrow(() -> new GameNotFoundException(gameId));
-            // A concurrent paradox-resolution collapse (a separate saga entirely) can win the
-            // lock on this same aggregate first: same race the no-winner branch below already
-            // guards against, just from the opposite trigger. Without this check, game.end()
-            // would throw GameAlreadyOverException uncaught and this era saga would never
-            // reach COMPLETED.
-            if (game.status() == GameStatus.ENDED_BY_COLLAPSE) {
-                eraSagaRepository.save(state.withStatus(EraSagaStatus.COMPLETED));
-                return;
-            }
             game.end();
             gameRepository.save(game);
             eraSagaRepository.save(state.withStatus(EraSagaStatus.COMPLETED));
@@ -176,11 +188,6 @@ class EraSagaAdvancer {
             }
             return;
         }
-        var game = gameRepository.findByIdWithLock(gameId).orElseThrow(() -> new GameNotFoundException(gameId));
-        if (game.status() == GameStatus.ENDED_BY_COLLAPSE) {
-            eraSagaRepository.save(state.withStatus(EraSagaStatus.COMPLETED));
-            return;
-        }
         if (game.collapsePending()) {
             game.endByCollapse();
             gameRepository.save(game);
@@ -193,7 +200,7 @@ class EraSagaAdvancer {
         eraSagaRepository.save(state.withStatus(EraSagaStatus.COMPLETED));
 
         if (game.status() == GameStatus.ENDED_BY_STABILIZATION) {
-            var stabilized = buildTimelineStabilized(gameId, su);
+            var stabilized = buildTimelineStabilized(gameId, su, lobby);
             sagaHandoffPublisher.publish(eventPublisher::publish, envelope(gameId, stabilized));
         } else {
             var carryOverEvents = game.drainPendingCarryOverEvents();
@@ -207,13 +214,16 @@ class EraSagaAdvancer {
 
     private record Qualifier(UUID playerId, Faction faction, int newTotal, String winType) {}
 
-    private List<Qualifier> findQualifiers(UUID gameId, ScoresUpdated su) {
+    private List<Qualifier> findQualifiers(UUID gameId, ScoresUpdated su, Lobby lobby) {
         var metByPlayer = new HashMap<UUID, Boolean>();
         for (var progress : factionObjectives.evaluate(gameId, su.eraNumber())) {
             metByPlayer.put(progress.playerId(), progress.objectiveMet());
         }
         var qualifiers = new ArrayList<Qualifier>();
         for (var update : su.updates()) {
+            if (lobby.isAbandoned(update.playerId())) {
+                continue;
+            }
             boolean thresholdMet = update.newTotal() >= gameRules.winScoreThreshold();
             boolean objectiveMet = Boolean.TRUE.equals(metByPlayer.get(update.playerId()));
             if (thresholdMet || objectiveMet) {
@@ -237,7 +247,7 @@ class EraSagaAdvancer {
                 gameId, Game.AGGREGATE_TYPE, gameId, DomainEventEnvelope.SCHEMA_VERSION_V1, payload, clock);
     }
 
-    private TimelineStabilized buildTimelineStabilized(UUID gameId, ScoresUpdated su) {
+    private TimelineStabilized buildTimelineStabilized(UUID gameId, ScoresUpdated su, Lobby lobby) {
         var progressByPlayer = new HashMap<UUID, Integer>();
         for (var progress : factionObjectives.evaluate(gameId, su.eraNumber())) {
             progressByPlayer.put(progress.playerId(), progress.progressCount());
@@ -247,7 +257,8 @@ class EraSagaAdvancer {
                         update.playerId(),
                         update.faction(),
                         update.newTotal(),
-                        progressByPlayer.getOrDefault(update.playerId(), 0)))
+                        progressByPlayer.getOrDefault(update.playerId(), 0),
+                        lobby.isAbandoned(update.playerId())))
                 .toList();
         var thresholds = gameRules.stabilizationThresholds();
         var winnerIds = SpecialEndingPolicy.stabilizationWinners(standings, thresholds);
