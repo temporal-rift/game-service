@@ -13,7 +13,7 @@
       <column name="player_id" type="UUID">
         <constraints primaryKey="true" nullable="false"/>
       </column>
-      <column name="player_name" type="TEXT">
+      <column name="player_name" type="VARCHAR(32)">
         <constraints nullable="false"/>
       </column>
       <column name="faction" type="TEXT"/>

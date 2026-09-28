@@ -37,7 +37,7 @@
             <column name="player_id" type="UUID">
                 <constraints nullable="false"/>
             </column>
-            <column name="player_name" type="VARCHAR(255)">
+            <column name="player_name" type="VARCHAR(32)">
                 <constraints nullable="false"/>
             </column>
         </createTable>

@@ -32,6 +32,17 @@
         <createIndex tableName="player_reconnect_saga_state" indexName="idx_reconnect_saga_status">
             <column name="status"/>
         </createIndex>
+
+        <comment>
+            Partial index for the reconnect sweep's due-GRACE_PERIOD query: the table accumulates
+            RECONNECTED/ABANDONED rows for every past disconnect, while the sweep polls every second
+            and only ever cares about the few active grace periods.
+        </comment>
+        <sql>
+            CREATE INDEX idx_player_reconnect_saga_grace_due
+                ON player_reconnect_saga_state (grace_expires_at)
+                WHERE status = 'GRACE_PERIOD'
+        </sql>
     </changeSet>
 
 </databaseChangeLog>
