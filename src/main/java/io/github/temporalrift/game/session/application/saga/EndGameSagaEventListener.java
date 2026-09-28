@@ -6,6 +6,7 @@ import java.util.stream.Stream;
 import org.springframework.modulith.events.ApplicationModuleListener;
 import org.springframework.stereotype.Component;
 
+import io.github.temporalrift.game.session.domain.event.GameEndedAbnormally;
 import io.github.temporalrift.game.session.domain.event.TimelineCollapsed;
 import io.github.temporalrift.game.session.domain.event.TimelineStabilized;
 import io.github.temporalrift.game.session.domain.event.WinConditionMet;
@@ -23,6 +24,15 @@ class EndGameSagaEventListener {
     @ApplicationModuleListener
     void onWinConditionMet(WinConditionMet event) {
         gameEndSaga.start(event.gameId(), EndGameTrigger.WIN_CONDITION_MET, event.winnerId());
+    }
+
+    @ApplicationModuleListener
+    void onGameEndedAbnormally(GameEndedAbnormally event) {
+        var trigger = switch (event.reason()) {
+            case DECK_EXHAUSTED -> EndGameTrigger.DECK_EXHAUSTED;
+            case RESOLUTION_FAILED -> EndGameTrigger.RESOLUTION_FAILED;
+        };
+        gameEndSaga.start(event.gameId(), trigger);
     }
 
     @ApplicationModuleListener

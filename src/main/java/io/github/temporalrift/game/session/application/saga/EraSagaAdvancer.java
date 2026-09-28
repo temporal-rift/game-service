@@ -137,7 +137,8 @@ class EraSagaAdvancer {
                     if (game.status() == GameStatus.IN_PROGRESS) {
                         game.endAbnormally();
                         gameRepository.save(game);
-                        publishEvent(gameId, new GameEndedAbnormally(gameId, RESOLUTION_FAILED_REASON));
+                        var ended = new GameEndedAbnormally(gameId, GameEndedAbnormally.Reason.RESOLUTION_FAILED);
+                        sagaHandoffPublisher.publish(eventPublisher::publish, envelope(gameId, ended));
                     }
                 });
     }

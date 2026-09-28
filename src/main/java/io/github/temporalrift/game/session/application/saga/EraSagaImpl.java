@@ -100,13 +100,15 @@ class EraSagaImpl implements EraSaga {
             stateManager.fail(gameId);
             game.endAbnormally();
             gameRepository.save(game);
-            eventPublisher.publish(DomainEventEnvelope.create(
-                    game.id(),
-                    Game.AGGREGATE_TYPE,
-                    gameId,
-                    DomainEventEnvelope.SCHEMA_VERSION_V1,
-                    new GameEndedAbnormally(gameId, "deck-exhausted"),
-                    clock));
+            sagaHandoffPublisher.publish(
+                    eventPublisher::publish,
+                    DomainEventEnvelope.create(
+                            game.id(),
+                            Game.AGGREGATE_TYPE,
+                            gameId,
+                            DomainEventEnvelope.SCHEMA_VERSION_V1,
+                            new GameEndedAbnormally(gameId, GameEndedAbnormally.Reason.DECK_EXHAUSTED),
+                            clock));
         }
     }
 

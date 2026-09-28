@@ -10,6 +10,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import io.github.temporalrift.game.session.domain.event.GameEndedAbnormally;
 import io.github.temporalrift.game.session.domain.event.TimelineCollapsed;
 import io.github.temporalrift.game.session.domain.event.TimelineStabilized;
 import io.github.temporalrift.game.session.domain.event.WinConditionMet;
@@ -61,5 +62,17 @@ class EndGameSagaEventListenerTest {
                 List.of(new TimelineStabilized.PlayerFactionResult(loserId, "ACTIVISTS", 0))));
 
         then(endGameSaga).should().start(gameId, EndGameTrigger.TIMELINE_STABILIZED, winnerId, loserId);
+    }
+
+    @Test
+    void onGameEndedAbnormally_startsSagaWithTheMatchingTrigger() {
+        var listener = new EndGameSagaEventListener(endGameSaga);
+        var gameId = UUID.randomUUID();
+
+        listener.onGameEndedAbnormally(new GameEndedAbnormally(gameId, GameEndedAbnormally.Reason.DECK_EXHAUSTED));
+        listener.onGameEndedAbnormally(new GameEndedAbnormally(gameId, GameEndedAbnormally.Reason.RESOLUTION_FAILED));
+
+        then(endGameSaga).should().start(gameId, EndGameTrigger.DECK_EXHAUSTED);
+        then(endGameSaga).should().start(gameId, EndGameTrigger.RESOLUTION_FAILED);
     }
 }
