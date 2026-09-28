@@ -34,6 +34,11 @@ class EraSagaEventListener {
     }
 
     @ApplicationModuleListener
+    void onBandsPublished(BandsPublishedApplicationEvent event) {
+        eraSagaAdvancer.handleBandsPublished(event.gameId(), event.eraNumber());
+    }
+
+    @ApplicationModuleListener
     void onResolutionFailed(ResolutionFailedApplicationEvent event) {
         eraSagaAdvancer.handleResolutionFailed(event.gameId(), event.eraNumber());
     }

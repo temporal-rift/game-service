@@ -10,7 +10,6 @@ public sealed interface ActionEventPayload
         permits ActivistDeclarationRecorded,
                 ActionRoundStarted,
                 ActionRoundTimerExpired,
-                BandedProbabilityPublished,
                 CardPlayed,
                 ExposeBehaviorChanged,
                 ExposeSignatureRevealed,

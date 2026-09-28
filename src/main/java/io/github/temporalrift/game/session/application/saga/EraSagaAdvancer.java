@@ -102,7 +102,7 @@ class EraSagaAdvancer {
         findExpectedStatus(arc.roundNumber())
                 .ifPresent(expectedStatus -> eraSagaRepository
                         .findByGameIdWithLock(gameId)
-                        .filter(s -> s.status() == expectedStatus)
+                        .filter(s -> s.status() == expectedStatus && s.eraNumber() == arc.eraNumber())
                         .ifPresent(state -> advanceRound(state, arc)));
     }
 
@@ -150,13 +150,40 @@ class EraSagaAdvancer {
         if (arc.roundNumber() == FINAL_ROUND) {
             eraSagaRepository.save(state.withStatus(EraSagaStatus.WAITING_SCORES));
             publishEvent(state.gameId(), new ResolutionStarted(state.gameId(), state.eraNumber()));
+        } else if (arc.roundNumber() == 2) {
+            var waiting = state.withStatus(EraSagaStatus.WAITING_BANDS);
+            eraSagaRepository.save(waiting);
+            openFinalRoundIfReady(waiting);
         } else {
             var nextRound = arc.roundNumber() + 1;
-            var nextStatus = arc.roundNumber() == 1 ? EraSagaStatus.WAITING_ROUND_2 : EraSagaStatus.WAITING_ROUND_3;
+            var nextStatus = EraSagaStatus.WAITING_ROUND_2;
             eraSagaRepository.save(state.withStatus(nextStatus));
             applicationEventPublisher.publishEvent(
                     new StartActionRoundRequested(state.gameId(), state.eraNumber(), nextRound, state.playerIds()));
         }
+    }
+
+    @Transactional(propagation = REQUIRES_NEW)
+    void handleBandsPublished(UUID gameId, int eraNumber) {
+        eraSagaRepository
+                .findByGameIdWithLock(gameId)
+                .filter(state -> state.eraNumber() == eraNumber)
+                .filter(state -> state.status() == EraSagaStatus.WAITING_ROUND_2
+                        || state.status() == EraSagaStatus.WAITING_BANDS)
+                .ifPresent(state -> {
+                    var ready = state.markBandsPublished();
+                    eraSagaRepository.save(ready);
+                    openFinalRoundIfReady(ready);
+                });
+    }
+
+    private void openFinalRoundIfReady(EraSagaState state) {
+        if (state.status() != EraSagaStatus.WAITING_BANDS || !state.bandsPublished()) {
+            return;
+        }
+        eraSagaRepository.save(state.withStatus(EraSagaStatus.WAITING_ROUND_3));
+        applicationEventPublisher.publishEvent(
+                new StartActionRoundRequested(state.gameId(), state.eraNumber(), FINAL_ROUND, state.playerIds()));
     }
 
     private void processScoresUpdated(UUID gameId, EraSagaState state, ScoresUpdated su) {

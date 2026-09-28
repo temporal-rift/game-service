@@ -37,8 +37,7 @@ import io.github.temporalrift.game.session.domain.port.out.GameRepository;
  * each listener silently missed the records assigned to the other. Every logical timeline-event consumer now has its
  * own group and receives the same partition.
  *
- * <p>Compatible deployment set exercised here: the timeline producer's band correction in its renamed 3.0.0 form is
- * published on the same key and claimed by no game-service consumer, while every other fact still reaches its owner.
+ * <p>Authoritative bands are claimed by the session phase gate; other consumers skip them.
  */
 @GameServiceIntegrationTest
 class TimelineEventsConsumerGroupsIT {
@@ -96,14 +95,13 @@ class TimelineEventsConsumerGroupsIT {
                         cascadedEventId,
                         List.of(),
                         List.of(UUID.randomUUID())));
-        // The renamed band correction supersedes game-service's own preview for this game and era
-        // and no game-service consumer owns it, so it must be skipped without claiming.
+        // Authoritative bands belong to the session phase gate.
         var bands = event(
                 gameId,
                 "AdjustedBandsPublished",
                 "FutureEvent",
                 new AdjustedBandsPublishedPayload(gameId, ERA_NUMBER, List.of()));
-        // A later record each group claims, proving it polled past the correction. The payload names a
+        // A later record each group claims, proving it polled past the bands. The payload names a
         // different game than the header, so the resolution-failed consumer claims it and then discards
         // it before publishing — advancing its partition without touching saga state.
         var resolutionFailed = event(
@@ -114,7 +112,7 @@ class TimelineEventsConsumerGroupsIT {
                         UUID.randomUUID(), ERA_NUMBER, UUID.randomUUID(), "PROBABILITY_SUM_INVALID"));
 
         // Same key — all records land in the same partition, which is exactly the case a shared
-        // consumer group could not deliver to every listener. The correction rides first so every later
+        // consumer group could not deliver to every listener. The bands ride first so every later
         // claim proves its group already polled past it; phase and resolution records still publish in
         // resolution order so the barrier closes a phase that is actually open.
         send(gameId, bands);
@@ -136,11 +134,12 @@ class TimelineEventsConsumerGroupsIT {
         awaitProcessed(cascade, "scoring.timeline-events");
         awaitProcessed(outcome, "scoring.timeline-events");
         awaitProcessed(resolutionFailed, "session.resolution-failed");
+        awaitProcessed(bands, "session.bands-published");
 
         assertThat(cascadeFactCount(gameId, paradoxId)).isEqualTo(1);
         assertThat(phaseStatus(gameId)).isEqualTo("CLOSED");
-        // Every group above claimed a record published after the correction on the same key, so each
-        // has polled past it — and none of them may have claimed it.
+        // Every group above claimed a record published after the bands on the same key, so each
+        // unrelated consumer has polled past it without claiming it.
         assertNeverClaimed(
                 bands,
                 "session.era-resolution-completed",

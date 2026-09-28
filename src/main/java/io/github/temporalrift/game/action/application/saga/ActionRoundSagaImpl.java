@@ -29,7 +29,6 @@ import io.github.temporalrift.game.action.domain.actionround.SubmittedAction;
 import io.github.temporalrift.game.action.domain.activisterastate.ProbabilityInfluenceSignature;
 import io.github.temporalrift.game.action.domain.event.ActionEventPayload;
 import io.github.temporalrift.game.action.domain.event.ActionRoundTimerExpired;
-import io.github.temporalrift.game.action.domain.event.BandedProbabilityPublished;
 import io.github.temporalrift.game.action.domain.event.ExposeBehaviorChanged;
 import io.github.temporalrift.game.action.domain.event.ExposeSignatureRevealed;
 import io.github.temporalrift.game.action.domain.event.HandCardIntercepted;
@@ -75,7 +74,6 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
     private final ActionRoundSagaStateManager stateManager;
     private final GameRulesPort gameRules;
     private final FutureEventDefinitionPort futureEventDefinitionPort;
-    private final BandCalculator bandCalculator;
     private final ActionRoundTimerRegistry timerRegistry;
     private final Clock clock;
 
@@ -87,7 +85,6 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
             ActionRoundSagaStateManager stateManager,
             GameRulesPort gameRules,
             FutureEventDefinitionPort futureEventDefinitionPort,
-            BandCalculator bandCalculator,
             ActionRoundTimerRegistry timerRegistry,
             Clock clock) {
         this.actionRoundRepository = actionRoundRepository;
@@ -97,7 +94,6 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
         this.stateManager = stateManager;
         this.gameRules = gameRules;
         this.futureEventDefinitionPort = futureEventDefinitionPort;
-        this.bandCalculator = bandCalculator;
         this.timerRegistry = timerRegistry;
         this.clock = clock;
     }
@@ -215,7 +211,6 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
                 reconcileObscureState(liveActions, gameId, roundNumber);
 
                 if (roundNumber == SIGNATURE_REVEAL_ROUND_NUMBER) {
-                    publishBandedProbabilities(gameId, eraNumber, round);
                     publishExposeSignatures(gameId, eraNumber, liveActions);
                 }
                 if (roundNumber == FINAL_ROUND_NUMBER) {
@@ -493,23 +488,6 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
                     }
                 });
         return correlations;
-    }
-
-    private void publishBandedProbabilities(UUID gameId, int eraNumber, ActionRound round2) {
-        var round1 = actionRoundRepository
-                .findByGameIdAndEraNumberAndRoundNumber(gameId, eraNumber, 1)
-                .orElseThrow(
-                        () -> new IllegalStateException("Round 1 not found for game " + gameId + " era " + eraNumber));
-        var initialDefinitions = futureEventDefinitionPort.findByGameIdAndEraNumber(gameId, eraNumber);
-        var bandStates = bandCalculator.computeBands(
-                uncancelledActionList(round1), uncancelledActionList(round2), initialDefinitions);
-        actionEventPublisher.publish(DomainEventEnvelope.create(
-                round2.id(),
-                ActionRound.AGGREGATE_TYPE,
-                gameId,
-                DomainEventEnvelope.SCHEMA_VERSION_V1,
-                new BandedProbabilityPublished(gameId, eraNumber, bandStates),
-                clock));
     }
 
     private void publishExposeSignatures(UUID gameId, int eraNumber, List<SubmittedAction> liveActions) {

@@ -10,7 +10,6 @@ import io.github.temporalrift.game.action.domain.event.ActionEventPayload;
 import io.github.temporalrift.game.action.domain.event.ActionRoundStarted;
 import io.github.temporalrift.game.action.domain.event.ActionRoundTimerExpired;
 import io.github.temporalrift.game.action.domain.event.ActivistDeclarationRecorded;
-import io.github.temporalrift.game.action.domain.event.BandedProbabilityPublished;
 import io.github.temporalrift.game.action.domain.event.CardPlayed;
 import io.github.temporalrift.game.action.domain.event.ExposeBehaviorChanged;
 import io.github.temporalrift.game.action.domain.event.ExposeSignatureRevealed;
@@ -79,8 +78,6 @@ class ActionEventPublisherAdapter implements ActionEventPublisher {
             case PlayerSkipped payload -> outboundEvents.publish("PlayerSkipped", mapper.toWire(payload), event);
             case RoundSummaryPublished payload ->
                 outboundEvents.publish("RoundSummaryPublished", mapper.toWire(payload), event);
-            case BandedProbabilityPublished payload ->
-                outboundEvents.publish("BandedProbabilityPublished", mapper.toWire(payload), event);
         }
     }
 
