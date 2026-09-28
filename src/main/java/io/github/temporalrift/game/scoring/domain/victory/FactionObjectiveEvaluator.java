@@ -4,6 +4,7 @@ import java.util.HashSet;
 import java.util.Objects;
 
 import io.github.temporalrift.game.scoring.domain.playerscore.PlayerScore;
+import io.github.temporalrift.game.scoring.domain.playerscore.ScoreEntry;
 import io.github.temporalrift.game.scoring.domain.playerscore.ScoreReason;
 import io.github.temporalrift.game.scoring.domain.port.out.VictoryRulesPort;
 
@@ -44,16 +45,17 @@ public final class FactionObjectiveEvaluator {
         return new Progress(completed ? chainLength : weaverActiveChainLinks(score), chainLength, completed);
     }
 
+    // Keyed on era, not history position (which is only ordered by era): an era's single pending link either
+    // confirms or breaks the chain, so a break and a link never share an era.
     private static int weaverActiveChainLinks(PlayerScore score) {
-        int links = 0;
-        for (var entry : score.history()) {
-            if (entry.reason() == ScoreReason.CHAIN_BROKEN) {
-                links = 0;
-            } else if (entry.reason() == ScoreReason.CHAIN_LINK_ADDED) {
-                links++;
-            }
-        }
-        return links;
+        int latestBreakEra = score.history().stream()
+                .filter(entry -> entry.reason() == ScoreReason.CHAIN_BROKEN)
+                .mapToInt(ScoreEntry::eraNumber)
+                .max()
+                .orElse(0);
+        return (int) score.history().stream()
+                .filter(entry -> entry.reason() == ScoreReason.CHAIN_LINK_ADDED && entry.eraNumber() > latestBreakEra)
+                .count();
     }
 
     private static int eraserAnnihilations(PlayerScore score) {
