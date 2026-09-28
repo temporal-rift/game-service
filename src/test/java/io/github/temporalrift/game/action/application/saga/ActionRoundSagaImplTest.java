@@ -44,7 +44,6 @@ import io.github.temporalrift.game.action.domain.activisterastate.ActivistEraSta
 import io.github.temporalrift.game.action.domain.activisterastate.ProbabilityInfluenceSignature;
 import io.github.temporalrift.game.action.domain.event.ActionRoundStarted;
 import io.github.temporalrift.game.action.domain.event.ActionRoundTimerExpired;
-import io.github.temporalrift.game.action.domain.event.BandedProbabilityPublished;
 import io.github.temporalrift.game.action.domain.event.HandCardIntercepted;
 import io.github.temporalrift.game.action.domain.event.InfluenceTraced;
 import io.github.temporalrift.game.action.domain.event.PlayerJammed;
@@ -105,9 +104,6 @@ class ActionRoundSagaImplTest {
     FutureEventDefinitionPort futureEventDefinitionPort;
 
     @Mock
-    BandCalculator bandCalculator;
-
-    @Mock
     ActionRoundTimerRegistry timerRegistry;
 
     ActionRoundSagaImpl saga;
@@ -122,7 +118,6 @@ class ActionRoundSagaImplTest {
                 stateManager,
                 gameRules,
                 futureEventDefinitionPort,
-                bandCalculator,
                 timerRegistry,
                 CLOCK);
     }
@@ -484,75 +479,58 @@ class ActionRoundSagaImplTest {
             then(actionEventPublisher).should(times(1)).publish(envelopeWithPayload(RoundSummaryPublished.class));
         }
 
-        @Test
-        @DisplayName("Round 2 — publishes BandedProbabilityPublished in addition to RoundSummaryPublished")
-        void tryClose_round2_publishesBandedProbabilities() {
-            // given
-            var round2Id = UUID.randomUUID();
-            var round1Id = UUID.randomUUID();
-            var round2 = new ActionRound(
-                    round2Id,
-                    new ActionRoundConfig(GAME_ID, ERA_NUMBER, 2, TIMER_SECONDS),
+        @org.junit.jupiter.params.ParameterizedTest
+        @org.junit.jupiter.params.provider.ValueSource(strings = {"sealed", "corrupted", "redirected", "carried"})
+        void roundTwoClose_publishesOnlySummary(String scenario) {
+            var era = scenario.equals("carried") ? 2 : ERA_NUMBER;
+            var eventId = UUID.randomUUID();
+            var outcomeId = UUID.randomUUID();
+            var first = new ActionRound(
+                    UUID.randomUUID(),
+                    new ActionRoundConfig(GAME_ID, era, 1, TIMER_SECONDS),
                     List.of(PLAYER_1, PLAYER_2));
-            var cancelledPush = new SubmittedAction.CardAction(
-                    PLAYER_1, UUID.randomUUID(), CardType.PUSH, UUID.randomUUID(), null, UUID.randomUUID());
-            round2.submit(cancelledPush);
-            round2.submit(nullify(PLAYER_2, PLAYER_1));
-            var round1 =
-                    new ActionRound(round1Id, new ActionRoundConfig(GAME_ID, ERA_NUMBER, 1, TIMER_SECONDS), List.of());
+            first.submit(new SubmittedAction.CardAction(
+                    PLAYER_1, UUID.randomUUID(), CardType.PUSH, CardGrade.III, eventId, null, outcomeId, null));
+            if (scenario.equals("corrupted")) {
+                first.submit(new SubmittedAction.SpecialActionSubmission(
+                        PLAYER_2, Faction.ERASERS, SpecialAction.CORRUPT, null, null, null, null, PLAYER_1));
+            } else if (scenario.equals("sealed")) {
+                first.submit(new SubmittedAction.SpecialActionSubmission(
+                        PLAYER_2, Faction.PROPHETS, SpecialAction.SEAL, null, null, eventId, outcomeId, null));
+            } else if (scenario.equals("redirected")) {
+                first.submit(new SubmittedAction.CardAction(
+                        PLAYER_2, UUID.randomUUID(), CardType.REDIRECT, CardGrade.I, null, null, null, PLAYER_1));
+            }
+            lenient()
+                    .when(futureEventDefinitionPort.findByGameIdAndEraNumber(GAME_ID, era))
+                    .thenReturn(List.of(new FutureEventDefinitionPort.EventDefinition(
+                            eventId,
+                            List.of(
+                                    new FutureEventDefinitionPort.OutcomeDefinition(outcomeId, 33),
+                                    new FutureEventDefinitionPort.OutcomeDefinition(UUID.randomUUID(), 33),
+                                    new FutureEventDefinitionPort.OutcomeDefinition(UUID.randomUUID(), 34)))));
+            var second = new ActionRound(
+                    UUID.randomUUID(), new ActionRoundConfig(GAME_ID, era, 2, TIMER_SECONDS), List.of());
+            given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, era, 2))
+                    .willReturn(Optional.of(second));
+            lenient()
+                    .when(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumber(GAME_ID, era, 1))
+                    .thenReturn(Optional.of(first));
+            var waiting = new ActionRoundSagaState(
+                    UUID.randomUUID(), GAME_ID, era, 2, ActionRoundSagaStatus.WAITING, List.of(), TIMER_EXPIRES_AT);
+            given(stateManager.markSubmitted(GAME_ID, era, 2, PLAYER_1)).willReturn(Optional.of(waiting));
 
-            given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA_NUMBER, 2))
-                    .willReturn(Optional.of(round2));
-            given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumber(GAME_ID, ERA_NUMBER, 1))
-                    .willReturn(Optional.of(round1));
-            given(futureEventDefinitionPort.findByGameIdAndEraNumber(GAME_ID, ERA_NUMBER))
-                    .willReturn(List.of());
-            given(bandCalculator.computeBands(any(), any(), any())).willReturn(List.of());
+            saga.handlePlayerSubmitted(GAME_ID, era, 2, PLAYER_1);
 
-            // when — simulate all-submitted path for round 2
-            var updatedState = new ActionRoundSagaState(
-                    UUID.randomUUID(),
-                    GAME_ID,
-                    ERA_NUMBER,
-                    2,
-                    ActionRoundSagaStatus.WAITING,
-                    List.of(),
-                    TIMER_EXPIRES_AT);
-            given(stateManager.markSubmitted(GAME_ID, ERA_NUMBER, 2, PLAYER_1)).willReturn(Optional.of(updatedState));
-            saga.handlePlayerSubmitted(GAME_ID, ERA_NUMBER, 2, PLAYER_1);
-
-            // then
-            then(actionEventPublisher).should(times(1)).publish(envelopeWithPayload(RoundSummaryPublished.class));
-            then(actionEventPublisher).should(times(1)).publish(envelopeWithPayload(BandedProbabilityPublished.class));
-            var captor = ArgumentCaptor.<List<SubmittedAction>>captor();
-            then(bandCalculator).should(times(1)).computeBands(any(), captor.capture(), any());
-            assertThat(captor.getValue()).doesNotContain(cancelledPush);
-        }
-
-        @Test
-        @DisplayName("Round 1 — does not publish BandedProbabilityPublished")
-        void tryClose_round1_doesNotPublishBandedProbabilities() {
-            // given
-            var roundId = UUID.randomUUID();
-            var round =
-                    new ActionRound(roundId, new ActionRoundConfig(GAME_ID, ERA_NUMBER, 1, TIMER_SECONDS), List.of());
-            given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA_NUMBER, 1))
-                    .willReturn(Optional.of(round));
-
-            // when
-            var updatedState = new ActionRoundSagaState(
-                    UUID.randomUUID(),
-                    GAME_ID,
-                    ERA_NUMBER,
-                    1,
-                    ActionRoundSagaStatus.WAITING,
-                    List.of(),
-                    TIMER_EXPIRES_AT);
-            given(stateManager.markSubmitted(GAME_ID, ERA_NUMBER, 1, PLAYER_1)).willReturn(Optional.of(updatedState));
-            saga.handlePlayerSubmitted(GAME_ID, ERA_NUMBER, 1, PLAYER_1);
-
-            // then
-            then(actionEventPublisher).should(never()).publish(envelopeWithPayload(BandedProbabilityPublished.class));
+            var published = ArgumentCaptor.<DomainEventEnvelope>captor();
+            then(actionEventPublisher).should(times(2)).publish(published.capture());
+            assertThat(published.getAllValues())
+                    .extracting(envelope -> envelope.payload().getClass().getSimpleName())
+                    .containsExactly("ActionRoundStarted", "RoundSummaryPublished");
+            then(actionEventPublisher).should().publishRoundClosed(any());
+            then(actionEventPublisher).should(times(2)).publishInternally(any());
+            then(actionEventPublisher).shouldHaveNoMoreInteractions();
+            then(futureEventDefinitionPort).shouldHaveNoInteractions();
         }
     }
 
@@ -1015,17 +993,12 @@ class ActionRoundSagaImplTest {
             // when
             saga.handlePlayerSubmitted(GAME_ID, ERA_NUMBER, 1, PLAYER_1);
 
-            // given — round 2 (also publishes BandedProbabilityPublished, needs its own stubs)
+            // given — round 2
             var round2Id = UUID.randomUUID();
             var round2 =
                     new ActionRound(round2Id, new ActionRoundConfig(GAME_ID, ERA_NUMBER, 2, TIMER_SECONDS), List.of());
             given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA_NUMBER, 2))
                     .willReturn(Optional.of(round2));
-            given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumber(GAME_ID, ERA_NUMBER, 1))
-                    .willReturn(Optional.of(round1));
-            given(futureEventDefinitionPort.findByGameIdAndEraNumber(GAME_ID, ERA_NUMBER))
-                    .willReturn(List.of());
-            given(bandCalculator.computeBands(any(), any(), any())).willReturn(List.of());
             var updatedState2 = new ActionRoundSagaState(
                     UUID.randomUUID(),
                     GAME_ID,
@@ -1816,14 +1789,6 @@ class ActionRoundSagaImplTest {
                     UUID.randomUUID(), new ActionRoundConfig(GAME_ID, ERA_NUMBER, 2, TIMER_SECONDS), List.of(PLAYER_2));
             given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA_NUMBER, 2))
                     .willReturn(Optional.of(round));
-            given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumber(GAME_ID, ERA_NUMBER, 1))
-                    .willReturn(Optional.of(new ActionRound(
-                            UUID.randomUUID(),
-                            new ActionRoundConfig(GAME_ID, ERA_NUMBER, 1, TIMER_SECONDS),
-                            List.of(PLAYER_2))));
-            given(futureEventDefinitionPort.findByGameIdAndEraNumber(GAME_ID, ERA_NUMBER))
-                    .willReturn(List.of());
-            given(bandCalculator.computeBands(any(), any(), any())).willReturn(List.of());
             given(playerStateRepository.findAllByGameId(GAME_ID)).willReturn(List.of(target));
             given(stateManager.markSubmitted(GAME_ID, ERA_NUMBER, 2, PLAYER_2))
                     .willReturn(Optional.of(new ActionRoundSagaState(
@@ -1859,14 +1824,6 @@ class ActionRoundSagaImplTest {
                     PLAYER_1, UUID.randomUUID(), CardType.JAM, CardGrade.I, null, null, null, PLAYER_2));
             given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA_NUMBER, 2))
                     .willReturn(Optional.of(round));
-            given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumber(GAME_ID, ERA_NUMBER, 1))
-                    .willReturn(Optional.of(new ActionRound(
-                            UUID.randomUUID(),
-                            new ActionRoundConfig(GAME_ID, ERA_NUMBER, 1, TIMER_SECONDS),
-                            List.of(PLAYER_1, PLAYER_2))));
-            given(futureEventDefinitionPort.findByGameIdAndEraNumber(GAME_ID, ERA_NUMBER))
-                    .willReturn(List.of());
-            given(bandCalculator.computeBands(any(), any(), any())).willReturn(List.of());
             given(playerStateRepository.findAllByGameId(GAME_ID)).willReturn(List.of(target));
             given(stateManager.markSubmitted(GAME_ID, ERA_NUMBER, 2, PLAYER_1))
                     .willReturn(Optional.of(new ActionRoundSagaState(
@@ -1975,14 +1932,6 @@ class ActionRoundSagaImplTest {
                     UUID.randomUUID(), new ActionRoundConfig(GAME_ID, ERA_NUMBER, 2, TIMER_SECONDS), List.of(PLAYER_2));
             given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA_NUMBER, 2))
                     .willReturn(Optional.of(round));
-            given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumber(GAME_ID, ERA_NUMBER, 1))
-                    .willReturn(Optional.of(new ActionRound(
-                            UUID.randomUUID(),
-                            new ActionRoundConfig(GAME_ID, ERA_NUMBER, 1, TIMER_SECONDS),
-                            List.of(PLAYER_2))));
-            given(futureEventDefinitionPort.findByGameIdAndEraNumber(GAME_ID, ERA_NUMBER))
-                    .willReturn(List.of());
-            given(bandCalculator.computeBands(any(), any(), any())).willReturn(List.of());
             given(playerStateRepository.findAllByGameId(GAME_ID)).willReturn(List.of(target));
             given(stateManager.markSubmitted(GAME_ID, ERA_NUMBER, 2, PLAYER_2))
                     .willReturn(Optional.of(new ActionRoundSagaState(
@@ -2632,14 +2581,6 @@ class ActionRoundSagaImplTest {
             }
             given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA_NUMBER, 2))
                     .willReturn(Optional.of(roundTwo));
-            given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumber(GAME_ID, ERA_NUMBER, 1))
-                    .willReturn(Optional.of(new ActionRound(
-                            UUID.randomUUID(),
-                            new ActionRoundConfig(GAME_ID, ERA_NUMBER, 1, TIMER_SECONDS),
-                            List.of())));
-            given(futureEventDefinitionPort.findByGameIdAndEraNumber(GAME_ID, ERA_NUMBER))
-                    .willReturn(List.of());
-            given(bandCalculator.computeBands(any(), any(), any())).willReturn(List.of());
             var lastSubmittedPlayer = cancelled ? PLAYER_3 : PLAYER_1;
             given(stateManager.markSubmitted(GAME_ID, ERA_NUMBER, 2, lastSubmittedPlayer))
                     .willReturn(waitingState(ERA_NUMBER, 2));
@@ -2672,7 +2613,6 @@ class ActionRoundSagaImplTest {
             lenient()
                     .when(futureEventDefinitionPort.findByGameIdAndEraNumber(GAME_ID, ERA_NUMBER))
                     .thenReturn(List.of());
-            lenient().when(bandCalculator.computeBands(any(), any(), any())).thenReturn(List.of());
             lenient()
                     .when(gameRules.cardCategoryWeights())
                     .thenReturn(Map.of(

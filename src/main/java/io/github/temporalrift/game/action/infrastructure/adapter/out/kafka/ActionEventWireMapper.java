@@ -7,9 +7,6 @@ import io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract.Act
 import io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract.ActionRoundTimerExpiredPayload;
 import io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract.ActionSummary;
 import io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract.ActivistDeclarationRecordedPayload;
-import io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract.BandedProbabilityEventBandState;
-import io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract.BandedProbabilityOutcomeBandState;
-import io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract.BandedProbabilityPublishedPayload;
 import io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract.CardPlayedPayload;
 import io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract.ExposeBehaviorChangedPayload;
 import io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract.ExposeInfluenceSignature;
@@ -26,7 +23,6 @@ import io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract.Spe
 import io.github.temporalrift.game.action.domain.event.ActionRoundStarted;
 import io.github.temporalrift.game.action.domain.event.ActionRoundTimerExpired;
 import io.github.temporalrift.game.action.domain.event.ActivistDeclarationRecorded;
-import io.github.temporalrift.game.action.domain.event.BandedProbabilityPublished;
 import io.github.temporalrift.game.action.domain.event.CardPlayed;
 import io.github.temporalrift.game.action.domain.event.ExposeBehaviorChanged;
 import io.github.temporalrift.game.action.domain.event.ExposeSignatureRevealed;
@@ -85,10 +81,4 @@ interface ActionEventWireMapper {
     RoundSummaryPublishedPayload toWire(RoundSummaryPublished event);
 
     ActionSummary toWire(RoundSummaryPublished.ActionSummary summary);
-
-    BandedProbabilityPublishedPayload toWire(BandedProbabilityPublished event);
-
-    BandedProbabilityEventBandState toWire(BandedProbabilityPublished.EventBandState eventBandState);
-
-    BandedProbabilityOutcomeBandState toWire(BandedProbabilityPublished.OutcomeBandState outcomeBandState);
 }

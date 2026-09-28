@@ -78,6 +78,12 @@ class EraSagaEventListenerTest {
     }
 
     @Test
+    void onBandsPublished_delegatesCurrentEra() {
+        listener.onBandsPublished(new BandsPublishedApplicationEvent(GAME_ID, 2));
+        then(eraSagaAdvancer).should().handleBandsPublished(GAME_ID, 2);
+    }
+
+    @Test
     @DisplayName("ResolutionFailed — delegates matching game and era to the advancer")
     void onResolutionFailed_delegatesToAdvancerHandleResolutionFailed() {
         // given

@@ -22,6 +22,9 @@
             <column name="hand_selected_player_ids" type="UUID[]" defaultValueComputed="ARRAY[]::UUID[]">
                 <constraints nullable="false"/>
             </column>
+            <column name="bands_published" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
         </createTable>
     </changeSet>
 

@@ -32,6 +32,17 @@ public class EraSagaStateJpaEntity {
     @JdbcTypeCode(SqlTypes.ARRAY)
     private List<UUID> handSelectedPlayerIds;
 
+    @Column(name = "bands_published", nullable = false)
+    private boolean bandsPublished;
+
+    public boolean isBandsPublished() {
+        return bandsPublished;
+    }
+
+    public void setBandsPublished(boolean bandsPublished) {
+        this.bandsPublished = bandsPublished;
+    }
+
     protected EraSagaStateJpaEntity() {}
 
     public UUID getGameId() {

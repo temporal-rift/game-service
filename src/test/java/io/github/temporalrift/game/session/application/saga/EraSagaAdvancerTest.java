@@ -152,6 +152,68 @@ class EraSagaAdvancerTest {
         given(factionObjectives.evaluate(GAME_ID, eraNumber)).willReturn(List.of());
     }
 
+    private void givenMutableState(EraSagaState initial) {
+        var stored = new java.util.concurrent.atomic.AtomicReference<>(initial);
+        given(eraSagaRepository.findByGameIdWithLock(GAME_ID)).willAnswer(_ -> Optional.of(stored.get()));
+        org.mockito.Mockito.lenient().when(eraSagaRepository.save(any())).thenAnswer(invocation -> {
+            var state = invocation.<EraSagaState>getArgument(0);
+            stored.set(state);
+            return state;
+        });
+    }
+
+    @Test
+    void lateBands_openRoundThreeOnce() {
+        givenMutableState(new EraSagaState(GAME_ID, 1, EraSagaStatus.WAITING_ROUND_2, PLAYER_IDS));
+        var closure = new ActionRoundClosed(GAME_ID, 1, 2, "ALL_SUBMITTED", 2);
+        advancer.handleRoundClosed(GAME_ID, closure);
+        then(applicationEventPublisher).shouldHaveNoInteractions();
+        advancer.handleBandsPublished(GAME_ID, 1);
+        advancer.handleBandsPublished(GAME_ID, 1);
+        advancer.handleRoundClosed(GAME_ID, closure);
+        then(applicationEventPublisher).should().publishEvent(new StartActionRoundRequested(GAME_ID, 1, 3, PLAYER_IDS));
+        then(applicationEventPublisher).shouldHaveNoMoreInteractions();
+    }
+
+    @Test
+    void earlyBands_surviveStatusChangesAndOpenRoundThreeOnce() {
+        givenMutableState(new EraSagaState(GAME_ID, 1, EraSagaStatus.WAITING_ROUND_2, PLAYER_IDS));
+        advancer.handleBandsPublished(GAME_ID, 1);
+        then(applicationEventPublisher).shouldHaveNoInteractions();
+        advancer.handleRoundClosed(GAME_ID, new ActionRoundClosed(GAME_ID, 1, 2, "ALL_SUBMITTED", 2));
+        then(applicationEventPublisher).should().publishEvent(new StartActionRoundRequested(GAME_ID, 1, 3, PLAYER_IDS));
+        then(applicationEventPublisher).shouldHaveNoMoreInteractions();
+    }
+
+    @Test
+    void staleEraFacts_doNotAdvanceCurrentEra() {
+        givenMutableState(new EraSagaState(GAME_ID, 2, EraSagaStatus.WAITING_ROUND_2, PLAYER_IDS));
+        advancer.handleBandsPublished(GAME_ID, 1);
+        advancer.handleRoundClosed(GAME_ID, new ActionRoundClosed(GAME_ID, 1, 2, "ALL_SUBMITTED", 2));
+        then(eraSagaRepository).should(never()).save(any());
+        then(applicationEventPublisher).shouldHaveNoInteractions();
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.EnumSource(
+            value = EraSagaStatus.class,
+            names = {
+                "RUNNING",
+                "WAITING_HAND_SELECTION",
+                "WAITING_DECLARATION",
+                "WAITING_ROUND_1",
+                "WAITING_ROUND_3",
+                "WAITING_SCORES",
+                "COMPLETED",
+                "FAILED"
+            })
+    void bandsOutsideRoundTwoBarrier_doNotOpenRound(EraSagaStatus status) {
+        givenMutableState(new EraSagaState(GAME_ID, 1, status, PLAYER_IDS));
+        advancer.handleBandsPublished(GAME_ID, 1);
+        then(eraSagaRepository).should(never()).save(any());
+        then(applicationEventPublisher).shouldHaveNoInteractions();
+    }
+
     // ─── handleRoundClosed ───────────────────────────────────────────────────
 
     private static DomainEventEnvelope envelopeWithPayload(Class<?> payloadType) {
@@ -183,27 +245,17 @@ class EraSagaAdvancerTest {
     }
 
     @Test
-    @DisplayName("round 2 closed in WAITING_ROUND_2 — advances to WAITING_ROUND_3, no ResolutionStarted")
-    void handleRoundClosed_round2_advancesToWaitingRound3() {
+    @DisplayName("round 2 closed in WAITING_ROUND_2 — waits for authoritative bands")
+    void handleRoundClosed_round2_waitsForBands() {
         // given
         var state = new EraSagaState(GAME_ID, 1, EraSagaStatus.WAITING_ROUND_2, PLAYER_IDS);
         given(eraSagaRepository.findByGameIdWithLock(GAME_ID)).willReturn(Optional.of(state));
         var arc = new ActionRoundClosed(GAME_ID, 1, 2, "ALL_SUBMITTED", 4);
-        var captor = ArgumentCaptor.forClass(Object.class);
-
-        // when
         advancer.handleRoundClosed(GAME_ID, arc);
 
-        // then
-        then(eraSagaRepository).should().save(argThat(s -> s.status() == EraSagaStatus.WAITING_ROUND_3));
-        verify(applicationEventPublisher).publishEvent(captor.capture());
-        assertThat(captor.getValue()).isInstanceOf(StartActionRoundRequested.class);
-        var event = (StartActionRoundRequested) captor.getValue();
-        assertThat(event.gameId()).isEqualTo(GAME_ID);
-        assertThat(event.eraNumber()).isEqualTo(1);
-        assertThat(event.roundNumber()).isEqualTo(3);
-        assertThat(event.playerIds()).isEqualTo(PLAYER_IDS);
-        then(eventPublisher).should(never()).publish(any());
+        then(eraSagaRepository).should().save(argThat(s -> s.status() == EraSagaStatus.WAITING_BANDS));
+        then(applicationEventPublisher).shouldHaveNoInteractions();
+        then(eventPublisher).shouldHaveNoInteractions();
     }
 
     @Test

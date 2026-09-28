@@ -41,6 +41,7 @@ public class EraSagaAdapter implements EraSagaRepository {
         entity.setStatus(state.status().name());
         entity.setPlayerIds(state.playerIds());
         entity.setHandSelectedPlayerIds(state.handSelectedPlayerIds());
+        entity.setBandsPublished(state.bandsPublished());
         return entity;
     }
 
@@ -50,6 +51,7 @@ public class EraSagaAdapter implements EraSagaRepository {
                 entity.getEraNumber(),
                 EraSagaStatus.valueOf(entity.getStatus()),
                 entity.getPlayerIds(),
-                entity.getHandSelectedPlayerIds());
+                entity.getHandSelectedPlayerIds(),
+                entity.isBandsPublished());
     }
 }
