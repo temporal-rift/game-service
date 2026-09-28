@@ -22,6 +22,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.kafka.support.KafkaNull;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.support.MessageBuilder;
 import tools.jackson.databind.json.JsonMapper;
@@ -127,6 +128,20 @@ class ResolutionFailedKafkaConsumerTest {
         // then
         then(processedEventRepository).should(never()).tryMarkProcessed(any(), any());
         then(applicationEventPublisher).should(never()).publishEvent(any());
+    }
+
+    @Test
+    void handle_tombstone_ignoredBeforeClaiming() {
+        var message = MessageBuilder.withPayload((Object) KafkaNull.INSTANCE)
+                .setHeader("eventType", "ResolutionFailed")
+                .setHeader("eventId", EVENT_ID.toString())
+                .setHeader("version", "1")
+                .build();
+
+        consumer.handle(message);
+
+        then(processedEventRepository).shouldHaveNoInteractions();
+        then(applicationEventPublisher).shouldHaveNoInteractions();
     }
 
     @Test
