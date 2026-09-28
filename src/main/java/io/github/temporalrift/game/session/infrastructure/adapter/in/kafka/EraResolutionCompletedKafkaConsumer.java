@@ -107,11 +107,11 @@ class EraResolutionCompletedKafkaConsumer {
         var game = gameRepository
                 .findByIdWithLock(resolution.gameId())
                 .orElseThrow(() -> new GameNotFoundException(resolution.gameId()));
-        // Called even with an empty list so Game.pendingCollapsingEventId() always reflects this era's
+        // Called even with an empty list so Game.collapsePending() always reflects this era's
         // actual cascades, not a stale value left over from an earlier era.
-        final UUID collapsingEventId;
+        final boolean collapseReached;
         try {
-            collapsingEventId =
+            collapseReached =
                     game.recordCascadedParadoxesInRevealOrder(cascadedEventIds, gameRules.maxCascadedParadoxes());
         } catch (GameAlreadyOverException _) {
             log.info("EraResolutionCompleted ignored for game {} — already over", resolution.gameId());
@@ -122,10 +122,9 @@ class EraResolutionCompletedKafkaConsumer {
         }
         gameRepository.save(game);
 
-        if (collapsingEventId == null) {
-            return;
+        if (collapseReached) {
+            finishCollapse(game, saga, resolution);
         }
-        finishCollapse(game, saga, resolution, collapsingEventId);
     }
 
     private static List<PendingCarryOverEvent> carryOverEvents(EraResolutionCompleted resolution) {
@@ -147,8 +146,7 @@ class EraResolutionCompletedKafkaConsumer {
                 .toList();
     }
 
-    private void finishCollapse(
-            Game game, Optional<EraSagaState> saga, EraResolutionCompleted resolution, UUID collapsingEventId) {
+    private void finishCollapse(Game game, Optional<EraSagaState> saga, EraResolutionCompleted resolution) {
         // Normal victory outranks same-era collapse: while the era saga still awaits this era's
         // scoring, the collapse fact stays recorded but undecided and EraSagaAdvancer makes the
         // single era-end decision once qualifiers are known. Only a late collapse — arriving after
@@ -172,6 +170,6 @@ class EraResolutionCompletedKafkaConsumer {
         }
         game.endByCollapse();
         gameRepository.save(game);
-        collapsePublisher.publishCollapse(game, resolution.eraNumber(), collapsingEventId);
+        collapsePublisher.publishCollapse(game, resolution.eraNumber());
     }
 }

@@ -140,14 +140,53 @@ class FactionObjectiveEvaluatorTest {
     }
 
     @Test
-    @DisplayName("weaver without a completion does not meet the objective")
-    void weaver_noCompletion_objectiveNotMet() {
+    @DisplayName("weaver without a completion reports the active chain's confirmed links")
+    void weaver_noCompletion_reportsActiveLinks() {
         var score = score(Faction.WEAVERS);
         score.apply(1, ScoreReason.CHAIN_LINK_ADDED, 2);
+        score.apply(2, ScoreReason.CHAIN_LINK_ADDED, 2);
+
+        var progress = FactionObjectiveEvaluator.evaluate(score, 2, RULES);
+
+        assertThat(progress.objectiveMet()).isFalse();
+        assertThat(progress.progressCount()).isEqualTo(2);
+    }
+
+    @Test
+    @DisplayName("weaver without any confirmed link reports no progress")
+    void weaver_noLinks_noProgress() {
+        var score = score(Faction.WEAVERS);
 
         var progress = FactionObjectiveEvaluator.evaluate(score, 1, RULES);
 
         assertThat(progress.objectiveMet()).isFalse();
+        assertThat(progress.progressCount()).isZero();
+    }
+
+    @Test
+    @DisplayName("links of a broken chain do not count toward the rebuilt chain")
+    void weaver_brokenChain_countsOnlyLinksAfterBreak() {
+        var score = score(Faction.WEAVERS);
+        score.apply(1, ScoreReason.CHAIN_LINK_ADDED, 2);
+        score.apply(2, ScoreReason.CHAIN_LINK_ADDED, 2);
+        score.apply(3, ScoreReason.CHAIN_BROKEN, -3);
+        score.apply(4, ScoreReason.CHAIN_LINK_ADDED, 2);
+
+        var progress = FactionObjectiveEvaluator.evaluate(score, 4, RULES);
+
+        assertThat(progress.objectiveMet()).isFalse();
+        assertThat(progress.progressCount()).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("a broken chain with no later link reports no progress")
+    void weaver_brokenChainNotRebuilt_noProgress() {
+        var score = score(Faction.WEAVERS);
+        score.apply(1, ScoreReason.CHAIN_LINK_ADDED, 2);
+        score.apply(2, ScoreReason.CHAIN_BROKEN, -3);
+
+        var progress = FactionObjectiveEvaluator.evaluate(score, 2, RULES);
+
         assertThat(progress.progressCount()).isZero();
     }
 

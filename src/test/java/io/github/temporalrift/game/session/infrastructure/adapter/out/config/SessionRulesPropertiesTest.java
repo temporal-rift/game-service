@@ -1,21 +1,27 @@
 package io.github.temporalrift.game.session.infrastructure.adapter.out.config;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 
 import java.util.Map;
 import java.util.Set;
 
+import jakarta.validation.Validation;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.boot.context.properties.bind.BindException;
+import org.springframework.boot.context.properties.bind.Bindable;
 import org.springframework.boot.context.properties.bind.Binder;
+import org.springframework.boot.context.properties.bind.validation.ValidationBindHandler;
 import org.springframework.boot.context.properties.source.ConfigurationPropertySources;
 import org.springframework.mock.env.MockPropertySource;
+import org.springframework.validation.beanvalidation.SpringValidatorAdapter;
 
+import io.github.temporalrift.game.session.domain.ending.StabilizationThresholds;
 import io.github.temporalrift.game.shared.domain.model.CardCategory;
 import io.github.temporalrift.game.shared.domain.model.CardGrade;
 import io.github.temporalrift.game.shared.domain.model.CardType;
-import io.github.temporalrift.game.shared.domain.model.Faction;
 import io.github.temporalrift.game.shared.domain.model.SpecialAction;
 
 class SessionRulesPropertiesTest {
@@ -40,7 +46,7 @@ class SessionRulesPropertiesTest {
                         CardCategory.DISRUPTION, 25,
                         CardCategory.PARADOX, 15),
                 Map.of(CardGrade.I, 60, CardGrade.II, 30, CardGrade.III, 10),
-                Set.of(Faction.PROPHETS, Faction.WEAVERS),
+                new SessionRulesProperties.Stabilization(3, 2),
                 Set.of(SpecialAction.ANNIHILATE, SpecialAction.SEAL, SpecialAction.CORRUPT, SpecialAction.MIMIC),
                 2,
                 Set.of());
@@ -96,7 +102,7 @@ class SessionRulesPropertiesTest {
                         Map.of(3, 30),
                         Map.of(CardCategory.PARADOX, 1),
                         Map.of(CardGrade.I, 1),
-                        Set.of(Faction.PROPHETS),
+                        new SessionRulesProperties.Stabilization(3, 2),
                         Set.of(SpecialAction.ANNIHILATE),
                         2,
                         Set.of()))
@@ -121,7 +127,7 @@ class SessionRulesPropertiesTest {
                         Map.of(3, 30),
                         Map.of(CardCategory.PARADOX, 1),
                         Map.of(CardGrade.I, 1),
-                        Set.of(Faction.PROPHETS),
+                        new SessionRulesProperties.Stabilization(3, 2),
                         Set.of(SpecialAction.ANNIHILATE),
                         2,
                         Set.of(
@@ -154,7 +160,7 @@ class SessionRulesPropertiesTest {
                                 null,
                                 Map.of(CardCategory.PARADOX, 1),
                                 Map.of(CardGrade.I, 1),
-                                Set.of(Faction.PROPHETS),
+                                new SessionRulesProperties.Stabilization(3, 2),
                                 Set.of(SpecialAction.ANNIHILATE),
                                 2,
                                 Set.of())
@@ -172,7 +178,30 @@ class SessionRulesPropertiesTest {
     @Test
     @DisplayName("binding without seal-max-uses-per-game — defaults to two uses")
     void bindingWithoutSealMaxUsesPerGame_defaultsToTwo() {
-        var source = new MockPropertySource()
+        var source = minimalRules();
+        var binder = new Binder(ConfigurationPropertySources.from(source));
+
+        var bound = binder.bind("game.rules", SessionRulesProperties.class).orElseThrow(IllegalStateException::new);
+
+        assertThat(bound.sealMaxUsesPerGame()).isEqualTo(2);
+        assertThat(bound.stabilizationThresholds()).isEqualTo(new StabilizationThresholds(3, 2));
+    }
+
+    @Test
+    @DisplayName("binding stabilization thresholds maps them to the domain thresholds")
+    void bindingStabilizationThresholds_mapsToDomainThresholds() {
+        var source = minimalRules()
+                .withProperty("game.rules.stabilization.prophet-written-resolutions", "4")
+                .withProperty("game.rules.stabilization.weaver-active-chain-links", "1");
+        var binder = new Binder(ConfigurationPropertySources.from(source));
+
+        var bound = binder.bind("game.rules", SessionRulesProperties.class).orElseThrow(IllegalStateException::new);
+
+        assertThat(bound.stabilizationThresholds()).isEqualTo(new StabilizationThresholds(4, 1));
+    }
+
+    private static MockPropertySource minimalRules() {
+        return new MockPropertySource()
                 .withProperty("game.rules.min-players", "3")
                 .withProperty("game.rules.max-players", "5")
                 .withProperty("game.rules.max-eras", "5")
@@ -191,13 +220,23 @@ class SessionRulesPropertiesTest {
                 .withProperty("game.rules.card-grade-weights.I", "60")
                 .withProperty("game.rules.card-grade-weights.II", "30")
                 .withProperty("game.rules.card-grade-weights.III", "10")
-                .withProperty("game.rules.stabilization-winner-factions[0]", "PROPHETS")
                 .withProperty("game.rules.once-era-budgeted-specials[0]", "SEAL");
-        var binder = new Binder(ConfigurationPropertySources.from(source));
+    }
 
-        var bound = binder.bind("game.rules", SessionRulesProperties.class).orElseThrow(IllegalStateException::new);
+    private static SessionRulesProperties bindValidated(MockPropertySource source) {
+        var validator = new SpringValidatorAdapter(
+                Validation.buildDefaultValidatorFactory().getValidator());
+        return new Binder(ConfigurationPropertySources.from(source))
+                .bind("game.rules", Bindable.of(SessionRulesProperties.class), new ValidationBindHandler(validator))
+                .orElseThrow(IllegalStateException::new);
+    }
 
-        assertThat(bound.sealMaxUsesPerGame()).isEqualTo(2);
+    @Test
+    @DisplayName("a non-positive stabilization threshold fails binding")
+    void nonPositiveStabilizationThreshold_failsBinding() {
+        var source = minimalRules().withProperty("game.rules.stabilization.weaver-active-chain-links", "0");
+
+        assertThatExceptionOfType(BindException.class).isThrownBy(() -> bindValidated(source));
     }
 
     @Test
@@ -218,7 +257,7 @@ class SessionRulesPropertiesTest {
                         Map.of(3, 0),
                         Map.of(CardCategory.PARADOX, 1),
                         Map.of(CardGrade.I, 1),
-                        Set.of(Faction.PROPHETS),
+                        new SessionRulesProperties.Stabilization(3, 2),
                         Set.of(SpecialAction.ANNIHILATE),
                         2,
                         Set.of()))

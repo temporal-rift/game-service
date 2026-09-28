@@ -19,7 +19,9 @@
       <column name="era_counter" type="INT">
         <constraints nullable="false"/>
       </column>
-      <column name="pending_collapsing_event_id" type="UUID"/>
+      <column name="collapse_pending" type="BOOLEAN">
+        <constraints nullable="false"/>
+      </column>
     </createTable>
   </changeSet>
 

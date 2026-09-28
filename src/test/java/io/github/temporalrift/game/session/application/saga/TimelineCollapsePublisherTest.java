@@ -26,9 +26,10 @@ import io.github.temporalrift.game.session.domain.lobby.Lobby;
 import io.github.temporalrift.game.session.domain.lobby.LobbyConfig;
 import io.github.temporalrift.game.session.domain.lobby.LobbyPlayer;
 import io.github.temporalrift.game.session.domain.lobby.LobbyStatus;
+import io.github.temporalrift.game.session.domain.port.out.FinalScoreQueryPort;
 import io.github.temporalrift.game.session.domain.port.out.LobbyRepository;
-import io.github.temporalrift.game.session.domain.port.out.SessionActivistDeclarationRepository;
 import io.github.temporalrift.game.session.domain.port.out.SessionEventPublisher;
+import io.github.temporalrift.game.shared.domain.event.GameEnded;
 import io.github.temporalrift.game.shared.domain.messaging.DomainEventEnvelope;
 import io.github.temporalrift.game.shared.domain.model.Faction;
 
@@ -45,7 +46,7 @@ class TimelineCollapsePublisherTest {
     LobbyRepository lobbyRepository;
 
     @Mock
-    SessionActivistDeclarationRepository declarationRepository;
+    FinalScoreQueryPort scoreQueryPort;
 
     @Mock
     SessionEventPublisher eventPublisher;
@@ -58,50 +59,55 @@ class TimelineCollapsePublisherTest {
     @BeforeEach
     void setUp() {
         publisher = new TimelineCollapsePublisher(
-                lobbyRepository, declarationRepository, eventPublisher, applicationEventPublisher, Clock.systemUTC());
+                lobbyRepository, scoreQueryPort, eventPublisher, applicationEventPublisher, Clock.systemUTC());
     }
 
     @Test
-    @DisplayName("reveal-ordered collapsing event decides Activist winners")
-    void publishCollapse_targetingActivistWins() {
-        var collapsingEvent = UUID.randomUUID();
+    @DisplayName("the highest scorer wins collapse whatever their faction")
+    void publishCollapse_highestScorerWins() {
         var game = Game.reconstitute(GAME_ID, LOBBY_ID, List.of(), 2, 3, GameStatus.IN_PROGRESS);
         given(lobbyRepository.findById(LOBBY_ID)).willReturn(Optional.of(startedLobby()));
-        given(declarationRepository.findPlayerIdsTargeting(GAME_ID, 2, collapsingEvent))
-                .willReturn(List.of(PLAYER_2));
+        given(scoreQueryPort.getScores(GAME_ID)).willReturn(scores(9, 4, 6));
         var captor = ArgumentCaptor.<DomainEventEnvelope>captor();
 
-        publisher.publishCollapse(game, 2, collapsingEvent);
+        publisher.publishCollapse(game, 2);
+
+        then(eventPublisher).should().publish(captor.capture());
+        var collapsed = (TimelineCollapsed) captor.getValue().payload();
+        assertThat(collapsed.eraNumber()).isEqualTo(2);
+        assertThat(collapsed.winners())
+                .extracting(TimelineCollapsed.PlayerFactionResult::playerId)
+                .containsExactly(PLAYER_1);
+        assertThat(collapsed.losers())
+                .extracting(TimelineCollapsed.PlayerFactionResult::playerId)
+                .containsExactlyInAnyOrder(PLAYER_2, PLAYER_3);
+    }
+
+    @Test
+    @DisplayName("players tied on the highest score share the collapse win")
+    void publishCollapse_tiedHighestScoresShare() {
+        var game = Game.reconstitute(GAME_ID, LOBBY_ID, List.of(), 3, 3, GameStatus.IN_PROGRESS);
+        given(lobbyRepository.findById(LOBBY_ID)).willReturn(Optional.of(startedLobby()));
+        given(scoreQueryPort.getScores(GAME_ID)).willReturn(scores(-2, 5, 5));
+        var captor = ArgumentCaptor.<DomainEventEnvelope>captor();
+
+        publisher.publishCollapse(game, 3);
 
         then(eventPublisher).should().publish(captor.capture());
         var collapsed = (TimelineCollapsed) captor.getValue().payload();
         assertThat(collapsed.winners())
                 .extracting(TimelineCollapsed.PlayerFactionResult::playerId)
-                .containsExactly(PLAYER_2);
+                .containsExactlyInAnyOrder(PLAYER_2, PLAYER_3);
         assertThat(collapsed.losers())
                 .extracting(TimelineCollapsed.PlayerFactionResult::playerId)
-                .containsExactlyInAnyOrder(PLAYER_1, PLAYER_3);
+                .containsExactly(PLAYER_1);
     }
 
-    @Test
-    @DisplayName("non-Activist targeting the collapsing event does not win")
-    void publishCollapse_nonActivistTargetingDoesNotWin() {
-        var collapsingEvent = UUID.randomUUID();
-        var game = Game.reconstitute(GAME_ID, LOBBY_ID, List.of(), 2, 3, GameStatus.IN_PROGRESS);
-        given(lobbyRepository.findById(LOBBY_ID)).willReturn(Optional.of(startedLobby()));
-        given(declarationRepository.findPlayerIdsTargeting(GAME_ID, 2, collapsingEvent))
-                .willReturn(List.of(PLAYER_1));
-        var captor = ArgumentCaptor.<DomainEventEnvelope>captor();
-
-        publisher.publishCollapse(game, 2, collapsingEvent);
-
-        then(eventPublisher).should().publish(captor.capture());
-        var collapsed = (TimelineCollapsed) captor.getValue().payload();
-        assertThat(collapsed.winners()).isEmpty();
-        assertThat(collapsed.losers())
-                .extracting(TimelineCollapsed.PlayerFactionResult::playerId)
-                .containsExactlyInAnyOrder(PLAYER_1, PLAYER_2, PLAYER_3);
-        then(declarationRepository).should().findPlayerIdsTargeting(GAME_ID, 2, collapsingEvent);
+    private static List<GameEnded.PlayerScoreResult> scores(int eraser, int activist, int revisionist) {
+        return List.of(
+                new GameEnded.PlayerScoreResult(PLAYER_1, Faction.ERASERS.name(), eraser),
+                new GameEnded.PlayerScoreResult(PLAYER_2, Faction.ACTIVISTS.name(), activist),
+                new GameEnded.PlayerScoreResult(PLAYER_3, Faction.REVISIONISTS.name(), revisionist));
     }
 
     private static Lobby startedLobby() {

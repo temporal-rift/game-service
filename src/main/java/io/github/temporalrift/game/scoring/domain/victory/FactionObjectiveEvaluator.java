@@ -36,13 +36,24 @@ public final class FactionObjectiveEvaluator {
     }
 
     /**
-     * A completed chain satisfies the length requirement exactly: completion fires at length 3 and
-     * completed chains reject further links, so a completion counts as a full qualifying chain while
-     * anything less counts as no qualifying chain.
+     * Progress is the current chain's confirmed links: only links after the latest break count, since a broken chain
+     * never grows again. A completed chain reports its full length.
      */
     private static Progress weaverProgress(PlayerScore score, int chainLength) {
         boolean completed = weaverCompletions(score) > 0;
-        return new Progress(completed ? chainLength : 0, chainLength, completed);
+        return new Progress(completed ? chainLength : weaverActiveChainLinks(score), chainLength, completed);
+    }
+
+    private static int weaverActiveChainLinks(PlayerScore score) {
+        int links = 0;
+        for (var entry : score.history()) {
+            if (entry.reason() == ScoreReason.CHAIN_BROKEN) {
+                links = 0;
+            } else if (entry.reason() == ScoreReason.CHAIN_LINK_ADDED) {
+                links++;
+            }
+        }
+        return links;
     }
 
     private static int eraserAnnihilations(PlayerScore score) {

@@ -32,8 +32,8 @@ class GameJpaEntity {
     @Column(name = "era_counter", nullable = false)
     private int eraCounter;
 
-    @Column(name = "pending_collapsing_event_id")
-    private UUID pendingCollapsingEventId;
+    @Column(name = "collapse_pending", nullable = false)
+    private boolean collapsePending;
 
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "game_cascaded_event", joinColumns = @JoinColumn(name = "game_id"))
@@ -89,12 +89,12 @@ class GameJpaEntity {
         this.eraCounter = eraCounter;
     }
 
-    UUID getPendingCollapsingEventId() {
-        return pendingCollapsingEventId;
+    boolean isCollapsePending() {
+        return collapsePending;
     }
 
-    void setPendingCollapsingEventId(UUID pendingCollapsingEventId) {
-        this.pendingCollapsingEventId = pendingCollapsingEventId;
+    void setCollapsePending(boolean collapsePending) {
+        this.collapsePending = collapsePending;
     }
 
     Set<UUID> getCascadedEventIds() {
