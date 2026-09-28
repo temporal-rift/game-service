@@ -22,7 +22,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 
-import io.github.temporalrift.game.session.domain.event.GameEndedAbnormally;
 import io.github.temporalrift.game.session.domain.event.PlayerAbandoned;
 import io.github.temporalrift.game.session.domain.event.PlayerDisconnected;
 import io.github.temporalrift.game.session.domain.event.WinConditionMet;
@@ -295,23 +294,22 @@ class PlayerReconnectSagaImplTest {
     }
 
     @Test
-    @DisplayName("handleTimerExpiry — after the game ended, abandonment publishes no ending")
-    void handleTimerExpiry_gameAlreadyEnded_noEnding() {
-        // given
+    @DisplayName("handleTimerExpiry — after the game ended, the expiry records and publishes nothing")
+    void handleTimerExpiry_gameAlreadyEnded_recordsNothing() {
+        // given — e.g. this player won by last player standing while still inside their own grace period
         givenExpiredGracePeriod();
-        var game = stubGameWithLock(GameStatus.ENDED_ABNORMALLY);
-        stubThreePlayerLobbyWithLock(OTHER_2);
+        var game = stubGameWithLock(GameStatus.ENDED_BY_WIN);
 
         // when
         saga.handleTimerExpiry(SAGA_ID);
 
         // then
+        then(stateManager).should().tryAbandon(SAGA_ID);
+        then(lobbyRepository).shouldHaveNoInteractions();
         then(gameRepository).should(never()).save(any());
-        then(eventPublisher).should().publish(envelopeWithPayload(PlayerAbandoned.class));
-        then(eventPublisher).should(never()).publish(envelopeWithPayload(WinConditionMet.class));
-        then(eventPublisher).should(never()).publish(envelopeWithPayload(GameEndedAbnormally.class));
+        then(eventPublisher).shouldHaveNoInteractions();
         then(applicationEventPublisher).shouldHaveNoInteractions();
-        assertThat(game.status()).isEqualTo(GameStatus.ENDED_ABNORMALLY);
+        assertThat(game.status()).isEqualTo(GameStatus.ENDED_BY_WIN);
     }
 
     @Test

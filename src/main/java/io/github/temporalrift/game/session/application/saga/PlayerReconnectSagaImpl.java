@@ -155,6 +155,12 @@ class PlayerReconnectSagaImpl implements PlayerReconnectSaga {
         // serialize so exactly one of them sees a single contender left.
         var eraSaga = eraSagaRepository.findByGameIdWithLock(gameId);
         var game = gameRepository.findByIdWithLock(gameId).orElseThrow(() -> new GameNotFoundException(gameId));
+        // A grace period can outlive the game (another ending landed first); forfeiting then would brand a
+        // player who never left an in-progress game.
+        if (game.status() != GameStatus.IN_PROGRESS) {
+            log.debug("Grace expiry for saga {} ignored — game {} already over", sagaId, gameId);
+            return;
+        }
         var lobby = lobbyRepository
                 .findByIdWithLock(game.lobbyId())
                 .orElseThrow(() -> new LobbyNotFoundException(game.lobbyId()));
@@ -164,7 +170,7 @@ class PlayerReconnectSagaImpl implements PlayerReconnectSaga {
         eventPublisher.publish(envelope(gameId, new PlayerAbandoned(gameId, saga.playerId())));
 
         var contenders = lobby.contenders();
-        if (game.status() == GameStatus.IN_PROGRESS && contenders.size() == 1) {
+        if (contenders.size() == 1) {
             endByLastPlayerStanding(game, eraSaga, contenders.getFirst());
         }
     }
