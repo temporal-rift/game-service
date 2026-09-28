@@ -179,6 +179,21 @@ class FactionObjectiveEvaluatorTest {
     }
 
     @Test
+    @DisplayName("active chain links are decided by era, not by history order")
+    void weaver_historyOutOfEraOrder_countsOnlyLinksAfterBreak() {
+        var score = score(Faction.WEAVERS);
+        score.apply(4, ScoreReason.CHAIN_LINK_ADDED, 2);
+        score.apply(1, ScoreReason.CHAIN_LINK_ADDED, 2);
+        score.apply(3, ScoreReason.CHAIN_BROKEN, -3);
+        score.apply(2, ScoreReason.CHAIN_LINK_ADDED, 2);
+        score.apply(5, ScoreReason.CHAIN_LINK_ADDED, 2);
+
+        var progress = FactionObjectiveEvaluator.evaluate(score, 5, RULES);
+
+        assertThat(progress.progressCount()).isEqualTo(2);
+    }
+
+    @Test
     @DisplayName("a broken chain with no later link reports no progress")
     void weaver_brokenChainNotRebuilt_noProgress() {
         var score = score(Faction.WEAVERS);
