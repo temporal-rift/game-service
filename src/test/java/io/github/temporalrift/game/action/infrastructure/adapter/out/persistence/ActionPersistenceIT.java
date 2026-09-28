@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
@@ -294,8 +295,11 @@ class ActionPersistenceIT {
                 state.gameId(),
                 state.playerId(),
                 Faction.REVISIONISTS,
-                List.of(new PlayerState.CardInstance(UUID.randomUUID(), CardType.SUPPRESS)),
-                true);
+                new PlayerState.PersistedState(
+                        List.of(new PlayerState.CardInstance(UUID.randomUUID(), CardType.SUPPRESS)),
+                        Set.of(),
+                        true,
+                        false));
         playerStateRepository.save(updated);
 
         var all = playerStateRepository.findAllByGameId(state.gameId());

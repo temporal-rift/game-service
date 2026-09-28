@@ -9,7 +9,6 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 
 import io.github.temporalrift.game.action.infrastructure.adapter.out.persistence.ActionPersistenceAdapters;
-import io.github.temporalrift.game.scoring.application.command.AwardUnidentifiedFactionScores;
 import io.github.temporalrift.game.scoring.application.query.PlayerScoreQueryService;
 import io.github.temporalrift.game.scoring.infrastructure.adapter.out.config.ScoreRulesProperties;
 import io.github.temporalrift.game.scoring.infrastructure.adapter.out.persistence.ScoringPersistenceAdapters;
@@ -32,7 +31,6 @@ import io.github.temporalrift.game.shared.infrastructure.adapter.out.persistence
     SessionPersistenceAdapters.class,
     SharedPersistenceAdapters.class,
     // Application services whose transaction boundaries are only observable against a real database.
-    AwardUnidentifiedFactionScores.class,
     PlayerScoreQueryService.class
 })
 public class PersistenceTestConfiguration {

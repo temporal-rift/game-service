@@ -11,20 +11,15 @@ import io.github.temporalrift.game.shared.domain.event.FactionRevealed;
 @Service
 class FactionRevealCommandHandler implements FactionRevealCommand {
 
-    private final AwardUnidentifiedFactionScores awardUnidentifiedFactionScores;
     private final ScoringGameVisibilityRepository visibilityRepository;
 
-    FactionRevealCommandHandler(
-            AwardUnidentifiedFactionScores awardUnidentifiedFactionScores,
-            ScoringGameVisibilityRepository visibilityRepository) {
-        this.awardUnidentifiedFactionScores = awardUnidentifiedFactionScores;
+    FactionRevealCommandHandler(ScoringGameVisibilityRepository visibilityRepository) {
         this.visibilityRepository = visibilityRepository;
     }
 
     @Override
     @Transactional
     public void reveal(FactionRevealed event) {
-        awardUnidentifiedFactionScores.award(event);
         visibilityRepository.markFactionsRevealed(event.gameId());
     }
 }

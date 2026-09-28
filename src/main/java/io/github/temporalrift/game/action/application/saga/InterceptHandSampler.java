@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Random;
 import java.util.UUID;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 import io.github.temporalrift.game.action.domain.playerstate.PlayerState;
 import io.github.temporalrift.game.shared.domain.model.CardDrawWeights;
@@ -14,7 +15,8 @@ import io.github.temporalrift.game.shared.domain.model.CardGrade;
 /**
  * Uniformly samples distinct cards from a target hand for INTERCEPT resolution. Grade I
  * reveals one card, grade II reveals two; a hand smaller than the grade count yields
- * whatever it holds (possibly nothing) rather than an error.
+ * whatever it holds (possibly nothing) rather than an error. An obscured target is sampled
+ * the same way from its {@link #decoyHand}.
  */
 final class InterceptHandSampler {
 
@@ -31,18 +33,16 @@ final class InterceptHandSampler {
     }
 
     /**
-     * Freshly drawn cards standing in for an obscured target's hand, as many as {@link #select} would reveal so
-     * the result cannot be told apart by size or by matching instance ids.
+     * The hand an obscured target shows every Intercept resolving at one round close: the cards already revealed
+     * from its real hand this era, topped up with fresh draws to the real hand's size, so it reveals nothing new.
      */
-    static List<PlayerState.CardInstance> decoys(
-            List<PlayerState.CardInstance> hand, CardGrade grade, CardDrawWeights weights, Random randomness) {
-        return IntStream.range(0, revealCount(hand, grade))
-                .mapToObj(ignored -> {
-                    var cardType = weights.drawType(randomness);
-                    return new PlayerState.CardInstance(
-                            UUID.randomUUID(), cardType, weights.drawGrade(cardType, randomness));
-                })
-                .toList();
+    static List<PlayerState.CardInstance> decoyHand(PlayerState target, CardDrawWeights weights, Random randomness) {
+        var revealed = target.revealedCards();
+        var fresh = IntStream.range(0, target.hand().size() - revealed.size()).mapToObj(ignored -> {
+            var cardType = weights.drawType(randomness);
+            return new PlayerState.CardInstance(UUID.randomUUID(), cardType, weights.drawGrade(cardType, randomness));
+        });
+        return Stream.concat(revealed.stream(), fresh).toList();
     }
 
     // INTERCEPT only supports grades I and II; a stray grade must never fail round close.

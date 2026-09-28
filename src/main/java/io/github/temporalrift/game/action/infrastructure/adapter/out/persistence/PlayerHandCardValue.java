@@ -13,15 +13,16 @@ import io.github.temporalrift.game.shared.domain.model.CardType;
 record PlayerHandCardValue(
         @Column(name = "card_instance_id", nullable = false) UUID cardInstanceId,
         @Column(name = "card_type", nullable = false) String cardType,
-        @Column(name = "card_grade", nullable = false) String cardGrade) {
+        @Column(name = "card_grade", nullable = false) String cardGrade,
+        @Column(name = "revealed", nullable = false) boolean revealed) {
 
     PlayerHandCardValue(UUID cardInstanceId, String cardType) {
-        this(cardInstanceId, cardType, CardGrade.I.name());
+        this(cardInstanceId, cardType, CardGrade.I.name(), false);
     }
 
-    static PlayerHandCardValue fromDomain(PlayerState.CardInstance card) {
+    static PlayerHandCardValue fromDomain(PlayerState.CardInstance card, boolean revealed) {
         return new PlayerHandCardValue(
-                card.cardInstanceId(), card.cardType().name(), card.grade().name());
+                card.cardInstanceId(), card.cardType().name(), card.grade().name(), revealed);
     }
 
     PlayerState.CardInstance toDomain() {

@@ -10,14 +10,13 @@ import org.springframework.stereotype.Component;
 
 import io.github.temporalrift.game.scoring.application.command.EraScoringCompletionChecker;
 import io.github.temporalrift.game.scoring.domain.port.out.EraScoringContextRepository;
-import io.github.temporalrift.game.scoring.domain.port.out.FactionIdentificationRepository;
+import io.github.temporalrift.game.scoring.domain.port.out.FactionDisclosureRepository;
 import io.github.temporalrift.game.shared.domain.event.ActivistDeclarationRecorded;
 import io.github.temporalrift.game.shared.domain.event.EraActionFactsFinalized;
 import io.github.temporalrift.game.shared.domain.event.EventsDrawn;
 import io.github.temporalrift.game.shared.domain.event.ExposeBehaviorChanged;
 import io.github.temporalrift.game.shared.domain.event.FactionAssigned;
 import io.github.temporalrift.game.shared.domain.event.ForesightDeclared;
-import io.github.temporalrift.game.shared.domain.event.PlayersIdentified;
 import io.github.temporalrift.game.shared.domain.model.Faction;
 
 @Component
@@ -28,17 +27,17 @@ class ScoringContextProjectionEventListener {
     private final EraScoringContextRepository contextRepository;
     private final EraScoringCompletionChecker completionChecker;
     private final ApplicationEventPublisher applicationEventPublisher;
-    private final FactionIdentificationRepository factionIdentificationRepository;
+    private final FactionDisclosureRepository factionDisclosureRepository;
 
     ScoringContextProjectionEventListener(
             EraScoringContextRepository contextRepository,
             EraScoringCompletionChecker completionChecker,
             ApplicationEventPublisher applicationEventPublisher,
-            FactionIdentificationRepository factionIdentificationRepository) {
+            FactionDisclosureRepository factionDisclosureRepository) {
         this.contextRepository = contextRepository;
         this.completionChecker = completionChecker;
         this.applicationEventPublisher = applicationEventPublisher;
-        this.factionIdentificationRepository = factionIdentificationRepository;
+        this.factionDisclosureRepository = factionDisclosureRepository;
     }
 
     @ApplicationModuleListener
@@ -75,12 +74,6 @@ class ScoringContextProjectionEventListener {
                 event.activistPlayerId(),
                 Faction.ACTIVISTS,
                 io.github.temporalrift.game.scoring.domain.playerscore.ScoreReason.EXPOSE_CHANGED_PLAYER_BEHAVIOR);
-    }
-
-    @ApplicationModuleListener
-    void onPlayersIdentified(PlayersIdentified event) {
-        event.playerIds()
-                .forEach(playerId -> factionIdentificationRepository.recordIdentification(event.gameId(), playerId));
     }
 
     @ApplicationModuleListener
@@ -122,10 +115,10 @@ class ScoringContextProjectionEventListener {
                         event.gameId(), event.eraNumber(), fact.playerId(), fact.targetEventId()));
         event.corruptCorrelationFacts()
                 .forEach(fact -> contextRepository.recordCorruptCorrelation(event.gameId(), event.eraNumber(), fact));
-        // Recorded before the era can complete, so an identification at the final round close always
-        // precedes the game-end unidentified-bonus check that era completion leads to.
-        event.identifiedPlayerIds()
-                .forEach(playerId -> factionIdentificationRepository.recordIdentification(event.gameId(), playerId));
+        // Recorded before the era can complete, so every disclosure of the final era precedes the
+        // final-era unidentified-bonus evaluation.
+        event.disclosedPlayerIds()
+                .forEach(playerId -> factionDisclosureRepository.recordDisclosure(event.gameId(), playerId));
         contextRepository.resolveRevisionistActions(event.gameId(), event.eraNumber());
         contextRepository.markActionFactsReady(event.gameId(), event.eraNumber());
         publishResolutions(event.gameId(), event.eraNumber());

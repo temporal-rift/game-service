@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Component;
 
@@ -71,8 +72,10 @@ class PlayerStateRepositoryAdapter implements PlayerStateRepository {
         entity.setFaction(state.faction() == null ? null : state.faction().name());
         entity.setJammed(state.isJammed());
         entity.setObscured(state.isObscured());
-        entity.setHand(
-                state.hand().stream().map(PlayerHandCardValue::fromDomain).toList());
+        var revealed = state.revealedCards();
+        entity.setHand(state.hand().stream()
+                .map(card -> PlayerHandCardValue.fromDomain(card, revealed.contains(card)))
+                .toList());
         return entity;
     }
 
@@ -82,10 +85,15 @@ class PlayerStateRepositoryAdapter implements PlayerStateRepository {
                 entity.getGameId(),
                 entity.getPlayerId(),
                 entity.getFaction() == null ? null : Faction.valueOf(entity.getFaction()),
-                entity.getHand().stream()
-                        .map(PlayerHandCardValue::toDomain)
-                        .collect(ArrayList::new, ArrayList::add, ArrayList::addAll),
-                entity.isJammed(),
-                entity.isObscured());
+                new PlayerState.PersistedState(
+                        entity.getHand().stream()
+                                .map(PlayerHandCardValue::toDomain)
+                                .collect(ArrayList::new, ArrayList::add, ArrayList::addAll),
+                        entity.getHand().stream()
+                                .filter(PlayerHandCardValue::revealed)
+                                .map(PlayerHandCardValue::cardInstanceId)
+                                .collect(Collectors.toSet()),
+                        entity.isJammed(),
+                        entity.isObscured()));
     }
 }
