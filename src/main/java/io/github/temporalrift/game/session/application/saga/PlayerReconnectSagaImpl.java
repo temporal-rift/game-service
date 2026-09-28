@@ -8,13 +8,11 @@ import java.util.UUID;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import io.github.temporalrift.game.session.domain.event.PlayerAbandoned;
 import io.github.temporalrift.game.session.domain.event.PlayerDisconnected;
-import io.github.temporalrift.game.session.domain.event.WinConditionMet;
 import io.github.temporalrift.game.session.domain.game.Game;
 import io.github.temporalrift.game.session.domain.game.GameNotFoundException;
 import io.github.temporalrift.game.session.domain.game.GameStatus;
@@ -30,7 +28,6 @@ import io.github.temporalrift.game.session.domain.port.out.SessionGameRulesPort;
 import io.github.temporalrift.game.session.domain.saga.EraSagaState;
 import io.github.temporalrift.game.session.domain.saga.EraSagaStatus;
 import io.github.temporalrift.game.session.domain.saga.PlayerReconnectSagaState;
-import io.github.temporalrift.game.shared.application.SagaHandoffPublisher;
 import io.github.temporalrift.game.shared.domain.event.GameEnded;
 import io.github.temporalrift.game.shared.domain.messaging.DomainEventEnvelope;
 
@@ -38,13 +35,12 @@ import io.github.temporalrift.game.shared.domain.messaging.DomainEventEnvelope;
 class PlayerReconnectSagaImpl implements PlayerReconnectSaga {
 
     private static final Logger log = LoggerFactory.getLogger(PlayerReconnectSagaImpl.class);
-    private static final String LAST_PLAYER_STANDING = "LAST_PLAYER_STANDING";
 
     private final LobbyRepository lobbyRepository;
     private final GameRepository gameRepository;
     private final EraSagaRepository eraSagaRepository;
     private final SessionEventPublisher eventPublisher;
-    private final SagaHandoffPublisher sagaHandoffPublisher;
+    private final LastPlayerStandingPublisher lastPlayerStandingPublisher;
     private final FinalScoreQueryPort finalScoreQueryPort;
     private final PlayerReconnectSagaStateManager stateManager;
     private final SessionGameRulesPort gameRules;
@@ -56,7 +52,7 @@ class PlayerReconnectSagaImpl implements PlayerReconnectSaga {
             GameRepository gameRepository,
             EraSagaRepository eraSagaRepository,
             SessionEventPublisher eventPublisher,
-            ApplicationEventPublisher applicationEventPublisher,
+            LastPlayerStandingPublisher lastPlayerStandingPublisher,
             FinalScoreQueryPort finalScoreQueryPort,
             PlayerReconnectSagaStateManager stateManager,
             SessionGameRulesPort gameRules,
@@ -66,7 +62,7 @@ class PlayerReconnectSagaImpl implements PlayerReconnectSaga {
         this.gameRepository = gameRepository;
         this.eraSagaRepository = eraSagaRepository;
         this.eventPublisher = eventPublisher;
-        this.sagaHandoffPublisher = new SagaHandoffPublisher(applicationEventPublisher);
+        this.lastPlayerStandingPublisher = lastPlayerStandingPublisher;
         this.finalScoreQueryPort = finalScoreQueryPort;
         this.stateManager = stateManager;
         this.gameRules = gameRules;
@@ -170,9 +166,17 @@ class PlayerReconnectSagaImpl implements PlayerReconnectSaga {
         eventPublisher.publish(envelope(gameId, new PlayerAbandoned(gameId, saga.playerId())));
 
         var contenders = lobby.contenders();
-        if (contenders.size() == 1) {
-            endByLastPlayerStanding(game, eraSaga, contenders.getFirst());
+        if (contenders.size() != 1) {
+            return;
         }
+        // Era scoring commits only while the era saga awaits it; ending now would publish totals that scoring is
+        // about to change, so the era-end decision ends the game once those scores are committed.
+        if (eraSaga.filter(state -> state.status() == EraSagaStatus.WAITING_SCORES)
+                .isPresent()) {
+            log.info("Last player standing in game {} — deferred to the era's scoring boundary", gameId);
+            return;
+        }
+        endByLastPlayerStanding(game, eraSaga, contenders.getFirst());
     }
 
     private void endByLastPlayerStanding(Game game, Optional<EraSagaState> eraSaga, LobbyPlayer winner) {
@@ -186,9 +190,7 @@ class PlayerReconnectSagaImpl implements PlayerReconnectSaga {
                 .mapToInt(GameEnded.PlayerScoreResult::score)
                 .findFirst()
                 .orElse(0);
-        var winConditionMet = new WinConditionMet(
-                game.id(), winner.playerId(), winner.faction().name(), score, LAST_PLAYER_STANDING);
-        sagaHandoffPublisher.publish(eventPublisher::publish, envelope(game.id(), winConditionMet));
+        lastPlayerStandingPublisher.publish(game, winner, score);
     }
 
     private <T> DomainEventEnvelope<T> envelope(UUID gameId, T payload) {

@@ -57,6 +57,7 @@ class EraSagaAdvancer {
     private final ApplicationEventPublisher applicationEventPublisher;
     private final SagaHandoffPublisher sagaHandoffPublisher;
     private final TimelineCollapsePublisher collapsePublisher;
+    private final LastPlayerStandingPublisher lastPlayerStandingPublisher;
     private final SessionGameRulesPort gameRules;
     private final SessionFactionObjectivePort factionObjectives;
     private final Clock clock;
@@ -69,6 +70,7 @@ class EraSagaAdvancer {
             SessionEventPublisher eventPublisher,
             ApplicationEventPublisher applicationEventPublisher,
             TimelineCollapsePublisher collapsePublisher,
+            LastPlayerStandingPublisher lastPlayerStandingPublisher,
             SessionGameRulesPort gameRules,
             SessionFactionObjectivePort factionObjectives,
             Clock clock) {
@@ -80,6 +82,7 @@ class EraSagaAdvancer {
         this.applicationEventPublisher = applicationEventPublisher;
         this.sagaHandoffPublisher = new SagaHandoffPublisher(applicationEventPublisher);
         this.collapsePublisher = collapsePublisher;
+        this.lastPlayerStandingPublisher = lastPlayerStandingPublisher;
         this.gameRules = gameRules;
         this.factionObjectives = factionObjectives;
         this.clock = clock;
@@ -189,6 +192,17 @@ class EraSagaAdvancer {
             }
             return;
         }
+        // An abandonment during this era's scoring deferred the last-player-standing ending to this boundary,
+        // so it is published with the committed totals.
+        var contenders = lobby.contenders();
+        if (contenders.size() == 1) {
+            var winner = contenders.getFirst();
+            game.end();
+            gameRepository.save(game);
+            eraSagaRepository.save(state.withStatus(EraSagaStatus.COMPLETED));
+            lastPlayerStandingPublisher.publish(game, winner, newTotal(su, winner.playerId()));
+            return;
+        }
         if (game.collapsePending()) {
             game.endByCollapse();
             gameRepository.save(game);
@@ -211,6 +225,14 @@ class EraSagaAdvancer {
             var eraStarted = new EraStarted(gameId, nextEra, carryOverEvents, state.playerIds());
             sagaHandoffPublisher.publish(eventPublisher::publish, envelope(gameId, eraStarted));
         }
+    }
+
+    private static int newTotal(ScoresUpdated su, UUID playerId) {
+        return su.updates().stream()
+                .filter(update -> update.playerId().equals(playerId))
+                .mapToInt(ScoresUpdated.ScoreUpdate::newTotal)
+                .findFirst()
+                .orElse(0);
     }
 
     private record Qualifier(UUID playerId, Faction faction, int newTotal, String winType) {}

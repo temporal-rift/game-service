@@ -119,6 +119,7 @@ class EraSagaAdvancerTest {
                 eventPublisher,
                 applicationEventPublisher,
                 collapsePublisher,
+                new LastPlayerStandingPublisher(eventPublisher, applicationEventPublisher, clock),
                 gameRules,
                 factionObjectives,
                 clock);
@@ -1056,6 +1057,56 @@ class EraSagaAdvancerTest {
                 .containsExactly(new TimelineStabilized.PlayerFactionResult(PLAYER_2, Faction.WEAVERS.name(), null));
         assertThat(stabilized.losers())
                 .containsExactly(new TimelineStabilized.PlayerFactionResult(PLAYER_1, Faction.PROPHETS.name(), null));
+    }
+
+    @Test
+    @DisplayName("one contender left at the scoring boundary - last player standing wins with the scored total")
+    void handleScoresUpdated_oneContenderLeft_endsByLastPlayerStanding() {
+        // given - PLAYER_1 and PLAYER_3 abandoned while this era's scoring was in flight
+        var game = givenWaitingScores(2);
+        givenAbandoned(PLAYER_1, PLAYER_3);
+        given(gameRules.winScoreThreshold()).willReturn(WIN_THRESHOLD);
+        givenNoObjectivesMet(2);
+        var su = new ScoresUpdated(
+                GAME_ID,
+                2,
+                List.of(
+                        new ScoresUpdated.ScoreUpdate(PLAYER_1, Faction.PROPHETS, 3, "bonus", 18),
+                        new ScoresUpdated.ScoreUpdate(PLAYER_2, Faction.WEAVERS, 2, "bonus", 9)));
+
+        // when
+        advancer.handleScoresUpdated(GAME_ID, su);
+
+        // then
+        assertThat(game.status()).isEqualTo(GameStatus.ENDED_BY_WIN);
+        then(eraSagaRepository).should().save(argThat(s -> s.status() == EraSagaStatus.COMPLETED));
+        var expected = new WinConditionMet(GAME_ID, PLAYER_2, Faction.WEAVERS.name(), 9, "LAST_PLAYER_STANDING");
+        then(eventPublisher).should().publish(argThat(envelope -> expected.equals(envelope.payload())));
+        then(applicationEventPublisher).should().publishEvent(expected);
+        then(eventPublisher).should(never()).publish(envelopeWithPayload(EraStarted.class));
+        then(collapsePublisher).shouldHaveNoInteractions();
+    }
+
+    @Test
+    @DisplayName("the last contender meeting the threshold at the boundary wins by normal victory")
+    void handleScoresUpdated_lastContenderQualifies_normalVictory() {
+        // given
+        givenWaitingScores(2);
+        givenAbandoned(PLAYER_1, PLAYER_3);
+        given(gameRules.winScoreThreshold()).willReturn(WIN_THRESHOLD);
+        givenNoObjectivesMet(2);
+        var su = new ScoresUpdated(
+                GAME_ID,
+                2,
+                List.of(new ScoresUpdated.ScoreUpdate(PLAYER_2, Faction.WEAVERS, 5, "bonus", WIN_THRESHOLD)));
+        var captor = ArgumentCaptor.<DomainEventEnvelope>captor();
+
+        // when
+        advancer.handleScoresUpdated(GAME_ID, su);
+
+        // then
+        then(eventPublisher).should().publish(captor.capture());
+        assertThat(((WinConditionMet) captor.getValue().payload()).winType()).isEqualTo("SCORE_THRESHOLD");
     }
 
     @Test
