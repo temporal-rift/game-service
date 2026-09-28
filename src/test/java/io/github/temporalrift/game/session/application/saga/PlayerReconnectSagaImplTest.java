@@ -20,22 +20,32 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 
 import io.github.temporalrift.game.session.domain.event.GameEndedAbnormally;
 import io.github.temporalrift.game.session.domain.event.PlayerAbandoned;
 import io.github.temporalrift.game.session.domain.event.PlayerDisconnected;
+import io.github.temporalrift.game.session.domain.event.WinConditionMet;
 import io.github.temporalrift.game.session.domain.game.Game;
+import io.github.temporalrift.game.session.domain.game.GameStatus;
+import io.github.temporalrift.game.session.domain.lobby.ConnectionStatus;
 import io.github.temporalrift.game.session.domain.lobby.Lobby;
 import io.github.temporalrift.game.session.domain.lobby.LobbyConfig;
 import io.github.temporalrift.game.session.domain.lobby.LobbyPlayer;
 import io.github.temporalrift.game.session.domain.lobby.LobbyStatus;
+import io.github.temporalrift.game.session.domain.port.out.EraSagaRepository;
+import io.github.temporalrift.game.session.domain.port.out.FinalScoreQueryPort;
 import io.github.temporalrift.game.session.domain.port.out.GameRepository;
 import io.github.temporalrift.game.session.domain.port.out.LobbyRepository;
 import io.github.temporalrift.game.session.domain.port.out.SessionEventPublisher;
 import io.github.temporalrift.game.session.domain.port.out.SessionGameRulesPort;
+import io.github.temporalrift.game.session.domain.saga.EraSagaState;
+import io.github.temporalrift.game.session.domain.saga.EraSagaStatus;
 import io.github.temporalrift.game.session.domain.saga.PlayerReconnectSagaState;
 import io.github.temporalrift.game.session.domain.saga.PlayerReconnectSagaStatus;
+import io.github.temporalrift.game.shared.domain.event.GameEnded;
 import io.github.temporalrift.game.shared.domain.messaging.DomainEventEnvelope;
+import io.github.temporalrift.game.shared.domain.model.Faction;
 
 @ExtendWith(MockitoExtension.class)
 class PlayerReconnectSagaImplTest {
@@ -43,6 +53,8 @@ class PlayerReconnectSagaImplTest {
     static final UUID GAME_ID = UUID.randomUUID();
     static final UUID LOBBY_ID = UUID.randomUUID();
     static final UUID PLAYER_ID = UUID.randomUUID();
+    static final UUID OTHER_1 = UUID.randomUUID();
+    static final UUID OTHER_2 = UUID.randomUUID();
     static final UUID SAGA_ID = UUID.randomUUID();
     static final int GRACE_SECONDS = 30;
     static final Instant BASE_INSTANT = Instant.parse("2026-01-01T00:00:00Z");
@@ -53,6 +65,15 @@ class PlayerReconnectSagaImplTest {
 
     @Mock
     GameRepository gameRepository;
+
+    @Mock
+    EraSagaRepository eraSagaRepository;
+
+    @Mock
+    ApplicationEventPublisher applicationEventPublisher;
+
+    @Mock
+    FinalScoreQueryPort finalScoreQueryPort;
 
     @Mock
     SessionEventPublisher eventPublisher;
@@ -71,7 +92,16 @@ class PlayerReconnectSagaImplTest {
     @BeforeEach
     void setUp() {
         saga = new PlayerReconnectSagaImpl(
-                lobbyRepository, gameRepository, eventPublisher, stateManager, gameRules, timerRegistry, TEST_CLOCK);
+                lobbyRepository,
+                gameRepository,
+                eraSagaRepository,
+                eventPublisher,
+                applicationEventPublisher,
+                finalScoreQueryPort,
+                stateManager,
+                gameRules,
+                timerRegistry,
+                TEST_CLOCK);
     }
 
     private static DomainEventEnvelope envelopeWithPayload(Class<?> payloadType) {
@@ -84,26 +114,19 @@ class PlayerReconnectSagaImplTest {
         return game;
     }
 
-    private Game stubGameWithLock() {
-        var game = new Game(GAME_ID, LOBBY_ID, List.of());
-        given(gameRepository.findByIdWithLock(GAME_ID)).willReturn(Optional.of(game));
-        return game;
-    }
-
     private Lobby stubStartedLobby(boolean playerConnected) {
         var lobby = startedLobby(playerConnected);
         given(lobbyRepository.findByIdWithLock(LOBBY_ID)).willReturn(Optional.of(lobby));
         return lobby;
     }
 
-    private Lobby stubStartedLobbyForRead(boolean playerConnected) {
-        var lobby = startedLobby(playerConnected);
-        given(lobbyRepository.findById(LOBBY_ID)).willReturn(Optional.of(lobby));
-        return lobby;
-    }
-
     private Lobby startedLobby(boolean playerConnected) {
-        var player = new LobbyPlayer(PLAYER_ID, "Alice", null, BASE_INSTANT, playerConnected);
+        var player = new LobbyPlayer(
+                PLAYER_ID,
+                "Alice",
+                null,
+                BASE_INSTANT,
+                playerConnected ? ConnectionStatus.CONNECTED : ConnectionStatus.DISCONNECTED);
         var config = new LobbyConfig("ABCD", 3, 5, TEST_CLOCK);
         return Lobby.reconstitute(LOBBY_ID, GAME_ID, PLAYER_ID, List.of(player), LobbyStatus.STARTED, config);
     }
@@ -180,43 +203,115 @@ class PlayerReconnectSagaImplTest {
         then(gameRepository).should(never()).findById(any());
     }
 
-    @Test
-    @DisplayName("handleTimerExpiry — GRACE_PERIOD saga abandons player and publishes PlayerAbandoned")
-    void handleTimerExpiry_gracePeriodActive_abandonsPlayerAndPublishesEvent() {
-        // given
+    private void givenExpiredGracePeriod() {
         var gracePeriodState = new PlayerReconnectSagaState(
                 SAGA_ID, GAME_ID, PLAYER_ID, PlayerReconnectSagaStatus.GRACE_PERIOD, BASE_INSTANT.minusSeconds(1));
         given(stateManager.findBySagaId(SAGA_ID)).willReturn(Optional.of(gracePeriodState));
         given(stateManager.tryAbandon(SAGA_ID)).willReturn(true);
-        stubGameWithLock();
-        stubStartedLobbyForRead(false);
-        given(stateManager.countActiveGracePeriodForGame(GAME_ID)).willReturn(0L);
+    }
 
-        // when
-        saga.handleTimerExpiry(SAGA_ID);
+    private Lobby stubThreePlayerLobbyWithLock(UUID... alreadyAbandoned) {
+        var players = List.of(
+                new LobbyPlayer(PLAYER_ID, "Alice", Faction.PROPHETS, BASE_INSTANT, ConnectionStatus.DISCONNECTED),
+                new LobbyPlayer(OTHER_1, "Bob", Faction.WEAVERS, BASE_INSTANT, ConnectionStatus.CONNECTED),
+                new LobbyPlayer(OTHER_2, "Carol", Faction.ERASERS, BASE_INSTANT, ConnectionStatus.DISCONNECTED));
+        var lobby = Lobby.reconstitute(
+                LOBBY_ID, GAME_ID, PLAYER_ID, players, LobbyStatus.STARTED, new LobbyConfig("ABCD", 3, 5, TEST_CLOCK));
+        for (var playerId : alreadyAbandoned) {
+            lobby.markPlayerAbandoned(playerId);
+        }
+        given(lobbyRepository.findByIdWithLock(LOBBY_ID)).willReturn(Optional.of(lobby));
+        return lobby;
+    }
 
-        // then
-        then(stateManager).should().tryAbandon(SAGA_ID);
-        then(eventPublisher).should().publish(envelopeWithPayload(PlayerAbandoned.class));
+    private Game stubGameWithLock(GameStatus status) {
+        var game = Game.reconstitute(GAME_ID, LOBBY_ID, List.of(), 2, 0, status);
+        given(gameRepository.findByIdWithLock(GAME_ID)).willReturn(Optional.of(game));
+        return game;
     }
 
     @Test
-    @DisplayName("handleTimerExpiry — last player abandoned triggers GameEndedAbnormally via outbox")
-    void handleTimerExpiry_lastPlayerAbandoned_publishesGameEndedAbnormally() {
+    @DisplayName(
+            "handleTimerExpiry — abandons the player, publishes PlayerAbandoned, game continues with two contenders")
+    void handleTimerExpiry_twoContendersRemain_abandonsWithoutEnding() {
         // given
-        var gracePeriodState = new PlayerReconnectSagaState(
-                SAGA_ID, GAME_ID, PLAYER_ID, PlayerReconnectSagaStatus.GRACE_PERIOD, BASE_INSTANT.minusSeconds(1));
-        given(stateManager.findBySagaId(SAGA_ID)).willReturn(Optional.of(gracePeriodState));
-        given(stateManager.tryAbandon(SAGA_ID)).willReturn(true);
-        stubGameWithLock();
-        stubStartedLobbyForRead(false);
-        given(stateManager.countActiveGracePeriodForGame(GAME_ID)).willReturn(0L);
+        givenExpiredGracePeriod();
+        var game = stubGameWithLock(GameStatus.IN_PROGRESS);
+        var lobby = stubThreePlayerLobbyWithLock();
 
         // when
         saga.handleTimerExpiry(SAGA_ID);
 
         // then
-        then(eventPublisher).should().publish(envelopeWithPayload(GameEndedAbnormally.class));
+        assertThat(lobby.isAbandoned(PLAYER_ID)).isTrue();
+        then(lobbyRepository).should().save(lobby);
+        then(eventPublisher).should().publish(envelopeWithPayload(PlayerAbandoned.class));
+        then(eventPublisher).should(never()).publish(envelopeWithPayload(WinConditionMet.class));
+        assertThat(game.status()).isEqualTo(GameStatus.IN_PROGRESS);
+    }
+
+    @Test
+    @DisplayName("handleTimerExpiry — one contender left wins by LAST_PLAYER_STANDING and the era saga completes")
+    void handleTimerExpiry_oneContenderLeft_endsByLastPlayerStanding() {
+        // given — OTHER_2 already abandoned; OTHER_1 is the last player standing
+        givenExpiredGracePeriod();
+        var game = stubGameWithLock(GameStatus.IN_PROGRESS);
+        stubThreePlayerLobbyWithLock(OTHER_2);
+        var eraSaga = new EraSagaState(GAME_ID, 2, EraSagaStatus.WAITING_ROUND_2, List.of(PLAYER_ID, OTHER_1, OTHER_2));
+        given(eraSagaRepository.findByGameIdWithLock(GAME_ID)).willReturn(Optional.of(eraSaga));
+        given(finalScoreQueryPort.getScores(GAME_ID))
+                .willReturn(List.of(
+                        new GameEnded.PlayerScoreResult(PLAYER_ID, Faction.PROPHETS.name(), 19),
+                        new GameEnded.PlayerScoreResult(OTHER_1, Faction.WEAVERS.name(), 7),
+                        new GameEnded.PlayerScoreResult(OTHER_2, Faction.ERASERS.name(), 12)));
+
+        // when
+        saga.handleTimerExpiry(SAGA_ID);
+
+        // then
+        assertThat(game.status()).isEqualTo(GameStatus.ENDED_BY_WIN);
+        then(gameRepository).should().save(game);
+        then(eraSagaRepository).should().save(eraSaga.withStatus(EraSagaStatus.COMPLETED));
+        var expected = new WinConditionMet(GAME_ID, OTHER_1, Faction.WEAVERS.name(), 7, "LAST_PLAYER_STANDING");
+        then(eventPublisher).should().publish(argThat(envelope -> expected.equals(envelope.payload())));
+        then(applicationEventPublisher).should().publishEvent(expected);
+    }
+
+    @Test
+    @DisplayName("handleTimerExpiry — the remaining player still in grace wins by LAST_PLAYER_STANDING")
+    void handleTimerExpiry_remainingPlayerInGrace_winsByLastPlayerStanding() {
+        // given — OTHER_1 already abandoned; OTHER_2 is disconnected but has not forfeited
+        givenExpiredGracePeriod();
+        stubGameWithLock(GameStatus.IN_PROGRESS);
+        stubThreePlayerLobbyWithLock(OTHER_1);
+        given(finalScoreQueryPort.getScores(GAME_ID)).willReturn(List.of());
+
+        // when
+        saga.handleTimerExpiry(SAGA_ID);
+
+        // then
+        var expected = new WinConditionMet(GAME_ID, OTHER_2, Faction.ERASERS.name(), 0, "LAST_PLAYER_STANDING");
+        then(applicationEventPublisher).should().publishEvent(expected);
+    }
+
+    @Test
+    @DisplayName("handleTimerExpiry — after the game ended, abandonment publishes no ending")
+    void handleTimerExpiry_gameAlreadyEnded_noEnding() {
+        // given
+        givenExpiredGracePeriod();
+        var game = stubGameWithLock(GameStatus.ENDED_ABNORMALLY);
+        stubThreePlayerLobbyWithLock(OTHER_2);
+
+        // when
+        saga.handleTimerExpiry(SAGA_ID);
+
+        // then
+        then(gameRepository).should(never()).save(any());
+        then(eventPublisher).should().publish(envelopeWithPayload(PlayerAbandoned.class));
+        then(eventPublisher).should(never()).publish(envelopeWithPayload(WinConditionMet.class));
+        then(eventPublisher).should(never()).publish(envelopeWithPayload(GameEndedAbnormally.class));
+        then(applicationEventPublisher).shouldHaveNoInteractions();
+        assertThat(game.status()).isEqualTo(GameStatus.ENDED_ABNORMALLY);
     }
 
     @Test

@@ -16,6 +16,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import io.github.temporalrift.game.PersistenceIntegrationTest;
 import io.github.temporalrift.game.session.domain.game.Game;
 import io.github.temporalrift.game.session.domain.game.GameStatus;
+import io.github.temporalrift.game.session.domain.lobby.ConnectionStatus;
 import io.github.temporalrift.game.session.domain.lobby.Lobby;
 import io.github.temporalrift.game.session.domain.lobby.LobbyConfig;
 import io.github.temporalrift.game.session.domain.lobby.LobbyPlayer;
@@ -46,10 +47,18 @@ class SessionPersistenceIT {
         var id = UUID.randomUUID();
         var gameId = UUID.randomUUID();
         var hostPlayerId = UUID.randomUUID();
-        var player1 =
-                new LobbyPlayer(hostPlayerId, "Alice", Faction.ERASERS, Instant.parse("2026-01-01T00:00:00Z"), true);
+        var player1 = new LobbyPlayer(
+                hostPlayerId,
+                "Alice",
+                Faction.ERASERS,
+                Instant.parse("2026-01-01T00:00:00Z"),
+                ConnectionStatus.CONNECTED);
         var player2 = new LobbyPlayer(
-                UUID.randomUUID(), "Bob", Faction.PROPHETS, Instant.parse("2026-01-01T00:00:00Z"), true);
+                UUID.randomUUID(),
+                "Bob",
+                Faction.PROPHETS,
+                Instant.parse("2026-01-01T00:00:00Z"),
+                ConnectionStatus.CONNECTED);
         var players = new ArrayList<LobbyPlayer>();
         players.add(player1);
         players.add(player2);
@@ -103,7 +112,8 @@ class SessionPersistenceIT {
         var gameId = UUID.randomUUID();
         var hostPlayerId = UUID.randomUUID();
         var boundaryName = "A".repeat(LobbyPlayer.MAX_PLAYER_NAME_LENGTH);
-        var player = new LobbyPlayer(hostPlayerId, boundaryName, null, Instant.parse("2026-01-01T00:00:00Z"), true);
+        var player = new LobbyPlayer(
+                hostPlayerId, boundaryName, null, Instant.parse("2026-01-01T00:00:00Z"), ConnectionStatus.CONNECTED);
 
         var lobby = new Lobby(
                 id, gameId, hostPlayerId, new ArrayList<>(List.of(player)), new LobbyConfig("BOUND1", 2, 5, clock));

@@ -20,6 +20,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import io.github.temporalrift.game.session.application.port.in.JoinLobbyUseCase;
+import io.github.temporalrift.game.session.domain.lobby.ConnectionStatus;
 import io.github.temporalrift.game.session.domain.lobby.Lobby;
 import io.github.temporalrift.game.session.domain.lobby.LobbyAlreadyStartedException;
 import io.github.temporalrift.game.session.domain.lobby.LobbyFullException;
@@ -104,7 +105,7 @@ class JoinLobbyCommandHandlerTest {
     void handle_returnsCurrentPlayersFromLobbyAfterJoin() {
         // given
         stubSuccessfulJoin();
-        var existingPlayer = new LobbyPlayer(hostPlayerId, "Bob", null, JOINED_AT, true);
+        var existingPlayer = new LobbyPlayer(hostPlayerId, "Bob", null, JOINED_AT, ConnectionStatus.CONNECTED);
         given(lobby.currentPlayers()).willReturn(List.of(existingPlayer));
         given(lobby.hostPlayerId()).willReturn(hostPlayerId);
         var command = new JoinLobbyUseCase.Command(lobbyId, playerId, "Alice");

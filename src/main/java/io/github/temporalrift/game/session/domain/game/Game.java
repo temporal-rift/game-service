@@ -180,6 +180,11 @@ public class Game extends AggregateRoot {
         status = GameStatus.ENDED_BY_WIN;
     }
 
+    public void endAbnormally() {
+        requireInProgress();
+        status = GameStatus.ENDED_ABNORMALLY;
+    }
+
     private void requireInProgress() {
         if (status != GameStatus.IN_PROGRESS) {
             throw new GameAlreadyOverException();

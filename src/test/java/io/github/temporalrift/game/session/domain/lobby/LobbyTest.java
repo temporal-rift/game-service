@@ -39,7 +39,11 @@ class LobbyTest {
 
     LobbyPlayer player(Faction faction) {
         return new LobbyPlayer(
-                UUID.randomUUID(), PLAYER_NAMES[playerIndex++ % PLAYER_NAMES.length], faction, null, true);
+                UUID.randomUUID(),
+                PLAYER_NAMES[playerIndex++ % PLAYER_NAMES.length],
+                faction,
+                null,
+                ConnectionStatus.CONNECTED);
     }
 
     LobbyPlayer player() {
@@ -47,7 +51,12 @@ class LobbyTest {
     }
 
     LobbyPlayer disconnectedPlayer() {
-        return new LobbyPlayer(UUID.randomUUID(), PLAYER_NAMES[playerIndex++ % PLAYER_NAMES.length], null, null, false);
+        return new LobbyPlayer(
+                UUID.randomUUID(),
+                PLAYER_NAMES[playerIndex++ % PLAYER_NAMES.length],
+                null,
+                null,
+                ConnectionStatus.DISCONNECTED);
     }
 
     // --- LobbyPlayer ---
@@ -60,7 +69,7 @@ class LobbyTest {
 
         // when / then
         assertThatExceptionOfType(IllegalArgumentException.class)
-                .isThrownBy(() -> new LobbyPlayer(playerId, "  ", null, null, true));
+                .isThrownBy(() -> new LobbyPlayer(playerId, "  ", null, null, ConnectionStatus.CONNECTED));
     }
 
     @Test
@@ -71,7 +80,7 @@ class LobbyTest {
 
         // when / then
         assertThatExceptionOfType(InvalidPlayerNameException.class)
-                .isThrownBy(() -> new LobbyPlayer(playerId, "", null, null, true));
+                .isThrownBy(() -> new LobbyPlayer(playerId, "", null, null, ConnectionStatus.CONNECTED));
     }
 
     @Test
@@ -83,7 +92,7 @@ class LobbyTest {
 
         // when / then
         assertThatExceptionOfType(InvalidPlayerNameException.class)
-                .isThrownBy(() -> new LobbyPlayer(playerId, overlong, null, null, true));
+                .isThrownBy(() -> new LobbyPlayer(playerId, overlong, null, null, ConnectionStatus.CONNECTED));
     }
 
     @Test
@@ -94,7 +103,7 @@ class LobbyTest {
         var boundary = "A".repeat(LobbyPlayer.MAX_PLAYER_NAME_LENGTH);
 
         // when
-        var player = new LobbyPlayer(playerId, boundary, null, null, true);
+        var player = new LobbyPlayer(playerId, boundary, null, null, ConnectionStatus.CONNECTED);
 
         // then
         assertThat(player.playerName()).isEqualTo(boundary);
@@ -178,7 +187,7 @@ class LobbyTest {
         var id = UUID.randomUUID();
         var gameId = UUID.randomUUID();
         var hostId = UUID.randomUUID();
-        var host = new LobbyPlayer(hostId, "Alice", null, null, true);
+        var host = new LobbyPlayer(hostId, "Alice", null, null, ConnectionStatus.CONNECTED);
 
         // when
         var lobby = new Lobby(id, gameId, hostId, List.of(host), CONFIG);
@@ -439,7 +448,11 @@ class LobbyTest {
 
     LobbyPlayer playerWithJoinedAt(Instant joinedAt) {
         return new LobbyPlayer(
-                UUID.randomUUID(), PLAYER_NAMES[playerIndex++ % PLAYER_NAMES.length], null, joinedAt, true);
+                UUID.randomUUID(),
+                PLAYER_NAMES[playerIndex++ % PLAYER_NAMES.length],
+                null,
+                joinedAt,
+                ConnectionStatus.CONNECTED);
     }
 
     // --- requestStart() ---
@@ -568,5 +581,45 @@ class LobbyTest {
 
         // then
         assertThat(lobby.currentPlayers().getFirst().connected()).isTrue();
+    }
+
+    // --- markPlayerAbandoned() / contenders() ---
+
+    @Test
+    @DisplayName("abandoned player leaves the contenders and stays abandoned after a later reconnect or disconnect")
+    void markPlayerAbandoned_isFinal() {
+        // given
+        var lobby = emptyLobby();
+        lobby.join(player());
+        lobby.join(player());
+        var abandonedId = lobby.currentPlayers().getFirst().playerId();
+        var remainingId = lobby.currentPlayers().get(1).playerId();
+        lobby.markPlayerDisconnected(abandonedId);
+
+        // when
+        lobby.markPlayerAbandoned(abandonedId);
+        lobby.markPlayerReconnected(abandonedId);
+        lobby.markPlayerDisconnected(abandonedId);
+
+        // then
+        assertThat(lobby.isAbandoned(abandonedId)).isTrue();
+        assertThat(lobby.currentPlayers().getFirst().connection()).isEqualTo(ConnectionStatus.ABANDONED);
+        assertThat(lobby.contenders()).extracting(LobbyPlayer::playerId).containsExactly(remainingId);
+    }
+
+    @Test
+    @DisplayName("a disconnected player within grace is still a contender")
+    void contenders_includeDisconnectedPlayers() {
+        // given
+        var lobby = emptyLobby();
+        lobby.join(player());
+        var playerId = lobby.currentPlayers().getFirst().playerId();
+
+        // when
+        lobby.markPlayerDisconnected(playerId);
+
+        // then
+        assertThat(lobby.isAbandoned(playerId)).isFalse();
+        assertThat(lobby.contenders()).extracting(LobbyPlayer::playerId).containsExactly(playerId);
     }
 }

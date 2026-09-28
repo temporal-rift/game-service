@@ -84,7 +84,7 @@ public class Lobby extends AggregateRoot {
             throw new LobbyFullException();
         }
         currentPlayers.add(
-                new LobbyPlayer(playerId, playerName, faction, config.clock().instant(), true));
+                new LobbyPlayer(playerId, playerName, faction, config.clock().instant(), ConnectionStatus.CONNECTED));
         registerEvent(new PlayerJoinedLobby(gameId, id, playerId, playerName));
     }
 
@@ -100,13 +100,29 @@ public class Lobby extends AggregateRoot {
     }
 
     public void markPlayerDisconnected(UUID playerId) {
-        var index = playerIndex(playerId);
-        currentPlayers.set(index, currentPlayers.get(index).withConnected(false));
+        updateConnection(playerId, ConnectionStatus.DISCONNECTED);
     }
 
     public void markPlayerReconnected(UUID playerId) {
+        updateConnection(playerId, ConnectionStatus.CONNECTED);
+    }
+
+    public void markPlayerAbandoned(UUID playerId) {
+        updateConnection(playerId, ConnectionStatus.ABANDONED);
+    }
+
+    public boolean isAbandoned(UUID playerId) {
+        return currentPlayers.get(playerIndex(playerId)).abandoned();
+    }
+
+    /** Players who have not abandoned, whether connected or within a reconnect grace period. */
+    public List<LobbyPlayer> contenders() {
+        return currentPlayers.stream().filter(player -> !player.abandoned()).toList();
+    }
+
+    private void updateConnection(UUID playerId, ConnectionStatus connection) {
         var index = playerIndex(playerId);
-        currentPlayers.set(index, currentPlayers.get(index).withConnected(true));
+        currentPlayers.set(index, currentPlayers.get(index).withConnection(connection));
     }
 
     private int playerIndex(UUID playerId) {

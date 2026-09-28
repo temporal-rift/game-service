@@ -8,13 +8,15 @@ import org.apache.commons.lang3.StringUtils;
 
 import io.github.temporalrift.game.shared.domain.model.Faction;
 
-public record LobbyPlayer(UUID playerId, String playerName, Faction faction, Instant joinedAt, boolean connected) {
+public record LobbyPlayer(
+        UUID playerId, String playerName, Faction faction, Instant joinedAt, ConnectionStatus connection) {
 
     /** Longest display name the lobby accepts; mirrors the session contract bound. */
     public static final int MAX_PLAYER_NAME_LENGTH = 32;
 
     public LobbyPlayer {
         Objects.requireNonNull(playerId, "playerId cannot be null");
+        Objects.requireNonNull(connection, "connection cannot be null");
         if (StringUtils.isBlank(playerName)) {
             throw new InvalidPlayerNameException("playerName cannot be null or blank");
         }
@@ -24,10 +26,20 @@ public record LobbyPlayer(UUID playerId, String playerName, Faction faction, Ins
     }
 
     public LobbyPlayer withFaction(Faction newFaction) {
-        return new LobbyPlayer(playerId, playerName, newFaction, joinedAt, connected);
+        return new LobbyPlayer(playerId, playerName, newFaction, joinedAt, connection);
     }
 
-    public LobbyPlayer withConnected(boolean newConnected) {
-        return new LobbyPlayer(playerId, playerName, faction, joinedAt, newConnected);
+    /** Abandonment is final, so a later disconnect or reconnect leaves an abandoned player abandoned. */
+    public LobbyPlayer withConnection(ConnectionStatus newConnection) {
+        Objects.requireNonNull(newConnection, "newConnection cannot be null");
+        return abandoned() ? this : new LobbyPlayer(playerId, playerName, faction, joinedAt, newConnection);
+    }
+
+    public boolean connected() {
+        return connection == ConnectionStatus.CONNECTED;
+    }
+
+    public boolean abandoned() {
+        return connection == ConnectionStatus.ABANDONED;
     }
 }

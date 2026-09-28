@@ -23,6 +23,4 @@ public interface PlayerReconnectSagaStateJpaRepository extends JpaRepository<Pla
             + "WHERE s.sagaId = :sagaId AND s.status = :expected")
     int compareAndSetStatus(
             @Param("sagaId") UUID sagaId, @Param("expected") String expected, @Param("next") String next);
-
-    long countByGameIdAndStatus(UUID gameId, String status);
 }

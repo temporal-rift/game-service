@@ -21,6 +21,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 
 import io.github.temporalrift.game.session.domain.event.LobbyCreated;
+import io.github.temporalrift.game.session.domain.lobby.ConnectionStatus;
 import io.github.temporalrift.game.session.domain.lobby.Lobby;
 import io.github.temporalrift.game.session.domain.lobby.LobbyConfig;
 import io.github.temporalrift.game.session.domain.lobby.LobbyPlayer;
@@ -58,8 +59,12 @@ class LobbyRepositoryAdapterTest {
         var hostId = UUID.randomUUID();
         var guestId = UUID.randomUUID();
         var config = new LobbyConfig("X7K2P9", 2, 5, CLOCK);
-        var lobby =
-                new Lobby(lobbyId, gameId, hostId, List.of(new LobbyPlayer(hostId, "Alice", null, null, true)), config);
+        var lobby = new Lobby(
+                lobbyId,
+                gameId,
+                hostId,
+                List.of(new LobbyPlayer(hostId, "Alice", null, null, ConnectionStatus.CONNECTED)),
+                config);
         lobby.join(guestId, "Bob");
 
         // when

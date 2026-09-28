@@ -29,6 +29,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import io.github.temporalrift.game.session.domain.game.Game;
 import io.github.temporalrift.game.session.domain.game.GameStatus;
+import io.github.temporalrift.game.session.domain.lobby.ConnectionStatus;
 import io.github.temporalrift.game.session.domain.lobby.Lobby;
 import io.github.temporalrift.game.session.domain.lobby.LobbyConfig;
 import io.github.temporalrift.game.session.domain.lobby.LobbyPlayer;
@@ -278,8 +279,8 @@ class EndGameSagaImplTest {
 
     private Lobby lobby() {
         var players = List.of(
-                new LobbyPlayer(PLAYER_1, "Alice", Faction.PROPHETS, Instant.EPOCH, true),
-                new LobbyPlayer(PLAYER_2, "Bob", Faction.ERASERS, Instant.EPOCH, true));
+                new LobbyPlayer(PLAYER_1, "Alice", Faction.PROPHETS, Instant.EPOCH, ConnectionStatus.CONNECTED),
+                new LobbyPlayer(PLAYER_2, "Bob", Faction.ERASERS, Instant.EPOCH, ConnectionStatus.CONNECTED));
         var config = new LobbyConfig("JOINCODE", 2, 5, Clock.systemUTC());
         return Lobby.reconstitute(LOBBY_ID, GAME_ID, PLAYER_1, players, LobbyStatus.STARTED, config);
     }

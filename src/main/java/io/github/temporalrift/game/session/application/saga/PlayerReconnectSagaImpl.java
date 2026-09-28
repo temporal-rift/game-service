@@ -3,36 +3,49 @@ package io.github.temporalrift.game.session.application.saga;
 import static org.springframework.transaction.annotation.Propagation.REQUIRES_NEW;
 
 import java.time.Clock;
+import java.util.Optional;
 import java.util.UUID;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import io.github.temporalrift.game.session.domain.event.GameEndedAbnormally;
 import io.github.temporalrift.game.session.domain.event.PlayerAbandoned;
 import io.github.temporalrift.game.session.domain.event.PlayerDisconnected;
+import io.github.temporalrift.game.session.domain.event.WinConditionMet;
 import io.github.temporalrift.game.session.domain.game.Game;
 import io.github.temporalrift.game.session.domain.game.GameNotFoundException;
+import io.github.temporalrift.game.session.domain.game.GameStatus;
 import io.github.temporalrift.game.session.domain.lobby.Lobby;
 import io.github.temporalrift.game.session.domain.lobby.LobbyNotFoundException;
 import io.github.temporalrift.game.session.domain.lobby.LobbyPlayer;
+import io.github.temporalrift.game.session.domain.port.out.EraSagaRepository;
+import io.github.temporalrift.game.session.domain.port.out.FinalScoreQueryPort;
 import io.github.temporalrift.game.session.domain.port.out.GameRepository;
 import io.github.temporalrift.game.session.domain.port.out.LobbyRepository;
 import io.github.temporalrift.game.session.domain.port.out.SessionEventPublisher;
 import io.github.temporalrift.game.session.domain.port.out.SessionGameRulesPort;
+import io.github.temporalrift.game.session.domain.saga.EraSagaState;
+import io.github.temporalrift.game.session.domain.saga.EraSagaStatus;
 import io.github.temporalrift.game.session.domain.saga.PlayerReconnectSagaState;
+import io.github.temporalrift.game.shared.application.SagaHandoffPublisher;
+import io.github.temporalrift.game.shared.domain.event.GameEnded;
 import io.github.temporalrift.game.shared.domain.messaging.DomainEventEnvelope;
 
 @Service
 class PlayerReconnectSagaImpl implements PlayerReconnectSaga {
 
     private static final Logger log = LoggerFactory.getLogger(PlayerReconnectSagaImpl.class);
+    private static final String LAST_PLAYER_STANDING = "LAST_PLAYER_STANDING";
 
     private final LobbyRepository lobbyRepository;
     private final GameRepository gameRepository;
+    private final EraSagaRepository eraSagaRepository;
     private final SessionEventPublisher eventPublisher;
+    private final SagaHandoffPublisher sagaHandoffPublisher;
+    private final FinalScoreQueryPort finalScoreQueryPort;
     private final PlayerReconnectSagaStateManager stateManager;
     private final SessionGameRulesPort gameRules;
     private final PlayerReconnectTimerRegistry timerRegistry;
@@ -41,14 +54,20 @@ class PlayerReconnectSagaImpl implements PlayerReconnectSaga {
     PlayerReconnectSagaImpl(
             LobbyRepository lobbyRepository,
             GameRepository gameRepository,
+            EraSagaRepository eraSagaRepository,
             SessionEventPublisher eventPublisher,
+            ApplicationEventPublisher applicationEventPublisher,
+            FinalScoreQueryPort finalScoreQueryPort,
             PlayerReconnectSagaStateManager stateManager,
             SessionGameRulesPort gameRules,
             PlayerReconnectTimerRegistry timerRegistry,
             Clock clock) {
         this.lobbyRepository = lobbyRepository;
         this.gameRepository = gameRepository;
+        this.eraSagaRepository = eraSagaRepository;
         this.eventPublisher = eventPublisher;
+        this.sagaHandoffPublisher = new SagaHandoffPublisher(applicationEventPublisher);
+        this.finalScoreQueryPort = finalScoreQueryPort;
         this.stateManager = stateManager;
         this.gameRules = gameRules;
         this.timerRegistry = timerRegistry;
@@ -130,36 +149,44 @@ class PlayerReconnectSagaImpl implements PlayerReconnectSaga {
         }
         timerRegistry.remove(sagaId);
 
-        eventPublisher.publish(DomainEventEnvelope.create(
-                saga.gameId(),
-                Game.AGGREGATE_TYPE,
-                saga.gameId(),
-                DomainEventEnvelope.SCHEMA_VERSION_V1,
-                new PlayerAbandoned(saga.gameId(), saga.playerId()),
-                clock));
+        var gameId = saga.gameId();
+        // Era saga, game, then lobby — the lock order of every era-end decision. The forfeit must be
+        // visible to a concurrent era-end decision, and two final grace periods expiring together must
+        // serialize so exactly one of them sees a single contender left.
+        var eraSaga = eraSagaRepository.findByGameIdWithLock(gameId);
+        var game = gameRepository.findByIdWithLock(gameId).orElseThrow(() -> new GameNotFoundException(gameId));
+        var lobby = lobbyRepository
+                .findByIdWithLock(game.lobbyId())
+                .orElseThrow(() -> new LobbyNotFoundException(game.lobbyId()));
+        lobby.markPlayerAbandoned(saga.playerId());
+        lobbyRepository.save(lobby);
 
-        // Locked game read: the last-player check below is a cross-saga decision. Without
-        // serialization, two final grace periods expiring concurrently each see the other's
-        // uncommitted saga as still GRACE_PERIOD and both skip the game-over publication.
-        // Whoever locks second re-counts after the first commit and publishes exactly once.
-        var game = gameRepository
-                .findByIdWithLock(saga.gameId())
-                .orElseThrow(() -> new GameNotFoundException(saga.gameId()));
-        var lobby =
-                lobbyRepository.findById(game.lobbyId()).orElseThrow(() -> new LobbyNotFoundException(game.lobbyId()));
+        eventPublisher.publish(envelope(gameId, new PlayerAbandoned(gameId, saga.playerId())));
 
-        var connectedCount =
-                lobby.currentPlayers().stream().filter(LobbyPlayer::connected).count();
-        var gracePeriodCount = stateManager.countActiveGracePeriodForGame(saga.gameId());
-
-        if (connectedCount == 0 && gracePeriodCount == 0) {
-            eventPublisher.publish(DomainEventEnvelope.create(
-                    saga.gameId(),
-                    Game.AGGREGATE_TYPE,
-                    saga.gameId(),
-                    DomainEventEnvelope.SCHEMA_VERSION_V1,
-                    new GameEndedAbnormally(saga.gameId(), "all-players-abandoned"),
-                    clock));
+        var contenders = lobby.contenders();
+        if (game.status() == GameStatus.IN_PROGRESS && contenders.size() == 1) {
+            endByLastPlayerStanding(game, eraSaga, contenders.getFirst());
         }
+    }
+
+    private void endByLastPlayerStanding(Game game, Optional<EraSagaState> eraSaga, LobbyPlayer winner) {
+        game.end();
+        gameRepository.save(game);
+        // Completing the era saga makes every later round-closed or scores-updated fact for this era a no-op.
+        eraSaga.filter(state -> state.status() != EraSagaStatus.COMPLETED && state.status() != EraSagaStatus.FAILED)
+                .ifPresent(state -> eraSagaRepository.save(state.withStatus(EraSagaStatus.COMPLETED)));
+        var score = finalScoreQueryPort.getScores(game.id()).stream()
+                .filter(result -> result.playerId().equals(winner.playerId()))
+                .mapToInt(GameEnded.PlayerScoreResult::score)
+                .findFirst()
+                .orElse(0);
+        var winConditionMet = new WinConditionMet(
+                game.id(), winner.playerId(), winner.faction().name(), score, LAST_PLAYER_STANDING);
+        sagaHandoffPublisher.publish(eventPublisher::publish, envelope(game.id(), winConditionMet));
+    }
+
+    private <T> DomainEventEnvelope<T> envelope(UUID gameId, T payload) {
+        return DomainEventEnvelope.create(
+                gameId, Game.AGGREGATE_TYPE, gameId, DomainEventEnvelope.SCHEMA_VERSION_V1, payload, clock);
     }
 }

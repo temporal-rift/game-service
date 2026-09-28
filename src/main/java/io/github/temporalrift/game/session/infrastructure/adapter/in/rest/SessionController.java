@@ -84,7 +84,7 @@ class SessionController implements SessionApi {
         var result = getGameStateUseCase.handle(new GetGameStateUseCase.Query(gameId, CurrentPlayer.id()));
         var apiStatus = switch (result.status()) {
             case IN_PROGRESS -> GameStatus.IN_PROGRESS;
-            case ENDED_BY_WIN, ENDED_BY_COLLAPSE, ENDED_BY_STABILIZATION -> GameStatus.GAME_ENDED;
+            case ENDED_BY_WIN, ENDED_BY_COLLAPSE, ENDED_BY_STABILIZATION, ENDED_ABNORMALLY -> GameStatus.GAME_ENDED;
         };
         return ResponseEntity.ok(new GameSummaryResponse(
                 result.gameId(), apiStatus, result.eraNumber(), result.playerCount(), result.cascadedParadoxCount()));

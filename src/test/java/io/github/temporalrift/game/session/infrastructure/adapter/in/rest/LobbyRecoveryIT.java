@@ -18,6 +18,7 @@ import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import io.github.temporalrift.game.GameServiceIntegrationTest;
+import io.github.temporalrift.game.session.domain.lobby.ConnectionStatus;
 import io.github.temporalrift.game.session.domain.lobby.Lobby;
 import io.github.temporalrift.game.session.domain.lobby.LobbyConfig;
 import io.github.temporalrift.game.session.domain.lobby.LobbyPlayer;
@@ -69,8 +70,10 @@ class LobbyRecoveryIT {
 
     private void saveLobby(UUID lobbyId, UUID gameId) {
         var members = new ArrayList<>(List.of(
-                new LobbyPlayer(HOST_ID, "Host", null, Instant.parse("2026-01-01T00:00:00Z"), true),
-                new LobbyPlayer(MEMBER_ID, "Member", null, Instant.parse("2026-01-01T00:00:01Z"), true)));
+                new LobbyPlayer(
+                        HOST_ID, "Host", null, Instant.parse("2026-01-01T00:00:00Z"), ConnectionStatus.CONNECTED),
+                new LobbyPlayer(
+                        MEMBER_ID, "Member", null, Instant.parse("2026-01-01T00:00:01Z"), ConnectionStatus.CONNECTED)));
         var lobby = Lobby.reconstitute(
                 lobbyId,
                 gameId,

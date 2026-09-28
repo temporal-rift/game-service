@@ -21,6 +21,7 @@ import io.github.temporalrift.game.session.application.port.in.GetGameStateUseCa
 import io.github.temporalrift.game.session.domain.game.Game;
 import io.github.temporalrift.game.session.domain.game.GameNotFoundException;
 import io.github.temporalrift.game.session.domain.game.GameStatus;
+import io.github.temporalrift.game.session.domain.lobby.ConnectionStatus;
 import io.github.temporalrift.game.session.domain.lobby.Lobby;
 import io.github.temporalrift.game.session.domain.lobby.LobbyPlayer;
 import io.github.temporalrift.game.session.domain.port.out.GameRepository;
@@ -60,9 +61,20 @@ class GetGameStateQueryHandlerTest {
         given(game.eraCounter()).willReturn(2);
         given(game.cascadedParadoxCounter()).willReturn(1);
         var players = List.of(
-                new LobbyPlayer(CALLER, "Alice", null, Instant.parse("2026-01-01T00:00:00Z"), true),
-                new LobbyPlayer(UUID.randomUUID(), "Bob", null, Instant.parse("2026-01-01T00:00:00Z"), true),
-                new LobbyPlayer(UUID.randomUUID(), "Carol", null, Instant.parse("2026-01-01T00:00:00Z"), true));
+                new LobbyPlayer(
+                        CALLER, "Alice", null, Instant.parse("2026-01-01T00:00:00Z"), ConnectionStatus.CONNECTED),
+                new LobbyPlayer(
+                        UUID.randomUUID(),
+                        "Bob",
+                        null,
+                        Instant.parse("2026-01-01T00:00:00Z"),
+                        ConnectionStatus.CONNECTED),
+                new LobbyPlayer(
+                        UUID.randomUUID(),
+                        "Carol",
+                        null,
+                        Instant.parse("2026-01-01T00:00:00Z"),
+                        ConnectionStatus.CONNECTED));
         given(lobby.currentPlayers()).willReturn(players);
         var query = new GetGameStateUseCase.Query(GAME_ID, CALLER);
 
@@ -97,8 +109,12 @@ class GetGameStateQueryHandlerTest {
         given(game.lobbyId()).willReturn(LOBBY_ID);
         given(lobbyRepository.findById(LOBBY_ID)).willReturn(Optional.of(lobby));
         given(lobby.currentPlayers())
-                .willReturn(List.of(
-                        new LobbyPlayer(UUID.randomUUID(), "Bob", null, Instant.parse("2026-01-01T00:00:00Z"), true)));
+                .willReturn(List.of(new LobbyPlayer(
+                        UUID.randomUUID(),
+                        "Bob",
+                        null,
+                        Instant.parse("2026-01-01T00:00:00Z"),
+                        ConnectionStatus.CONNECTED)));
         var query = new GetGameStateUseCase.Query(GAME_ID, CALLER);
 
         // when / then

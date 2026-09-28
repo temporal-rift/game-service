@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import io.github.temporalrift.game.session.application.port.in.CreateLobbyUseCase;
+import io.github.temporalrift.game.session.domain.lobby.ConnectionStatus;
 import io.github.temporalrift.game.session.domain.lobby.Lobby;
 import io.github.temporalrift.game.session.domain.lobby.LobbyConfig;
 import io.github.temporalrift.game.session.domain.lobby.LobbyPlayer;
@@ -46,7 +47,7 @@ class CreateLobbyCommandHandler implements CreateLobbyUseCase {
         // collision falls through to GlobalExceptionHandler's unmapped-exception 500 like any other
         // unanticipated failure; it is not given any special "retryable" contract.
         var joinCode = joinCodePort.generate();
-        var host = new LobbyPlayer(command.playerId(), command.playerName(), null, now, true);
+        var host = new LobbyPlayer(command.playerId(), command.playerName(), null, now, ConnectionStatus.CONNECTED);
         var config = new LobbyConfig(joinCode, gameRules.minPlayers(), gameRules.maxPlayers(), clock);
         var lobby = new Lobby(lobbyId, gameId, command.playerId(), List.of(host), config);
 

@@ -16,6 +16,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import io.github.temporalrift.game.session.application.port.in.GetLobbyUseCase;
+import io.github.temporalrift.game.session.domain.lobby.ConnectionStatus;
 import io.github.temporalrift.game.session.domain.lobby.Lobby;
 import io.github.temporalrift.game.session.domain.lobby.LobbyAccessDeniedException;
 import io.github.temporalrift.game.session.domain.lobby.LobbyNotFoundException;
@@ -45,8 +46,18 @@ class GetLobbyQueryHandlerTest {
     void handle_member_returnsFullResult() {
         // given
         var players = List.of(
-                new LobbyPlayer(CALLER, "Alice", null, java.time.Instant.parse("2026-01-01T00:00:00Z"), true),
-                new LobbyPlayer(OTHER, "Bob", null, java.time.Instant.parse("2026-01-01T00:00:00Z"), true));
+                new LobbyPlayer(
+                        CALLER,
+                        "Alice",
+                        null,
+                        java.time.Instant.parse("2026-01-01T00:00:00Z"),
+                        ConnectionStatus.CONNECTED),
+                new LobbyPlayer(
+                        OTHER,
+                        "Bob",
+                        null,
+                        java.time.Instant.parse("2026-01-01T00:00:00Z"),
+                        ConnectionStatus.CONNECTED));
         given(lobbyRepository.findById(LOBBY_ID)).willReturn(Optional.of(lobby));
         given(lobby.currentPlayers()).willReturn(players);
         given(lobby.id()).willReturn(LOBBY_ID);
@@ -75,8 +86,18 @@ class GetLobbyQueryHandlerTest {
     void handle_nonHostMember_returnsCallerIdentity() {
         // given
         var players = List.of(
-                new LobbyPlayer(OTHER, "Bob", null, java.time.Instant.parse("2026-01-01T00:00:00Z"), true),
-                new LobbyPlayer(CALLER, "Alice", null, java.time.Instant.parse("2026-01-01T00:00:00Z"), true));
+                new LobbyPlayer(
+                        OTHER,
+                        "Bob",
+                        null,
+                        java.time.Instant.parse("2026-01-01T00:00:00Z"),
+                        ConnectionStatus.CONNECTED),
+                new LobbyPlayer(
+                        CALLER,
+                        "Alice",
+                        null,
+                        java.time.Instant.parse("2026-01-01T00:00:00Z"),
+                        ConnectionStatus.CONNECTED));
         given(lobbyRepository.findById(LOBBY_ID)).willReturn(Optional.of(lobby));
         given(lobby.currentPlayers()).willReturn(players);
         given(lobby.id()).willReturn(LOBBY_ID);
@@ -110,8 +131,12 @@ class GetLobbyQueryHandlerTest {
         // given
         given(lobbyRepository.findById(LOBBY_ID)).willReturn(Optional.of(lobby));
         given(lobby.currentPlayers())
-                .willReturn(List.of(
-                        new LobbyPlayer(OTHER, "Bob", null, java.time.Instant.parse("2026-01-01T00:00:00Z"), true)));
+                .willReturn(List.of(new LobbyPlayer(
+                        OTHER,
+                        "Bob",
+                        null,
+                        java.time.Instant.parse("2026-01-01T00:00:00Z"),
+                        ConnectionStatus.CONNECTED)));
         var query = new GetLobbyUseCase.Query(LOBBY_ID, CALLER);
 
         // when / then

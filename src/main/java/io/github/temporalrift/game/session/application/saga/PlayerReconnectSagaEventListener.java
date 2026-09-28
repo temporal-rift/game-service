@@ -3,6 +3,7 @@ package io.github.temporalrift.game.session.application.saga;
 import org.springframework.modulith.events.ApplicationModuleListener;
 import org.springframework.stereotype.Component;
 
+import io.github.temporalrift.game.session.domain.game.GameStatus;
 import io.github.temporalrift.game.session.domain.lobby.LobbyStatus;
 import io.github.temporalrift.game.session.domain.port.out.GameRepository;
 import io.github.temporalrift.game.session.domain.port.out.LobbyRepository;
@@ -33,8 +34,10 @@ class PlayerReconnectSagaEventListener {
     void onPlayerDisconnected(PlayerDisconnectedApplicationEvent event) {
         gameRepository
                 .findById(event.gameId())
+                .filter(game -> game.status() == GameStatus.IN_PROGRESS)
                 .flatMap(game -> lobbyRepository.findById(game.lobbyId()))
                 .filter(lobby -> lobby.status() == LobbyStatus.STARTED)
+                .filter(lobby -> !lobby.isAbandoned(event.playerId()))
                 .filter(_ -> !stateManager.hasActiveGracePeriod(event.gameId(), event.playerId()))
                 .ifPresent(_ -> timerScheduler.scheduleAfterCommit(saga.start(event.gameId(), event.playerId())));
     }

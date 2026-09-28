@@ -35,6 +35,7 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 
 import io.github.temporalrift.game.session.domain.event.EraStarted;
 import io.github.temporalrift.game.session.domain.event.FactionsDrawn;
+import io.github.temporalrift.game.session.domain.lobby.ConnectionStatus;
 import io.github.temporalrift.game.session.domain.lobby.DisconnectedPlayersException;
 import io.github.temporalrift.game.session.domain.lobby.Lobby;
 import io.github.temporalrift.game.session.domain.lobby.LobbyNotFoundException;
@@ -60,8 +61,8 @@ class StartGameSagaImplTest {
     static final List<UUID> CATALOG_IDS =
             IntStream.range(0, 30).mapToObj(i -> UUID.randomUUID()).toList();
     static final List<LobbyPlayer> TWO_PLAYERS = List.of(
-            new LobbyPlayer(UUID.randomUUID(), "Alice", null, JOINED_AT, true),
-            new LobbyPlayer(UUID.randomUUID(), "Bob", null, JOINED_AT, true));
+            new LobbyPlayer(UUID.randomUUID(), "Alice", null, JOINED_AT, ConnectionStatus.CONNECTED),
+            new LobbyPlayer(UUID.randomUUID(), "Bob", null, JOINED_AT, ConnectionStatus.CONNECTED));
 
     @Mock
     LobbyRepository lobbyRepository;
