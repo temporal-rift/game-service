@@ -55,12 +55,28 @@ class ActivistEraStateTest {
         var playerId = UUID.randomUUID();
         var signature = new ProbabilityInfluenceSignature(CardType.PUSH, UUID.randomUUID(), null, UUID.randomUUID());
 
-        assertThatThrownBy(() -> state.expose(playerId, null)).isInstanceOf(NullPointerException.class);
+        assertThatThrownBy(() -> state.expose(null, signature)).isInstanceOf(NullPointerException.class);
 
         state.expose(playerId, signature);
 
         assertThat(state.exposedPlayerId()).isEqualTo(playerId);
         assertThat(state.exposedSignature()).isEqualTo(signature);
+    }
+
+    @Test
+    void exposeAcceptsPubliclyEligibleCardWithoutAQualifyingSignature() {
+        var state = state(false);
+        var playerId = UUID.randomUUID();
+
+        state.expose(playerId, null);
+
+        assertThat(state.exposedPlayerId()).isEqualTo(playerId);
+        assertThat(state.exposedSignature()).isNull();
+        assertThat(state.recordExposeBehaviorChanged(
+                        new ProbabilityInfluenceSignature(CardType.PUSH, UUID.randomUUID(), null, UUID.randomUUID())))
+                .isFalse();
+        var otherPlayerId = UUID.randomUUID();
+        assertThatThrownBy(() -> state.expose(otherPlayerId, null)).isInstanceOf(ExposeAlreadyRecordedException.class);
     }
 
     @Test

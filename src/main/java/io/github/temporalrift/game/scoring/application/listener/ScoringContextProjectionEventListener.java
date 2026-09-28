@@ -14,7 +14,6 @@ import io.github.temporalrift.game.scoring.domain.port.out.FactionDisclosureRepo
 import io.github.temporalrift.game.shared.domain.event.ActivistDeclarationRecorded;
 import io.github.temporalrift.game.shared.domain.event.EraActionFactsFinalized;
 import io.github.temporalrift.game.shared.domain.event.EventsDrawn;
-import io.github.temporalrift.game.shared.domain.event.ExposeBehaviorChanged;
 import io.github.temporalrift.game.shared.domain.event.FactionAssigned;
 import io.github.temporalrift.game.shared.domain.event.ForesightDeclared;
 import io.github.temporalrift.game.shared.domain.model.Faction;
@@ -67,16 +66,6 @@ class ScoringContextProjectionEventListener {
     }
 
     @ApplicationModuleListener
-    void onExposeBehaviorChanged(ExposeBehaviorChanged event) {
-        contextRepository.recordActionFact(
-                event.gameId(),
-                event.eraNumber(),
-                event.activistPlayerId(),
-                Faction.ACTIVISTS,
-                io.github.temporalrift.game.scoring.domain.playerscore.ScoreReason.EXPOSE_CHANGED_PLAYER_BEHAVIOR);
-    }
-
-    @ApplicationModuleListener
     void onEraActionFactsFinalized(EraActionFactsFinalized event) {
         // Redundant with onForesightDeclared for this same round, but harmless:
         // both paths are idempotent upserts. This is the path that is *guaranteed* complete for the
@@ -91,8 +80,7 @@ class ScoringContextProjectionEventListener {
                         event.eraNumber(),
                         fact.activistPlayerId(),
                         Faction.ACTIVISTS,
-                        io.github.temporalrift.game.scoring.domain.playerscore.ScoreReason
-                                .EXPOSE_CHANGED_PLAYER_BEHAVIOR));
+                        io.github.temporalrift.game.scoring.domain.playerscore.ScoreReason.EXPOSE_SIGNATURE_REVEALED));
         event.activistDeclarationFacts()
                 .forEach(fact -> contextRepository.upsertActivistDeclaration(new ActivistDeclarationRecorded(
                         event.gameId(),

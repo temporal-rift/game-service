@@ -2,10 +2,10 @@ package io.github.temporalrift.game.action.domain.activisterastate;
 
 import java.util.UUID;
 
-/** Raised when Expose targets a player without a qualifying Round-1 probability signature. */
+/** Raised when Expose targets a player without a publicly eligible Round-1 action. */
 public final class ExposeTargetNotEligibleException extends RuntimeException {
 
     public ExposeTargetNotEligibleException(UUID playerId) {
-        super("Player " + playerId + " has no qualifying Round-1 probability-influence signature");
+        super("Player " + playerId + " did not publicly play a Probability Shifter card in Round 1");
     }
 }

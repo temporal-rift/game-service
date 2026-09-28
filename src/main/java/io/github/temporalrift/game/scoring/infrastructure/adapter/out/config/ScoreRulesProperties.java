@@ -1,6 +1,7 @@
 package io.github.temporalrift.game.scoring.infrastructure.adapter.out.config;
 
 import java.util.Arrays;
+import java.util.EnumMap;
 import java.util.Map;
 import java.util.Objects;
 
@@ -16,8 +17,21 @@ import io.github.temporalrift.game.scoring.domain.port.out.ScoreRulesPort;
 public record ScoreRulesProperties(@NotNull Map<ScoreReason, Integer> scoreDeltas) implements ScoreRulesPort {
 
     public ScoreRulesProperties {
-        requireAllReasons(scoreDeltas);
-        scoreDeltas = Map.copyOf(scoreDeltas);
+        Objects.requireNonNull(scoreDeltas, "game.rules.scoring.score-deltas must not be null");
+        var normalized = new EnumMap<ScoreReason, Integer>(ScoreReason.class);
+        normalized.putAll(scoreDeltas);
+        if (!normalized.containsKey(ScoreReason.EXPOSE_SIGNATURE_REVEALED)
+                && normalized.containsKey(ScoreReason.EXPOSE_CHANGED_PLAYER_BEHAVIOR)) {
+            normalized.put(
+                    ScoreReason.EXPOSE_SIGNATURE_REVEALED, normalized.get(ScoreReason.EXPOSE_CHANGED_PLAYER_BEHAVIOR));
+        }
+        if (!normalized.containsKey(ScoreReason.EXPOSE_CHANGED_PLAYER_BEHAVIOR)
+                && normalized.containsKey(ScoreReason.EXPOSE_SIGNATURE_REVEALED)) {
+            normalized.put(
+                    ScoreReason.EXPOSE_CHANGED_PLAYER_BEHAVIOR, normalized.get(ScoreReason.EXPOSE_SIGNATURE_REVEALED));
+        }
+        requireAllReasons(normalized);
+        scoreDeltas = Map.copyOf(normalized);
     }
 
     private static void requireAllReasons(Map<ScoreReason, Integer> values) {

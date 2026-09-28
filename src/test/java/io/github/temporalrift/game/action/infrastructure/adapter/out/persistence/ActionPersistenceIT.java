@@ -331,6 +331,9 @@ class ActionPersistenceIT {
 
         var emptyState = new ActivistEraState(UUID.randomUUID(), gameId, 2, UUID.randomUUID(), false);
         activistEraStateRepository.save(emptyState);
+        var bluffTargetState = new ActivistEraState(UUID.randomUUID(), gameId, 2, UUID.randomUUID(), false);
+        bluffTargetState.expose(UUID.randomUUID(), null);
+        activistEraStateRepository.save(bluffTargetState);
 
         var loaded =
                 activistEraStateRepository.findByGameIdAndEraNumberAndActivistPlayerId(gameId, 2, activistPlayerId);
@@ -351,7 +354,13 @@ class ActionPersistenceIT {
                 .containsExactly(state.id());
         assertThat(activistEraStateRepository.findExposedByGameIdAndEraNumber(gameId, 2))
                 .extracting(ActivistEraState::id)
-                .containsExactly(state.id());
+                .containsExactlyInAnyOrder(state.id(), bluffTargetState.id());
+        assertThat(activistEraStateRepository.findByGameIdAndEraNumberAndActivistPlayerId(
+                        gameId, 2, bluffTargetState.activistPlayerId()))
+                .hasValueSatisfying(saved -> {
+                    assertThat(saved.exposedPlayerId()).isEqualTo(bluffTargetState.exposedPlayerId());
+                    assertThat(saved.exposedSignature()).isNull();
+                });
         assertThat(activistEraStateRepository.findByGameIdAndEraNumberAndActivistPlayerId(
                         gameId, 2, emptyState.activistPlayerId()))
                 .hasValueSatisfying(saved -> {

@@ -11,6 +11,7 @@ import io.github.temporalrift.game.action.application.ActionTargetValidator;
 import io.github.temporalrift.game.action.application.GameParticipantValidator;
 import io.github.temporalrift.game.action.application.StalledEventTargetLock;
 import io.github.temporalrift.game.action.application.port.in.PlaySpecialActionUseCase;
+import io.github.temporalrift.game.action.domain.actionround.ActionFamily;
 import io.github.temporalrift.game.action.domain.actionround.FactionRequiredException;
 import io.github.temporalrift.game.action.domain.actionround.InvalidSpecialActionException;
 import io.github.temporalrift.game.action.domain.actionround.JammedPlayerException;
@@ -29,6 +30,7 @@ import io.github.temporalrift.game.action.domain.port.out.SealGameUsageRepositor
 import io.github.temporalrift.game.action.domain.port.out.SpecialActionEraUsageRepository;
 import io.github.temporalrift.game.action.domain.specialactionerausage.SealGameUsage;
 import io.github.temporalrift.game.action.domain.specialactionerausage.SpecialActionEraUsage;
+import io.github.temporalrift.game.shared.domain.model.CardCategory;
 import io.github.temporalrift.game.shared.domain.model.Faction;
 import io.github.temporalrift.game.shared.domain.model.SpecialAction;
 import io.github.temporalrift.game.shared.domain.port.out.GameRulesPort;
@@ -169,13 +171,17 @@ class PlaySpecialActionCommandHandler implements PlaySpecialActionUseCase {
             throw new ExposeUnavailableException();
         }
         var targetPlayerId = command.targetPlayerId();
-        var signature = actionRoundRepository
+        var targetAction = actionRoundRepository
                 .findByGameIdAndEraNumberAndRoundNumber(command.gameId(), command.eraNumber(), 1)
                 .flatMap(round -> round.submittedActions().stream()
                         .filter(action -> action.playerId().equals(targetPlayerId))
-                        .findFirst()
-                        .flatMap(ProbabilityInfluenceSignature::from))
+                        .findFirst())
+                .filter(action -> action.family() == ActionFamily.CARD)
+                .filter(action -> action.publicCategory()
+                        .filter(CardCategory.PROBABILITY_SHIFTER::equals)
+                        .isPresent())
                 .orElseThrow(() -> new ExposeTargetNotEligibleException(targetPlayerId));
+        var signature = ProbabilityInfluenceSignature.from(targetAction).orElse(null);
         var state = activistEraStateRepository
                 .findByGameIdAndEraNumberAndActivistPlayerId(command.gameId(), command.eraNumber(), command.playerId())
                 .orElseGet(() -> new ActivistEraState(

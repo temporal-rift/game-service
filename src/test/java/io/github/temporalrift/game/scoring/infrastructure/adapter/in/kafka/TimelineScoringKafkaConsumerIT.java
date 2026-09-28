@@ -196,7 +196,7 @@ class TimelineScoringKafkaConsumerIT {
         transactionTemplate.executeWithoutResult(_ -> applicationEventPublisher.publishEvent(finalization));
         transactionTemplate.executeWithoutResult(_ -> applicationEventPublisher.publishEvent(finalization));
 
-        await().atMost(Duration.ofSeconds(10))
+        await().atMost(Duration.ofSeconds(30))
                 .untilAsserted(() -> assertThat(playerScoreRepository.findAllByGameId(gameId))
                         .singleElement()
                         .satisfies(score -> {

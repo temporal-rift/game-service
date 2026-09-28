@@ -32,7 +32,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.context.ApplicationEventPublisher;
 
 import io.github.temporalrift.game.action.domain.actionround.ActionFamily;
 import io.github.temporalrift.game.action.domain.actionround.ActionRound;
@@ -61,7 +60,6 @@ import io.github.temporalrift.game.action.domain.saga.ActionRoundSagaState;
 import io.github.temporalrift.game.action.domain.saga.ActionRoundSagaStatus;
 import io.github.temporalrift.game.shared.domain.event.ActionRoundClosed;
 import io.github.temporalrift.game.shared.domain.event.EraActionFactsFinalized;
-import io.github.temporalrift.game.shared.domain.event.ExposeBehaviorChanged;
 import io.github.temporalrift.game.shared.domain.messaging.DomainEventEnvelope;
 import io.github.temporalrift.game.shared.domain.model.CardCategory;
 import io.github.temporalrift.game.shared.domain.model.CardGrade;
@@ -98,9 +96,6 @@ class ActionRoundSagaImplTest {
     ActionEventPublisher actionEventPublisher;
 
     @Mock
-    ApplicationEventPublisher applicationEventPublisher;
-
-    @Mock
     ActionRoundSagaStateManager stateManager;
 
     @Mock
@@ -124,7 +119,6 @@ class ActionRoundSagaImplTest {
                 activistEraStateRepository,
                 playerStateRepository,
                 actionEventPublisher,
-                applicationEventPublisher,
                 stateManager,
                 gameRules,
                 futureEventDefinitionPort,
@@ -135,6 +129,16 @@ class ActionRoundSagaImplTest {
 
     private static DomainEventEnvelope envelopeWithPayload(Class<?> payloadType) {
         return argThat(envelope -> payloadType.isInstance(envelope.payload()));
+    }
+
+    private List<EraActionFactsFinalized.ExposeFact> publishedExposeFacts() {
+        var published = ArgumentCaptor.forClass(Object.class);
+        then(actionEventPublisher).should(atLeast(0)).publishInternally(published.capture());
+        return published.getAllValues().stream()
+                .filter(EraActionFactsFinalized.class::isInstance)
+                .map(EraActionFactsFinalized.class::cast)
+                .flatMap(facts -> facts.exposeFacts().stream())
+                .toList();
     }
 
     private static SubmittedAction.CardAction nullify(UUID playerId, UUID targetPlayerId) {
@@ -1041,13 +1045,12 @@ class ActionRoundSagaImplTest {
     }
 
     @Nested
-    @DisplayName("ExposeBehaviorChanged — dual-published through SagaHandoffPublisher at final round close")
-    class ExposeBehaviorChangedDualPublishTests {
+    @DisplayName("ExposeBehaviorChanged — public observation at final round close")
+    class ExposeBehaviorChangedPublishTests {
 
         @Test
-        @DisplayName("exposed player's Round 3 signature differs from Round 1 — publishes Kafka envelope and "
-                + "internal event")
-        void tryClose_round3SignatureDiffers_dualPublishesExposeBehaviorChanged() {
+        @DisplayName("exposed player's Round 3 signature differs from Round 1 — publishes a filtered Kafka event")
+        void tryClose_round3SignatureDiffers_publishesExposeBehaviorChanged() {
             // given — Round 1 exposed PLAYER_2 with a Push signature on (targetEventId, targetOutcomeId)
             var stateId = UUID.randomUUID();
             var targetEventId = UUID.randomUUID();
@@ -1091,18 +1094,14 @@ class ActionRoundSagaImplTest {
             assertThat(exposeEnvelope.payload())
                     .isEqualTo(new io.github.temporalrift.game.action.domain.event.ExposeBehaviorChanged(
                             GAME_ID, ERA_NUMBER, 3, PLAYER_1, PLAYER_2));
-
-            // then — in-process path: the shared cross-module payload, via the real SagaHandoffPublisher
-            var internalCaptor = ArgumentCaptor.forClass(Object.class);
-            then(applicationEventPublisher).should().publishEvent(internalCaptor.capture());
-            assertThat(internalCaptor.getValue())
-                    .isEqualTo(new ExposeBehaviorChanged(GAME_ID, ERA_NUMBER, PLAYER_1, PLAYER_2));
+            assertThat(publishedExposeFacts())
+                    .containsExactly(new EraActionFactsFinalized.ExposeFact(PLAYER_1, PLAYER_2));
 
             then(activistEraStateRepository).should().save(activistState);
         }
 
         @Test
-        @DisplayName("exposed player's Round 3 signature matches Round 1 — no publish on either path")
+        @DisplayName("exposed player's Round 3 signature matches Round 1 — no behavior notification")
         void tryClose_round3SignatureUnchanged_doesNotPublish() {
             // given — Round 1 exposed PLAYER_2 with a Push signature on (targetEventId, targetOutcomeId)
             var targetEventId = UUID.randomUUID();
@@ -1139,7 +1138,118 @@ class ActionRoundSagaImplTest {
                     .should(never())
                     .publish(envelopeWithPayload(
                             io.github.temporalrift.game.action.domain.event.ExposeBehaviorChanged.class));
-            then(applicationEventPublisher).should(never()).publishEvent(any(ExposeBehaviorChanged.class));
+            assertThat(publishedExposeFacts())
+                    .containsExactly(new EraActionFactsFinalized.ExposeFact(PLAYER_1, PLAYER_2));
+        }
+
+        @Test
+        void tryClose_round3NonShiftStillScoresTheEarlierReveal() {
+            var activistState = new ActivistEraState(UUID.randomUUID(), GAME_ID, ERA_NUMBER, PLAYER_1, false);
+            activistState.expose(
+                    PLAYER_2,
+                    new ProbabilityInfluenceSignature(CardType.PUSH, UUID.randomUUID(), null, UUID.randomUUID()));
+            given(activistEraStateRepository.findExposedByGameIdAndEraNumber(GAME_ID, ERA_NUMBER))
+                    .willReturn(List.of(activistState));
+            var round = new ActionRound(
+                    UUID.randomUUID(), new ActionRoundConfig(GAME_ID, ERA_NUMBER, 3, TIMER_SECONDS), List.of(PLAYER_2));
+            round.submit(new SubmittedAction.CardAction(
+                    PLAYER_2, UUID.randomUUID(), CardType.STALL, UUID.randomUUID(), null, UUID.randomUUID()));
+            given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA_NUMBER, 3))
+                    .willReturn(Optional.of(round));
+            given(stateManager.markSubmitted(GAME_ID, ERA_NUMBER, 3, PLAYER_2))
+                    .willReturn(Optional.of(new ActionRoundSagaState(
+                            UUID.randomUUID(),
+                            GAME_ID,
+                            ERA_NUMBER,
+                            3,
+                            ActionRoundSagaStatus.WAITING,
+                            List.of(),
+                            TIMER_EXPIRES_AT)));
+
+            saga.handlePlayerSubmitted(GAME_ID, ERA_NUMBER, 3, PLAYER_2);
+
+            then(actionEventPublisher)
+                    .should(never())
+                    .publish(envelopeWithPayload(
+                            io.github.temporalrift.game.action.domain.event.ExposeBehaviorChanged.class));
+            assertThat(publishedExposeFacts())
+                    .containsExactly(new EraActionFactsFinalized.ExposeFact(PLAYER_1, PLAYER_2));
+        }
+
+        @Test
+        void tryClose_round3SkipStillScoresTheEarlierReveal() {
+            var activistState = new ActivistEraState(UUID.randomUUID(), GAME_ID, ERA_NUMBER, PLAYER_1, false);
+            activistState.expose(
+                    PLAYER_2,
+                    new ProbabilityInfluenceSignature(CardType.PUSH, UUID.randomUUID(), null, UUID.randomUUID()));
+            given(activistEraStateRepository.findExposedByGameIdAndEraNumber(GAME_ID, ERA_NUMBER))
+                    .willReturn(List.of(activistState));
+            var round = new ActionRound(
+                    UUID.randomUUID(), new ActionRoundConfig(GAME_ID, ERA_NUMBER, 3, TIMER_SECONDS), List.of(PLAYER_2));
+            given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA_NUMBER, 3))
+                    .willReturn(Optional.of(round));
+            var sagaId = UUID.randomUUID();
+            given(stateManager.findBySagaId(sagaId))
+                    .willReturn(Optional.of(new ActionRoundSagaState(
+                            sagaId,
+                            GAME_ID,
+                            ERA_NUMBER,
+                            3,
+                            ActionRoundSagaStatus.WAITING,
+                            List.of(PLAYER_2),
+                            TIMER_EXPIRES_AT)));
+
+            saga.handleTimerExpiry(sagaId);
+
+            then(actionEventPublisher)
+                    .should(never())
+                    .publish(envelopeWithPayload(
+                            io.github.temporalrift.game.action.domain.event.ExposeBehaviorChanged.class));
+            assertThat(publishedExposeFacts())
+                    .containsExactly(new EraActionFactsFinalized.ExposeFact(PLAYER_1, PLAYER_2));
+        }
+
+        @Test
+        void tryClose_cancelledExposeProducesNeitherScoreNorBehaviorNotification() {
+            var activistState = new ActivistEraState(UUID.randomUUID(), GAME_ID, ERA_NUMBER, PLAYER_1, false);
+            var targetEventId = UUID.randomUUID();
+            var targetOutcomeId = UUID.randomUUID();
+            activistState.expose(
+                    PLAYER_2, new ProbabilityInfluenceSignature(CardType.PUSH, targetEventId, null, targetOutcomeId));
+            given(activistEraStateRepository.findExposedByGameIdAndEraNumber(GAME_ID, ERA_NUMBER))
+                    .willReturn(List.of(activistState));
+            var roundTwo = new ActionRound(
+                    UUID.randomUUID(),
+                    new ActionRoundConfig(GAME_ID, ERA_NUMBER, 2, TIMER_SECONDS),
+                    List.of(PLAYER_1, PLAYER_3));
+            roundTwo.submit(new SubmittedAction.SpecialActionSubmission(
+                    PLAYER_1, Faction.ACTIVISTS, SpecialAction.EXPOSE, null, null, null, null, PLAYER_2));
+            roundTwo.submit(nullify(PLAYER_3, PLAYER_1));
+            given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumber(GAME_ID, ERA_NUMBER, 2))
+                    .willReturn(Optional.of(roundTwo));
+            var roundThree = new ActionRound(
+                    UUID.randomUUID(), new ActionRoundConfig(GAME_ID, ERA_NUMBER, 3, TIMER_SECONDS), List.of(PLAYER_2));
+            roundThree.submit(new SubmittedAction.CardAction(
+                    PLAYER_2, UUID.randomUUID(), CardType.SUPPRESS, targetEventId, null, targetOutcomeId));
+            given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA_NUMBER, 3))
+                    .willReturn(Optional.of(roundThree));
+            given(stateManager.markSubmitted(GAME_ID, ERA_NUMBER, 3, PLAYER_2))
+                    .willReturn(Optional.of(new ActionRoundSagaState(
+                            UUID.randomUUID(),
+                            GAME_ID,
+                            ERA_NUMBER,
+                            3,
+                            ActionRoundSagaStatus.WAITING,
+                            List.of(),
+                            TIMER_EXPIRES_AT)));
+
+            saga.handlePlayerSubmitted(GAME_ID, ERA_NUMBER, 3, PLAYER_2);
+
+            then(actionEventPublisher)
+                    .should(never())
+                    .publish(envelopeWithPayload(
+                            io.github.temporalrift.game.action.domain.event.ExposeBehaviorChanged.class));
+            assertThat(publishedExposeFacts()).isEmpty();
         }
     }
 
@@ -2459,6 +2569,22 @@ class ActionRoundSagaImplTest {
                     .isEqualTo(List.of());
         }
 
+        @Test
+        @DisplayName("an Expose without a signature reveals nothing, so it discloses nobody")
+        void signaturelessExposeDisclosesNobody() {
+            var exposer = new ActivistEraState(UUID.randomUUID(), GAME_ID, ERA_NUMBER, PLAYER_3, false);
+            exposer.expose(PLAYER_2, null);
+            given(activistEraStateRepository.findExposedByGameIdAndEraNumber(GAME_ID, ERA_NUMBER))
+                    .willReturn(List.of(exposer));
+            closeRoundThree(new ActionRound(
+                    UUID.randomUUID(), new ActionRoundConfig(GAME_ID, ERA_NUMBER, 2, TIMER_SECONDS), List.of()));
+
+            assertThat(internallyPublished(EraActionFactsFinalized.class))
+                    .singleElement()
+                    .extracting(EraActionFactsFinalized::disclosedPlayerIds)
+                    .isEqualTo(List.of());
+        }
+
         private void closeRoundThree(ActionRound roundTwo) {
             var roundThree = new ActionRound(
                     UUID.randomUUID(), new ActionRoundConfig(GAME_ID, ERA_NUMBER, 3, TIMER_SECONDS), List.of());
@@ -2469,6 +2595,56 @@ class ActionRoundSagaImplTest {
             given(stateManager.markSubmitted(GAME_ID, ERA_NUMBER, 3, PLAYER_1)).willReturn(waitingState(ERA_NUMBER, 3));
 
             saga.handlePlayerSubmitted(GAME_ID, ERA_NUMBER, 3, PLAYER_1);
+        }
+
+        @Test
+        void exposeAgainstAmplifyOrDisguisedDecoyPublishesNoSignature() {
+            var activistState = new ActivistEraState(UUID.randomUUID(), GAME_ID, ERA_NUMBER, PLAYER_1, false);
+            activistState.expose(PLAYER_2, null);
+            closeExposeRoundTwo(activistState, false);
+
+            assertThat(publishedPayloads(io.github.temporalrift.game.action.domain.event.ExposeSignatureRevealed.class))
+                    .isEmpty();
+        }
+
+        @Test
+        void cancelledExposePublishesNoSignature() {
+            var activistState = new ActivistEraState(UUID.randomUUID(), GAME_ID, ERA_NUMBER, PLAYER_1, false);
+            activistState.expose(
+                    PLAYER_2,
+                    new ProbabilityInfluenceSignature(CardType.PUSH, UUID.randomUUID(), null, UUID.randomUUID()));
+            closeExposeRoundTwo(activistState, true);
+
+            assertThat(publishedPayloads(io.github.temporalrift.game.action.domain.event.ExposeSignatureRevealed.class))
+                    .isEmpty();
+        }
+
+        private void closeExposeRoundTwo(ActivistEraState activistState, boolean cancelled) {
+            given(activistEraStateRepository.findExposedByGameIdAndEraNumber(GAME_ID, ERA_NUMBER))
+                    .willReturn(List.of(activistState));
+            var playerIds = cancelled ? List.of(PLAYER_1, PLAYER_3) : List.of(PLAYER_1);
+            var roundTwo = new ActionRound(
+                    UUID.randomUUID(), new ActionRoundConfig(GAME_ID, ERA_NUMBER, 2, TIMER_SECONDS), playerIds);
+            roundTwo.submit(new SubmittedAction.SpecialActionSubmission(
+                    PLAYER_1, Faction.ACTIVISTS, SpecialAction.EXPOSE, null, null, null, null, PLAYER_2));
+            if (cancelled) {
+                roundTwo.submit(nullify(PLAYER_3, PLAYER_1));
+            }
+            given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA_NUMBER, 2))
+                    .willReturn(Optional.of(roundTwo));
+            given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumber(GAME_ID, ERA_NUMBER, 1))
+                    .willReturn(Optional.of(new ActionRound(
+                            UUID.randomUUID(),
+                            new ActionRoundConfig(GAME_ID, ERA_NUMBER, 1, TIMER_SECONDS),
+                            List.of())));
+            given(futureEventDefinitionPort.findByGameIdAndEraNumber(GAME_ID, ERA_NUMBER))
+                    .willReturn(List.of());
+            given(bandCalculator.computeBands(any(), any(), any())).willReturn(List.of());
+            var lastSubmittedPlayer = cancelled ? PLAYER_3 : PLAYER_1;
+            given(stateManager.markSubmitted(GAME_ID, ERA_NUMBER, 2, lastSubmittedPlayer))
+                    .willReturn(waitingState(ERA_NUMBER, 2));
+
+            saga.handlePlayerSubmitted(GAME_ID, ERA_NUMBER, 2, lastSubmittedPlayer);
         }
 
         private void closeInterceptRound(int roundNumber, CardGrade grade, PlayerState target) {

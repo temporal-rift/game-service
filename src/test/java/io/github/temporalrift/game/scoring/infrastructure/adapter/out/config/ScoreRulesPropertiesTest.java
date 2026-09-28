@@ -32,6 +32,32 @@ class ScoreRulesPropertiesTest {
     }
 
     @Test
+    void acceptsEarlierExposeKeyDuringConfigRollout() {
+        var scoreDeltas = completeScoreDeltas();
+        scoreDeltas.remove(ScoreReason.EXPOSE_SIGNATURE_REVEALED);
+
+        var properties = new ScoreRulesProperties(scoreDeltas);
+
+        assertThat(properties.pointsDelta(ScoreReason.EXPOSE_SIGNATURE_REVEALED))
+                .isEqualTo(2);
+        assertThat(properties.pointsDelta(ScoreReason.EXPOSE_CHANGED_PLAYER_BEHAVIOR))
+                .isEqualTo(2);
+    }
+
+    @Test
+    void acceptsRevealExposeKeyWithoutTheHistoricalKey() {
+        var scoreDeltas = completeScoreDeltas();
+        scoreDeltas.remove(ScoreReason.EXPOSE_CHANGED_PLAYER_BEHAVIOR);
+
+        var properties = new ScoreRulesProperties(scoreDeltas);
+
+        assertThat(properties.pointsDelta(ScoreReason.EXPOSE_SIGNATURE_REVEALED))
+                .isEqualTo(2);
+        assertThat(properties.pointsDelta(ScoreReason.EXPOSE_CHANGED_PLAYER_BEHAVIOR))
+                .isEqualTo(2);
+    }
+
+    @Test
     void rejectsMissingScoreReason() {
         var scoreDeltas = completeScoreDeltas();
         scoreDeltas.remove(ScoreReason.CHAIN_COMPLETED);
@@ -39,6 +65,17 @@ class ScoreRulesPropertiesTest {
         assertThatIllegalArgumentException()
                 .isThrownBy(() -> new ScoreRulesProperties(scoreDeltas))
                 .withMessageContaining("CHAIN_COMPLETED");
+    }
+
+    @Test
+    void rejectsMissingExposeKeys() {
+        var scoreDeltas = completeScoreDeltas();
+        scoreDeltas.remove(ScoreReason.EXPOSE_CHANGED_PLAYER_BEHAVIOR);
+        scoreDeltas.remove(ScoreReason.EXPOSE_SIGNATURE_REVEALED);
+
+        assertThatIllegalArgumentException()
+                .isThrownBy(() -> new ScoreRulesProperties(scoreDeltas))
+                .withMessageContaining("EXPOSE_SIGNATURE_REVEALED");
     }
 
     @Test

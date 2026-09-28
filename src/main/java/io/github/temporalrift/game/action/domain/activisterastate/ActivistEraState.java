@@ -114,7 +114,6 @@ public final class ActivistEraState extends AggregateRoot {
 
     public void expose(UUID targetPlayerId, ProbabilityInfluenceSignature signature) {
         Objects.requireNonNull(targetPlayerId, "targetPlayerId must not be null");
-        Objects.requireNonNull(signature, "signature must not be null");
         if (exposedPlayerId != null) {
             throw new ExposeAlreadyRecordedException();
         }
