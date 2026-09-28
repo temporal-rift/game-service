@@ -136,7 +136,7 @@ class TimelineScoringKafkaConsumerIT {
                         .singleElement()
                         .satisfies(score -> {
                             assertThat(score.playerId()).isEqualTo(playerId);
-                            assertThat(score.totalScore()).isEqualTo(8);
+                            assertThat(score.totalScore()).isEqualTo(6);
                             assertThat(score.history())
                                     .singleElement()
                                     .satisfies(entry -> assertThat(entry.reason())
@@ -165,7 +165,7 @@ class TimelineScoringKafkaConsumerIT {
         await().atMost(Duration.ofSeconds(10))
                 .untilAsserted(() -> assertThat(playerScoreRepository.findAllByGameId(gameId))
                         .singleElement()
-                        .satisfies(score -> assertThat(score.totalScore()).isEqualTo(4)));
+                        .satisfies(score -> assertThat(score.totalScore()).isEqualTo(5)));
     }
 
     @Test

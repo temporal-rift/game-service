@@ -22,7 +22,7 @@ class FactionObjectiveEvaluatorTest {
 
         @Override
         public int prophetWrittenResolutions() {
-            return 5;
+            return 4;
         }
 
         @Override
@@ -83,6 +83,37 @@ class FactionObjectiveEvaluatorTest {
 
         assertThat(progress.progressCount()).isEqualTo(5);
         assertThat(progress.objectiveMet()).isTrue();
+    }
+
+    @Test
+    @DisplayName("prophet with four ordinary written wins meets the objective below the score threshold")
+    void prophet_fourWrittenWins_objectiveMetAtSixteenPoints() {
+        var score = score(Faction.PROPHETS);
+        score.apply(1, ScoreReason.EVENT_RESOLVED_AS_WRITTEN, 4);
+        score.apply(2, ScoreReason.EVENT_RESOLVED_AS_WRITTEN, 4);
+        score.apply(2, ScoreReason.EVENT_RESOLVED_AS_WRITTEN, 4);
+        score.apply(3, ScoreReason.EVENT_RESOLVED_AS_WRITTEN, 4);
+
+        var progress = FactionObjectiveEvaluator.evaluate(score, 3, RULES);
+
+        assertThat(progress.objectiveMet()).isTrue();
+        assertThat(progress.progressCount()).isEqualTo(4);
+        assertThat(progress.threshold()).isEqualTo(4);
+        assertThat(score.totalScore()).isEqualTo(16);
+    }
+
+    @Test
+    @DisplayName("prophet with three written wins has not met the objective")
+    void prophet_threeWrittenWins_objectiveNotMet() {
+        var score = score(Faction.PROPHETS);
+        score.apply(1, ScoreReason.EVENT_RESOLVED_AS_WRITTEN, 4);
+        score.apply(2, ScoreReason.FULFILLMENT_SUCCEEDED, 8);
+        score.apply(3, ScoreReason.FULFILLMENT_SUCCEEDED, 8);
+
+        var progress = FactionObjectiveEvaluator.evaluate(score, 3, RULES);
+
+        assertThat(progress.objectiveMet()).isFalse();
+        assertThat(progress.progressCount()).isEqualTo(3);
     }
 
     @Test
@@ -209,9 +240,9 @@ class FactionObjectiveEvaluatorTest {
     @DisplayName("activist with three consecutive successes ending at the current era meets the objective")
     void activist_threeConsecutiveSuccesses_objectiveMet() {
         var score = score(Faction.ACTIVISTS);
-        score.apply(1, ScoreReason.DECLARED_OUTCOME_WON, 4);
-        score.apply(2, ScoreReason.DECLARED_OUTCOME_WON_WITH_RALLY, 8);
-        score.apply(3, ScoreReason.DECLARED_OUTCOME_WON, 4);
+        score.apply(1, ScoreReason.DECLARED_OUTCOME_WON, 5);
+        score.apply(2, ScoreReason.DECLARED_OUTCOME_WON_WITH_RALLY, 6);
+        score.apply(3, ScoreReason.DECLARED_OUTCOME_WON, 5);
 
         var progress = FactionObjectiveEvaluator.evaluate(score, 3, RULES);
 
@@ -220,12 +251,26 @@ class FactionObjectiveEvaluatorTest {
     }
 
     @Test
+    @DisplayName("activist rally then two momentum successes meets the objective below the score threshold")
+    void activist_rallyThenTwoMomentum_objectiveMetAtSixteenPoints() {
+        var score = score(Faction.ACTIVISTS);
+        score.apply(1, ScoreReason.DECLARED_OUTCOME_WON_WITH_RALLY, 6);
+        score.apply(2, ScoreReason.DECLARED_OUTCOME_WON, 5);
+        score.apply(3, ScoreReason.DECLARED_OUTCOME_WON, 5);
+
+        var progress = FactionObjectiveEvaluator.evaluate(score, 3, RULES);
+
+        assertThat(progress.objectiveMet()).isTrue();
+        assertThat(score.totalScore()).isEqualTo(16);
+    }
+
+    @Test
     @DisplayName("activist streak broken before the current era does not meet the objective")
     void activist_streakNotEndingAtCurrentEra_objectiveNotMet() {
         var score = score(Faction.ACTIVISTS);
-        score.apply(1, ScoreReason.DECLARED_OUTCOME_WON, 4);
-        score.apply(2, ScoreReason.DECLARED_OUTCOME_WON, 4);
-        score.apply(3, ScoreReason.DECLARED_OUTCOME_WON, 4);
+        score.apply(1, ScoreReason.DECLARED_OUTCOME_WON, 5);
+        score.apply(2, ScoreReason.DECLARED_OUTCOME_WON, 5);
+        score.apply(3, ScoreReason.DECLARED_OUTCOME_WON, 5);
         score.apply(5, ScoreReason.EXPOSE_SIGNATURE_REVEALED, 2);
 
         assertThat(FactionObjectiveEvaluator.evaluate(score, 5, RULES).objectiveMet())
@@ -236,9 +281,9 @@ class FactionObjectiveEvaluatorTest {
     @DisplayName("activist rally and momentum successes count toward the same streak")
     void activist_mixedModes_singleStreak() {
         var score = score(Faction.ACTIVISTS);
-        score.apply(1, ScoreReason.DECLARED_OUTCOME_WON_WITH_RALLY, 8);
-        score.apply(2, ScoreReason.DECLARED_OUTCOME_WON, 4);
-        score.apply(3, ScoreReason.DECLARED_OUTCOME_WON_WITH_RALLY, 8);
+        score.apply(1, ScoreReason.DECLARED_OUTCOME_WON_WITH_RALLY, 6);
+        score.apply(2, ScoreReason.DECLARED_OUTCOME_WON, 5);
+        score.apply(3, ScoreReason.DECLARED_OUTCOME_WON_WITH_RALLY, 6);
 
         assertThat(FactionObjectiveEvaluator.evaluate(score, 3, RULES).objectiveMet())
                 .isTrue();
@@ -247,13 +292,13 @@ class FactionObjectiveEvaluatorTest {
     @Test
     void activist_stalledEraBreaksStreakEvenIfTheCarriedEventWinsLater() {
         var score = score(Faction.ACTIVISTS);
-        score.apply(1, ScoreReason.DECLARED_OUTCOME_WON_WITH_RALLY, 8);
-        score.apply(2, ScoreReason.DECLARED_OUTCOME_WON, 4);
+        score.apply(1, ScoreReason.DECLARED_OUTCOME_WON_WITH_RALLY, 6);
+        score.apply(2, ScoreReason.DECLARED_OUTCOME_WON, 5);
 
         assertThat(FactionObjectiveEvaluator.evaluate(score, 3, RULES).progressCount())
                 .isZero();
 
-        score.apply(4, ScoreReason.DECLARED_OUTCOME_WON_WITH_RALLY, 8);
+        score.apply(4, ScoreReason.DECLARED_OUTCOME_WON_WITH_RALLY, 6);
         assertThat(FactionObjectiveEvaluator.evaluate(score, 4, RULES).progressCount())
                 .isEqualTo(1);
         assertThat(FactionObjectiveEvaluator.evaluate(score, 5, RULES).progressCount())
