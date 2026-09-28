@@ -238,8 +238,8 @@ class UpdateScoresCommandHandlerTest {
 
         var event = (ScoresUpdated) internalEvents.get(0);
         var update = event.updates().get(0);
-        assertThat(update.newTotal()).isEqualTo(8); // 4 + 4 (DECLARED_OUTCOME_WON)
-        assertThat(update.pointsDelta()).isEqualTo(4);
+        assertThat(update.newTotal()).isEqualTo(9); // 4 + 5 (DECLARED_OUTCOME_WON)
+        assertThat(update.pointsDelta()).isEqualTo(5);
     }
 
     @Test

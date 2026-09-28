@@ -11,7 +11,7 @@ import io.github.temporalrift.game.scoring.domain.port.out.VictoryRulesPort;
 @Validated
 public record VictoryRulesProperties(
         @DefaultValue("4") @Min(1) int eraserAnnihilations,
-        @DefaultValue("5") @Min(1) int prophetWrittenResolutions,
+        @DefaultValue("4") @Min(1) int prophetWrittenResolutions,
         @DefaultValue("3") @Min(1) int revisionistSuccessfulEras,
         @DefaultValue("3") @Min(1) int weaverChainLength,
         @DefaultValue("3") @Min(1) int activistConsecutiveDeclarations)
