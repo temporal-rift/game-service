@@ -21,6 +21,9 @@ class PlayerReconnectSagaAdapterIT {
     @Autowired
     PlayerReconnectSagaRepository repository;
 
+    @Autowired
+    PlayerReconnectSagaStateJpaRepository jpaRepository;
+
     @Test
     void gameDueQuery_includesTheBoundaryAndExcludesFutureTerminalAndOtherGames() {
         var gameId = UUID.randomUUID();
@@ -66,16 +69,9 @@ class PlayerReconnectSagaAdapterIT {
         var deadline = Instant.parse("2026-01-01T00:00:30Z");
         repository.save(new PlayerReconnectSagaState(
                 UUID.randomUUID(), gameId, playerId, PlayerReconnectSagaStatus.GRACE_PERIOD, deadline));
-        assertThatThrownBy(() -> {
-                    repository.save(new PlayerReconnectSagaState(
-                            UUID.randomUUID(),
-                            gameId,
-                            playerId,
-                            PlayerReconnectSagaStatus.GRACE_PERIOD,
-                            deadline.plusSeconds(1)));
-                    repository.findGracePeriodsDueBy(gameId, deadline);
-                })
-                .isInstanceOf(DataIntegrityViolationException.class);
+        repository.save(new PlayerReconnectSagaState(
+                UUID.randomUUID(), gameId, playerId, PlayerReconnectSagaStatus.GRACE_PERIOD, deadline.plusSeconds(1)));
+        assertThatThrownBy(jpaRepository::flush).isInstanceOf(DataIntegrityViolationException.class);
     }
 
     private PlayerReconnectSagaState save(UUID gameId, PlayerReconnectSagaStatus status, Instant deadline) {
