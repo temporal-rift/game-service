@@ -16,6 +16,7 @@ import io.github.temporalrift.game.action.domain.event.ExposeSignatureRevealed;
 import io.github.temporalrift.game.action.domain.event.HandCardIntercepted;
 import io.github.temporalrift.game.action.domain.event.InfluenceTraced;
 import io.github.temporalrift.game.action.domain.event.ParadoxResolutionCardPlayed;
+import io.github.temporalrift.game.action.domain.event.ParadoxResolutionPassed;
 import io.github.temporalrift.game.action.domain.event.PlayerJammed;
 import io.github.temporalrift.game.action.domain.event.PlayerSkipped;
 import io.github.temporalrift.game.action.domain.event.RoundSummaryPublished;
@@ -70,6 +71,8 @@ class ActionEventPublisherAdapter implements ActionEventPublisher {
                 outboundEvents.publish("HandCardIntercepted", mapper.toWire(payload), event);
             case ParadoxResolutionCardPlayed payload ->
                 outboundEvents.publish("ParadoxResolutionCardPlayed", mapper.toWire(payload), event);
+            case ParadoxResolutionPassed payload ->
+                outboundEvents.publish("ParadoxResolutionPassed", mapper.toWire(payload), event);
             case PlayerJammed payload -> outboundEvents.publish("PlayerJammed", mapper.toWire(payload), event);
             case SpecialActionPlayed payload ->
                 outboundEvents.publish("SpecialActionPlayed", mapper.toWire(payload), event);

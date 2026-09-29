@@ -16,6 +16,7 @@ public sealed interface ActionEventPayload
                 HandCardIntercepted,
                 InfluenceTraced,
                 ParadoxResolutionCardPlayed,
+                ParadoxResolutionPassed,
                 PlayerJammed,
                 PlayerSkipped,
                 RoundSummaryPublished,

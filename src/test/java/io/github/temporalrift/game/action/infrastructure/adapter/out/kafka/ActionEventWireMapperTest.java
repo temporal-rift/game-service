@@ -16,6 +16,7 @@ import io.github.temporalrift.game.action.domain.event.ExposeBehaviorChanged;
 import io.github.temporalrift.game.action.domain.event.HandCardIntercepted;
 import io.github.temporalrift.game.action.domain.event.InfluenceTraced;
 import io.github.temporalrift.game.action.domain.event.ParadoxResolutionCardPlayed;
+import io.github.temporalrift.game.action.domain.event.ParadoxResolutionPassed;
 import io.github.temporalrift.game.action.domain.event.PlayerJammed;
 import io.github.temporalrift.game.action.domain.event.RoundSummaryPublished;
 import io.github.temporalrift.game.action.domain.event.SpecialActionPlayed;
@@ -43,6 +44,17 @@ class ActionEventWireMapperTest {
         assertThat(wire.roundNumber()).isEqualTo(3);
         assertThat(wire.activistPlayerId()).isEqualTo(activistPlayerId);
         assertThat(wire.targetPlayerId()).isEqualTo(targetPlayerId);
+    }
+
+    @Test
+    void paradoxResolutionPassed_mapsToTheCardlessContractPayload() {
+        var domain = new ParadoxResolutionPassed(UUID.randomUUID(), 2, UUID.randomUUID());
+
+        var wire = mapper.toWire(domain);
+
+        assertThat(wire.gameId()).isEqualTo(domain.gameId());
+        assertThat(wire.eraNumber()).isEqualTo(domain.eraNumber());
+        assertThat(wire.playerId()).isEqualTo(domain.playerId());
     }
 
     @Test
