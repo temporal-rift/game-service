@@ -5,8 +5,8 @@
         xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
             https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.29.xsd">
 
-    <changeSet id="scoring-014-create-scoring-faction-disclosure" author="game-service">
-        <createTable tableName="scoring_faction_disclosure">
+    <changeSet id="scoring-014-create-scoring-revisionist-exposure" author="game-service">
+        <createTable tableName="scoring_revisionist_exposure">
             <column name="id" type="UUID">
                 <constraints primaryKey="true" nullable="false"/>
             </column>
@@ -18,9 +18,9 @@
             </column>
         </createTable>
         <addUniqueConstraint
-                tableName="scoring_faction_disclosure"
+                tableName="scoring_revisionist_exposure"
                 columnNames="game_id,player_id"
-                constraintName="uq_scoring_faction_disclosure_game_player"/>
+                constraintName="uq_scoring_revisionist_exposure_game_player"/>
     </changeSet>
 
 </databaseChangeLog>

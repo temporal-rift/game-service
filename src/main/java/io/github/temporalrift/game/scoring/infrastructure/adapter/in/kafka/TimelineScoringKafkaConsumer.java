@@ -4,7 +4,6 @@ import static io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelCon
 import static io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.CHAIN_BROKEN_EVENT_TYPE;
 import static io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.CHAIN_COMPLETED_EVENT_TYPE;
 import static io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.CHAIN_LINK_ADDED_EVENT_TYPE;
-import static io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.CHAIN_LINK_THREADED_EVENT_TYPE;
 import static io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.CORRUPT_INVERSION_CONFIRMED_EVENT_TYPE;
 import static io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.ERA_RESOLUTION_COMPLETED_EVENT_TYPE;
 import static io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.OUTCOME_APPLIED_EVENT_TYPE;
@@ -26,7 +25,6 @@ import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.A
 import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.ChainBrokenPayload;
 import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.ChainCompletedPayload;
 import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.ChainLinkAddedPayload;
-import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.ChainLinkThreadedPayload;
 import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.CorruptInversionConfirmedPayload;
 import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.EraResolutionCompletedPayload;
 import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.OutcomeAppliedPayload;
@@ -34,7 +32,6 @@ import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.P
 import io.github.temporalrift.game.scoring.application.command.EraScoringCompletionChecker;
 import io.github.temporalrift.game.scoring.domain.playerscore.ScoreReason;
 import io.github.temporalrift.game.scoring.domain.port.out.EraScoringContextRepository;
-import io.github.temporalrift.game.scoring.domain.port.out.FactionDisclosureRepository;
 import io.github.temporalrift.game.scoring.domain.port.out.TimelineOutcomeInboxRepository;
 import io.github.temporalrift.game.shared.domain.messaging.DomainEventEnvelope;
 import io.github.temporalrift.game.shared.domain.port.out.ProcessedEventRepository;
@@ -49,7 +46,6 @@ class TimelineScoringKafkaConsumer {
     private static final String CONSUMER = "scoring.timeline-events";
     private static final Set<String> SUPPORTED_EVENT_TYPES = Set.of(
             OUTCOME_APPLIED_EVENT_TYPE,
-            CHAIN_LINK_THREADED_EVENT_TYPE,
             CHAIN_LINK_ADDED_EVENT_TYPE,
             CHAIN_COMPLETED_EVENT_TYPE,
             CHAIN_BROKEN_EVENT_TYPE,
@@ -61,7 +57,6 @@ class TimelineScoringKafkaConsumer {
     private final ProcessedEventRepository processedEventRepository;
     private final TimelineOutcomeInboxRepository outcomeInboxRepository;
     private final EraScoringContextRepository contextRepository;
-    private final FactionDisclosureRepository factionDisclosureRepository;
     private final EraScoringCompletionChecker completionChecker;
     private final ApplicationEventPublisher applicationEventPublisher;
     private final TimelineScoringWireMapper wireMapper;
@@ -71,7 +66,6 @@ class TimelineScoringKafkaConsumer {
             ProcessedEventRepository processedEventRepository,
             TimelineOutcomeInboxRepository outcomeInboxRepository,
             EraScoringContextRepository contextRepository,
-            FactionDisclosureRepository factionDisclosureRepository,
             EraScoringCompletionChecker completionChecker,
             ApplicationEventPublisher applicationEventPublisher,
             TimelineScoringWireMapper wireMapper,
@@ -79,7 +73,6 @@ class TimelineScoringKafkaConsumer {
         this.processedEventRepository = processedEventRepository;
         this.outcomeInboxRepository = outcomeInboxRepository;
         this.contextRepository = contextRepository;
-        this.factionDisclosureRepository = factionDisclosureRepository;
         this.completionChecker = completionChecker;
         this.applicationEventPublisher = applicationEventPublisher;
         this.wireMapper = wireMapper;
@@ -114,7 +107,6 @@ class TimelineScoringKafkaConsumer {
 
         switch (envelope.eventType()) {
             case OUTCOME_APPLIED_EVENT_TYPE -> handleOutcomeApplied(message);
-            case CHAIN_LINK_THREADED_EVENT_TYPE -> handleChainLinkThreaded(message);
             case CHAIN_LINK_ADDED_EVENT_TYPE -> handleChainLinkAdded(message);
             case CHAIN_COMPLETED_EVENT_TYPE -> handleChainCompleted(message);
             case CHAIN_BROKEN_EVENT_TYPE -> handleChainBroken(message);
@@ -134,13 +126,6 @@ class TimelineScoringKafkaConsumer {
                 .resolveActivistDeclarations(outcome.gameId(), outcome.eraNumber())
                 .forEach(applicationEventPublisher::publishEvent);
         completionChecker.tryComplete(outcome.gameId(), outcome.eraNumber());
-    }
-
-    // The public pending link names its Weaver. Published during round replay, so it precedes the same
-    // game's EraResolutionCompleted on this partition and is recorded before that era can be scored.
-    private void handleChainLinkThreaded(Message<Object> message) {
-        var event = wireMapper.fromWire(read(message, ChainLinkThreadedPayload.class));
-        factionDisclosureRepository.recordDisclosure(event.gameId(), event.playerId());
     }
 
     private void handleChainLinkAdded(Message<Object> message) {

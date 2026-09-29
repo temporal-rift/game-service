@@ -6,8 +6,8 @@ import jakarta.persistence.Table;
 import io.github.temporalrift.game.shared.infrastructure.adapter.out.persistence.GamePlayerScopedJpaEntity;
 
 @Entity
-@Table(name = "scoring_faction_disclosure")
-class ScoringFactionDisclosureJpaEntity extends GamePlayerScopedJpaEntity {
+@Table(name = "scoring_revisionist_exposure")
+class ScoringRevisionistExposureJpaEntity extends GamePlayerScopedJpaEntity {
 
-    protected ScoringFactionDisclosureJpaEntity() {}
+    protected ScoringRevisionistExposureJpaEntity() {}
 }

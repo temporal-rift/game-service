@@ -8,14 +8,14 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-interface ScoringFactionDisclosureJpaRepository extends JpaRepository<ScoringFactionDisclosureJpaEntity, UUID> {
+interface ScoringRevisionistExposureJpaRepository extends JpaRepository<ScoringRevisionistExposureJpaEntity, UUID> {
 
-    @Query("SELECT d.playerId FROM ScoringFactionDisclosureJpaEntity d WHERE d.gameId = :gameId")
+    @Query("SELECT e.playerId FROM ScoringRevisionistExposureJpaEntity e WHERE e.gameId = :gameId")
     List<UUID> findPlayerIdsByGameId(@Param("gameId") UUID gameId);
 
     @Modifying
     @Query(value = """
-            INSERT INTO scoring_faction_disclosure (id, game_id, player_id)
+            INSERT INTO scoring_revisionist_exposure (id, game_id, player_id)
             VALUES (:id, :gameId, :playerId)
             ON CONFLICT (game_id, player_id) DO NOTHING
             """, nativeQuery = true)

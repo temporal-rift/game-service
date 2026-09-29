@@ -10,7 +10,7 @@ import org.springframework.stereotype.Component;
 
 import io.github.temporalrift.game.scoring.application.command.EraScoringCompletionChecker;
 import io.github.temporalrift.game.scoring.domain.port.out.EraScoringContextRepository;
-import io.github.temporalrift.game.scoring.domain.port.out.FactionDisclosureRepository;
+import io.github.temporalrift.game.scoring.domain.port.out.RevisionistExposureRepository;
 import io.github.temporalrift.game.shared.domain.event.ActivistDeclarationRecorded;
 import io.github.temporalrift.game.shared.domain.event.EraActionFactsFinalized;
 import io.github.temporalrift.game.shared.domain.event.EventsDrawn;
@@ -26,17 +26,17 @@ class ScoringContextProjectionEventListener {
     private final EraScoringContextRepository contextRepository;
     private final EraScoringCompletionChecker completionChecker;
     private final ApplicationEventPublisher applicationEventPublisher;
-    private final FactionDisclosureRepository factionDisclosureRepository;
+    private final RevisionistExposureRepository revisionistExposureRepository;
 
     ScoringContextProjectionEventListener(
             EraScoringContextRepository contextRepository,
             EraScoringCompletionChecker completionChecker,
             ApplicationEventPublisher applicationEventPublisher,
-            FactionDisclosureRepository factionDisclosureRepository) {
+            RevisionistExposureRepository revisionistExposureRepository) {
         this.contextRepository = contextRepository;
         this.completionChecker = completionChecker;
         this.applicationEventPublisher = applicationEventPublisher;
-        this.factionDisclosureRepository = factionDisclosureRepository;
+        this.revisionistExposureRepository = revisionistExposureRepository;
     }
 
     @ApplicationModuleListener
@@ -103,10 +103,9 @@ class ScoringContextProjectionEventListener {
                         event.gameId(), event.eraNumber(), fact.playerId(), fact.targetEventId()));
         event.corruptCorrelationFacts()
                 .forEach(fact -> contextRepository.recordCorruptCorrelation(event.gameId(), event.eraNumber(), fact));
-        // Recorded before the era can complete, so every disclosure of the final era precedes the
-        // final-era unidentified-bonus evaluation.
-        event.disclosedPlayerIds()
-                .forEach(playerId -> factionDisclosureRepository.recordDisclosure(event.gameId(), playerId));
+        // Recorded before the era can complete, so a final-era exposure precedes the final-era bonus evaluation.
+        event.tracedMimicPlayerIds()
+                .forEach(playerId -> revisionistExposureRepository.recordExposure(event.gameId(), playerId));
         contextRepository.resolveRevisionistActions(event.gameId(), event.eraNumber());
         contextRepository.markActionFactsReady(event.gameId(), event.eraNumber());
         publishResolutions(event.gameId(), event.eraNumber());

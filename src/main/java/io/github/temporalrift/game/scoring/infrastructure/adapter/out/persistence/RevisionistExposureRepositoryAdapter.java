@@ -6,25 +6,25 @@ import java.util.UUID;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
-import io.github.temporalrift.game.scoring.domain.port.out.FactionDisclosureRepository;
+import io.github.temporalrift.game.scoring.domain.port.out.RevisionistExposureRepository;
 
 @Component
-class FactionDisclosureRepositoryAdapter implements FactionDisclosureRepository {
+class RevisionistExposureRepositoryAdapter implements RevisionistExposureRepository {
 
-    private final ScoringFactionDisclosureJpaRepository jpaRepository;
+    private final ScoringRevisionistExposureJpaRepository jpaRepository;
 
-    FactionDisclosureRepositoryAdapter(ScoringFactionDisclosureJpaRepository jpaRepository) {
+    RevisionistExposureRepositoryAdapter(ScoringRevisionistExposureJpaRepository jpaRepository) {
         this.jpaRepository = jpaRepository;
     }
 
     @Override
     @Transactional
-    public void recordDisclosure(UUID gameId, UUID playerId) {
+    public void recordExposure(UUID gameId, UUID playerId) {
         jpaRepository.insertIfAbsent(UUID.randomUUID(), gameId, playerId);
     }
 
     @Override
-    public Set<UUID> disclosedPlayerIds(UUID gameId) {
+    public Set<UUID> exposedPlayerIds(UUID gameId) {
         return Set.copyOf(jpaRepository.findPlayerIdsByGameId(gameId));
     }
 }

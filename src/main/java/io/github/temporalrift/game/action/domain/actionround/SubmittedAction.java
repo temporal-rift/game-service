@@ -56,6 +56,9 @@ public sealed interface SubmittedAction permits SubmittedAction.CardAction, Subm
     /** The round-level event recorded for every submission, regardless of type. */
     Object toPlayedEvent(UUID gameId, int eraNumber, int roundNumber);
 
+    /** Whether a Trace of {@code eventId} lists this submission's player as having directly influenced it. */
+    boolean isTracedInfluenceOn(UUID eventId);
+
     /**
      * A private, scoring-internal fact this submission produces, if any. Never published to Kafka —
      * see {@code ActionRoundEventPublication}.
@@ -310,7 +313,8 @@ public sealed interface SubmittedAction permits SubmittedAction.CardAction, Subm
             }
         }
 
-        public boolean isDirectProbabilityInfluenceOn(UUID eventId) {
+        @Override
+        public boolean isTracedInfluenceOn(UUID eventId) {
             return eventId.equals(targetEventId)
                     && (cardType == CardType.PUSH || cardType == CardType.SUPPRESS || cardType == CardType.SWING);
         }
@@ -394,6 +398,12 @@ public sealed interface SubmittedAction permits SubmittedAction.CardAction, Subm
                     // No target; TAPESTRY's chain prerequisites are validated by timeline-service's chain saga.
                 }
             }
+        }
+
+        // Mimic is the only special a Trace sees: it applies a copied transfer, the influence a shift card applies.
+        @Override
+        public boolean isTracedInfluenceOn(UUID eventId) {
+            return specialAction == SpecialAction.MIMIC && eventId.equals(targetEventId);
         }
 
         private void requireEventAndOutcome() {
