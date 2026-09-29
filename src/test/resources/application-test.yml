@@ -53,6 +53,9 @@ game:
       - REWEAVE
     seal-max-uses-per-game: 2
     hand-deal-forced-types: []
+    probability:
+      floor: 0
+      ceiling: 90
     victory:
       eraser-annihilations: 4
       prophet-written-resolutions: 4

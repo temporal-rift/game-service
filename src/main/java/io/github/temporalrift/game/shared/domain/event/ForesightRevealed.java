@@ -41,7 +41,8 @@ public record ForesightRevealed(
         }
     }
 
-    public record RevealedOutcome(UUID catalogOutcomeId, String description) {
+    /** {@code initialProbability} is the card's printed starting weight, never a live probability. */
+    public record RevealedOutcome(UUID catalogOutcomeId, String description, int initialProbability) {
 
         public RevealedOutcome {
             Objects.requireNonNull(catalogOutcomeId, "catalogOutcomeId must not be null");

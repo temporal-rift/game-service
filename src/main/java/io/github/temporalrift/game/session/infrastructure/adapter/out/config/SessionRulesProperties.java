@@ -6,11 +6,13 @@ import java.util.Set;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotNull;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.bind.DefaultValue;
 import org.springframework.validation.annotation.Validated;
 
 import io.github.temporalrift.game.session.domain.ending.StabilizationThresholds;
+import io.github.temporalrift.game.session.domain.futureevent.ProbabilityBounds;
 import io.github.temporalrift.game.session.domain.port.out.SessionGameRulesPort;
 import io.github.temporalrift.game.shared.domain.model.CardCategory;
 import io.github.temporalrift.game.shared.domain.model.CardGrade;
@@ -37,7 +39,8 @@ public record SessionRulesProperties(
         @DefaultValue @Valid Stabilization stabilization,
         @NotEmpty Set<SpecialAction> onceEraBudgetedSpecials,
         @DefaultValue("2") @Min(1) int sealMaxUsesPerGame,
-        Set<CardType> handDealForcedTypes)
+        Set<CardType> handDealForcedTypes,
+        @NotNull @Valid Probability probability)
         implements SessionGameRulesPort {
 
     private static final int DEFAULT_ACTION_ROUND_TIMER_SECONDS = 60;
@@ -46,6 +49,14 @@ public record SessionRulesProperties(
     public record Stabilization(
             @DefaultValue("3") @Min(1) int prophetWrittenResolutions,
             @DefaultValue("2") @Min(1) int weaverActiveChainLinks) {}
+
+    /** Binds the floor and ceiling of the {@code game.rules.probability} namespace shared with timeline-service. */
+    public record Probability(int floor, int ceiling) {
+
+        public Probability {
+            new ProbabilityBounds(floor, ceiling);
+        }
+    }
 
     public SessionRulesProperties {
         if (cardsPerDeal < cardsPerHand) {
@@ -68,6 +79,11 @@ public record SessionRulesProperties(
     public StabilizationThresholds stabilizationThresholds() {
         return new StabilizationThresholds(
                 stabilization.prophetWrittenResolutions(), stabilization.weaverActiveChainLinks());
+    }
+
+    @Override
+    public ProbabilityBounds probabilityBounds() {
+        return new ProbabilityBounds(probability.floor(), probability.ceiling());
     }
 
     @Override

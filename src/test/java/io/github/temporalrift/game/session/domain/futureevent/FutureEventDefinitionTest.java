@@ -1,6 +1,7 @@
 package io.github.temporalrift.game.session.domain.futureevent;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.assertj.core.api.Assertions.assertThatNullPointerException;
 
@@ -91,6 +92,65 @@ class FutureEventDefinitionTest {
 
         // when / then
         assertThatExceptionOfType(UnsupportedOperationException.class).isThrownBy(() -> outcomes.add(extraOutcome));
+    }
+
+    @Test
+    @DisplayName("Given a repeated outcome ID, constructor throws IllegalArgumentException")
+    void constructor_duplicateOutcomeId_throws() {
+        var id = UUID.randomUUID();
+        var repeated = UUID.randomUUID();
+        var outcomes = List.of(
+                new OutcomeDefinition(repeated, "a", 33),
+                new OutcomeDefinition(repeated, "b", 33),
+                new OutcomeDefinition(UUID.randomUUID(), "c", 34));
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> new FutureEventDefinition(id, "title", outcomes))
+                .withMessage("Outcome IDs must be distinct");
+    }
+
+    // --- requireStartWithin ---
+
+    private static final ProbabilityBounds BOUNDS = new ProbabilityBounds(0, 90);
+
+    @Test
+    @DisplayName("Given a distinct printed start within bounds, requireStartWithin accepts it")
+    void requireStartWithin_distinctStartWithinBounds_accepts() {
+        var event =
+                new FutureEventDefinition(UUID.randomUUID(), "title", List.of(outcome(60), outcome(25), outcome(15)));
+
+        assertThatCode(() -> event.requireStartWithin(BOUNDS)).doesNotThrowAnyException();
+    }
+
+    @Test
+    @DisplayName("Given a printed weight above the ceiling, requireStartWithin names the card")
+    void requireStartWithin_weightAboveCeiling_throws() {
+        var event = new FutureEventDefinition(UUID.randomUUID(), "title", List.of(outcome(92), outcome(5), outcome(3)));
+
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> event.requireStartWithin(BOUNDS))
+                .withMessageContaining(event.eventId().toString())
+                .withMessageContaining("92");
+    }
+
+    @Test
+    @DisplayName("Given a zero printed weight, requireStartWithin rejects the unwinnable outcome")
+    void requireStartWithin_zeroWeight_throws() {
+        var event =
+                new FutureEventDefinition(UUID.randomUUID(), "title", List.of(outcome(50), outcome(50), outcome(0)));
+
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> event.requireStartWithin(BOUNDS))
+                .withMessageContaining(event.eventId().toString());
+    }
+
+    @Test
+    @DisplayName("Given a printed weight below a positive floor, requireStartWithin throws")
+    void requireStartWithin_weightBelowFloor_throws() {
+        var event =
+                new FutureEventDefinition(UUID.randomUUID(), "title", List.of(outcome(60), outcome(35), outcome(5)));
+        var bounds = new ProbabilityBounds(10, 90);
+
+        assertThatExceptionOfType(IllegalArgumentException.class).isThrownBy(() -> event.requireStartWithin(bounds));
     }
 
     // --- OutcomeDefinition constructor ---

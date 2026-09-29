@@ -34,7 +34,7 @@ class ForesightRevealedWireContractTest {
                 List.of(new ForesightRevealed.RevealedEvent(
                         catalogEventId,
                         "Storm",
-                        List.of(new ForesightRevealed.RevealedOutcome(catalogOutcomeId, "Flood")))),
+                        List.of(new ForesightRevealed.RevealedOutcome(catalogOutcomeId, "Flood", 60)))),
                 null));
 
         assertThat(validator.validate(payload)).isEmpty();
@@ -53,14 +53,16 @@ class ForesightRevealedWireContractTest {
             assertThat(event.outcomes()).singleElement().satisfies(outcome -> {
                 assertThat(outcome.catalogOutcomeId()).isEqualTo(catalogOutcomeId);
                 assertThat(outcome.description()).isEqualTo("Flood");
+                assertThat(outcome.initialProbability()).isEqualTo(60);
             });
         });
         var json = objectMapper.writeValueAsString(payload);
 
         assertThat(json)
                 .contains("gameId", "eraNumber", "playerId", "nextEraNumber", "revealedEvents")
-                .contains("catalogEventId", "title", "outcomes", "catalogOutcomeId", "description");
-        assertThat(json.toLowerCase())
+                .contains(
+                        "catalogEventId", "title", "outcomes", "catalogOutcomeId", "description", "initialProbability");
+        assertThat(json.replace("initialProbability", "").toLowerCase())
                 .doesNotContain("actor", "probability", "band", "deck", "influencer", "jammer", "interceptor");
     }
 

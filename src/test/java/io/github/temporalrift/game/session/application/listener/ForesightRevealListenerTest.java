@@ -100,6 +100,10 @@ class ForesightRevealListenerTest {
         assertThat(payload.revealedEvents())
                 .extracting(ForesightRevealed.RevealedEvent::catalogEventId)
                 .containsExactlyElementsOf(deck.subList(0, 3));
+        assertThat(payload.revealedEvents())
+                .allSatisfy(event -> assertThat(event.outcomes())
+                        .extracting(ForesightRevealed.RevealedOutcome::initialProbability)
+                        .containsExactly(40, 30, 30));
         assertThat(envelope.getValue().gameId()).isEqualTo(gameId);
 
         then(gameRepository).should(never()).save(any());
