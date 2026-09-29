@@ -1,6 +1,7 @@
 package io.github.temporalrift.game.action.application.saga;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.InstanceOfAssertFactories.list;
 import static org.assertj.core.api.InstanceOfAssertFactories.type;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
@@ -1712,14 +1713,13 @@ class ActionRoundSagaImplTest {
             assertThat(passedPayloads)
                     .isNotEmpty()
                     .noneMatch(PlayerPassed.class::isInstance)
-                    .isEqualTo(timedOutPayloads);
-            assertThat(passedPayloads)
+                    .isEqualTo(timedOutPayloads)
                     .filteredOn(RoundSummaryPublished.class::isInstance)
-                    .singleElement()
-                    .satisfies(summary -> assertThat(((RoundSummaryPublished) summary).actionSummaries())
-                            .containsExactlyInAnyOrder(
-                                    new ActionSummary(PLAYER_2, null, null, true),
-                                    new ActionSummary(PLAYER_3, null, null, true)));
+                    .singleElement(type(RoundSummaryPublished.class))
+                    .extracting(RoundSummaryPublished::actionSummaries, list(ActionSummary.class))
+                    .containsExactlyInAnyOrder(
+                            new ActionSummary(PLAYER_2, null, null, true),
+                            new ActionSummary(PLAYER_3, null, null, true));
         }
 
         @Test
