@@ -5,8 +5,10 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.stream.Stream;
 
 import io.github.temporalrift.game.action.domain.event.ActionRoundStarted;
+import io.github.temporalrift.game.action.domain.event.PlayerPassed;
 import io.github.temporalrift.game.action.domain.event.PlayerSkipped;
 import io.github.temporalrift.game.shared.domain.AggregateRoot;
 import io.github.temporalrift.game.shared.domain.event.ActionRoundClosed;
@@ -22,6 +24,7 @@ public class ActionRound extends AggregateRoot {
     private final int timerSeconds;
     private final List<UUID> pendingPlayerIds;
     private final List<SubmittedAction> submittedActions;
+    private final List<UUID> passedPlayerIds;
     private RoundStatus status;
     private String closedReason;
 
@@ -39,6 +42,7 @@ public class ActionRound extends AggregateRoot {
         this.pendingPlayerIds = new ArrayList<>(participants.pendingPlayerIds());
         this.submittedActions = new ArrayList<>(participants.submittedActions());
         this.submittedActions.forEach(action -> this.pendingPlayerIds.remove(action.playerId()));
+        this.passedPlayerIds = new ArrayList<>();
         this.status = RoundStatus.OPEN;
         this.closedReason = null;
         registerEvent(new ActionRoundStarted(
@@ -61,6 +65,7 @@ public class ActionRound extends AggregateRoot {
         this.closedReason = state.closedReason();
         this.pendingPlayerIds = new ArrayList<>(state.pendingPlayerIds());
         this.submittedActions = new ArrayList<>(state.submittedActions());
+        this.passedPlayerIds = new ArrayList<>(state.passedPlayerIds());
     }
 
     public static ActionRound reconstitute(UUID id, ActionRoundConfig config, PersistedState state) {
@@ -72,7 +77,17 @@ public class ActionRound extends AggregateRoot {
             RoundStatus status,
             String closedReason,
             List<UUID> pendingPlayerIds,
-            List<SubmittedAction> submittedActions) {}
+            List<SubmittedAction> submittedActions,
+            List<UUID> passedPlayerIds) {
+
+        public PersistedState(
+                RoundStatus status,
+                String closedReason,
+                List<UUID> pendingPlayerIds,
+                List<SubmittedAction> submittedActions) {
+            this(status, closedReason, pendingPlayerIds, submittedActions, List.of());
+        }
+    }
 
     /**
      * Accepts one player's submission for this round. {@code ActionRound} enforces only round-level
@@ -97,6 +112,27 @@ public class ActionRound extends AggregateRoot {
         return allSubmitted();
     }
 
+    /**
+     * Accepts one player's explicit pass: it consumes their slot exactly like a submission, so it counts
+     * toward closing the round early, but records no action and spends no card. Jam does not restrict it.
+     * Only an in-process {@link PlayerPassed} is registered; the pass surfaces publicly at close as a skip.
+     */
+    public boolean pass(UUID playerId) {
+        Objects.requireNonNull(playerId, "playerId must not be null");
+        if (this.status != RoundStatus.OPEN) {
+            throw new ActionRoundClosedException();
+        }
+        if (!this.pendingPlayerIds.contains(playerId)) {
+            throw new DuplicateSubmissionException(playerId);
+        }
+
+        pendingPlayerIds.remove(playerId);
+        passedPlayerIds.add(playerId);
+        registerEvent(new PlayerPassed(gameId, eraNumber, roundNumber, playerId));
+
+        return allSubmitted();
+    }
+
     public CloseOutcome close(String closedReason) {
         if (this.status != RoundStatus.OPEN) {
             return new CloseOutcome.AlreadyClosing();
@@ -109,7 +145,11 @@ public class ActionRound extends AggregateRoot {
         // the second call hits the status check above and returns AlreadyClosing without re-registering events.
         // Never persisted — save() writes CLOSED after this returns.
         status = RoundStatus.CLOSING;
-        var skippedPlayerIds = List.copyOf(pendingPlayerIds);
+        // A pass resolves as the same neutral skip a timer expiry produces: passers and timed-out players
+        // are merged into one list, ordered by id alone so its order cannot tell the two apart.
+        var skippedPlayerIds = Stream.concat(passedPlayerIds.stream(), pendingPlayerIds.stream())
+                .sorted()
+                .toList();
         skippedPlayerIds.forEach(
                 skippedId -> registerEvent(new PlayerSkipped(gameId, eraNumber, roundNumber, skippedId, closedReason)));
         pendingPlayerIds.clear();
@@ -153,6 +193,10 @@ public class ActionRound extends AggregateRoot {
 
     public List<SubmittedAction> submittedActions() {
         return Collections.unmodifiableList(submittedActions);
+    }
+
+    public List<UUID> passedPlayerIds() {
+        return Collections.unmodifiableList(passedPlayerIds);
     }
 
     public RoundStatus status() {

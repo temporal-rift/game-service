@@ -60,6 +60,7 @@ class ActionRoundRepositoryAdapter implements ActionRoundRepository {
         entity.setSubmittedActions(round.submittedActions().stream()
                 .map(StoredSubmittedAction::fromDomain)
                 .toList());
+        entity.setPassedPlayerIds(round.passedPlayerIds().toArray(UUID[]::new));
         return entity;
     }
 
@@ -72,7 +73,8 @@ class ActionRoundRepositoryAdapter implements ActionRoundRepository {
                 new ArrayList<>(Arrays.asList(entity.getPendingPlayerIds())),
                 entity.getSubmittedActions().stream()
                         .map(StoredSubmittedAction::toDomain)
-                        .collect(ArrayList::new, ArrayList::add, ArrayList::addAll));
+                        .collect(ArrayList::new, ArrayList::add, ArrayList::addAll),
+                new ArrayList<>(Arrays.asList(entity.getPassedPlayerIds())));
         return ActionRound.reconstitute(entity.getId(), config, state);
     }
 }

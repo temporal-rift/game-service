@@ -66,6 +66,47 @@ class ParadoxResolutionPhaseTest {
     }
 
     @Test
+    void passConsumesThePlayersSlotWithoutACard() {
+        var phase = openPhase();
+
+        phase.pass(PLAYER_ID, NOW);
+
+        assertThat(phase.submittedPlayerIds()).containsExactly(PLAYER_ID);
+    }
+
+    @Test
+    void rejectsAnySubmissionOrPassAfterAPass() {
+        var phase = openPhase();
+        phase.pass(PLAYER_ID, NOW);
+
+        assertThatExceptionOfType(DuplicateParadoxResolutionSubmissionException.class)
+                .isThrownBy(() -> phase.pass(PLAYER_ID, NOW));
+        assertThatExceptionOfType(DuplicateParadoxResolutionSubmissionException.class)
+                .isThrownBy(() -> phase.submit(PLAYER_ID, CardType.STABILIZE, NOW));
+    }
+
+    @Test
+    void rejectsAPassAfterACardSubmission() {
+        var phase = openPhase();
+        phase.submit(PLAYER_ID, CardType.STABILIZE, NOW);
+
+        assertThatExceptionOfType(DuplicateParadoxResolutionSubmissionException.class)
+                .isThrownBy(() -> phase.pass(PLAYER_ID, NOW));
+    }
+
+    @Test
+    void rejectsAPassOnceThePhaseIsNoLongerOpen() {
+        var expired = openPhase();
+        var closed = openPhase();
+        closed.close();
+
+        assertThatExceptionOfType(ParadoxResolutionPhaseNotOpenException.class)
+                .isThrownBy(() -> expired.pass(PLAYER_ID, NOW.plusSeconds(60)));
+        assertThatExceptionOfType(ParadoxResolutionPhaseNotOpenException.class)
+                .isThrownBy(() -> closed.pass(PLAYER_ID, NOW));
+    }
+
+    @Test
     void acceptsOnlyEventsIncludedInTheRecoveredPhaseTargetSet() {
         var affectedEventId = UUID.randomUUID();
         var unaffectedEventId = UUID.randomUUID();

@@ -84,6 +84,7 @@ class ActionRoundRepositoryAdapterTest {
         entity.setTimerSeconds(30);
         entity.setClosedReason("ALL_SUBMITTED");
         entity.setPendingPlayerIds(new UUID[0]);
+        entity.setPassedPlayerIds(new UUID[0]);
         entity.setSubmittedActions(List.of(new StoredSubmittedAction(
                 "SPECIAL",
                 UUID.randomUUID(),
@@ -121,6 +122,7 @@ class ActionRoundRepositoryAdapterTest {
         entity.setTimerSeconds(30);
         entity.setClosedReason("ALL_SUBMITTED");
         entity.setPendingPlayerIds(new UUID[0]);
+        entity.setPassedPlayerIds(new UUID[0]);
         entity.setSubmittedActions(List.of(new StoredSubmittedAction(
                 "CARD",
                 UUID.randomUUID(),
@@ -146,5 +148,45 @@ class ActionRoundRepositoryAdapterTest {
                             assertThat(card.sourceOutcomeId()).isEqualTo(sourceOutcomeId);
                             assertThat(card.targetOutcomeId()).isEqualTo(targetOutcomeId);
                         }));
+    }
+
+    @Test
+    void save_mapsPassedPlayersSeparatelyFromSubmittedActions() {
+        var passerId = UUID.randomUUID();
+        var pendingId = UUID.randomUUID();
+        var round = new ActionRound(
+                UUID.randomUUID(), new ActionRoundConfig(UUID.randomUUID(), 1, 2, 45), List.of(passerId, pendingId));
+        round.pass(passerId);
+
+        adapter.save(round);
+
+        var captor = ArgumentCaptor.forClass(ActionRoundJpaEntity.class);
+        then(jpaRepository).should().save(captor.capture());
+        assertThat(captor.getValue().getPassedPlayerIds()).containsExactly(passerId);
+        assertThat(captor.getValue().getPendingPlayerIds()).containsExactly(pendingId);
+        assertThat(captor.getValue().getSubmittedActions()).isEmpty();
+    }
+
+    @Test
+    void findById_restoresPassedPlayers() {
+        var passerId = UUID.randomUUID();
+        var entity = new ActionRoundJpaEntity();
+        entity.setId(UUID.randomUUID());
+        entity.setGameId(UUID.randomUUID());
+        entity.setEraNumber(1);
+        entity.setRoundNumber(2);
+        entity.setStatus(RoundStatus.OPEN.name());
+        entity.setTimerSeconds(30);
+        entity.setPendingPlayerIds(new UUID[0]);
+        entity.setPassedPlayerIds(new UUID[] {passerId});
+        entity.setSubmittedActions(List.of());
+        given(jpaRepository.findById(entity.getId())).willReturn(Optional.of(entity));
+
+        var loaded = adapter.findById(entity.getId());
+
+        assertThat(loaded).get().satisfies(round -> {
+            assertThat(round.passedPlayerIds()).containsExactly(passerId);
+            assertThat(round.submittedActions()).isEmpty();
+        });
     }
 }

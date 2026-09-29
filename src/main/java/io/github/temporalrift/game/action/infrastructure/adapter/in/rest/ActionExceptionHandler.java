@@ -163,6 +163,11 @@ class ActionExceptionHandler {
         return ProblemDetails.of(HttpStatus.UNPROCESSABLE_CONTENT, ex.getMessage(), "422-12");
     }
 
+    @ExceptionHandler(InvalidParadoxResolutionRequestException.class)
+    ProblemDetail handleInvalidParadoxResolutionRequest(InvalidParadoxResolutionRequestException ex) {
+        return ProblemDetails.of(HttpStatus.BAD_REQUEST, ex.getMessage(), "400-01");
+    }
+
     @ExceptionHandler(ParadoxResolutionTargetNotAffectedException.class)
     ProblemDetail handleParadoxResolutionTargetNotAffected(ParadoxResolutionTargetNotAffectedException ex) {
         return ProblemDetails.of(HttpStatus.UNPROCESSABLE_CONTENT, ex.getMessage(), "422-13");

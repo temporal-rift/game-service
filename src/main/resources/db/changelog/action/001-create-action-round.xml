@@ -32,6 +32,9 @@
             <column name="submitted_actions" type="JSONB">
                 <constraints nullable="false"/>
             </column>
+            <column name="passed_player_ids" type="UUID[]" defaultValueComputed="'{}'::uuid[]">
+                <constraints nullable="false"/>
+            </column>
         </createTable>
         <addUniqueConstraint
                 tableName="action_round"

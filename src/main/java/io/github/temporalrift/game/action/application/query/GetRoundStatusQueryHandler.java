@@ -51,12 +51,16 @@ class GetRoundStatusQueryHandler implements GetRoundStatusUseCase {
         var timerRemainingSeconds = sagaState.map(this::timerRemainingSeconds).orElse(0);
         var pendingPlayerIds =
                 sagaState.map(ActionRoundSagaState::pendingPlayerIds).orElseGet(round::pendingPlayerIds);
-        var submittedCount = round.submittedActions().size();
-        var mySubmission = round.submittedActions().stream()
-                .filter(action -> action.playerId().equals(query.callerPlayerId()))
-                .findFirst()
-                .map(action -> new MySubmission(true, actionType(action)))
-                .orElseGet(() -> new MySubmission(false, null));
+        // A pass consumes its player's slot, so it counts as submitted here like any card or special.
+        var submittedCount =
+                round.submittedActions().size() + round.passedPlayerIds().size();
+        var mySubmission = round.passedPlayerIds().contains(query.callerPlayerId())
+                ? new MySubmission(true, "PASS")
+                : round.submittedActions().stream()
+                        .filter(action -> action.playerId().equals(query.callerPlayerId()))
+                        .findFirst()
+                        .map(action -> new MySubmission(true, actionType(action)))
+                        .orElseGet(() -> new MySubmission(false, null));
 
         return new Result(
                 round.eraNumber(),

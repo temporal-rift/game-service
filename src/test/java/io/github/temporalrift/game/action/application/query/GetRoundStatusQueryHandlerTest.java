@@ -139,6 +139,33 @@ class GetRoundStatusQueryHandlerTest {
     }
 
     @Test
+    @DisplayName("handle — caller passed — returns mySubmission PASS and counts the pass as a submission")
+    void handleCallerPassed() {
+        // given
+        var pendingPlayerId = UUID.randomUUID();
+        given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumber(GAME_ID, ERA, ROUND))
+                .willReturn(Optional.of(round));
+        given(actionRoundSagaRepository.findByGameIdAndEraNumberAndRoundNumber(GAME_ID, ERA, ROUND))
+                .willReturn(Optional.of(sagaState(NOW.plusSeconds(42), List.of(pendingPlayerId))));
+        given(round.eraNumber()).willReturn(ERA);
+        given(round.roundNumber()).willReturn(ROUND);
+        given(round.status()).willReturn(RoundStatus.OPEN);
+        given(round.submittedActions()).willReturn(List.of(submittedAction()));
+        given(round.passedPlayerIds()).willReturn(List.of(CALLER));
+        var handler = new GetRoundStatusQueryHandler(
+                actionRoundRepository, actionRoundSagaRepository, playerStateRepository, CLOCK);
+
+        // when
+        var result = handler.handle(new GetRoundStatusUseCase.Query(GAME_ID, ERA, ROUND, CALLER));
+
+        // then
+        assertThat(result.mySubmission()).isEqualTo(new GetRoundStatusUseCase.MySubmission(true, "PASS"));
+        assertThat(result.submittedCount()).isEqualTo(2);
+        assertThat(result.totalPlayers()).isEqualTo(3);
+        assertThat(result.pendingPlayerIds()).containsExactly(pendingPlayerId);
+    }
+
+    @Test
     @DisplayName("handle — caller submitted a special action — returns mySubmission with SPECIAL action type")
     void handleCallerSubmittedSpecial() {
         // given

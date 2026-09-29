@@ -35,6 +35,10 @@ class ActionRoundJpaEntity extends GameEraScopedJpaEntity {
     @JdbcTypeCode(SqlTypes.JSON)
     private List<StoredSubmittedAction> submittedActions;
 
+    @Column(name = "passed_player_ids", columnDefinition = "uuid[]", nullable = false)
+    @JdbcTypeCode(SqlTypes.ARRAY)
+    private UUID[] passedPlayerIds;
+
     protected ActionRoundJpaEntity() {}
 
     int getRoundNumber() {
@@ -83,5 +87,13 @@ class ActionRoundJpaEntity extends GameEraScopedJpaEntity {
 
     void setSubmittedActions(List<StoredSubmittedAction> submittedActions) {
         this.submittedActions = submittedActions;
+    }
+
+    UUID[] getPassedPlayerIds() {
+        return passedPlayerIds;
+    }
+
+    void setPassedPlayerIds(UUID[] passedPlayerIds) {
+        this.passedPlayerIds = passedPlayerIds;
     }
 }
