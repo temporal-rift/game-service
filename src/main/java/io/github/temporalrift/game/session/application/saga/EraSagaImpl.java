@@ -92,7 +92,7 @@ class EraSagaImpl implements EraSaga {
             gameRepository.save(game);
 
             publishEventsDrawn(game, gameId, eraNumber, freshDraw.events(), carryOverEvents);
-            playerIds.forEach(playerId -> publishHandDealt(game, gameId, eraNumber, playerId, playerIds.size()));
+            playerIds.forEach(playerId -> publishHandDealt(game, gameId, eraNumber, playerId));
 
             stateManager.advanceTo(gameId, EraSagaStatus.WAITING_HAND_SELECTION);
         } catch (InsufficientDeckException e) {
@@ -211,7 +211,7 @@ class EraSagaImpl implements EraSaga {
         return new EventsDrawn.FutureEvent(eventId, definition.title(), outcomes, carryOverState);
     }
 
-    private void publishHandDealt(Game game, UUID gameId, int eraNumber, UUID playerId, int playerCount) {
+    private void publishHandDealt(Game game, UUID gameId, int eraNumber, UUID playerId) {
         var dealtCards = cardDealer.deal(gameRules.cardsPerDeal());
         var cards = IntStream.range(0, dealtCards.size())
                 .mapToObj(index -> {
@@ -219,7 +219,7 @@ class EraSagaImpl implements EraSaga {
                     return new HandDealt.CardInstance(card.cardInstanceId(), card.cardType(), card.grade(), index + 1);
                 })
                 .toList();
-        var expiresAt = clock.instant().plus(Duration.ofSeconds(gameRules.handSelectionTimerSeconds(playerCount)));
+        var expiresAt = clock.instant().plus(Duration.ofSeconds(gameRules.handSelectionTimerSeconds()));
         var handDealt = new HandDealt(gameId, eraNumber, playerId, expiresAt, cards);
         sagaHandoffPublisher.publish(
                 eventPublisher::publish,

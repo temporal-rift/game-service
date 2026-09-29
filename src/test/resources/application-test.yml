@@ -28,10 +28,7 @@ game:
       3: 60
       4: 45
       5: 30
-    hand-selection-timer-seconds:
-      3: 60
-      4: 45
-      5: 30
+    hand-selection-timer-seconds: 60
     declaration-timer-seconds:
       3: 2
       4: 2
