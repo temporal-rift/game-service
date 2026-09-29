@@ -21,6 +21,10 @@ class GameEndedAbnormallyWireContractTest {
         var resolutionFailed =
                 mapper.toWire(new GameEndedAbnormally(gameId, GameEndedAbnormally.Reason.RESOLUTION_FAILED));
 
+        var allAbandoned =
+                mapper.toWire(new GameEndedAbnormally(gameId, GameEndedAbnormally.Reason.ALL_PLAYERS_ABANDONED));
+
+        assertThat(allAbandoned.reason()).isEqualTo("all-players-abandoned");
         assertThat(deckExhausted.gameId()).isEqualTo(gameId);
         assertThat(deckExhausted.reason()).isEqualTo("deck-exhausted");
         assertThat(resolutionFailed.reason()).isEqualTo("resolution-failed");

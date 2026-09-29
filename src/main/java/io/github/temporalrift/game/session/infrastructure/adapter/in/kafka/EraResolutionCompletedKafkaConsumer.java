@@ -17,6 +17,8 @@ import tools.jackson.databind.ObjectMapper;
 
 import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract;
 import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.EraResolutionCompletedPayload;
+import io.github.temporalrift.game.session.application.saga.AbandonmentEndingPublisher;
+import io.github.temporalrift.game.session.application.saga.PlayerAbandonmentProcessor;
 import io.github.temporalrift.game.session.application.saga.TimelineCollapsePublisher;
 import io.github.temporalrift.game.session.domain.event.EraResolutionCompleted;
 import io.github.temporalrift.game.session.domain.game.Game;
@@ -46,6 +48,8 @@ class EraResolutionCompletedKafkaConsumer {
     private final EraSagaRepository eraSagaRepository;
     private final GameRepository gameRepository;
     private final TimelineCollapsePublisher collapsePublisher;
+    private final PlayerAbandonmentProcessor abandonmentProcessor;
+    private final AbandonmentEndingPublisher endingPublisher;
     private final SessionGameRulesPort gameRules;
     private final TimelineSessionWireMapper wireMapper;
     private final ObjectMapper objectMapper;
@@ -55,6 +59,8 @@ class EraResolutionCompletedKafkaConsumer {
             EraSagaRepository eraSagaRepository,
             GameRepository gameRepository,
             TimelineCollapsePublisher collapsePublisher,
+            PlayerAbandonmentProcessor abandonmentProcessor,
+            AbandonmentEndingPublisher endingPublisher,
             SessionGameRulesPort gameRules,
             TimelineSessionWireMapper wireMapper,
             ObjectMapper objectMapper) {
@@ -62,6 +68,8 @@ class EraResolutionCompletedKafkaConsumer {
         this.eraSagaRepository = eraSagaRepository;
         this.gameRepository = gameRepository;
         this.collapsePublisher = collapsePublisher;
+        this.abandonmentProcessor = abandonmentProcessor;
+        this.endingPublisher = endingPublisher;
         this.gameRules = gameRules;
         this.wireMapper = wireMapper;
         this.objectMapper = objectMapper;
@@ -150,12 +158,13 @@ class EraResolutionCompletedKafkaConsumer {
         // Normal victory outranks same-era collapse: while the era saga still awaits this era's
         // scoring, the collapse fact stays recorded but undecided and EraSagaAdvancer makes the
         // single era-end decision once qualifiers are known. Only a late collapse — arriving after
-        // the saga already left WAITING_SCORES for this era — ends the game immediately.
+        // the saga already left WAITING_SCORES — ends the game immediately. A newer era awaiting
+        // scoring must also commit its totals before any ending is finalized.
         // A pre-scoring saga state for this era is not reachable here: timeline-service resolves
         // an era only on ResolutionStarted, which is relayed only after this same WAITING_SCORES
         // save commits (same transaction, Modulith outbox), so the barrier causally follows it.
-        var awaitingScoring = saga.filter(candidate -> candidate.status() == EraSagaStatus.WAITING_SCORES
-                        && candidate.eraNumber() == resolution.eraNumber())
+        var lobby = abandonmentProcessor.abandonDuePlayers(game);
+        var awaitingScoring = saga.filter(candidate -> candidate.status() == EraSagaStatus.WAITING_SCORES)
                 .isPresent();
         if (awaitingScoring) {
             log.info(
@@ -168,8 +177,16 @@ class EraResolutionCompletedKafkaConsumer {
             log.info("EraResolutionCompleted ignored for game {} — already over", resolution.gameId());
             return;
         }
-        game.endByCollapse();
-        gameRepository.save(game);
-        collapsePublisher.publishCollapse(game, resolution.eraNumber());
+        saga.filter(state -> state.status() != EraSagaStatus.COMPLETED && state.status() != EraSagaStatus.FAILED)
+                .ifPresent(state -> eraSagaRepository.save(state.withStatus(EraSagaStatus.COMPLETED)));
+        if (lobby.contenders().isEmpty()) {
+            game.endAbnormally();
+            gameRepository.save(game);
+            endingPublisher.publishAllPlayersAbandoned(game);
+        } else {
+            game.endByCollapse();
+            gameRepository.save(game);
+            collapsePublisher.publishCollapse(game, resolution.eraNumber());
+        }
     }
 }

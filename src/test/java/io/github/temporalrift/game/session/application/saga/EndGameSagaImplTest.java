@@ -275,6 +275,29 @@ class EndGameSagaImplTest {
         then(stateManager).should(never()).complete(any());
     }
 
+    @Test
+    void start_allPlayersAbandoned_retainsEveryFinalScoreAndRevealsFactions() {
+        var game = Game.reconstitute(GAME_ID, LOBBY_ID, List.of(), 2, 0, GameStatus.ENDED_ABNORMALLY);
+        var scores = List.of(
+                new GameEnded.PlayerScoreResult(PLAYER_1, "PROPHETS", 25),
+                new GameEnded.PlayerScoreResult(PLAYER_2, "ERASERS", 9));
+        given(stateManager.claimIfAbsent(GAME_ID, EndGameTrigger.ALL_PLAYERS_ABANDONED, List.of()))
+                .willReturn(true);
+        given(gameRepository.findById(GAME_ID)).willReturn(Optional.of(game));
+        given(lobbyRepository.findById(LOBBY_ID)).willReturn(Optional.of(lobby()));
+        given(finalScoreQueryPort.getScores(GAME_ID)).willReturn(scores);
+        saga.start(GAME_ID, EndGameTrigger.ALL_PLAYERS_ABANDONED);
+        then(eventPublisher)
+                .should()
+                .publish(argThat(envelope ->
+                        new GameEnded(GAME_ID, "ALL_PLAYERS_ABANDONED", scores).equals(envelope.payload())));
+        then(eventPublisher)
+                .should()
+                .publish(argThat(envelope -> envelope.payload() instanceof FactionRevealed reveal
+                        && reveal.reveals().size() == 2));
+        then(stateManager).should().complete(GAME_ID);
+    }
+
     // ─── helpers ─────────────────────────────────────────────────────────────
 
     private Lobby lobby() {

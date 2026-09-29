@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 
 import java.nio.charset.StandardCharsets;
@@ -27,14 +28,22 @@ import tools.jackson.databind.json.JsonMapper;
 import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.AdjustedBandsPublishedPayload;
 import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.EraResolutionCompletedPayload;
 import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.EraTerminalResolution;
+import io.github.temporalrift.game.session.application.saga.AbandonmentEndingPublisher;
+import io.github.temporalrift.game.session.application.saga.PlayerAbandonmentProcessor;
 import io.github.temporalrift.game.session.application.saga.TimelineCollapsePublisher;
 import io.github.temporalrift.game.session.domain.game.Game;
 import io.github.temporalrift.game.session.domain.game.GameStatus;
+import io.github.temporalrift.game.session.domain.lobby.ConnectionStatus;
+import io.github.temporalrift.game.session.domain.lobby.Lobby;
+import io.github.temporalrift.game.session.domain.lobby.LobbyConfig;
+import io.github.temporalrift.game.session.domain.lobby.LobbyPlayer;
+import io.github.temporalrift.game.session.domain.lobby.LobbyStatus;
 import io.github.temporalrift.game.session.domain.port.out.EraSagaRepository;
 import io.github.temporalrift.game.session.domain.port.out.GameRepository;
 import io.github.temporalrift.game.session.domain.port.out.SessionGameRulesPort;
 import io.github.temporalrift.game.session.domain.saga.EraSagaState;
 import io.github.temporalrift.game.session.domain.saga.EraSagaStatus;
+import io.github.temporalrift.game.shared.domain.model.Faction;
 import io.github.temporalrift.game.shared.domain.port.out.ProcessedEventRepository;
 
 @ExtendWith(MockitoExtension.class)
@@ -62,6 +71,12 @@ class EraResolutionCompletedKafkaConsumerTest {
     TimelineCollapsePublisher collapsePublisher;
 
     @Mock
+    PlayerAbandonmentProcessor abandonmentProcessor;
+
+    @Mock
+    AbandonmentEndingPublisher endingPublisher;
+
+    @Mock
     SessionGameRulesPort gameRules;
 
     EraResolutionCompletedKafkaConsumer consumer;
@@ -73,9 +88,42 @@ class EraResolutionCompletedKafkaConsumerTest {
                 eraSagaRepository,
                 gameRepository,
                 collapsePublisher,
+                abandonmentProcessor,
+                endingPublisher,
                 gameRules,
                 new TimelineSessionWireMapperImpl(),
                 JSON_MAPPER);
+        lenient().when(abandonmentProcessor.abandonDuePlayers(any())).thenReturn(roster());
+    }
+
+    private Lobby roster() {
+        var players = List.of(PLAYER_1, PLAYER_2, PLAYER_3).stream()
+                .map(id -> new LobbyPlayer(id, "Player", Faction.PROPHETS, Instant.EPOCH, ConnectionStatus.CONNECTED))
+                .toList();
+        return Lobby.reconstitute(
+                LOBBY_ID,
+                GAME_ID,
+                PLAYER_1,
+                players,
+                LobbyStatus.STARTED,
+                new LobbyConfig("ABCD", 3, 5, java.time.Clock.fixed(Instant.EPOCH, java.time.ZoneOffset.UTC)));
+    }
+
+    @Test
+    void handle_lateCollapseWithNoContenders_endsWithoutAWinner() {
+        var game = Game.reconstitute(GAME_ID, LOBBY_ID, List.of(), 1, 2, GameStatus.IN_PROGRESS);
+        var lobby = roster();
+        for (var player : lobby.currentPlayers()) {
+            lobby.markPlayerAbandoned(player.playerId());
+        }
+        given(abandonmentProcessor.abandonDuePlayers(game)).willReturn(lobby);
+        givenClaimedBarrier();
+        given(gameRepository.findByIdWithLock(GAME_ID)).willReturn(Optional.of(game));
+        given(gameRules.maxCascadedParadoxes()).willReturn(MAX_CASCADED);
+        consumer.handle(messageFor(resolution(1, cascaded(UUID.randomUUID(), 0))));
+        assertThat(game.status()).isEqualTo(GameStatus.ENDED_ABNORMALLY);
+        then(endingPublisher).should().publishAllPlayersAbandoned(game);
+        then(collapsePublisher).shouldHaveNoInteractions();
     }
 
     @Test

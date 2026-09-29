@@ -72,6 +72,10 @@ class EndGameSagaEventListenerTest {
         listener.onGameEndedAbnormally(new GameEndedAbnormally(gameId, GameEndedAbnormally.Reason.DECK_EXHAUSTED));
         listener.onGameEndedAbnormally(new GameEndedAbnormally(gameId, GameEndedAbnormally.Reason.RESOLUTION_FAILED));
 
+        listener.onGameEndedAbnormally(
+                new GameEndedAbnormally(gameId, GameEndedAbnormally.Reason.ALL_PLAYERS_ABANDONED));
+
+        then(endGameSaga).should().start(gameId, EndGameTrigger.ALL_PLAYERS_ABANDONED);
         then(endGameSaga).should().start(gameId, EndGameTrigger.DECK_EXHAUSTED);
         then(endGameSaga).should().start(gameId, EndGameTrigger.RESOLUTION_FAILED);
     }

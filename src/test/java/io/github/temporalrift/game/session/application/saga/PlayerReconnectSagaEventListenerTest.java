@@ -74,7 +74,7 @@ class PlayerReconnectSagaEventListenerTest {
         given(gameRepository.findById(GAME_ID)).willReturn(Optional.of(game));
         given(lobbyRepository.findById(LOBBY_ID)).willReturn(Optional.of(lobby));
         given(stateManager.hasActiveGracePeriod(GAME_ID, PLAYER_ID)).willReturn(false);
-        given(saga.start(GAME_ID, PLAYER_ID)).willReturn(result);
+        given(saga.start(GAME_ID, PLAYER_ID)).willReturn(Optional.of(result));
 
         // when
         listener.onPlayerDisconnected(event);

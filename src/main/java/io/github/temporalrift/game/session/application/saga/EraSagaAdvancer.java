@@ -57,7 +57,8 @@ class EraSagaAdvancer {
     private final ApplicationEventPublisher applicationEventPublisher;
     private final SagaHandoffPublisher sagaHandoffPublisher;
     private final TimelineCollapsePublisher collapsePublisher;
-    private final LastPlayerStandingPublisher lastPlayerStandingPublisher;
+    private final AbandonmentEndingPublisher endingPublisher;
+    private final PlayerAbandonmentProcessor abandonmentProcessor;
     private final SessionGameRulesPort gameRules;
     private final SessionFactionObjectivePort factionObjectives;
     private final Clock clock;
@@ -70,7 +71,8 @@ class EraSagaAdvancer {
             SessionEventPublisher eventPublisher,
             ApplicationEventPublisher applicationEventPublisher,
             TimelineCollapsePublisher collapsePublisher,
-            LastPlayerStandingPublisher lastPlayerStandingPublisher,
+            AbandonmentEndingPublisher endingPublisher,
+            PlayerAbandonmentProcessor abandonmentProcessor,
             SessionGameRulesPort gameRules,
             SessionFactionObjectivePort factionObjectives,
             Clock clock) {
@@ -82,7 +84,8 @@ class EraSagaAdvancer {
         this.applicationEventPublisher = applicationEventPublisher;
         this.sagaHandoffPublisher = new SagaHandoffPublisher(applicationEventPublisher);
         this.collapsePublisher = collapsePublisher;
-        this.lastPlayerStandingPublisher = lastPlayerStandingPublisher;
+        this.endingPublisher = endingPublisher;
+        this.abandonmentProcessor = abandonmentProcessor;
         this.gameRules = gameRules;
         this.factionObjectives = factionObjectives;
         this.clock = clock;
@@ -196,8 +199,17 @@ class EraSagaAdvancer {
             eraSagaRepository.save(state.withStatus(EraSagaStatus.COMPLETED));
             return;
         }
-        var lobby =
-                lobbyRepository.findById(game.lobbyId()).orElseThrow(() -> new LobbyNotFoundException(game.lobbyId()));
+        var lobby = lobbyRepository
+                .findByIdWithLock(game.lobbyId())
+                .orElseThrow(() -> new LobbyNotFoundException(game.lobbyId()));
+        abandonmentProcessor.abandonDuePlayers(gameId, lobby, clock.instant());
+        if (lobby.contenders().isEmpty()) {
+            game.endAbnormally();
+            gameRepository.save(game);
+            eraSagaRepository.save(state.withStatus(EraSagaStatus.COMPLETED));
+            endingPublisher.publishAllPlayersAbandoned(game);
+            return;
+        }
         var qualifiers = findQualifiers(gameId, su, lobby);
         if (!qualifiers.isEmpty()) {
             // Normal victory outranks a same-era collapse: the resolution consumer defers the
@@ -227,7 +239,7 @@ class EraSagaAdvancer {
             game.end();
             gameRepository.save(game);
             eraSagaRepository.save(state.withStatus(EraSagaStatus.COMPLETED));
-            lastPlayerStandingPublisher.publish(game, winner, newTotal(su, winner.playerId()));
+            endingPublisher.publishLastPlayerStanding(game, winner, newTotal(su, winner.playerId()));
             return;
         }
         if (game.collapsePending()) {

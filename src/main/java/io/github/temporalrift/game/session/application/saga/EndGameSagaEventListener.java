@@ -31,6 +31,7 @@ class EndGameSagaEventListener {
         var trigger = switch (event.reason()) {
             case DECK_EXHAUSTED -> EndGameTrigger.DECK_EXHAUSTED;
             case RESOLUTION_FAILED -> EndGameTrigger.RESOLUTION_FAILED;
+            case ALL_PLAYERS_ABANDONED -> EndGameTrigger.ALL_PLAYERS_ABANDONED;
         };
         gameEndSaga.start(event.gameId(), trigger);
     }
