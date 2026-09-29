@@ -3,6 +3,7 @@ package io.github.temporalrift.game.action.application.command;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.never;
@@ -20,11 +21,13 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import io.github.temporalrift.game.action.application.port.in.PassParadoxResolutionUseCase;
+import io.github.temporalrift.game.action.domain.event.ParadoxResolutionPassed;
 import io.github.temporalrift.game.action.domain.paradoxresolutionphase.DuplicateParadoxResolutionSubmissionException;
 import io.github.temporalrift.game.action.domain.paradoxresolutionphase.ParadoxResolutionPhase;
 import io.github.temporalrift.game.action.domain.paradoxresolutionphase.ParadoxResolutionPhaseNotOpenException;
 import io.github.temporalrift.game.action.domain.playerstate.PlayerState;
 import io.github.temporalrift.game.action.domain.playerstate.PlayerStateNotFoundException;
+import io.github.temporalrift.game.action.domain.port.out.ActionEventPublisher;
 import io.github.temporalrift.game.action.domain.port.out.ParadoxResolutionPhaseRepository;
 import io.github.temporalrift.game.action.domain.port.out.PlayerStateRepository;
 import io.github.temporalrift.game.shared.domain.model.CardType;
@@ -46,9 +49,12 @@ class PassParadoxResolutionCommandHandlerTest {
     @Mock
     PlayerState playerState;
 
+    @Mock
+    ActionEventPublisher actionEventPublisher;
+
     private PassParadoxResolutionCommandHandler handler() {
         return new PassParadoxResolutionCommandHandler(
-                phaseRepository, playerStateRepository, Clock.fixed(NOW, ZoneOffset.UTC));
+                phaseRepository, playerStateRepository, actionEventPublisher, Clock.fixed(NOW, ZoneOffset.UTC));
     }
 
     @Test
@@ -63,6 +69,11 @@ class PassParadoxResolutionCommandHandlerTest {
         assertThat(phase.submittedPlayerIds()).containsExactly(PLAYER_ID);
         then(phaseRepository).should().save(phase);
         then(playerStateRepository).should(never()).save(any());
+        then(actionEventPublisher)
+                .should()
+                .publish(argThat(envelope -> envelope.aggregateId().equals(phase.id())
+                        && envelope.aggregateType().equals(ParadoxResolutionPhase.AGGREGATE_TYPE)
+                        && envelope.payload().equals(new ParadoxResolutionPassed(GAME_ID, ERA, PLAYER_ID))));
     }
 
     @Test
@@ -78,6 +89,7 @@ class PassParadoxResolutionCommandHandlerTest {
         assertThatExceptionOfType(DuplicateParadoxResolutionSubmissionException.class)
                 .isThrownBy(() -> handler.handle(command));
         then(phaseRepository).should(never()).save(any());
+        then(actionEventPublisher).shouldHaveNoInteractions();
     }
 
     @Test
