@@ -14,6 +14,8 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import io.github.temporalrift.game.action.application.port.in.GetParadoxResolutionStatusUseCase;
 import io.github.temporalrift.game.action.application.port.in.GetRoundStatusUseCase;
+import io.github.temporalrift.game.action.application.port.in.PassActionRoundUseCase;
+import io.github.temporalrift.game.action.application.port.in.PassParadoxResolutionUseCase;
 import io.github.temporalrift.game.action.application.port.in.PlayCardUseCase;
 import io.github.temporalrift.game.action.application.port.in.PlayParadoxResolutionCardUseCase;
 import io.github.temporalrift.game.action.application.port.in.PlaySpecialActionUseCase;
@@ -44,6 +46,12 @@ class SecurityIT {
 
     @MockitoBean
     private PlayParadoxResolutionCardUseCase playParadoxResolutionCardUseCase;
+
+    @MockitoBean
+    private PassActionRoundUseCase passActionRoundUseCase;
+
+    @MockitoBean
+    private PassParadoxResolutionUseCase passParadoxResolutionUseCase;
 
     @MockitoBean
     private RecordActivistDeclarationUseCase recordActivistDeclarationUseCase;
