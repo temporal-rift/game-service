@@ -56,6 +56,9 @@ class ActionController implements ActionApi {
     private final GetParadoxResolutionStatusUseCase getParadoxResolutionStatusUseCase;
     private final SelectHandUseCase selectHandUseCase;
 
+    // One input port per ActionApi operation (REST adapters may depend only on port.in use cases), and the
+    // generated ActionApi makes a single controller implement every operation, so the port count tracks the API.
+    @SuppressWarnings("java:S107")
     ActionController(
             PlayCardUseCase playCardUseCase,
             PlaySpecialActionUseCase playSpecialActionUseCase,
