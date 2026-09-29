@@ -192,6 +192,42 @@ class EraSagaImplTest {
         assertThat(outcomeIdsA).doesNotContainAnyElementsOf(catalogOutcomeIds);
     }
 
+    @Test
+    @DisplayName("fresh events drawn from cards with different printed distributions each start at their own weights")
+    void start_cardsWithDistinctPrintedDistributions_publishEachCardsOwnWeights() {
+        // given
+        var favored = new FutureEventDefinition(
+                UUID.randomUUID(),
+                "Favored",
+                List.of(
+                        new FutureEventDefinition.OutcomeDefinition(UUID.randomUUID(), "A", 60),
+                        new FutureEventDefinition.OutcomeDefinition(UUID.randomUUID(), "B", 25),
+                        new FutureEventDefinition.OutcomeDefinition(UUID.randomUUID(), "C", 15)));
+        var contested = new FutureEventDefinition(
+                UUID.randomUUID(),
+                "Contested",
+                List.of(
+                        new FutureEventDefinition.OutcomeDefinition(UUID.randomUUID(), "A", 42),
+                        new FutureEventDefinition.OutcomeDefinition(UUID.randomUUID(), "B", 42),
+                        new FutureEventDefinition.OutcomeDefinition(UUID.randomUUID(), "C", 16)));
+        given(gameRules.eventsPerEra()).willReturn(2);
+        given(futureEventCatalog.findByEventIds(any())).willReturn(List.of(favored, contested));
+        given(gameRepository.findByIdWithLock(GAME_ID))
+                .willReturn(Optional.of(new Game(GAME_ID, LOBBY_ID, buildDeck(2))));
+        var captor = ArgumentCaptor.<DomainEventEnvelope>captor();
+
+        // when
+        eraSaga.start(GAME_ID, ERA_NUMBER, PLAYER_IDS, List.of());
+
+        // then
+        then(eventPublisher).should(atLeastOnce()).publish(captor.capture());
+        assertThat(eventsDrawnFrom(captor).events())
+                .extracting(event -> event.outcomes().stream()
+                        .map(EventsDrawn.Outcome::initialProbability)
+                        .toList())
+                .containsExactly(List.of(60, 25, 15), List.of(42, 42, 16));
+    }
+
     private static EventsDrawn eventsDrawnFrom(ArgumentCaptor<DomainEventEnvelope> captor) {
         return captor.getAllValues().stream()
                 .filter(e -> e.payload() instanceof EventsDrawn)

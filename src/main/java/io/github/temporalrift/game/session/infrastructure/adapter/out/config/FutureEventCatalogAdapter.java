@@ -2,24 +2,33 @@ package io.github.temporalrift.game.session.infrastructure.adapter.out.config;
 
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.UUID;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.stereotype.Component;
 
 import io.github.temporalrift.game.session.domain.futureevent.FutureEventDefinition;
 import io.github.temporalrift.game.session.domain.port.out.FutureEventCatalogPort;
+import io.github.temporalrift.game.session.domain.port.out.SessionGameRulesPort;
 
-@ConfigurationProperties("game.catalog")
-public record FutureEventCatalogAdapter(List<FutureEventDefinition> events) implements FutureEventCatalogPort {
+@Component
+class FutureEventCatalogAdapter implements FutureEventCatalogPort {
 
-    public FutureEventCatalogAdapter {
-        Objects.requireNonNull(events, "events must not be null");
+    private final List<FutureEventDefinition> events;
+    private final Map<UUID, FutureEventDefinition> eventsById;
+
+    FutureEventCatalogAdapter(FutureEventCatalogProperties properties, SessionGameRulesPort rules) {
+        events = properties.events();
         if (events.isEmpty()) {
             throw new IllegalStateException("Future event catalog must not be empty");
         }
-        events = List.copyOf(events);
+        eventsById = events.stream()
+                .collect(Collectors.toMap(FutureEventDefinition::eventId, Function.identity(), (first, second) -> {
+                    throw new IllegalStateException("Future event catalog repeats event ID " + first.eventId());
+                }));
+        var bounds = rules.probabilityBounds();
+        events.forEach(event -> event.requireStartWithin(bounds));
     }
 
     @Override
@@ -29,11 +38,9 @@ public record FutureEventCatalogAdapter(List<FutureEventDefinition> events) impl
 
     @Override
     public List<FutureEventDefinition> findByEventIds(List<UUID> eventIds) {
-        Map<UUID, FutureEventDefinition> eventMap =
-                events.stream().collect(Collectors.toMap(FutureEventDefinition::eventId, e -> e));
         return eventIds.stream()
                 .map(id -> {
-                    var event = eventMap.get(id);
+                    var event = eventsById.get(id);
                     if (event == null) {
                         throw new IllegalStateException("Event ID " + id + " not found in catalog");
                     }

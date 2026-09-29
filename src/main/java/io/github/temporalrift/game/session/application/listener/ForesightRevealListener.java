@@ -117,7 +117,7 @@ class ForesightRevealListener {
                         definition.title(),
                         definition.outcomes().stream()
                                 .map(outcome -> new ForesightRevealed.RevealedOutcome(
-                                        outcome.outcomeId(), outcome.description()))
+                                        outcome.outcomeId(), outcome.description(), outcome.probability()))
                                 .toList()))
                 .toList();
     }

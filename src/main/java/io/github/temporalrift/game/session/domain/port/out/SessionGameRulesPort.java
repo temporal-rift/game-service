@@ -3,6 +3,7 @@ package io.github.temporalrift.game.session.domain.port.out;
 import java.util.Set;
 
 import io.github.temporalrift.game.session.domain.ending.StabilizationThresholds;
+import io.github.temporalrift.game.session.domain.futureevent.ProbabilityBounds;
 import io.github.temporalrift.game.shared.domain.model.CardType;
 import io.github.temporalrift.game.shared.domain.port.out.GameRulesPort;
 
@@ -29,6 +30,9 @@ public interface SessionGameRulesPort extends GameRulesPort {
     int handSelectionTimerSeconds();
 
     StabilizationThresholds stabilizationThresholds();
+
+    /** The probability floor and ceiling timeline enforces, against which catalog cards are validated. */
+    ProbabilityBounds probabilityBounds();
 
     /**
      * Card types that a deal must include, regardless of the configured category/grade weights. Empty in

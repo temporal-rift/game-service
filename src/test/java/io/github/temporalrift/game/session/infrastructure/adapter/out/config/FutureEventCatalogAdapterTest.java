@@ -2,31 +2,53 @@ package io.github.temporalrift.game.session.infrastructure.adapter.out.config;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
+import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
+import java.io.IOException;
+import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.boot.context.properties.bind.Binder;
+import org.springframework.boot.context.properties.source.ConfigurationPropertySources;
+import org.springframework.boot.env.YamlPropertySourceLoader;
+import org.springframework.core.env.PropertySource;
+import org.springframework.core.io.ClassPathResource;
 
 import io.github.temporalrift.game.session.domain.futureevent.FutureEventDefinition;
 import io.github.temporalrift.game.session.domain.futureevent.FutureEventDefinition.OutcomeDefinition;
+import io.github.temporalrift.game.session.domain.futureevent.ProbabilityBounds;
+import io.github.temporalrift.game.session.domain.port.out.SessionGameRulesPort;
 
 class FutureEventCatalogAdapterTest {
 
-    static FutureEventDefinition event() {
+    private static final ProbabilityBounds BOUNDS = new ProbabilityBounds(0, 90);
+
+    static FutureEventDefinition event(int first, int second, int third) {
         return new FutureEventDefinition(
                 UUID.randomUUID(),
                 "Event Title",
                 List.of(
-                        new OutcomeDefinition(UUID.randomUUID(), "Outcome A", 33),
-                        new OutcomeDefinition(UUID.randomUUID(), "Outcome B", 33),
-                        new OutcomeDefinition(UUID.randomUUID(), "Outcome C", 34)));
+                        new OutcomeDefinition(UUID.randomUUID(), "Outcome A", first),
+                        new OutcomeDefinition(UUID.randomUUID(), "Outcome B", second),
+                        new OutcomeDefinition(UUID.randomUUID(), "Outcome C", third)));
     }
 
     static List<FutureEventDefinition> catalogOf(int size) {
-        return IntStream.range(0, size).mapToObj(i -> event()).toList();
+        return IntStream.range(0, size).mapToObj(i -> event(33, 33, 34)).toList();
+    }
+
+    static FutureEventCatalogAdapter adapter(List<FutureEventDefinition> events, ProbabilityBounds bounds) {
+        var rules = mock(SessionGameRulesPort.class);
+        when(rules.probabilityBounds()).thenReturn(bounds);
+        return new FutureEventCatalogAdapter(new FutureEventCatalogProperties(events), rules);
     }
 
     @Test
@@ -34,7 +56,7 @@ class FutureEventCatalogAdapterTest {
     void allEventIds_returnsAllIds() {
         // given
         var events = catalogOf(30);
-        var adapter = new FutureEventCatalogAdapter(events);
+        var adapter = adapter(events, BOUNDS);
 
         // when
         var ids = adapter.allEventIds();
@@ -51,7 +73,7 @@ class FutureEventCatalogAdapterTest {
     void findByEventIds_returnsDefinitionsInInputOrder() {
         // given
         var events = catalogOf(30);
-        var adapter = new FutureEventCatalogAdapter(events);
+        var adapter = adapter(events, BOUNDS);
         var ids = List.of(
                 events.get(2).eventId(), events.get(0).eventId(), events.get(15).eventId());
 
@@ -66,7 +88,7 @@ class FutureEventCatalogAdapterTest {
     @DisplayName("findByEventIds throws IllegalStateException for an ID not in the catalog")
     void findByEventIds_missingId_throwsIllegalStateException() {
         // given
-        var adapter = new FutureEventCatalogAdapter(catalogOf(30));
+        var adapter = adapter(catalogOf(30), BOUNDS);
         var unknownId = UUID.randomUUID();
 
         var ids = List.of(unknownId);
@@ -75,5 +97,78 @@ class FutureEventCatalogAdapterTest {
         assertThatExceptionOfType(IllegalStateException.class)
                 .isThrownBy(() -> adapter.findByEventIds(ids))
                 .withMessageContaining(unknownId.toString());
+    }
+
+    @Test
+    @DisplayName("an empty catalog is rejected")
+    void emptyCatalog_isRejected() {
+        List<FutureEventDefinition> empty = List.of();
+
+        assertThatExceptionOfType(IllegalStateException.class).isThrownBy(() -> adapter(empty, BOUNDS));
+    }
+
+    @Test
+    @DisplayName("a catalog repeating an event ID is rejected")
+    void duplicateEventId_isRejected() {
+        var event = event(50, 30, 20);
+        var events = List.of(event, event);
+
+        assertThatExceptionOfType(IllegalStateException.class)
+                .isThrownBy(() -> adapter(events, BOUNDS))
+                .withMessageContaining(event.eventId().toString());
+    }
+
+    @Test
+    @DisplayName("a card printing a weight above the configured ceiling is rejected at construction")
+    void cardAboveCeiling_isRejected() {
+        var invalid = event(92, 5, 3);
+        var events = List.of(event(50, 30, 20), invalid);
+
+        assertThatIllegalArgumentException()
+                .isThrownBy(() -> adapter(events, BOUNDS))
+                .withMessageContaining(invalid.eventId().toString());
+    }
+
+    @Test
+    @DisplayName("a card printing a zero weight is rejected at construction")
+    void cardWithZeroWeight_isRejected() {
+        var events = List.of(event(50, 50, 0));
+
+        assertThatIllegalArgumentException().isThrownBy(() -> adapter(events, BOUNDS));
+    }
+
+    @Test
+    @DisplayName("the shipped catalog passes validation and prints every documented profile")
+    void shippedCatalog_isValidAndUsesEveryProfile() throws IOException {
+        var catalog = bind("future-events.yml", "game.catalog", FutureEventCatalogProperties.class);
+        var bounds = bind("application-test.yml", "game.rules.probability", ProbabilityBounds.class);
+
+        var adapter = adapter(catalog.events(), bounds);
+
+        assertThat(adapter.allEventIds()).hasSize(30);
+        var profiles = catalog.events().stream()
+                .map(event -> event.outcomes().stream()
+                        .map(OutcomeDefinition::probability)
+                        .sorted(Comparator.reverseOrder())
+                        .toList())
+                .collect(Collectors.groupingBy(Function.identity(), Collectors.counting()));
+        assertThat(profiles)
+                .containsOnlyKeys(
+                        List.of(34, 33, 33),
+                        List.of(45, 35, 20),
+                        List.of(50, 30, 20),
+                        List.of(42, 42, 16),
+                        List.of(60, 25, 15));
+        assertThat(profiles.get(List.of(34, 33, 33)))
+                .as("balanced cards are a minority of the catalog")
+                .isLessThan(catalog.events().size() / 4);
+    }
+
+    private static <T> T bind(String resource, String prefix, Class<T> type) throws IOException {
+        List<PropertySource<?>> sources =
+                new YamlPropertySourceLoader().load(resource, new ClassPathResource(resource));
+        return new Binder(ConfigurationPropertySources.from(sources))
+                .bind(prefix, type)
+                .orElseThrow(IllegalStateException::new);
     }
 }

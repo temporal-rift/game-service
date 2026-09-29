@@ -21,12 +21,15 @@ import org.springframework.mock.env.MockPropertySource;
 import org.springframework.validation.beanvalidation.SpringValidatorAdapter;
 
 import io.github.temporalrift.game.session.domain.ending.StabilizationThresholds;
+import io.github.temporalrift.game.session.domain.futureevent.ProbabilityBounds;
 import io.github.temporalrift.game.shared.domain.model.CardCategory;
 import io.github.temporalrift.game.shared.domain.model.CardGrade;
 import io.github.temporalrift.game.shared.domain.model.CardType;
 import io.github.temporalrift.game.shared.domain.model.SpecialAction;
 
 class SessionRulesPropertiesTest {
+
+    private static final ProbabilityBounds PROBABILITY = new ProbabilityBounds(0, 90);
 
     static SessionRulesProperties properties(Map<Integer, Integer> timers) {
         return new SessionRulesProperties(
@@ -51,7 +54,8 @@ class SessionRulesPropertiesTest {
                 new SessionRulesProperties.Stabilization(3, 2),
                 Set.of(SpecialAction.ANNIHILATE, SpecialAction.SEAL, SpecialAction.CORRUPT, SpecialAction.MIMIC),
                 2,
-                Set.of());
+                Set.of(),
+                PROBABILITY);
     }
 
     @Test
@@ -104,7 +108,8 @@ class SessionRulesPropertiesTest {
                         new SessionRulesProperties.Stabilization(3, 2),
                         Set.of(SpecialAction.ANNIHILATE),
                         2,
-                        Set.of()))
+                        Set.of(),
+                        PROBABILITY))
                 .withMessage("cards-per-deal must be greater than or equal to cards-per-hand");
     }
 
@@ -137,7 +142,8 @@ class SessionRulesPropertiesTest {
                                 CardType.REDIRECT,
                                 CardType.INTERCEPT,
                                 CardType.SCAN,
-                                CardType.COLLIDE)))
+                                CardType.COLLIDE),
+                        PROBABILITY))
                 .withMessage("hand-deal-forced-types must not exceed cards-per-deal");
     }
 
@@ -162,7 +168,8 @@ class SessionRulesPropertiesTest {
                                 new SessionRulesProperties.Stabilization(3, 2),
                                 Set.of(SpecialAction.ANNIHILATE),
                                 2,
-                                Set.of())
+                                Set.of(),
+                                PROBABILITY)
                         .declarationTimerSeconds(7))
                 .isEqualTo(30);
     }
@@ -230,7 +237,9 @@ class SessionRulesPropertiesTest {
                 .withProperty("game.rules.card-grade-weights.I", "60")
                 .withProperty("game.rules.card-grade-weights.II", "30")
                 .withProperty("game.rules.card-grade-weights.III", "10")
-                .withProperty("game.rules.once-era-budgeted-specials[0]", "SEAL");
+                .withProperty("game.rules.once-era-budgeted-specials[0]", "SEAL")
+                .withProperty("game.rules.probability.floor", "0")
+                .withProperty("game.rules.probability.ceiling", "90");
     }
 
     private static SessionRulesProperties bindValidated(MockPropertySource source) {
@@ -239,6 +248,33 @@ class SessionRulesPropertiesTest {
         return new Binder(ConfigurationPropertySources.from(source))
                 .bind("game.rules", Bindable.of(SessionRulesProperties.class), new ValidationBindHandler(validator))
                 .orElseThrow(IllegalStateException::new);
+    }
+
+    @Test
+    @DisplayName("binding the shared probability floor and ceiling exposes them as probability bounds")
+    void bindingProbabilityBounds_exposesDomainBounds() {
+        var source = minimalRules().withProperty("game.rules.probability.push-shift.I", "10");
+
+        assertThat(bindValidated(source).probabilityBounds()).isEqualTo(new ProbabilityBounds(0, 90));
+    }
+
+    @Test
+    @DisplayName("a missing probability ceiling fails binding")
+    void missingProbabilityCeiling_failsBinding() {
+        var source = minimalRules();
+        source.getSource().remove("game.rules.probability.ceiling");
+
+        assertThatExceptionOfType(BindException.class).isThrownBy(() -> bindValidated(source));
+    }
+
+    @Test
+    @DisplayName("a missing probability namespace fails binding")
+    void missingProbability_failsBinding() {
+        var source = minimalRules();
+        source.getSource().remove("game.rules.probability.floor");
+        source.getSource().remove("game.rules.probability.ceiling");
+
+        assertThatExceptionOfType(BindException.class).isThrownBy(() -> bindValidated(source));
     }
 
     @Test
@@ -270,7 +306,8 @@ class SessionRulesPropertiesTest {
                         new SessionRulesProperties.Stabilization(3, 2),
                         Set.of(SpecialAction.ANNIHILATE),
                         2,
-                        Set.of()))
+                        Set.of(),
+                        PROBABILITY))
                 .withMessage("declaration-timer-seconds must contain only positive values");
     }
 }
