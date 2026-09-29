@@ -26,7 +26,7 @@ public interface SessionGameRulesPort extends GameRulesPort {
 
     int reconnectGracePeriodSeconds();
 
-    int handSelectionTimerSeconds(int playerCount);
+    int handSelectionTimerSeconds();
 
     StabilizationThresholds stabilizationThresholds();
 

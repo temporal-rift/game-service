@@ -98,7 +98,7 @@ class EraSagaImplTest {
                 cardDealer,
                 clock);
         lenient().when(gameRules.cardsPerDeal()).thenReturn(7);
-        lenient().when(gameRules.handSelectionTimerSeconds(anyInt())).thenReturn(60);
+        lenient().when(gameRules.handSelectionTimerSeconds()).thenReturn(60);
         lenient()
                 .when(cardDealer.deal(anyInt()))
                 .thenAnswer(invocation -> IntStream.range(0, invocation.getArgument(0))

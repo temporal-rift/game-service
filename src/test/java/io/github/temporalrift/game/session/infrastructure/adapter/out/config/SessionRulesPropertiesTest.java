@@ -10,6 +10,8 @@ import java.util.Set;
 import jakarta.validation.Validation;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.boot.context.properties.bind.BindException;
 import org.springframework.boot.context.properties.bind.Bindable;
 import org.springframework.boot.context.properties.bind.Binder;
@@ -38,7 +40,7 @@ class SessionRulesPropertiesTest {
                 100,
                 30,
                 timers,
-                timers,
+                120,
                 timers,
                 Map.of(
                         CardCategory.PROBABILITY_SHIFTER, 35,
@@ -74,14 +76,11 @@ class SessionRulesPropertiesTest {
     }
 
     @Test
-    @DisplayName("handSelectionTimerSeconds returns the mapped value and falls back to 60")
-    void handSelectionTimerSeconds_returnsMappedValueAndDefault() {
-        // given
-        var props = properties(Map.of(4, 45));
+    @DisplayName("binding hand-selection-timer-seconds yields one duration for every player count")
+    void bindingHandSelectionTimer_yieldsSingleDuration() {
+        var source = minimalRules().withProperty("game.rules.hand-selection-timer-seconds", "120");
 
-        // when / then
-        assertThat(props.handSelectionTimerSeconds(4)).isEqualTo(45);
-        assertThat(props.handSelectionTimerSeconds(7)).isEqualTo(60);
+        assertThat(bindValidated(source).handSelectionTimerSeconds()).isEqualTo(120);
     }
 
     @Test
@@ -98,7 +97,7 @@ class SessionRulesPropertiesTest {
                         100,
                         30,
                         Map.of(3, 60),
-                        Map.of(3, 60),
+                        60,
                         Map.of(3, 30),
                         Map.of(CardCategory.PARADOX, 1),
                         Map.of(CardGrade.I, 1),
@@ -123,7 +122,7 @@ class SessionRulesPropertiesTest {
                         100,
                         30,
                         Map.of(3, 60),
-                        Map.of(3, 60),
+                        60,
                         Map.of(3, 30),
                         Map.of(CardCategory.PARADOX, 1),
                         Map.of(CardGrade.I, 1),
@@ -156,7 +155,7 @@ class SessionRulesPropertiesTest {
                                 100,
                                 30,
                                 Map.of(3, 60),
-                                Map.of(3, 60),
+                                60,
                                 null,
                                 Map.of(CardCategory.PARADOX, 1),
                                 Map.of(CardGrade.I, 1),
@@ -168,11 +167,22 @@ class SessionRulesPropertiesTest {
                 .isEqualTo(30);
     }
 
+    @ParameterizedTest
+    @ValueSource(strings = {"0", "-5"})
+    @DisplayName("a non-positive hand-selection-timer-seconds fails binding")
+    void nonPositiveHandSelectionTimer_failsBinding(String seconds) {
+        var source = minimalRules().withProperty("game.rules.hand-selection-timer-seconds", seconds);
+
+        assertThatExceptionOfType(BindException.class).isThrownBy(() -> bindValidated(source));
+    }
+
     @Test
-    void nonPositiveHandSelectionTimer_isRejected() {
-        assertThatIllegalArgumentException()
-                .isThrownBy(() -> properties(Map.of(3, 0)))
-                .withMessage("hand-selection-timer-seconds must contain only positive values");
+    @DisplayName("a missing hand-selection-timer-seconds fails binding")
+    void missingHandSelectionTimer_failsBinding() {
+        var source = minimalRules();
+        source.getSource().remove("game.rules.hand-selection-timer-seconds");
+
+        assertThatExceptionOfType(BindException.class).isThrownBy(() -> bindValidated(source));
     }
 
     @Test
@@ -212,7 +222,7 @@ class SessionRulesPropertiesTest {
                 .withProperty("game.rules.win-score-threshold", "20")
                 .withProperty("game.rules.reconnect-grace-period-seconds", "30")
                 .withProperty("game.rules.action-round-timer-seconds.3", "60")
-                .withProperty("game.rules.hand-selection-timer-seconds.3", "60")
+                .withProperty("game.rules.hand-selection-timer-seconds", "60")
                 .withProperty("game.rules.card-category-weights.PROBABILITY_SHIFTER", "35")
                 .withProperty("game.rules.card-category-weights.INFORMATION", "25")
                 .withProperty("game.rules.card-category-weights.DISRUPTION", "25")
@@ -253,7 +263,7 @@ class SessionRulesPropertiesTest {
                         100,
                         30,
                         Map.of(3, 60),
-                        Map.of(3, 60),
+                        60,
                         Map.of(3, 0),
                         Map.of(CardCategory.PARADOX, 1),
                         Map.of(CardGrade.I, 1),
