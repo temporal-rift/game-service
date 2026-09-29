@@ -10,6 +10,7 @@ import org.springframework.context.annotation.Import;
     EraSagaScoresUpdatedInboxRepositoryAdapter.class,
     ForesightRevealRepositoryAdapter.class,
     GameRepositoryAdapter.class,
-    LobbyRepositoryAdapter.class
+    LobbyRepositoryAdapter.class,
+    PlayerReconnectSagaAdapter.class
 })
 public class SessionPersistenceAdapters {}
