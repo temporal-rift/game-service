@@ -72,8 +72,11 @@ class PassParadoxResolutionCommandHandlerTest {
         given(phaseRepository.findByGameIdAndEraNumberWithLock(GAME_ID, ERA)).willReturn(Optional.of(phase));
         given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(playerState));
 
+        var handler = handler();
+        var command = command();
+
         assertThatExceptionOfType(DuplicateParadoxResolutionSubmissionException.class)
-                .isThrownBy(() -> handler().handle(command()));
+                .isThrownBy(() -> handler.handle(command));
         then(phaseRepository).should(never()).save(any());
     }
 
@@ -81,8 +84,11 @@ class PassParadoxResolutionCommandHandlerTest {
     void rejectsAPassWhenNoPhaseIsOpen() {
         given(phaseRepository.findByGameIdAndEraNumberWithLock(GAME_ID, ERA)).willReturn(Optional.empty());
 
+        var handler = handler();
+        var command = command();
+
         assertThatExceptionOfType(ParadoxResolutionPhaseNotOpenException.class)
-                .isThrownBy(() -> handler().handle(command()));
+                .isThrownBy(() -> handler.handle(command));
     }
 
     @Test
@@ -91,8 +97,10 @@ class PassParadoxResolutionCommandHandlerTest {
         given(phaseRepository.findByGameIdAndEraNumberWithLock(GAME_ID, ERA)).willReturn(Optional.of(phase));
         given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.empty());
 
-        assertThatExceptionOfType(PlayerStateNotFoundException.class)
-                .isThrownBy(() -> handler().handle(command()));
+        var handler = handler();
+        var command = command();
+
+        assertThatExceptionOfType(PlayerStateNotFoundException.class).isThrownBy(() -> handler.handle(command));
         assertThat(phase.submittedPlayerIds()).isEmpty();
     }
 

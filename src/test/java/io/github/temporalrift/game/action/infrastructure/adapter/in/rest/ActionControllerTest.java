@@ -72,6 +72,7 @@ class ActionControllerTest {
     static final UUID TARGET_PLAYER_ID = UUID.randomUUID();
     static final int ERA = 2;
     static final int ROUND = 3;
+    static final String PASS_JSON = "{\"actionType\": \"PASS\"}";
 
     @Autowired
     MockMvc mockMvc;
@@ -181,7 +182,7 @@ class ActionControllerTest {
         mockMvc.perform(post("/api/v1/games/{gameId}/eras/{eraNumber}/paradox-resolution/actions", GAME_ID, ERA)
                         .with(auth())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"actionType\": \"PASS\"}"))
+                        .content(PASS_JSON))
                 .andExpect(status().isAccepted())
                 .andExpect(jsonPath("$.gameId").value(GAME_ID.toString()))
                 .andExpect(jsonPath("$.eraNumber").value(ERA))
@@ -253,7 +254,7 @@ class ActionControllerTest {
         mockMvc.perform(post("/api/v1/games/{gameId}/eras/{eraNumber}/paradox-resolution/actions", GAME_ID, ERA)
                         .with(auth())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"actionType\": \"PASS\"}"))
+                        .content(PASS_JSON))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("409-07"));
     }
@@ -271,7 +272,7 @@ class ActionControllerTest {
                                 ROUND)
                         .with(auth())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"actionType\": \"PASS\"}"))
+                        .content(PASS_JSON))
                 .andExpect(status().isAccepted())
                 .andExpect(jsonPath("$.gameId").value(GAME_ID.toString()))
                 .andExpect(jsonPath("$.eraNumber").value(ERA))
@@ -293,7 +294,7 @@ class ActionControllerTest {
         var endpoint = post("/api/v1/games/{gameId}/eras/{eraNumber}/rounds/{roundNumber}/actions", GAME_ID, ERA, ROUND)
                 .with(auth())
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"actionType\": \"PASS\"}");
+                .content(PASS_JSON);
 
         willThrow(new DuplicateSubmissionException(PLAYER_ID))
                 .given(passActionRoundUseCase)
