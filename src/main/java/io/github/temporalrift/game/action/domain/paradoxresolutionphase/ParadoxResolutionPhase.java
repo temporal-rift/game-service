@@ -82,6 +82,12 @@ public class ParadoxResolutionPhase extends AggregateRoot {
         submittedPlayerIds.add(playerId);
     }
 
+    /** Records an explicit pass: it consumes the player's single phase slot without spending a card. */
+    public void pass(UUID playerId, Instant now) {
+        assertPlayerCanSubmit(playerId, now);
+        submittedPlayerIds.add(playerId);
+    }
+
     public void assertAffectedEvent(UUID eventId) {
         Objects.requireNonNull(eventId, "eventId must not be null");
         if (!affectedEventIds.isEmpty() && !affectedEventIds.contains(eventId)) {

@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Test;
 
 import io.github.temporalrift.game.action.domain.event.ActionRoundStarted;
 import io.github.temporalrift.game.action.domain.event.CardPlayed;
+import io.github.temporalrift.game.action.domain.event.PlayerPassed;
 import io.github.temporalrift.game.action.domain.event.PlayerSkipped;
 import io.github.temporalrift.game.action.domain.event.SpecialActionPlayed;
 import io.github.temporalrift.game.shared.domain.event.ActionRoundClosed;
@@ -718,5 +719,129 @@ class ActionRoundTest {
         // then
         assertThat(outcome).isInstanceOf(CloseOutcome.AlreadyClosing.class);
         assertThat(round.pullEvents()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("pass — consumes the slot, registers only the in-process PlayerPassed, records no action")
+    void passConsumesSlotWithoutRecordingAnAction() {
+        // given
+        var round = openRound(List.of(PLAYER_A, PLAYER_B));
+        round.pullEvents();
+
+        // when
+        var allSubmitted = round.pass(PLAYER_A);
+
+        // then
+        assertThat(allSubmitted).isFalse();
+        assertThat(round.pendingPlayerIds()).containsExactly(PLAYER_B);
+        assertThat(round.passedPlayerIds()).containsExactly(PLAYER_A);
+        assertThat(round.submittedActions()).isEmpty();
+        assertThat(round.pullEvents()).containsExactly(new PlayerPassed(GAME_ID, ERA, ROUND, PLAYER_A));
+    }
+
+    @Test
+    @DisplayName("pass — by the last pending player — reports every slot consumed so the round can close early")
+    void passByLastPendingPlayerReportsAllSubmitted() {
+        // given
+        var round = openRound(List.of(PLAYER_A, PLAYER_B));
+        round.submit(card(PLAYER_A, CardType.PUSH));
+
+        // when / then
+        assertThat(round.pass(PLAYER_B)).isTrue();
+        assertThat(round.pendingPlayerIds()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("pass — after the player submitted or passed — is rejected as a duplicate, and so is a later submit")
+    void passRejectsDuplicates() {
+        // given
+        var round = openRound(List.of(PLAYER_A, PLAYER_B));
+        round.submit(card(PLAYER_A, CardType.PUSH));
+        round.pass(PLAYER_B);
+
+        // when / then
+        assertThatExceptionOfType(DuplicateSubmissionException.class).isThrownBy(() -> round.pass(PLAYER_A));
+        assertThatExceptionOfType(DuplicateSubmissionException.class).isThrownBy(() -> round.pass(PLAYER_B));
+        assertThatExceptionOfType(DuplicateSubmissionException.class)
+                .isThrownBy(() -> round.submit(card(PLAYER_B, CardType.PUSH)));
+    }
+
+    @Test
+    @DisplayName("pass — on a closed round — is rejected as round closed")
+    void passRejectsClosedRound() {
+        // given
+        var round = openRound(List.of(PLAYER_A, PLAYER_B));
+        round.close("TIMER_EXPIRED");
+
+        // when / then
+        assertThatExceptionOfType(ActionRoundClosedException.class).isThrownBy(() -> round.pass(PLAYER_A));
+    }
+
+    @Test
+    @DisplayName("close — a passer is skipped exactly like a timed-out player, and neither counts as an action")
+    void closeSkipsPassersExactlyLikeTimedOutPlayers() {
+        // given
+        var passer = new UUID(0, 2);
+        var timedOut = new UUID(0, 1);
+        var submitter = new UUID(0, 3);
+        var round = openRound(List.of(passer, timedOut, submitter));
+        round.pass(passer);
+        round.submit(card(submitter, CardType.PUSH));
+        round.pullEvents();
+
+        // when
+        var outcome = round.close("TIMER_EXPIRED");
+
+        // then — one id-ordered skip list, so the order cannot tell a pass from a timeout
+        assertThat(((CloseOutcome.Closed) outcome).skippedPlayerIds()).containsExactly(timedOut, passer);
+        var events = round.pullEvents();
+        assertThat(events)
+                .filteredOn(PlayerSkipped.class::isInstance)
+                .containsExactly(
+                        new PlayerSkipped(GAME_ID, ERA, ROUND, timedOut, "TIMER_EXPIRED"),
+                        new PlayerSkipped(GAME_ID, ERA, ROUND, passer, "TIMER_EXPIRED"));
+        assertThat(events)
+                .filteredOn(ActionRoundClosed.class::isInstance)
+                .singleElement()
+                .extracting(event -> ((ActionRoundClosed) event).totalActions())
+                .isEqualTo(1);
+        assertThat(round.passedPlayerIds()).containsExactly(passer);
+    }
+
+    @Test
+    @DisplayName("close — every player passed — skips all of them")
+    void closeAfterEveryPlayerPassedSkipsAll() {
+        // given
+        var round = openRound(List.of(PLAYER_A, PLAYER_B));
+        round.pass(PLAYER_A);
+        round.pass(PLAYER_B);
+        round.pullEvents();
+
+        // when
+        var outcome = round.close("ALL_SUBMITTED");
+
+        // then
+        assertThat(((CloseOutcome.Closed) outcome).skippedPlayerIds()).containsExactlyInAnyOrder(PLAYER_A, PLAYER_B);
+        assertThat(round.pullEvents())
+                .filteredOn(ActionRoundClosed.class::isInstance)
+                .singleElement()
+                .extracting(event -> ((ActionRoundClosed) event).totalActions())
+                .isEqualTo(0);
+    }
+
+    @Test
+    @DisplayName("reconstitute — restores passed players so a pass survives a reload")
+    void reconstituteRestoresPassedPlayers() {
+        // given
+        var state =
+                new ActionRound.PersistedState(RoundStatus.OPEN, null, List.of(PLAYER_B), List.of(), List.of(PLAYER_A));
+
+        // when
+        var round = ActionRound.reconstitute(
+                UUID.randomUUID(), new ActionRoundConfig(GAME_ID, ERA, ROUND, TIMER_SECONDS), state);
+
+        // then
+        assertThat(round.passedPlayerIds()).containsExactly(PLAYER_A);
+        assertThatExceptionOfType(DuplicateSubmissionException.class).isThrownBy(() -> round.pass(PLAYER_A));
     }
 }

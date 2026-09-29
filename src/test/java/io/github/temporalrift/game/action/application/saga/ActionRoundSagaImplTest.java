@@ -1683,6 +1683,121 @@ class ActionRoundSagaImplTest {
                     .extracting(ActionSummary::playerId)
                     .containsExactlyInAnyOrder(PLAYER_2, PLAYER_3);
         }
+
+        @Test
+        @DisplayName("a pass is published exactly like a timeout skip — same skip events, timer fact and summary")
+        void roundSummary_passIsIndistinguishableFromTimeoutSkip() {
+            // given — two identical rounds; in one PLAYER_2 passed, in the other it simply timed out
+            var passedRound = new ActionRound(
+                    UUID.randomUUID(),
+                    new ActionRoundConfig(GAME_ID, ERA_NUMBER, ROUND_NUMBER, TIMER_SECONDS),
+                    List.of(PLAYER_2, PLAYER_3));
+            passedRound.pass(PLAYER_2);
+            passedRound.pullEvents();
+            var timedOutRound = new ActionRound(
+                    UUID.randomUUID(),
+                    new ActionRoundConfig(GAME_ID, ERA_NUMBER, ROUND_NUMBER, TIMER_SECONDS),
+                    List.of(PLAYER_2, PLAYER_3));
+            timedOutRound.pullEvents();
+
+            // when
+            var passedPayloads = externalPayloadsOfTimerClose(passedRound);
+            org.mockito.Mockito.clearInvocations(actionEventPublisher);
+            var timedOutPayloads = externalPayloadsOfTimerClose(timedOutRound);
+
+            // then
+            assertThat(passedPayloads)
+                    .isNotEmpty()
+                    .noneMatch(io.github.temporalrift.game.action.domain.event.PlayerPassed.class::isInstance)
+                    .isEqualTo(timedOutPayloads);
+            assertThat(passedPayloads)
+                    .filteredOn(RoundSummaryPublished.class::isInstance)
+                    .singleElement()
+                    .satisfies(summary -> assertThat(((RoundSummaryPublished) summary).actionSummaries())
+                            .containsExactlyInAnyOrder(
+                                    new ActionSummary(PLAYER_2, null, null, true),
+                                    new ActionSummary(PLAYER_3, null, null, true)));
+        }
+
+        @Test
+        @DisplayName("the last player's pass closes the round early and the passer appears as a neutral skip")
+        void roundSummary_lastPassClosesRoundEarly() {
+            // given — PLAYER_1 played a card, then PLAYER_2 passed as the last pending player
+            var sagaId = UUID.randomUUID();
+            var round = new ActionRound(
+                    UUID.randomUUID(),
+                    new ActionRoundConfig(GAME_ID, ERA_NUMBER, ROUND_NUMBER, TIMER_SECONDS),
+                    List.of(PLAYER_1, PLAYER_2));
+            round.submit(new SubmittedAction.CardAction(
+                    PLAYER_1, UUID.randomUUID(), CardType.PUSH, UUID.randomUUID(), null, null));
+            round.pass(PLAYER_2);
+            round.pullEvents();
+            given(stateManager.markSubmitted(GAME_ID, ERA_NUMBER, ROUND_NUMBER, PLAYER_2))
+                    .willReturn(Optional.of(new ActionRoundSagaState(
+                            sagaId,
+                            GAME_ID,
+                            ERA_NUMBER,
+                            ROUND_NUMBER,
+                            ActionRoundSagaStatus.WAITING,
+                            List.of(),
+                            TIMER_EXPIRES_AT)));
+            given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(
+                            GAME_ID, ERA_NUMBER, ROUND_NUMBER))
+                    .willReturn(Optional.of(round));
+
+            // when
+            saga.handlePlayerSubmitted(GAME_ID, ERA_NUMBER, ROUND_NUMBER, PLAYER_2);
+
+            // then
+            assertThat(round.status())
+                    .isEqualTo(io.github.temporalrift.game.action.domain.actionround.RoundStatus.CLOSED);
+            assertThat(round.closedReason()).isEqualTo("ALL_SUBMITTED");
+            then(stateManager).should().complete(GAME_ID, ERA_NUMBER, ROUND_NUMBER);
+            then(timerRegistry).should().cancel(sagaId);
+            then(actionEventPublisher).should(never()).publish(envelopeWithPayload(ActionRoundTimerExpired.class));
+            var captor = ArgumentCaptor.<DomainEventEnvelope>captor();
+            then(actionEventPublisher).should(atLeastOnce()).publish(captor.capture());
+            var summary = captor.getAllValues().stream()
+                    .map(DomainEventEnvelope::payload)
+                    .filter(RoundSummaryPublished.class::isInstance)
+                    .map(RoundSummaryPublished.class::cast)
+                    .findFirst()
+                    .orElseThrow();
+            assertThat(summary.actionSummaries())
+                    .containsExactly(
+                            new ActionSummary(PLAYER_1, CardType.PUSH.getCategory(), ActionFamily.CARD, false),
+                            new ActionSummary(PLAYER_2, null, null, true));
+            var published = ArgumentCaptor.forClass(Object.class);
+            then(actionEventPublisher).should(atLeastOnce()).publishInternally(published.capture());
+            assertThat(published.getAllValues())
+                    .filteredOn(ActionRoundClosed.class::isInstance)
+                    .singleElement()
+                    .extracting(closed -> ((ActionRoundClosed) closed).totalActions())
+                    .isEqualTo(1);
+        }
+
+        private List<Object> externalPayloadsOfTimerClose(ActionRound round) {
+            var sagaId = UUID.randomUUID();
+            given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(
+                            GAME_ID, ERA_NUMBER, ROUND_NUMBER))
+                    .willReturn(Optional.of(round));
+            given(stateManager.findBySagaId(sagaId))
+                    .willReturn(Optional.of(new ActionRoundSagaState(
+                            sagaId,
+                            GAME_ID,
+                            ERA_NUMBER,
+                            ROUND_NUMBER,
+                            ActionRoundSagaStatus.WAITING,
+                            round.pendingPlayerIds(),
+                            TIMER_EXPIRES_AT)));
+            saga.handleTimerExpiry(sagaId);
+            var captor = ArgumentCaptor.<DomainEventEnvelope>captor();
+            then(actionEventPublisher).should(atLeastOnce()).publish(captor.capture());
+            return captor.getAllValues().stream()
+                    .map(DomainEventEnvelope::payload)
+                    .map(Object.class::cast)
+                    .toList();
+        }
     }
 
     @Nested

@@ -3,6 +3,7 @@ package io.github.temporalrift.game.action.infrastructure.adapter.in.rest;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.then;
 import static org.mockito.BDDMockito.willThrow;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -27,6 +28,8 @@ import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import io.github.temporalrift.game.TestSecurityConfig;
 import io.github.temporalrift.game.action.application.port.in.GetParadoxResolutionStatusUseCase;
 import io.github.temporalrift.game.action.application.port.in.GetRoundStatusUseCase;
+import io.github.temporalrift.game.action.application.port.in.PassActionRoundUseCase;
+import io.github.temporalrift.game.action.application.port.in.PassParadoxResolutionUseCase;
 import io.github.temporalrift.game.action.application.port.in.PlayCardUseCase;
 import io.github.temporalrift.game.action.application.port.in.PlayParadoxResolutionCardUseCase;
 import io.github.temporalrift.game.action.application.port.in.PlaySpecialActionUseCase;
@@ -81,6 +84,12 @@ class ActionControllerTest {
 
     @MockitoBean
     PlayParadoxResolutionCardUseCase playParadoxResolutionCardUseCase;
+
+    @MockitoBean
+    PassActionRoundUseCase passActionRoundUseCase;
+
+    @MockitoBean
+    PassParadoxResolutionUseCase passParadoxResolutionUseCase;
 
     @MockitoBean
     RecordActivistDeclarationUseCase recordActivistDeclarationUseCase;
@@ -161,6 +170,158 @@ class ActionControllerTest {
                         .content(paradoxResolutionJson()))
                 .andExpect(status().is(422))
                 .andExpect(jsonPath("$.code").value("422-10"));
+    }
+
+    @Test
+    @DisplayName("Given an explicit paradox-resolution pass, when POST, then dispatches the pass and spends no card")
+    void submitParadoxResolutionPassDispatchesPassCommand() throws Exception {
+        given(passParadoxResolutionUseCase.handle(any()))
+                .willReturn(new PassParadoxResolutionUseCase.Result(GAME_ID, ERA, PLAYER_ID));
+
+        mockMvc.perform(post("/api/v1/games/{gameId}/eras/{eraNumber}/paradox-resolution/actions", GAME_ID, ERA)
+                        .with(auth())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"actionType\": \"PASS\"}"))
+                .andExpect(status().isAccepted())
+                .andExpect(jsonPath("$.gameId").value(GAME_ID.toString()))
+                .andExpect(jsonPath("$.eraNumber").value(ERA))
+                .andExpect(jsonPath("$.playerId").value(PLAYER_ID.toString()))
+                .andExpect(jsonPath("$.status").value("SUBMITTED"));
+
+        then(passParadoxResolutionUseCase)
+                .should()
+                .handle(new PassParadoxResolutionUseCase.Command(GAME_ID, ERA, PLAYER_ID));
+        then(playParadoxResolutionCardUseCase).shouldHaveNoInteractions();
+    }
+
+    @Test
+    @DisplayName("Given an explicit CARD paradox-resolution submission, when POST, then dispatches the card")
+    void submitParadoxResolutionExplicitCardDispatchesCardCommand() throws Exception {
+        given(playParadoxResolutionCardUseCase.handle(any()))
+                .willReturn(new PlayParadoxResolutionCardUseCase.Result(GAME_ID, ERA, PLAYER_ID));
+
+        mockMvc.perform(post("/api/v1/games/{gameId}/eras/{eraNumber}/paradox-resolution/actions", GAME_ID, ERA)
+                        .with(auth())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(paradoxResolutionJson("CARD")))
+                .andExpect(status().isAccepted());
+
+        then(playParadoxResolutionCardUseCase)
+                .should()
+                .handle(new PlayParadoxResolutionCardUseCase.Command(
+                        GAME_ID, ERA, PLAYER_ID, CARD_INSTANCE_ID, TARGET_EVENT_ID, TARGET_OUTCOME_ID));
+        then(passParadoxResolutionUseCase).shouldHaveNoInteractions();
+    }
+
+    @Test
+    @DisplayName("Given a paradox-resolution document that does not match its actionType, when POST, then 400")
+    void paradoxResolutionRejectsPartialDocuments() throws Exception {
+        var passWithCard = paradoxResolutionJson("PASS");
+        var cardWithoutTarget = """
+                {
+                  "actionType": "CARD",
+                  "cardInstanceId": "%s"
+                }
+                """.formatted(CARD_INSTANCE_ID);
+        var omittedTypeWithoutCard = """
+                {
+                  "targetEventId": "%s",
+                  "targetOutcomeId": "%s"
+                }
+                """.formatted(TARGET_EVENT_ID, TARGET_OUTCOME_ID);
+        var special = "{\"actionType\": \"SPECIAL\"}";
+
+        for (var body : List.of(passWithCard, cardWithoutTarget, omittedTypeWithoutCard, special)) {
+            mockMvc.perform(post("/api/v1/games/{gameId}/eras/{eraNumber}/paradox-resolution/actions", GAME_ID, ERA)
+                            .with(auth())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(body))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.code").value("400-01"));
+        }
+        then(playParadoxResolutionCardUseCase).shouldHaveNoInteractions();
+        then(passParadoxResolutionUseCase).shouldHaveNoInteractions();
+    }
+
+    @Test
+    @DisplayName("Given a player already submitted or passed, when they pass paradox resolution, then 409-07")
+    void paradoxResolutionPassAfterSubmissionIsRejected() throws Exception {
+        willThrow(new DuplicateParadoxResolutionSubmissionException(PLAYER_ID))
+                .given(passParadoxResolutionUseCase)
+                .handle(any());
+
+        mockMvc.perform(post("/api/v1/games/{gameId}/eras/{eraNumber}/paradox-resolution/actions", GAME_ID, ERA)
+                        .with(auth())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"actionType\": \"PASS\"}"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("409-07"));
+    }
+
+    @Test
+    @DisplayName("Given PASS request, when POST action, then dispatches the pass and reports the early close")
+    void submitPass() throws Exception {
+        given(passActionRoundUseCase.handle(any()))
+                .willReturn(new PassActionRoundUseCase.Result(GAME_ID, ERA, ROUND, PLAYER_ID, true));
+
+        mockMvc.perform(post(
+                                "/api/v1/games/{gameId}/eras/{eraNumber}/rounds/{roundNumber}/actions",
+                                GAME_ID,
+                                ERA,
+                                ROUND)
+                        .with(auth())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"actionType\": \"PASS\"}"))
+                .andExpect(status().isAccepted())
+                .andExpect(jsonPath("$.gameId").value(GAME_ID.toString()))
+                .andExpect(jsonPath("$.eraNumber").value(ERA))
+                .andExpect(jsonPath("$.roundNumber").value(ROUND))
+                .andExpect(jsonPath("$.playerId").value(PLAYER_ID.toString()))
+                .andExpect(jsonPath("$.status").value("SUBMITTED"))
+                .andExpect(jsonPath("$.roundClosed").value(true));
+
+        then(passActionRoundUseCase)
+                .should()
+                .handle(new PassActionRoundUseCase.Command(GAME_ID, ERA, ROUND, PLAYER_ID));
+        then(playCardUseCase).shouldHaveNoInteractions();
+        then(playSpecialActionUseCase).shouldHaveNoInteractions();
+    }
+
+    @Test
+    @DisplayName("Given a player already submitted or the round closed, when they pass, then the usual 409 codes")
+    void passConflictsUseSubmissionCodes() throws Exception {
+        var endpoint = post("/api/v1/games/{gameId}/eras/{eraNumber}/rounds/{roundNumber}/actions", GAME_ID, ERA, ROUND)
+                .with(auth())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"actionType\": \"PASS\"}");
+
+        willThrow(new DuplicateSubmissionException(PLAYER_ID))
+                .given(passActionRoundUseCase)
+                .handle(any());
+        mockMvc.perform(endpoint)
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("409-02"));
+
+        willThrow(new ActionRoundClosedException())
+                .given(passActionRoundUseCase)
+                .handle(any());
+        mockMvc.perform(endpoint)
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("409-01"));
+    }
+
+    @Test
+    @DisplayName("Given caller passed, when GET status, then reports mySubmission as PASS")
+    void getRoundStatusReportsPass() throws Exception {
+        given(getRoundStatusUseCase.handle(any()))
+                .willReturn(new GetRoundStatusUseCase.Result(
+                        ERA, ROUND, "OPEN", 42, 1, 2, List.of(), new GetRoundStatusUseCase.MySubmission(true, "PASS")));
+
+        mockMvc.perform(get("/api/v1/games/{gameId}/eras/{eraNumber}/rounds/{roundNumber}/status", GAME_ID, ERA, ROUND)
+                        .with(auth()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.mySubmission.submitted").value(true))
+                .andExpect(jsonPath("$.mySubmission.actionType").value("PASS"));
     }
 
     @Test
@@ -897,6 +1058,17 @@ class ActionControllerTest {
                   "targetOutcomeId": "%s"
                 }
                 """.formatted(CARD_INSTANCE_ID, TARGET_EVENT_ID, TARGET_OUTCOME_ID);
+    }
+
+    private static String paradoxResolutionJson(String actionType) {
+        return """
+                {
+                  "actionType": "%s",
+                  "cardInstanceId": "%s",
+                  "targetEventId": "%s",
+                  "targetOutcomeId": "%s"
+                }
+                """.formatted(actionType, CARD_INSTANCE_ID, TARGET_EVENT_ID, TARGET_OUTCOME_ID);
     }
 
     private static String handSelectionJson(java.util.Set<UUID> keptCardInstanceIds) {

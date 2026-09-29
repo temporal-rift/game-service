@@ -59,7 +59,7 @@
         <timeline-event.version>7.1.0</timeline-event.version>
         <scoring-event.version>3.0.0</scoring-event.version>
         <session-api.version>3.0.0</session-api.version>
-        <action-api.version>6.0.0</action-api.version>
+        <action-api.version>6.1.0</action-api.version>
         <scoring-api.version>2.0.1</scoring-api.version>
         <spring-retry.version>2.0.13</spring-retry.version>
         <archunit-junit5.version>1.5.1</archunit-junit5.version>

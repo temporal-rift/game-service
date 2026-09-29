@@ -5,6 +5,7 @@ import org.springframework.modulith.events.ApplicationModuleListener;
 import org.springframework.stereotype.Component;
 
 import io.github.temporalrift.game.action.domain.event.CardPlayed;
+import io.github.temporalrift.game.action.domain.event.PlayerPassed;
 import io.github.temporalrift.game.action.domain.event.SpecialActionPlayed;
 import io.github.temporalrift.game.action.domain.port.out.ActionRoundRepository;
 import io.github.temporalrift.game.action.domain.port.out.PlayerStateRepository;
@@ -41,6 +42,11 @@ class ActionRoundSagaEventListener {
 
     @ApplicationModuleListener
     void onSpecialActionPlayed(SpecialActionPlayed event) {
+        saga.handlePlayerSubmitted(event.gameId(), event.eraNumber(), event.roundNumber(), event.playerId());
+    }
+
+    @ApplicationModuleListener
+    void onPlayerPassed(PlayerPassed event) {
         saga.handlePlayerSubmitted(event.gameId(), event.eraNumber(), event.roundNumber(), event.playerId());
     }
 }

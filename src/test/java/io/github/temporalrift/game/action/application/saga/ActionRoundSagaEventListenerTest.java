@@ -14,6 +14,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import io.github.temporalrift.game.action.domain.event.CardPlayed;
+import io.github.temporalrift.game.action.domain.event.PlayerPassed;
 import io.github.temporalrift.game.action.domain.event.SpecialActionPlayed;
 import io.github.temporalrift.game.shared.domain.event.StartActionRoundRequested;
 import io.github.temporalrift.game.shared.domain.model.CardType;
@@ -87,6 +88,19 @@ class ActionRoundSagaEventListenerTest {
 
         // when
         listener.onSpecialActionPlayed(event);
+
+        // then
+        then(saga).should().handlePlayerSubmitted(GAME_ID, ERA_NUMBER, ROUND_NUMBER, PLAYER_ID);
+    }
+
+    @Test
+    @DisplayName("onPlayerPassed delegates the consumed slot to the saga, like any submission")
+    void onPlayerPassed_delegatesToSaga() {
+        // given
+        var listener = new ActionRoundSagaEventListener(saga, timerScheduler);
+
+        // when
+        listener.onPlayerPassed(new PlayerPassed(GAME_ID, ERA_NUMBER, ROUND_NUMBER, PLAYER_ID));
 
         // then
         then(saga).should().handlePlayerSubmitted(GAME_ID, ERA_NUMBER, ROUND_NUMBER, PLAYER_ID);
