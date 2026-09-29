@@ -255,7 +255,7 @@ class TimelineScoringKafkaConsumerIT {
                 eventId,
                 UUID.randomUUID(),
                 GeneratedChannelContract.SpecialAction.ANNIHILATE,
-                "LAST_ELIGIBLE_OUTCOME"));
+                "ERASURE_OUT_OF_BOUNDS"));
         consumer.handle(outcomeEnvelope(gameId, eraNumber, eventId, winningOutcomeId));
         consumer.handle(terminalBarrierEnvelope(gameId, eraNumber, eventId, winningOutcomeId));
 
@@ -281,7 +281,7 @@ class TimelineScoringKafkaConsumerIT {
                 eventId,
                 UUID.randomUUID(),
                 GeneratedChannelContract.SpecialAction.ANNIHILATE,
-                "LAST_ELIGIBLE_OUTCOME"));
+                "ERASURE_OUT_OF_BOUNDS"));
         consumer.handle(outcomeEnvelope(gameId, eraNumber, eventId, winningOutcomeId));
         consumer.handle(terminalBarrierEnvelope(gameId, eraNumber, eventId, winningOutcomeId));
 
@@ -307,7 +307,7 @@ class TimelineScoringKafkaConsumerIT {
                 eventId,
                 targetOutcomeId,
                 GeneratedChannelContract.SpecialAction.ANNIHILATE,
-                "LAST_ELIGIBLE_OUTCOME"));
+                "ERASURE_OUT_OF_BOUNDS"));
         consumer.handle(rejectedSpecialEnvelope(
                 gameId,
                 eraNumber,
