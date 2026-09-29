@@ -13,10 +13,14 @@ import org.springframework.data.repository.query.Param;
 
 public interface PlayerReconnectSagaStateJpaRepository extends JpaRepository<PlayerReconnectSagaStateJpaEntity, UUID> {
 
-    Optional<PlayerReconnectSagaStateJpaEntity> findByGameIdAndPlayerId(UUID gameId, UUID playerId);
+    Optional<PlayerReconnectSagaStateJpaEntity> findByGameIdAndPlayerIdAndStatus(
+            UUID gameId, UUID playerId, String status);
 
     List<PlayerReconnectSagaStateJpaEntity> findAllByStatusAndGraceExpiresAtLessThanEqualOrderByGraceExpiresAt(
             String status, Instant deadline, Limit limit);
+
+    List<PlayerReconnectSagaStateJpaEntity> findAllByGameIdAndStatusAndGraceExpiresAtLessThanEqual(
+            UUID gameId, String status, Instant decisionAt);
 
     @Modifying
     @Query("UPDATE PlayerReconnectSagaStateJpaEntity s SET s.status = :next "

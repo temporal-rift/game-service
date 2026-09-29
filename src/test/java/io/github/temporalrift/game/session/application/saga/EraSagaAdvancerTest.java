@@ -104,8 +104,14 @@ class EraSagaAdvancerTest {
     @Mock
     TimelineCollapsePublisher collapsePublisher;
 
+    @Mock
+    PlayerReconnectSagaStateManager reconnectStates;
+
+    @Mock
+    PlayerReconnectTimerRegistry reconnectTimers;
+
     @Spy
-    Clock clock = Clock.systemUTC();
+    Clock clock = Clock.fixed(Instant.parse("2026-01-01T00:00:00Z"), java.time.ZoneOffset.UTC);
 
     EraSagaAdvancer advancer;
 
@@ -119,11 +125,13 @@ class EraSagaAdvancerTest {
                 eventPublisher,
                 applicationEventPublisher,
                 collapsePublisher,
-                new LastPlayerStandingPublisher(eventPublisher, applicationEventPublisher, clock),
+                new AbandonmentEndingPublisher(eventPublisher, applicationEventPublisher, clock),
+                new PlayerAbandonmentProcessor(
+                        reconnectStates, lobbyRepository, reconnectTimers, eventPublisher, clock),
                 gameRules,
                 factionObjectives,
                 clock);
-        lenient().when(lobbyRepository.findById(LOBBY_ID)).thenReturn(Optional.of(lobby()));
+        lenient().when(lobbyRepository.findByIdWithLock(LOBBY_ID)).thenReturn(Optional.of(lobby()));
     }
 
     private static Lobby lobby(UUID... abandonedPlayerIds) {
@@ -137,7 +145,7 @@ class EraSagaAdvancerTest {
                 PLAYER_1,
                 players,
                 LobbyStatus.STARTED,
-                new LobbyConfig("ABCD", 3, 5, Clock.systemUTC()));
+                new LobbyConfig("ABCD", 3, 5, Clock.fixed(Instant.EPOCH, java.time.ZoneOffset.UTC)));
         for (var playerId : abandonedPlayerIds) {
             lobby.markPlayerAbandoned(playerId);
         }
@@ -145,7 +153,7 @@ class EraSagaAdvancerTest {
     }
 
     private void givenAbandoned(UUID... playerIds) {
-        given(lobbyRepository.findById(LOBBY_ID)).willReturn(Optional.of(lobby(playerIds)));
+        given(lobbyRepository.findByIdWithLock(LOBBY_ID)).willReturn(Optional.of(lobby(playerIds)));
     }
 
     private void givenNoObjectivesMet(int eraNumber) {

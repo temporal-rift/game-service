@@ -1,7 +1,5 @@
 package io.github.temporalrift.game.session.application.saga;
 
-import static org.springframework.transaction.annotation.Propagation.REQUIRES_NEW;
-
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -23,7 +21,7 @@ class PlayerReconnectSagaStateManager {
         this.repository = repository;
     }
 
-    @Transactional(propagation = REQUIRES_NEW)
+    @Transactional
     PlayerReconnectSagaState initGracePeriod(UUID sagaId, UUID gameId, UUID playerId, Instant graceExpiresAt) {
         return repository.save(new PlayerReconnectSagaState(
                 sagaId, gameId, playerId, PlayerReconnectSagaStatus.GRACE_PERIOD, graceExpiresAt));
@@ -50,9 +48,15 @@ class PlayerReconnectSagaStateManager {
                 sagaId, PlayerReconnectSagaStatus.GRACE_PERIOD, PlayerReconnectSagaStatus.ABANDONED);
     }
 
+    @Transactional
+    boolean tryComplete(UUID sagaId) {
+        return repository.compareAndSetStatus(
+                sagaId, PlayerReconnectSagaStatus.GRACE_PERIOD, PlayerReconnectSagaStatus.COMPLETED);
+    }
+
     boolean hasActiveGracePeriod(UUID gameId, UUID playerId) {
         return repository
-                .findByGameIdAndPlayerId(gameId, playerId)
+                .findActiveGracePeriod(gameId, playerId)
                 .map(s -> s.status() == PlayerReconnectSagaStatus.GRACE_PERIOD)
                 .orElse(false);
     }
@@ -61,8 +65,12 @@ class PlayerReconnectSagaStateManager {
         return repository.findBySagaId(sagaId);
     }
 
-    Optional<PlayerReconnectSagaState> findByGameIdAndPlayerId(UUID gameId, UUID playerId) {
-        return repository.findByGameIdAndPlayerId(gameId, playerId);
+    Optional<PlayerReconnectSagaState> findActiveGracePeriod(UUID gameId, UUID playerId) {
+        return repository.findActiveGracePeriod(gameId, playerId);
+    }
+
+    List<PlayerReconnectSagaState> findGracePeriodsDueBy(UUID gameId, Instant decisionAt) {
+        return repository.findGracePeriodsDueBy(gameId, decisionAt);
     }
 
     List<PlayerReconnectSagaState> findGracePeriodDueBy(Instant deadline) {

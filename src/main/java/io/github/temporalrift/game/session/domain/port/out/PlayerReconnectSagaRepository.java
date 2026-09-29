@@ -14,7 +14,11 @@ public interface PlayerReconnectSagaRepository {
 
     Optional<PlayerReconnectSagaState> findBySagaId(UUID sagaId);
 
-    Optional<PlayerReconnectSagaState> findByGameIdAndPlayerId(UUID gameId, UUID playerId);
+    /** The single GRACE_PERIOD for this player; completed reconnect history is excluded. */
+    Optional<PlayerReconnectSagaState> findActiveGracePeriod(UUID gameId, UUID playerId);
+
+    /** All active grace periods for this game whose deadline is at or before the decision instant. */
+    List<PlayerReconnectSagaState> findGracePeriodsDueBy(UUID gameId, Instant decisionAt);
 
     List<PlayerReconnectSagaState> findByStatusDueBy(PlayerReconnectSagaStatus status, Instant deadline);
 

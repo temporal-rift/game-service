@@ -33,8 +33,10 @@ public class PlayerReconnectSagaAdapter implements PlayerReconnectSagaRepository
     }
 
     @Override
-    public Optional<PlayerReconnectSagaState> findByGameIdAndPlayerId(UUID gameId, UUID playerId) {
-        return jpaRepository.findByGameIdAndPlayerId(gameId, playerId).map(this::toDomain);
+    public Optional<PlayerReconnectSagaState> findActiveGracePeriod(UUID gameId, UUID playerId) {
+        return jpaRepository
+                .findByGameIdAndPlayerIdAndStatus(gameId, playerId, PlayerReconnectSagaStatus.GRACE_PERIOD.name())
+                .map(this::toDomain);
     }
 
     // Bounded so a mass expiry cannot balloon one sweep run; the fixed-delay reschedule drains the
@@ -46,6 +48,16 @@ public class PlayerReconnectSagaAdapter implements PlayerReconnectSagaRepository
         return jpaRepository
                 .findAllByStatusAndGraceExpiresAtLessThanEqualOrderByGraceExpiresAt(
                         status.name(), deadline, Limit.of(SWEEP_BATCH_SIZE))
+                .stream()
+                .map(this::toDomain)
+                .toList();
+    }
+
+    @Override
+    public List<PlayerReconnectSagaState> findGracePeriodsDueBy(UUID gameId, Instant decisionAt) {
+        return jpaRepository
+                .findAllByGameIdAndStatusAndGraceExpiresAtLessThanEqual(
+                        gameId, PlayerReconnectSagaStatus.GRACE_PERIOD.name(), decisionAt)
                 .stream()
                 .map(this::toDomain)
                 .toList();

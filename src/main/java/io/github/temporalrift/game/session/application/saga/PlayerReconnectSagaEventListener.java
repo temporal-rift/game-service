@@ -39,7 +39,8 @@ class PlayerReconnectSagaEventListener {
                 .filter(lobby -> lobby.status() == LobbyStatus.STARTED)
                 .filter(lobby -> !lobby.isAbandoned(event.playerId()))
                 .filter(_ -> !stateManager.hasActiveGracePeriod(event.gameId(), event.playerId()))
-                .ifPresent(_ -> timerScheduler.scheduleAfterCommit(saga.start(event.gameId(), event.playerId())));
+                .ifPresent(_ ->
+                        saga.start(event.gameId(), event.playerId()).ifPresent(timerScheduler::scheduleAfterCommit));
     }
 
     @ApplicationModuleListener

@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 
 import java.time.Clock;
@@ -95,7 +96,9 @@ class PlayerReconnectSagaImplTest {
                 gameRepository,
                 eraSagaRepository,
                 eventPublisher,
-                new LastPlayerStandingPublisher(eventPublisher, applicationEventPublisher, TEST_CLOCK),
+                new AbandonmentEndingPublisher(eventPublisher, applicationEventPublisher, TEST_CLOCK),
+                new PlayerAbandonmentProcessor(
+                        stateManager, lobbyRepository, timerRegistry, eventPublisher, TEST_CLOCK),
                 finalScoreQueryPort,
                 stateManager,
                 gameRules,
@@ -109,7 +112,7 @@ class PlayerReconnectSagaImplTest {
 
     private Game stubGame() {
         var game = new Game(GAME_ID, LOBBY_ID, List.of());
-        given(gameRepository.findById(GAME_ID)).willReturn(Optional.of(game));
+        given(gameRepository.findByIdWithLock(GAME_ID)).willReturn(Optional.of(game));
         return game;
     }
 
@@ -148,7 +151,7 @@ class PlayerReconnectSagaImplTest {
                 .willReturn(state);
 
         // when
-        var result = saga.start(GAME_ID, PLAYER_ID);
+        var result = saga.start(GAME_ID, PLAYER_ID).orElseThrow();
 
         // then
         then(stateManager)
@@ -165,7 +168,7 @@ class PlayerReconnectSagaImplTest {
     @DisplayName("handleReconnect — GRACE_PERIOD saga transitions state, restores lobby, cancels timer")
     void handleReconnect_gracePeriodActive_transitionsToReconnectedAndCancelsTimer() {
         // given
-        stubGame();
+        stubGameWithLock(GameStatus.IN_PROGRESS);
         stubStartedLobby(false);
         var gracePeriodState = new PlayerReconnectSagaState(
                 SAGA_ID,
@@ -173,7 +176,7 @@ class PlayerReconnectSagaImplTest {
                 PLAYER_ID,
                 PlayerReconnectSagaStatus.GRACE_PERIOD,
                 BASE_INSTANT.plusSeconds(GRACE_SECONDS));
-        given(stateManager.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(gracePeriodState));
+        given(stateManager.findActiveGracePeriod(GAME_ID, PLAYER_ID)).willReturn(Optional.of(gracePeriodState));
         given(stateManager.tryReconnect(SAGA_ID)).willReturn(true);
 
         // when
@@ -191,8 +194,7 @@ class PlayerReconnectSagaImplTest {
         // given
         var abandonedState = new PlayerReconnectSagaState(
                 SAGA_ID, GAME_ID, PLAYER_ID, PlayerReconnectSagaStatus.ABANDONED, BASE_INSTANT.minusSeconds(5));
-        given(stateManager.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(abandonedState));
-        given(stateManager.tryReconnect(SAGA_ID)).willReturn(false);
+        given(stateManager.findActiveGracePeriod(GAME_ID, PLAYER_ID)).willReturn(Optional.of(abandonedState));
 
         // when
         saga.handleReconnect(GAME_ID, PLAYER_ID);
@@ -206,7 +208,10 @@ class PlayerReconnectSagaImplTest {
         var gracePeriodState = new PlayerReconnectSagaState(
                 SAGA_ID, GAME_ID, PLAYER_ID, PlayerReconnectSagaStatus.GRACE_PERIOD, BASE_INSTANT.minusSeconds(1));
         given(stateManager.findBySagaId(SAGA_ID)).willReturn(Optional.of(gracePeriodState));
-        given(stateManager.tryAbandon(SAGA_ID)).willReturn(true);
+        lenient().when(stateManager.tryAbandon(SAGA_ID)).thenReturn(true);
+        lenient()
+                .when(stateManager.findGracePeriodsDueBy(GAME_ID, BASE_INSTANT))
+                .thenReturn(List.of(gracePeriodState));
     }
 
     private Lobby stubThreePlayerLobbyWithLock(UUID... alreadyAbandoned) {
@@ -327,7 +332,7 @@ class PlayerReconnectSagaImplTest {
         saga.handleTimerExpiry(SAGA_ID);
 
         // then
-        then(stateManager).should().tryAbandon(SAGA_ID);
+        then(stateManager).should(never()).tryAbandon(any());
         then(lobbyRepository).shouldHaveNoInteractions();
         then(gameRepository).should(never()).save(any());
         then(eventPublisher).shouldHaveNoInteractions();
@@ -357,7 +362,10 @@ class PlayerReconnectSagaImplTest {
         var gracePeriodState = new PlayerReconnectSagaState(
                 SAGA_ID, GAME_ID, PLAYER_ID, PlayerReconnectSagaStatus.GRACE_PERIOD, BASE_INSTANT.minusSeconds(1));
         given(stateManager.findBySagaId(SAGA_ID)).willReturn(Optional.of(gracePeriodState));
+        given(stateManager.findGracePeriodsDueBy(GAME_ID, BASE_INSTANT)).willReturn(List.of(gracePeriodState));
         given(stateManager.tryAbandon(SAGA_ID)).willReturn(false);
+        stubGameWithLock(GameStatus.IN_PROGRESS);
+        stubThreePlayerLobbyWithLock();
 
         // when
         saga.handleTimerExpiry(SAGA_ID);
