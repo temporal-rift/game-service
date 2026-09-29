@@ -7,8 +7,8 @@ import org.springframework.context.annotation.Import;
 @TestConfiguration(proxyBeanMethods = false)
 @Import({
     EraScoringContextRepositoryAdapter.class,
-    FactionDisclosureRepositoryAdapter.class,
     PlayerScoreRepositoryAdapter.class,
+    RevisionistExposureRepositoryAdapter.class,
     ScoringEraCompletionRepositoryAdapter.class,
     ScoringPlayerRepositoryAdapter.class,
     TimelineOutcomeInboxRepositoryAdapter.class

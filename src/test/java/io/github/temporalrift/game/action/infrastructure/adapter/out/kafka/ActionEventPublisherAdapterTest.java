@@ -81,8 +81,8 @@ class ActionEventPublisherAdapterTest {
     void publishInfluenceTraced_usesStableMessageType() {
         var adapter = new ActionEventPublisherAdapter(applicationEventPublisher, mapper, outboundEvents);
         var gameId = UUID.randomUUID();
-        var traced =
-                new InfluenceTraced(gameId, 2, 1, UUID.randomUUID(), UUID.randomUUID(), List.of(UUID.randomUUID()));
+        var traced = new InfluenceTraced(
+                gameId, 2, 1, UUID.randomUUID(), UUID.randomUUID(), List.of(UUID.randomUUID()), List.of());
         var wire = mock(InfluenceTracedPayload.class);
         var event = envelope(gameId, traced);
         given(mapper.toWire(traced)).willReturn(wire);

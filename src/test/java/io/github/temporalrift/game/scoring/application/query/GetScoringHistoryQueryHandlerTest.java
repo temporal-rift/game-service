@@ -195,8 +195,8 @@ class GetScoringHistoryQueryHandlerTest {
         authorize(PLAYER_1);
         given(scoringReadRepository.findScoreHistory(GAME_ID))
                 .willReturn(List.of(
-                        new ScoreHistoryRow(GAME_ID, 0, PLAYER_2, 6, ScoreReason.FACTION_UNIDENTIFIED),
-                        new ScoreHistoryRow(GAME_ID, 0, PLAYER_1, 6, ScoreReason.FACTION_UNIDENTIFIED)));
+                        new ScoreHistoryRow(GAME_ID, 0, PLAYER_2, 6, ScoreReason.MIMIC_NEVER_TRACED),
+                        new ScoreHistoryRow(GAME_ID, 0, PLAYER_1, 6, ScoreReason.MIMIC_NEVER_TRACED)));
 
         given(visibilityRepository.areFactionsRevealed(GAME_ID)).willReturn(false);
 
@@ -213,7 +213,7 @@ class GetScoringHistoryQueryHandlerTest {
             assertThat(era.deltas().get(1)).satisfies(delta -> {
                 assertThat(delta.playerId()).isEqualTo(PLAYER_1);
                 assertThat(delta.pointsDelta()).isEqualTo(6);
-                assertThat(delta.reason()).isEqualTo("FACTION_UNIDENTIFIED");
+                assertThat(delta.reason()).isEqualTo("MIMIC_NEVER_TRACED");
             });
         });
     }
@@ -224,7 +224,7 @@ class GetScoringHistoryQueryHandlerTest {
         authorize(PLAYER_1);
         given(scoringReadRepository.findScoreHistory(GAME_ID))
                 .willReturn(List.of(
-                        new ScoreHistoryRow(GAME_ID, 0, PLAYER_2, 6, ScoreReason.FACTION_UNIDENTIFIED),
+                        new ScoreHistoryRow(GAME_ID, 0, PLAYER_2, 6, ScoreReason.MIMIC_NEVER_TRACED),
                         new ScoreHistoryRow(GAME_ID, 1, PLAYER_2, 3, ScoreReason.ANNIHILATED_OUTCOME)));
 
         given(visibilityRepository.areFactionsRevealed(GAME_ID)).willReturn(true);
@@ -237,7 +237,7 @@ class GetScoringHistoryQueryHandlerTest {
         assertThat(result.history().get(0).deltas()).singleElement().satisfies(delta -> {
             assertThat(delta.playerId()).isEqualTo(PLAYER_2);
             assertThat(delta.pointsDelta()).isEqualTo(6);
-            assertThat(delta.reason()).isEqualTo("FACTION_UNIDENTIFIED");
+            assertThat(delta.reason()).isEqualTo("MIMIC_NEVER_TRACED");
         });
         assertThat(result.history().get(1).deltas()).singleElement().satisfies(delta -> {
             assertThat(delta.reason()).isEqualTo("ANNIHILATED_OUTCOME");

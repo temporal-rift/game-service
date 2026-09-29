@@ -19,7 +19,7 @@ public final class ScoreRulesTestValues {
             case DECLARED_OUTCOME_WON_WITH_RALLY -> 6;
             case FULFILLMENT_SUCCEEDED -> 8;
             case EVENT_RESOLVED_DIFFERENTLY_THAN_WRITTEN, PARADOX_CASCADE_PENALTY -> -2;
-            case FACTION_UNIDENTIFIED -> 6;
+            case MIMIC_NEVER_TRACED -> 6;
             case CHAIN_COMPLETED -> 10;
             case CHAIN_BROKEN -> -3;
         };

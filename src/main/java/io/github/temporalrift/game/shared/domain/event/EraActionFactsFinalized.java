@@ -18,8 +18,8 @@ import io.github.temporalrift.game.shared.domain.model.SpecialAction;
  * this bundle lets scoring redundantly (and idempotently) re-apply the final round's facts and mark the
  * era's action facts ready in the very same listener invocation, closing the race where the final
  * round's own projection could otherwise still be in flight when scoring decides the era is ready.
- * {@code disclosedPlayerIds} lists the players a public fact named as acting for their faction this era
- * (declarations of record and revealed Exposes), so they are recorded before the era's scores are evaluated.
+ * {@code tracedMimicPlayerIds} lists the Revisionists another player's Trace reported as a Mimic influencer at
+ * this era's round closes, so their exposure is recorded before the era's scores are evaluated.
  */
 public record EraActionFactsFinalized(
         UUID gameId,
@@ -30,7 +30,7 @@ public record EraActionFactsFinalized(
         List<RevisionistFact> revisionistFacts,
         List<FulfillmentFact> fulfillmentFacts,
         List<CorruptCorrelationFact> corruptCorrelationFacts,
-        List<UUID> disclosedPlayerIds) {
+        List<UUID> tracedMimicPlayerIds) {
 
     public EraActionFactsFinalized(
             UUID gameId,

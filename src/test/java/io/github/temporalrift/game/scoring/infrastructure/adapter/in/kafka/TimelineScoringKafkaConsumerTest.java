@@ -38,7 +38,6 @@ import io.github.temporalrift.game.scoring.domain.event.EraResolutionCompleted;
 import io.github.temporalrift.game.scoring.domain.event.OutcomeApplied;
 import io.github.temporalrift.game.scoring.domain.playerscore.ScoreReason;
 import io.github.temporalrift.game.scoring.domain.port.out.EraScoringContextRepository;
-import io.github.temporalrift.game.scoring.domain.port.out.FactionDisclosureRepository;
 import io.github.temporalrift.game.scoring.domain.port.out.TimelineOutcomeInboxRepository;
 import io.github.temporalrift.game.shared.domain.port.out.ProcessedEventRepository;
 
@@ -66,9 +65,6 @@ class TimelineScoringKafkaConsumerTest {
     EraScoringContextRepository contextRepository;
 
     @Mock
-    FactionDisclosureRepository factionDisclosureRepository;
-
-    @Mock
     EraScoringCompletionChecker completionChecker;
 
     @Mock
@@ -82,7 +78,6 @@ class TimelineScoringKafkaConsumerTest {
                 processedEventRepository,
                 outcomeInboxRepository,
                 contextRepository,
-                factionDisclosureRepository,
                 completionChecker,
                 applicationEventPublisher,
                 new TimelineScoringWireMapperImpl(),
@@ -233,9 +228,8 @@ class TimelineScoringKafkaConsumerTest {
     }
 
     @Test
-    @DisplayName("ChainLinkThreaded — discloses the Weaver named by the public pending link")
-    void handle_chainLinkThreaded_disclosesWeaver() {
-        var playerId = UUID.randomUUID();
+    @DisplayName("ChainLinkThreaded — ignored without claiming, since a Weaver link never affects scoring")
+    void handle_chainLinkThreaded_ignored() {
         var message = message(
                 "ChainLinkThreaded",
                 json(Map.of(
@@ -246,16 +240,15 @@ class TimelineScoringKafkaConsumerTest {
                         "chainId",
                         UUID.randomUUID(),
                         "playerId",
-                        playerId,
+                        UUID.randomUUID(),
                         "eventId",
                         UUID.randomUUID(),
                         "outcomeId",
                         UUID.randomUUID())));
-        givenClaim(message, true);
 
         consumer.handle(message);
 
-        then(factionDisclosureRepository).should().recordDisclosure(GAME_ID, playerId);
+        then(processedEventRepository).shouldHaveNoInteractions();
         then(contextRepository).shouldHaveNoInteractions();
     }
 

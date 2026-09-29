@@ -2008,7 +2008,7 @@ class ActionRoundSagaImplTest {
             var traced = tracedEvents();
             assertThat(traced)
                     .containsExactly(new InfluenceTraced(
-                            GAME_ID, ERA_NUMBER, 2, PLAYER_1, targetEventId, List.of(PLAYER_2, PLAYER_3)));
+                            GAME_ID, ERA_NUMBER, 2, PLAYER_1, targetEventId, List.of(PLAYER_2, PLAYER_3), List.of()));
             var ordered = inOrder(actionEventPublisher);
             then(actionEventPublisher).should(ordered).publish(envelopeWithPayload(RoundSummaryPublished.class));
             then(actionEventPublisher).should(ordered).publish(envelopeWithPayload(InfluenceTraced.class));
@@ -2052,8 +2052,9 @@ class ActionRoundSagaImplTest {
 
             assertThat(tracedEvents())
                     .containsExactlyInAnyOrder(
-                            new InfluenceTraced(GAME_ID, ERA_NUMBER, 2, PLAYER_1, tracedEventId, List.of()),
-                            new InfluenceTraced(GAME_ID, ERA_NUMBER, 2, PLAYER_2, absentTargetId, List.of()));
+                            new InfluenceTraced(GAME_ID, ERA_NUMBER, 2, PLAYER_1, tracedEventId, List.of(), List.of()),
+                            new InfluenceTraced(
+                                    GAME_ID, ERA_NUMBER, 2, PLAYER_2, absentTargetId, List.of(), List.of()));
         }
 
         @Test
@@ -2075,7 +2076,8 @@ class ActionRoundSagaImplTest {
             saga.handlePlayerSubmitted(GAME_ID, 2, 1, PLAYER_1);
 
             assertThat(tracedEvents())
-                    .containsExactly(new InfluenceTraced(GAME_ID, 2, 1, PLAYER_1, targetEventId, List.of(PLAYER_2)));
+                    .containsExactly(
+                            new InfluenceTraced(GAME_ID, 2, 1, PLAYER_1, targetEventId, List.of(PLAYER_2), List.of()));
         }
 
         @Test
@@ -2110,9 +2112,92 @@ class ActionRoundSagaImplTest {
 
             assertThat(tracedEvents())
                     .containsExactly(
-                            new InfluenceTraced(GAME_ID, ERA_NUMBER, 2, PLAYER_1, firstEventId, List.of(PLAYER_2)),
-                            new InfluenceTraced(GAME_ID, ERA_NUMBER, 2, PLAYER_1, secondEventId, List.of(PLAYER_3)),
-                            new InfluenceTraced(GAME_ID, ERA_NUMBER, 2, PLAYER_1, untouchedEventId, List.of()));
+                            new InfluenceTraced(
+                                    GAME_ID, ERA_NUMBER, 2, PLAYER_1, firstEventId, List.of(PLAYER_2), List.of()),
+                            new InfluenceTraced(
+                                    GAME_ID, ERA_NUMBER, 2, PLAYER_1, secondEventId, List.of(PLAYER_3), List.of()),
+                            new InfluenceTraced(
+                                    GAME_ID, ERA_NUMBER, 2, PLAYER_1, untouchedEventId, List.of(), List.of()));
+        }
+
+        @Test
+        @DisplayName("reports a Mimic on the traced event as a Mimic influence, ignoring other specials and events")
+        void reportsMimicInfluence() {
+            var targetEventId = UUID.randomUUID();
+            var eraserId = UUID.randomUUID();
+            var otherMimicId = UUID.randomUUID();
+            var previousRound = new ActionRound(
+                    UUID.randomUUID(),
+                    new ActionRoundConfig(GAME_ID, ERA_NUMBER, 1, TIMER_SECONDS),
+                    List.of(PLAYER_2, PLAYER_3, eraserId, otherMimicId));
+            previousRound.submit(special(PLAYER_2, Faction.REVISIONISTS, SpecialAction.MIMIC, targetEventId));
+            previousRound.submit(new SubmittedAction.CardAction(
+                    PLAYER_3, UUID.randomUUID(), CardType.PUSH, targetEventId, null, UUID.randomUUID()));
+            previousRound.submit(special(eraserId, Faction.ERASERS, SpecialAction.ANNIHILATE, targetEventId));
+            previousRound.submit(special(otherMimicId, Faction.REVISIONISTS, SpecialAction.MIMIC, UUID.randomUUID()));
+
+            closeTraceRoundTwo(targetEventId, previousRound);
+
+            assertThat(tracedEvents())
+                    .containsExactly(new InfluenceTraced(
+                            GAME_ID,
+                            ERA_NUMBER,
+                            2,
+                            PLAYER_1,
+                            targetEventId,
+                            List.of(PLAYER_2, PLAYER_3),
+                            List.of(PLAYER_2)));
+        }
+
+        @Test
+        @DisplayName("reports no Mimic influencer when only shift cards influenced the traced event")
+        void cardOnlyInfluenceReportsNoMimic() {
+            var targetEventId = UUID.randomUUID();
+            var previousRound = new ActionRound(
+                    UUID.randomUUID(), new ActionRoundConfig(GAME_ID, ERA_NUMBER, 1, TIMER_SECONDS), List.of(PLAYER_2));
+            previousRound.submit(new SubmittedAction.CardAction(
+                    PLAYER_2, UUID.randomUUID(), CardType.PUSH, targetEventId, null, UUID.randomUUID()));
+
+            closeTraceRoundTwo(targetEventId, previousRound);
+
+            assertThat(tracedEvents())
+                    .containsExactly(new InfluenceTraced(
+                            GAME_ID, ERA_NUMBER, 2, PLAYER_1, targetEventId, List.of(PLAYER_2), List.of()));
+        }
+
+        @Test
+        @DisplayName("omits a Mimic whose player a Nullify cancelled")
+        void omitsCancelledMimic() {
+            var targetEventId = UUID.randomUUID();
+            var previousRound = new ActionRound(
+                    UUID.randomUUID(),
+                    new ActionRoundConfig(GAME_ID, ERA_NUMBER, 1, TIMER_SECONDS),
+                    List.of(PLAYER_2, PLAYER_3));
+            previousRound.submit(special(PLAYER_2, Faction.REVISIONISTS, SpecialAction.MIMIC, targetEventId));
+            previousRound.submit(nullify(PLAYER_3, PLAYER_2));
+
+            closeTraceRoundTwo(targetEventId, previousRound);
+
+            assertThat(tracedEvents())
+                    .containsExactly(
+                            new InfluenceTraced(GAME_ID, ERA_NUMBER, 2, PLAYER_1, targetEventId, List.of(), List.of()));
+        }
+
+        private void closeTraceRoundTwo(UUID targetEventId, ActionRound previousRound) {
+            var currentRound = traceRound(ERA_NUMBER, 2, PLAYER_1, CardGrade.I, targetEventId);
+            given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA_NUMBER, 2))
+                    .willReturn(Optional.of(currentRound));
+            given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumber(GAME_ID, ERA_NUMBER, 1))
+                    .willReturn(Optional.of(previousRound));
+            given(stateManager.markSubmitted(GAME_ID, ERA_NUMBER, 2, PLAYER_1)).willReturn(completedState(2));
+
+            saga.handlePlayerSubmitted(GAME_ID, ERA_NUMBER, 2, PLAYER_1);
+        }
+
+        private SubmittedAction.SpecialActionSubmission special(
+                UUID playerId, Faction faction, SpecialAction specialAction, UUID targetEventId) {
+            return new SubmittedAction.SpecialActionSubmission(
+                    playerId, faction, specialAction, null, null, targetEventId, UUID.randomUUID(), null);
         }
 
         private ActionRound traceRound(
@@ -2316,8 +2401,8 @@ class ActionRoundSagaImplTest {
     }
 
     @Nested
-    @DisplayName("Obscure disguise and faction disclosure")
-    class ObscureDisguiseAndDisclosureTests {
+    @DisplayName("Obscure disguise and Revisionist exposure")
+    class ObscureDisguiseAndExposureTests {
 
         @Test
         @DisplayName("Intercept of an obscured target with nothing revealed yet reveals decoys of the sampled size")
@@ -2407,7 +2492,7 @@ class ActionRoundSagaImplTest {
         }
 
         @Test
-        @DisplayName("Trace omits an influencer obscured during the traced round and discloses nobody")
+        @DisplayName("Trace omits an influencer obscured during the traced round and exposes nobody")
         void traceOmitsObscuredInfluencer() {
             var eventId = UUID.randomUUID();
             var roundOne = new ActionRound(
@@ -2436,10 +2521,11 @@ class ActionRoundSagaImplTest {
             saga.handlePlayerSubmitted(GAME_ID, ERA_NUMBER, 3, PLAYER_1);
 
             assertThat(tracedEvents())
-                    .containsExactly(new InfluenceTraced(GAME_ID, ERA_NUMBER, 3, PLAYER_1, eventId, List.of(PLAYER_3)));
+                    .containsExactly(new InfluenceTraced(
+                            GAME_ID, ERA_NUMBER, 3, PLAYER_1, eventId, List.of(PLAYER_3), List.of()));
             assertThat(internallyPublished(EraActionFactsFinalized.class))
                     .singleElement()
-                    .extracting(EraActionFactsFinalized::disclosedPlayerIds)
+                    .extracting(EraActionFactsFinalized::tracedMimicPlayerIds)
                     .isEqualTo(List.of());
         }
 
@@ -2469,12 +2555,12 @@ class ActionRoundSagaImplTest {
             saga.handlePlayerSubmitted(GAME_ID, 2, 1, PLAYER_1);
 
             assertThat(tracedEvents())
-                    .containsExactly(new InfluenceTraced(GAME_ID, 2, 1, PLAYER_1, eventId, List.of()));
+                    .containsExactly(new InfluenceTraced(GAME_ID, 2, 1, PLAYER_1, eventId, List.of(), List.of()));
         }
 
         @Test
-        @DisplayName("Round 3 discloses every declared Activist and every live Exposer, never the exposed target")
-        void finalRoundDisclosesDeclarersAndLiveExposers() {
+        @DisplayName("Round 3 records no exposure for Activist declarations or live Exposes")
+        void finalRoundRecordsNoExposureForActivistFacts() {
             var declarer = new ActivistEraState(UUID.randomUUID(), GAME_ID, ERA_NUMBER, PLAYER_1, false);
             declarer.declare(ActivistDeclarationMode.RALLY, UUID.randomUUID(), UUID.randomUUID());
             var exposer = new ActivistEraState(UUID.randomUUID(), GAME_ID, ERA_NUMBER, PLAYER_3, false);
@@ -2488,50 +2574,115 @@ class ActionRoundSagaImplTest {
             closeRoundThree(new ActionRound(
                     UUID.randomUUID(), new ActionRoundConfig(GAME_ID, ERA_NUMBER, 2, TIMER_SECONDS), List.of()));
 
-            assertThat(internallyPublished(EraActionFactsFinalized.class))
-                    .singleElement()
-                    .extracting(EraActionFactsFinalized::disclosedPlayerIds)
-                    .isEqualTo(List.of(PLAYER_1, PLAYER_3));
+            assertThat(tracedMimicPlayerIds()).isEmpty();
         }
 
         @Test
-        @DisplayName("an Expose cancelled in Round 2 was never revealed, so it discloses nobody")
-        void cancelledExposeDisclosesNobody() {
-            var exposer = new ActivistEraState(UUID.randomUUID(), GAME_ID, ERA_NUMBER, PLAYER_3, false);
-            exposer.expose(
-                    PLAYER_2,
-                    new ProbabilityInfluenceSignature(CardType.PUSH, UUID.randomUUID(), null, UUID.randomUUID()));
-            given(activistEraStateRepository.findExposedByGameIdAndEraNumber(GAME_ID, ERA_NUMBER))
-                    .willReturn(List.of(exposer));
-            var roundTwo = new ActionRound(
+        @DisplayName("a Round 3 Trace of a Round 2 Mimic reports it and exposes the Revisionist before scoring")
+        void roundThreeTraceOfMimicExposesRevisionist() {
+            var eventId = UUID.randomUUID();
+            closeRoundThreeTracing(PLAYER_1, eventId, mimicRound(ERA_NUMBER, 2, PLAYER_2, eventId));
+
+            assertThat(tracedEvents())
+                    .containsExactly(new InfluenceTraced(
+                            GAME_ID, ERA_NUMBER, 3, PLAYER_1, eventId, List.of(PLAYER_2), List.of(PLAYER_2)));
+            assertThat(tracedMimicPlayerIds()).containsExactly(PLAYER_2);
+        }
+
+        @Test
+        @DisplayName("a Revisionist tracing their own Mimic is not exposed")
+        void selfTraceDoesNotExpose() {
+            var eventId = UUID.randomUUID();
+            closeRoundThreeTracing(PLAYER_2, eventId, mimicRound(ERA_NUMBER, 2, PLAYER_2, eventId));
+
+            assertThat(tracedEvents())
+                    .containsExactly(new InfluenceTraced(
+                            GAME_ID, ERA_NUMBER, 3, PLAYER_2, eventId, List.of(PLAYER_2), List.of(PLAYER_2)));
+            assertThat(tracedMimicPlayerIds()).isEmpty();
+        }
+
+        @Test
+        @DisplayName("a Mimic in a round covered by Obscure is neither traced nor exposed")
+        void obscuredMimicIsNotExposed() {
+            var eventId = UUID.randomUUID();
+            var roundOne = new ActionRound(
+                    UUID.randomUUID(), new ActionRoundConfig(GAME_ID, ERA_NUMBER, 1, TIMER_SECONDS), List.of(PLAYER_2));
+            roundOne.submit(obscure(PLAYER_2));
+            given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumber(GAME_ID, ERA_NUMBER, 1))
+                    .willReturn(Optional.of(roundOne));
+            closeRoundThreeTracing(PLAYER_1, eventId, mimicRound(ERA_NUMBER, 2, PLAYER_2, eventId));
+
+            assertThat(tracedEvents())
+                    .containsExactly(
+                            new InfluenceTraced(GAME_ID, ERA_NUMBER, 3, PLAYER_1, eventId, List.of(), List.of()));
+            assertThat(tracedMimicPlayerIds()).isEmpty();
+        }
+
+        @Test
+        @DisplayName("a Round 1 Trace of the previous era's Round 3 Mimic exposes the Revisionist in the tracing era")
+        void eraCrossingTraceExposesInTracingEra() {
+            var eventId = UUID.randomUUID();
+            var eraTwoRoundOne = new ActionRound(
+                    UUID.randomUUID(), new ActionRoundConfig(GAME_ID, 2, 1, TIMER_SECONDS), List.of(PLAYER_1));
+            eraTwoRoundOne.submit(new SubmittedAction.CardAction(
+                    PLAYER_1, UUID.randomUUID(), CardType.TRACE, CardGrade.I, eventId, null, null, null));
+            var eraTwoRoundThree =
+                    new ActionRound(UUID.randomUUID(), new ActionRoundConfig(GAME_ID, 2, 3, TIMER_SECONDS), List.of());
+            given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, 2, 3))
+                    .willReturn(Optional.of(eraTwoRoundThree));
+            given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumber(GAME_ID, 2, 1))
+                    .willReturn(Optional.of(eraTwoRoundOne));
+            given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumber(GAME_ID, 1, 3))
+                    .willReturn(Optional.of(mimicRound(1, 3, PLAYER_2, eventId)));
+            given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumber(GAME_ID, 1, 2))
+                    .willReturn(Optional.empty());
+            given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumber(GAME_ID, 2, 2))
+                    .willReturn(Optional.empty());
+            given(stateManager.markSubmitted(GAME_ID, 2, 3, PLAYER_1)).willReturn(waitingState(2, 3));
+
+            saga.handlePlayerSubmitted(GAME_ID, 2, 3, PLAYER_1);
+
+            assertThat(internallyPublished(EraActionFactsFinalized.class))
+                    .singleElement()
+                    .satisfies(facts -> {
+                        assertThat(facts.eraNumber()).isEqualTo(2);
+                        assertThat(facts.tracedMimicPlayerIds()).containsExactly(PLAYER_2);
+                    });
+        }
+
+        private ActionRound mimicRound(int eraNumber, int roundNumber, UUID revisionistId, UUID eventId) {
+            var round = new ActionRound(
                     UUID.randomUUID(),
-                    new ActionRoundConfig(GAME_ID, ERA_NUMBER, 2, TIMER_SECONDS),
-                    List.of(PLAYER_2, PLAYER_3));
-            roundTwo.submit(new SubmittedAction.SpecialActionSubmission(
-                    PLAYER_3, Faction.ACTIVISTS, SpecialAction.EXPOSE, null, null, null, null, PLAYER_2));
-            roundTwo.submit(nullify(PLAYER_2, PLAYER_3));
-            closeRoundThree(roundTwo);
-
-            assertThat(internallyPublished(EraActionFactsFinalized.class))
-                    .singleElement()
-                    .extracting(EraActionFactsFinalized::disclosedPlayerIds)
-                    .isEqualTo(List.of());
+                    new ActionRoundConfig(GAME_ID, eraNumber, roundNumber, TIMER_SECONDS),
+                    List.of(revisionistId));
+            round.submit(new SubmittedAction.SpecialActionSubmission(
+                    revisionistId,
+                    Faction.REVISIONISTS,
+                    SpecialAction.MIMIC,
+                    null,
+                    null,
+                    eventId,
+                    UUID.randomUUID(),
+                    null));
+            return round;
         }
 
-        @Test
-        @DisplayName("an Expose without a signature reveals nothing, so it discloses nobody")
-        void signaturelessExposeDisclosesNobody() {
-            var exposer = new ActivistEraState(UUID.randomUUID(), GAME_ID, ERA_NUMBER, PLAYER_3, false);
-            exposer.expose(PLAYER_2, null);
-            given(activistEraStateRepository.findExposedByGameIdAndEraNumber(GAME_ID, ERA_NUMBER))
-                    .willReturn(List.of(exposer));
-            closeRoundThree(new ActionRound(
-                    UUID.randomUUID(), new ActionRoundConfig(GAME_ID, ERA_NUMBER, 2, TIMER_SECONDS), List.of()));
+        private void closeRoundThreeTracing(UUID tracerId, UUID eventId, ActionRound roundTwo) {
+            var roundThree = new ActionRound(
+                    UUID.randomUUID(), new ActionRoundConfig(GAME_ID, ERA_NUMBER, 3, TIMER_SECONDS), List.of(tracerId));
+            roundThree.submit(new SubmittedAction.CardAction(
+                    tracerId, UUID.randomUUID(), CardType.TRACE, CardGrade.I, eventId, null, null, null));
+            given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA_NUMBER, 3))
+                    .willReturn(Optional.of(roundThree));
+            given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumber(GAME_ID, ERA_NUMBER, 2))
+                    .willReturn(Optional.of(roundTwo));
+            given(stateManager.markSubmitted(GAME_ID, ERA_NUMBER, 3, tracerId)).willReturn(waitingState(ERA_NUMBER, 3));
 
-            assertThat(internallyPublished(EraActionFactsFinalized.class))
-                    .singleElement()
-                    .extracting(EraActionFactsFinalized::disclosedPlayerIds)
-                    .isEqualTo(List.of());
+            saga.handlePlayerSubmitted(GAME_ID, ERA_NUMBER, 3, tracerId);
+        }
+
+        private List<UUID> tracedMimicPlayerIds() {
+            return internallyPublished(EraActionFactsFinalized.class).getFirst().tracedMimicPlayerIds();
         }
 
         private void closeRoundThree(ActionRound roundTwo) {

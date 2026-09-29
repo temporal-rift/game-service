@@ -8,9 +8,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Stream;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.context.ApplicationEventPublisher;
 
 import io.github.temporalrift.game.scoring.domain.context.ActionScoringFact;
@@ -23,8 +27,8 @@ import io.github.temporalrift.game.scoring.domain.event.AnnihilationResolved;
 import io.github.temporalrift.game.scoring.domain.playerscore.PlayerScore;
 import io.github.temporalrift.game.scoring.domain.playerscore.ScoreReason;
 import io.github.temporalrift.game.scoring.domain.port.out.EraScoringContextRepository;
-import io.github.temporalrift.game.scoring.domain.port.out.FactionDisclosureRepository;
 import io.github.temporalrift.game.scoring.domain.port.out.PlayerScoreRepository;
+import io.github.temporalrift.game.scoring.domain.port.out.RevisionistExposureRepository;
 import io.github.temporalrift.game.scoring.domain.port.out.ScoreRulesPort;
 import io.github.temporalrift.game.scoring.domain.port.out.ScoringEventPublisher;
 import io.github.temporalrift.game.shared.domain.event.ActivistDeclarationRecorded;
@@ -48,7 +52,9 @@ class UpdateScoresCommandHandlerTest {
 
     ScoringEventPublisher scoringPublisher = publishedEnvelopes::add;
     ApplicationEventPublisher appPublisher = internalEvents::add;
-    final FakeFactionDisclosureRepository disclosures = new FakeFactionDisclosureRepository();
+    static final List<Faction> OPPONENTS_OF_THREE = List.of(Faction.ACTIVISTS, Faction.WEAVERS);
+
+    final FakeRevisionistExposureRepository exposures = new FakeRevisionistExposureRepository();
     final GameRulesPort gameRules = new FinalEraRules();
 
     @Test
@@ -65,7 +71,7 @@ class UpdateScoresCommandHandlerTest {
                 repo,
                 ctxRepo,
                 new EraScoreEvaluator(),
-                disclosures,
+                exposures,
                 gameRules,
                 scoreRules(),
                 scoringPublisher,
@@ -228,7 +234,7 @@ class UpdateScoresCommandHandlerTest {
                 repo,
                 ctxRepo,
                 new EraScoreEvaluator(),
-                disclosures,
+                exposures,
                 gameRules,
                 scoreRules(),
                 scoringPublisher,
@@ -302,7 +308,7 @@ class UpdateScoresCommandHandlerTest {
                 repo,
                 ctxRepo,
                 new EraScoreEvaluator(),
-                disclosures,
+                exposures,
                 gameRules,
                 scoreRules(),
                 scoringPublisher,
@@ -316,18 +322,22 @@ class UpdateScoresCommandHandlerTest {
     }
 
     @Test
-    @DisplayName("final era — an unidentified Revisionist receives FACTION_UNIDENTIFIED with the era's scores")
-    void finalEra_awardsUnidentifiedRevisionist() {
+    @DisplayName("final era — an untraced Revisionist receives MIMIC_NEVER_TRACED with the era's scores")
+    void finalEra_awardsUntracedRevisionist() {
         var revisionistId = UUID.randomUUID();
         var existing = new PlayerScore(UUID.randomUUID(), GAME_ID, revisionistId, Faction.REVISIONISTS);
         existing.apply(1, ScoreReason.SECRET_OUTCOME_WON, 15);
         var savedScores = new ArrayList<PlayerScore>();
 
-        handler(concealmentContext(FINAL_ERA, revisionistId), List.of(existing), scoreRules(), savedScores)
+        handler(
+                        concealmentContext(FINAL_ERA, revisionistId, OPPONENTS_OF_THREE),
+                        List.of(existing),
+                        scoreRules(),
+                        savedScores)
                 .handle(new UpdateEraScoresCommand(GAME_ID, FINAL_ERA, List.of()));
 
         var update = revisionistUpdate(revisionistId);
-        assertThat(update.reason()).isEqualTo("FACTION_UNIDENTIFIED");
+        assertThat(update.reason()).isEqualTo("MIMIC_NEVER_TRACED");
         assertThat(update.pointsDelta()).isEqualTo(6);
         assertThat(update.newTotal())
                 .as("the bonus lands before the era-end victory check reads the total")
@@ -342,14 +352,27 @@ class UpdateScoresCommandHandlerTest {
                 .isEqualTo(FINAL_ERA);
     }
 
-    @Test
-    @DisplayName("final era — an identified Revisionist receives no bonus")
-    void finalEra_identifiedRevisionistReceivesNothing() {
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("revisionistFactionSets")
+    @DisplayName("final era — every faction set pays an untraced Revisionist")
+    void finalEra_everyFactionSetPaysUntracedRevisionist(String label, List<Faction> opponents) {
         var revisionistId = UUID.randomUUID();
-        var context = concealmentContext(FINAL_ERA, revisionistId);
-        disclosures.recordDisclosure(GAME_ID, context.players().get(1).playerId());
 
-        handler(context, List.of()).handle(new UpdateEraScoresCommand(GAME_ID, FINAL_ERA, List.of()));
+        handler(concealmentContext(FINAL_ERA, revisionistId, opponents), List.of())
+                .handle(new UpdateEraScoresCommand(GAME_ID, FINAL_ERA, List.of()));
+
+        assertThat(revisionistUpdate(revisionistId).reason()).isEqualTo("MIMIC_NEVER_TRACED");
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("revisionistFactionSets")
+    @DisplayName("final era — every faction set withholds the bonus from a Revisionist whose Mimic was traced")
+    void finalEra_everyFactionSetWithholdsBonusFromTracedRevisionist(String label, List<Faction> opponents) {
+        var revisionistId = UUID.randomUUID();
+        exposures.recordExposure(GAME_ID, revisionistId);
+
+        handler(concealmentContext(FINAL_ERA, revisionistId, opponents), List.of())
+                .handle(new UpdateEraScoresCommand(GAME_ID, FINAL_ERA, List.of()));
 
         assertThat(revisionistUpdate(revisionistId).reason()).isEqualTo("NO_SCORE_CHANGE");
     }
@@ -359,20 +382,34 @@ class UpdateScoresCommandHandlerTest {
     void earlierEra_awardsNothing() {
         var revisionistId = UUID.randomUUID();
 
-        handler(concealmentContext(FINAL_ERA - 1, revisionistId), List.of())
+        handler(concealmentContext(FINAL_ERA - 1, revisionistId, OPPONENTS_OF_THREE), List.of())
                 .handle(new UpdateEraScoresCommand(GAME_ID, FINAL_ERA - 1, List.of()));
 
         assertThat(revisionistUpdate(revisionistId).reason()).isEqualTo("NO_SCORE_CHANGE");
     }
 
-    private EraScoringContext concealmentContext(int eraNumber, UUID revisionistId) {
+    static Stream<Arguments> revisionistFactionSets() {
+        return Stream.of(
+                Arguments.of("3 players, Activist and Weaver", OPPONENTS_OF_THREE),
+                Arguments.of("3 players, Eraser and Prophet", List.of(Faction.ERASERS, Faction.PROPHETS)),
+                Arguments.of(
+                        "4 players, Activist, Weaver and Eraser",
+                        List.of(Faction.ACTIVISTS, Faction.WEAVERS, Faction.ERASERS)),
+                Arguments.of(
+                        "4 players, Eraser, Prophet and Weaver",
+                        List.of(Faction.ERASERS, Faction.PROPHETS, Faction.WEAVERS)),
+                Arguments.of(
+                        "5 players", List.of(Faction.ACTIVISTS, Faction.WEAVERS, Faction.ERASERS, Faction.PROPHETS)));
+    }
+
+    private EraScoringContext concealmentContext(int eraNumber, UUID revisionistId, List<Faction> opponents) {
+        var players = new ArrayList<PlayerFaction>();
+        players.add(new PlayerFaction(revisionistId, Faction.REVISIONISTS));
+        opponents.forEach(faction -> players.add(new PlayerFaction(UUID.randomUUID(), faction)));
         return new EraScoringContext(
                 GAME_ID,
                 eraNumber,
-                List.of(
-                        new PlayerFaction(revisionistId, Faction.REVISIONISTS),
-                        new PlayerFaction(UUID.randomUUID(), Faction.ACTIVISTS),
-                        new PlayerFaction(UUID.randomUUID(), Faction.ERASERS)),
+                List.copyOf(players),
                 List.of(),
                 List.of(),
                 List.of(),
@@ -421,7 +458,7 @@ class UpdateScoresCommandHandlerTest {
                 repo,
                 ctxRepo,
                 new EraScoreEvaluator(),
-                disclosures,
+                exposures,
                 gameRules,
                 scoreRules,
                 scoringPublisher,
@@ -433,18 +470,18 @@ class UpdateScoresCommandHandlerTest {
         return io.github.temporalrift.game.scoring.ScoreRulesTestValues::pointsDelta;
     }
 
-    static class FakeFactionDisclosureRepository implements FactionDisclosureRepository {
+    static class FakeRevisionistExposureRepository implements RevisionistExposureRepository {
 
-        private final Set<UUID> disclosed = new HashSet<>();
+        private final Set<UUID> exposed = new HashSet<>();
 
         @Override
-        public void recordDisclosure(UUID gameId, UUID playerId) {
-            disclosed.add(playerId);
+        public void recordExposure(UUID gameId, UUID playerId) {
+            exposed.add(playerId);
         }
 
         @Override
-        public Set<UUID> disclosedPlayerIds(UUID gameId) {
-            return Set.copyOf(disclosed);
+        public Set<UUID> exposedPlayerIds(UUID gameId) {
+            return Set.copyOf(exposed);
         }
     }
 

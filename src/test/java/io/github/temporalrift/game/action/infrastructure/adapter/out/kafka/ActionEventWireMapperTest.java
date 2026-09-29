@@ -206,8 +206,15 @@ class ActionEventWireMapperTest {
 
     @Test
     void influenceTraced_mapsOnlyTheViewerTargetAndInfluencers() {
+        var mimicInfluencer = UUID.randomUUID();
         var domain = new InfluenceTraced(
-                UUID.randomUUID(), 2, 1, UUID.randomUUID(), UUID.randomUUID(), List.of(UUID.randomUUID()));
+                UUID.randomUUID(),
+                2,
+                1,
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                List.of(UUID.randomUUID(), mimicInfluencer),
+                List.of(mimicInfluencer));
 
         var wire = mapper.toWire(domain);
 
@@ -217,6 +224,7 @@ class ActionEventWireMapperTest {
         assertThat(wire.playerId()).isEqualTo(domain.playerId());
         assertThat(wire.targetEventId()).isEqualTo(domain.targetEventId());
         assertThat(wire.influencerPlayerIds()).containsExactlyElementsOf(domain.influencerPlayerIds());
+        assertThat(wire.mimicInfluencerPlayerIds()).containsExactly(mimicInfluencer);
     }
 
     @Test
