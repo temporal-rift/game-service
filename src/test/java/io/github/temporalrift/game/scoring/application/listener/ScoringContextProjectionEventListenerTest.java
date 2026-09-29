@@ -18,7 +18,7 @@ import org.springframework.context.ApplicationEventPublisher;
 
 import io.github.temporalrift.game.scoring.application.command.EraScoringCompletionChecker;
 import io.github.temporalrift.game.scoring.domain.port.out.EraScoringContextRepository;
-import io.github.temporalrift.game.scoring.domain.port.out.FactionDisclosureRepository;
+import io.github.temporalrift.game.scoring.domain.port.out.RevisionistExposureRepository;
 import io.github.temporalrift.game.shared.domain.event.ActivistDeclarationRecorded;
 import io.github.temporalrift.game.shared.domain.event.EraActionFactsFinalized;
 import io.github.temporalrift.game.shared.domain.event.EventsDrawn;
@@ -41,7 +41,7 @@ class ScoringContextProjectionEventListenerTest {
     ApplicationEventPublisher applicationEventPublisher;
 
     @Mock
-    FactionDisclosureRepository factionDisclosureRepository;
+    RevisionistExposureRepository revisionistExposureRepository;
 
     @InjectMocks
     ScoringContextProjectionEventListener listener;
@@ -210,16 +210,16 @@ class ScoringContextProjectionEventListenerTest {
     }
 
     @Test
-    void onEraActionFactsFinalized_recordsEraDisclosuresBeforeMarkingReady() {
+    void onEraActionFactsFinalized_recordsTracedMimicExposuresBeforeMarkingReady() {
         var gameId = UUID.randomUUID();
-        var disclosed = UUID.randomUUID();
+        var tracedMimic = UUID.randomUUID();
         var event = new EraActionFactsFinalized(
-                gameId, 2, List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(disclosed));
+                gameId, 2, List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(tracedMimic));
 
         listener.onEraActionFactsFinalized(event);
 
-        var ordered = inOrder(factionDisclosureRepository, contextRepository);
-        then(factionDisclosureRepository).should(ordered).recordDisclosure(gameId, disclosed);
+        var ordered = inOrder(revisionistExposureRepository, contextRepository);
+        then(revisionistExposureRepository).should(ordered).recordExposure(gameId, tracedMimic);
         then(contextRepository).should(ordered).markActionFactsReady(gameId, 2);
     }
 }

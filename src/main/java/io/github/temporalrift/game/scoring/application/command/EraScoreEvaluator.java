@@ -14,7 +14,6 @@ import org.springframework.stereotype.Component;
 import io.github.temporalrift.game.scoring.domain.context.AnnihilationFact;
 import io.github.temporalrift.game.scoring.domain.context.EraScoringContext;
 import io.github.temporalrift.game.scoring.domain.context.EventOutcomeFact;
-import io.github.temporalrift.game.scoring.domain.context.FactionIdentification;
 import io.github.temporalrift.game.scoring.domain.event.OutcomeApplied;
 import io.github.temporalrift.game.scoring.domain.playerscore.ScoreReason;
 import io.github.temporalrift.game.shared.domain.model.Faction;
@@ -49,16 +48,13 @@ class EraScoreEvaluator {
         return decisions;
     }
 
-    /** The final era's concealment bonus for every Revisionist no other player can know from public facts. */
-    List<PlayerScoreDecision> unidentifiedRevisionistDecisions(
-            EraScoringContext context, Set<UUID> disclosedPlayerIds) {
-        var playerCount = context.players().size();
+    /** The final era's concealment bonus for every Revisionist whose Mimic no other player's Trace revealed. */
+    List<PlayerScoreDecision> untracedRevisionistDecisions(EraScoringContext context, Set<UUID> exposedPlayerIds) {
         return context.players().stream()
                 .filter(player -> player.faction() == Faction.REVISIONISTS)
-                .filter(player ->
-                        !FactionIdentification.isIdentified(player.playerId(), playerCount, disclosedPlayerIds))
-                .map(player -> new PlayerScoreDecision(
-                        player.playerId(), ScoreReason.FACTION_UNIDENTIFIED, context.eraNumber()))
+                .filter(player -> !exposedPlayerIds.contains(player.playerId()))
+                .map(player ->
+                        new PlayerScoreDecision(player.playerId(), ScoreReason.MIMIC_NEVER_TRACED, context.eraNumber()))
                 .toList();
     }
 

@@ -9,31 +9,31 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import io.github.temporalrift.game.PersistenceIntegrationTest;
-import io.github.temporalrift.game.scoring.domain.port.out.FactionDisclosureRepository;
+import io.github.temporalrift.game.scoring.domain.port.out.RevisionistExposureRepository;
 
 @PersistenceIntegrationTest
-class FactionDisclosurePersistenceIT {
+class RevisionistExposurePersistenceIT {
 
     @Autowired
-    FactionDisclosureRepository factionDisclosureRepository;
+    RevisionistExposureRepository revisionistExposureRepository;
 
     @Autowired
     TransactionTemplate transactionTemplate;
 
     @Test
-    void recordDisclosure_isIdempotentAndScopedToItsGame() {
+    void recordExposure_isIdempotentAndScopedToItsGame() {
         var gameId = UUID.randomUUID();
         var otherGameId = UUID.randomUUID();
         var playerId = UUID.randomUUID();
         var otherPlayerId = UUID.randomUUID();
 
         transactionTemplate.executeWithoutResult(_ -> {
-            factionDisclosureRepository.recordDisclosure(gameId, playerId);
-            factionDisclosureRepository.recordDisclosure(gameId, playerId);
-            factionDisclosureRepository.recordDisclosure(otherGameId, otherPlayerId);
+            revisionistExposureRepository.recordExposure(gameId, playerId);
+            revisionistExposureRepository.recordExposure(gameId, playerId);
+            revisionistExposureRepository.recordExposure(otherGameId, otherPlayerId);
         });
 
-        assertThat(factionDisclosureRepository.disclosedPlayerIds(gameId)).containsExactly(playerId);
-        assertThat(factionDisclosureRepository.disclosedPlayerIds(otherGameId)).containsExactly(otherPlayerId);
+        assertThat(revisionistExposureRepository.exposedPlayerIds(gameId)).containsExactly(playerId);
+        assertThat(revisionistExposureRepository.exposedPlayerIds(otherGameId)).containsExactly(otherPlayerId);
     }
 }

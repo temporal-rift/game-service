@@ -20,7 +20,7 @@ import io.github.temporalrift.game.scoring.domain.context.PendingEraScoringCompl
 import io.github.temporalrift.game.scoring.domain.context.PlayerFaction;
 import io.github.temporalrift.game.scoring.domain.event.EraResolutionCompleted;
 import io.github.temporalrift.game.scoring.domain.port.out.EraScoringContextRepository;
-import io.github.temporalrift.game.scoring.domain.port.out.FactionDisclosureRepository;
+import io.github.temporalrift.game.scoring.domain.port.out.RevisionistExposureRepository;
 import io.github.temporalrift.game.shared.domain.event.EraActionFactsFinalized;
 import io.github.temporalrift.game.shared.domain.event.EventsDrawn;
 import io.github.temporalrift.game.shared.domain.event.FactionAssigned;
@@ -44,10 +44,10 @@ class ScoringContextProjectionEventListenerIT {
     EraScoringCompletionChecker completionChecker;
 
     @Autowired
-    FactionDisclosureRepository factionDisclosureRepository;
+    RevisionistExposureRepository revisionistExposureRepository;
 
     @Test
-    void eraActionFactsFinalized_recordsEraDisclosuresIdempotently() {
+    void eraActionFactsFinalized_recordsTracedMimicExposuresIdempotently() {
         var gameId = UUID.randomUUID();
         var playerId = UUID.randomUUID();
         var event = new EraActionFactsFinalized(
@@ -57,7 +57,7 @@ class ScoringContextProjectionEventListenerIT {
         transactionTemplate.executeWithoutResult(_ -> applicationEventPublisher.publishEvent(event));
 
         await().atMost(Duration.ofSeconds(10))
-                .untilAsserted(() -> assertThat(factionDisclosureRepository.disclosedPlayerIds(gameId))
+                .untilAsserted(() -> assertThat(revisionistExposureRepository.exposedPlayerIds(gameId))
                         .containsExactly(playerId));
     }
 
