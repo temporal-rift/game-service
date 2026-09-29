@@ -40,7 +40,7 @@ public record SessionRulesProperties(
         @NotEmpty Set<SpecialAction> onceEraBudgetedSpecials,
         @DefaultValue("2") @Min(1) int sealMaxUsesPerGame,
         Set<CardType> handDealForcedTypes,
-        @NotNull @Valid Probability probability)
+        @NotNull ProbabilityBounds probability)
         implements SessionGameRulesPort {
 
     private static final int DEFAULT_ACTION_ROUND_TIMER_SECONDS = 60;
@@ -49,14 +49,6 @@ public record SessionRulesProperties(
     public record Stabilization(
             @DefaultValue("3") @Min(1) int prophetWrittenResolutions,
             @DefaultValue("2") @Min(1) int weaverActiveChainLinks) {}
-
-    /** Binds the floor and ceiling of the {@code game.rules.probability} namespace shared with timeline-service. */
-    public record Probability(int floor, int ceiling) {
-
-        public Probability {
-            new ProbabilityBounds(floor, ceiling);
-        }
-    }
 
     public SessionRulesProperties {
         if (cardsPerDeal < cardsPerHand) {
@@ -83,7 +75,7 @@ public record SessionRulesProperties(
 
     @Override
     public ProbabilityBounds probabilityBounds() {
-        return new ProbabilityBounds(probability.floor(), probability.ceiling());
+        return probability;
     }
 
     @Override

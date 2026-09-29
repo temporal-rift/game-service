@@ -29,7 +29,7 @@ import io.github.temporalrift.game.shared.domain.model.SpecialAction;
 
 class SessionRulesPropertiesTest {
 
-    private static final SessionRulesProperties.Probability PROBABILITY = new SessionRulesProperties.Probability(0, 90);
+    private static final ProbabilityBounds PROBABILITY = new ProbabilityBounds(0, 90);
 
     static SessionRulesProperties properties(Map<Integer, Integer> timers) {
         return new SessionRulesProperties(

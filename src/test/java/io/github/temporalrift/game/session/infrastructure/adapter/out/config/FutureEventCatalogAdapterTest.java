@@ -7,8 +7,10 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import java.io.IOException;
+import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -136,21 +138,30 @@ class FutureEventCatalogAdapterTest {
     }
 
     @Test
-    @DisplayName("the shipped catalog passes validation against the shipped bounds and is not uniform")
-    void shippedCatalog_isValidAndDistinct() throws IOException {
+    @DisplayName("the shipped catalog passes validation and prints every documented profile")
+    void shippedCatalog_isValidAndUsesEveryProfile() throws IOException {
         var catalog = bind("future-events.yml", "game.catalog", FutureEventCatalogProperties.class);
-        var probability =
-                bind("application-test.yml", "game.rules.probability", SessionRulesProperties.Probability.class);
+        var bounds = bind("application-test.yml", "game.rules.probability", ProbabilityBounds.class);
 
-        var adapter = adapter(catalog.events(), new ProbabilityBounds(probability.floor(), probability.ceiling()));
+        var adapter = adapter(catalog.events(), bounds);
 
         assertThat(adapter.allEventIds()).hasSize(30);
-        var distributions = catalog.events().stream()
+        var profiles = catalog.events().stream()
                 .map(event -> event.outcomes().stream()
                         .map(OutcomeDefinition::probability)
+                        .sorted(Comparator.reverseOrder())
                         .toList())
-                .collect(Collectors.toSet());
-        assertThat(distributions).hasSizeGreaterThan(1);
+                .collect(Collectors.groupingBy(Function.identity(), Collectors.counting()));
+        assertThat(profiles)
+                .containsOnlyKeys(
+                        List.of(34, 33, 33),
+                        List.of(45, 35, 20),
+                        List.of(50, 30, 20),
+                        List.of(42, 42, 16),
+                        List.of(60, 25, 15));
+        assertThat(profiles.get(List.of(34, 33, 33)))
+                .as("balanced cards are a minority of the catalog")
+                .isLessThan(catalog.events().size() / 4);
     }
 
     private static <T> T bind(String resource, String prefix, Class<T> type) throws IOException {

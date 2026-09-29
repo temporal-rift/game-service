@@ -33,8 +33,8 @@ public record FutureEventDefinition(UUID eventId, String title, List<OutcomeDefi
                 .findFirst()
                 .ifPresent(outcome -> {
                     throw new IllegalArgumentException("Event " + eventId + " prints outcome " + outcome.outcomeId()
-                            + " at " + outcome.probability() + ", outside the positive range [" + bounds.floor()
-                            + ", " + bounds.ceiling() + "]");
+                            + " at " + outcome.probability() + "; printed weights must be positive and within ["
+                            + bounds.floor() + ", " + bounds.ceiling() + "]");
                 });
     }
 
