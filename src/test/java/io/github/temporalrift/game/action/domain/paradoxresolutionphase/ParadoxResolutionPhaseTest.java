@@ -97,11 +97,12 @@ class ParadoxResolutionPhaseTest {
     @Test
     void rejectsAPassOnceThePhaseIsNoLongerOpen() {
         var expired = openPhase();
+        var expiredAt = NOW.plusSeconds(60);
         var closed = openPhase();
         closed.close();
 
         assertThatExceptionOfType(ParadoxResolutionPhaseNotOpenException.class)
-                .isThrownBy(() -> expired.pass(PLAYER_ID, NOW.plusSeconds(60)));
+                .isThrownBy(() -> expired.pass(PLAYER_ID, expiredAt));
         assertThatExceptionOfType(ParadoxResolutionPhaseNotOpenException.class)
                 .isThrownBy(() -> closed.pass(PLAYER_ID, NOW));
     }

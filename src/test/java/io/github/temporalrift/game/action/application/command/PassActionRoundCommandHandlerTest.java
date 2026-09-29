@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 
 import java.time.Clock;
@@ -107,7 +108,7 @@ class PassActionRoundCommandHandlerTest {
         // given
         var round = openRound();
         givenRound(round);
-        org.mockito.Mockito.lenient().when(playerState.isJammed()).thenReturn(true);
+        lenient().when(playerState.isJammed()).thenReturn(true);
         given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(playerState));
 
         // when
@@ -126,8 +127,10 @@ class PassActionRoundCommandHandlerTest {
         givenRound(round);
         given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(playerState));
 
+        var command = command();
+
         // when / then
-        assertThatExceptionOfType(DuplicateSubmissionException.class).isThrownBy(() -> handler.handle(command()));
+        assertThatExceptionOfType(DuplicateSubmissionException.class).isThrownBy(() -> handler.handle(command));
         then(actionRoundRepository).should(never()).save(any());
     }
 
@@ -140,8 +143,10 @@ class PassActionRoundCommandHandlerTest {
         givenRound(round);
         given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(playerState));
 
+        var command = command();
+
         // when / then
-        assertThatExceptionOfType(ActionRoundClosedException.class).isThrownBy(() -> handler.handle(command()));
+        assertThatExceptionOfType(ActionRoundClosedException.class).isThrownBy(() -> handler.handle(command));
     }
 
     @Test
@@ -151,8 +156,10 @@ class PassActionRoundCommandHandlerTest {
         givenRound(openRound());
         given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.empty());
 
+        var command = command();
+
         // when / then
-        assertThatExceptionOfType(PlayerStateNotFoundException.class).isThrownBy(() -> handler.handle(command()));
+        assertThatExceptionOfType(PlayerStateNotFoundException.class).isThrownBy(() -> handler.handle(command));
         then(actionRoundRepository).should(never()).save(any());
     }
 
@@ -163,8 +170,10 @@ class PassActionRoundCommandHandlerTest {
         given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA, ROUND))
                 .willReturn(Optional.empty());
 
+        var command = command();
+
         // when / then
-        assertThatExceptionOfType(RoundNotFoundException.class).isThrownBy(() -> handler.handle(command()));
+        assertThatExceptionOfType(RoundNotFoundException.class).isThrownBy(() -> handler.handle(command));
     }
 
     private static ActionRound openRound() {

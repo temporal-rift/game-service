@@ -2,6 +2,7 @@ package io.github.temporalrift.game.action.domain.actionround;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
+import static org.assertj.core.api.InstanceOfAssertFactories.type;
 
 import java.util.List;
 import java.util.UUID;
@@ -759,11 +760,12 @@ class ActionRoundTest {
         round.submit(card(PLAYER_A, CardType.PUSH));
         round.pass(PLAYER_B);
 
+        var laterCard = card(PLAYER_B, CardType.PUSH);
+
         // when / then
         assertThatExceptionOfType(DuplicateSubmissionException.class).isThrownBy(() -> round.pass(PLAYER_A));
         assertThatExceptionOfType(DuplicateSubmissionException.class).isThrownBy(() -> round.pass(PLAYER_B));
-        assertThatExceptionOfType(DuplicateSubmissionException.class)
-                .isThrownBy(() -> round.submit(card(PLAYER_B, CardType.PUSH)));
+        assertThatExceptionOfType(DuplicateSubmissionException.class).isThrownBy(() -> round.submit(laterCard));
     }
 
     @Test
@@ -802,9 +804,8 @@ class ActionRoundTest {
                         new PlayerSkipped(GAME_ID, ERA, ROUND, passer, "TIMER_EXPIRED"));
         assertThat(events)
                 .filteredOn(ActionRoundClosed.class::isInstance)
-                .singleElement()
-                .extracting(event -> ((ActionRoundClosed) event).totalActions())
-                .isEqualTo(1);
+                .singleElement(type(ActionRoundClosed.class))
+                .returns(1, ActionRoundClosed::totalActions);
         assertThat(round.passedPlayerIds()).containsExactly(passer);
     }
 
@@ -824,9 +825,8 @@ class ActionRoundTest {
         assertThat(((CloseOutcome.Closed) outcome).skippedPlayerIds()).containsExactlyInAnyOrder(PLAYER_A, PLAYER_B);
         assertThat(round.pullEvents())
                 .filteredOn(ActionRoundClosed.class::isInstance)
-                .singleElement()
-                .extracting(event -> ((ActionRoundClosed) event).totalActions())
-                .isEqualTo(0);
+                .singleElement(type(ActionRoundClosed.class))
+                .returns(0, ActionRoundClosed::totalActions);
     }
 
     @Test

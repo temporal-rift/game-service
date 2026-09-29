@@ -1,6 +1,7 @@
 package io.github.temporalrift.game.action.application.saga;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.InstanceOfAssertFactories.type;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
@@ -42,11 +43,13 @@ import io.github.temporalrift.game.action.domain.actionround.SubmittedAction;
 import io.github.temporalrift.game.action.domain.activisterastate.ActivistDeclarationMode;
 import io.github.temporalrift.game.action.domain.activisterastate.ActivistEraState;
 import io.github.temporalrift.game.action.domain.activisterastate.ProbabilityInfluenceSignature;
+import io.github.temporalrift.game.action.domain.event.ActionEventPayload;
 import io.github.temporalrift.game.action.domain.event.ActionRoundStarted;
 import io.github.temporalrift.game.action.domain.event.ActionRoundTimerExpired;
 import io.github.temporalrift.game.action.domain.event.HandCardIntercepted;
 import io.github.temporalrift.game.action.domain.event.InfluenceTraced;
 import io.github.temporalrift.game.action.domain.event.PlayerJammed;
+import io.github.temporalrift.game.action.domain.event.PlayerPassed;
 import io.github.temporalrift.game.action.domain.event.RoundSummaryPublished;
 import io.github.temporalrift.game.action.domain.event.RoundSummaryPublished.ActionSummary;
 import io.github.temporalrift.game.action.domain.playerstate.PlayerState;
@@ -1708,7 +1711,7 @@ class ActionRoundSagaImplTest {
             // then
             assertThat(passedPayloads)
                     .isNotEmpty()
-                    .noneMatch(io.github.temporalrift.game.action.domain.event.PlayerPassed.class::isInstance)
+                    .noneMatch(PlayerPassed.class::isInstance)
                     .isEqualTo(timedOutPayloads);
             assertThat(passedPayloads)
                     .filteredOn(RoundSummaryPublished.class::isInstance)
@@ -1749,13 +1752,12 @@ class ActionRoundSagaImplTest {
             saga.handlePlayerSubmitted(GAME_ID, ERA_NUMBER, ROUND_NUMBER, PLAYER_2);
 
             // then
-            assertThat(round.status())
-                    .isEqualTo(io.github.temporalrift.game.action.domain.actionround.RoundStatus.CLOSED);
+            assertThat(round.status()).isEqualTo(RoundStatus.CLOSED);
             assertThat(round.closedReason()).isEqualTo("ALL_SUBMITTED");
             then(stateManager).should().complete(GAME_ID, ERA_NUMBER, ROUND_NUMBER);
             then(timerRegistry).should().cancel(sagaId);
             then(actionEventPublisher).should(never()).publish(envelopeWithPayload(ActionRoundTimerExpired.class));
-            var captor = ArgumentCaptor.<DomainEventEnvelope>captor();
+            var captor = ArgumentCaptor.<DomainEventEnvelope<ActionEventPayload>>captor();
             then(actionEventPublisher).should(atLeastOnce()).publish(captor.capture());
             var summary = captor.getAllValues().stream()
                     .map(DomainEventEnvelope::payload)
@@ -1771,9 +1773,8 @@ class ActionRoundSagaImplTest {
             then(actionEventPublisher).should(atLeastOnce()).publishInternally(published.capture());
             assertThat(published.getAllValues())
                     .filteredOn(ActionRoundClosed.class::isInstance)
-                    .singleElement()
-                    .extracting(closed -> ((ActionRoundClosed) closed).totalActions())
-                    .isEqualTo(1);
+                    .singleElement(type(ActionRoundClosed.class))
+                    .returns(1, ActionRoundClosed::totalActions);
         }
 
         private List<Object> externalPayloadsOfTimerClose(ActionRound round) {
@@ -1791,11 +1792,10 @@ class ActionRoundSagaImplTest {
                             round.pendingPlayerIds(),
                             TIMER_EXPIRES_AT)));
             saga.handleTimerExpiry(sagaId);
-            var captor = ArgumentCaptor.<DomainEventEnvelope>captor();
+            var captor = ArgumentCaptor.<DomainEventEnvelope<ActionEventPayload>>captor();
             then(actionEventPublisher).should(atLeastOnce()).publish(captor.capture());
             return captor.getAllValues().stream()
-                    .map(DomainEventEnvelope::payload)
-                    .map(Object.class::cast)
+                    .<Object>map(DomainEventEnvelope::payload)
                     .toList();
         }
     }
