@@ -12,8 +12,6 @@ import org.springframework.context.annotation.Import;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
-import io.github.temporalrift.game.action.application.port.in.GetParadoxResolutionStatusUseCase;
-import io.github.temporalrift.game.action.application.port.in.GetRoundStatusUseCase;
 import io.github.temporalrift.game.action.application.port.in.PassActionRoundUseCase;
 import io.github.temporalrift.game.action.application.port.in.PassParadoxResolutionUseCase;
 import io.github.temporalrift.game.action.application.port.in.PlayCardUseCase;
@@ -55,12 +53,6 @@ class SecurityIT {
 
     @MockitoBean
     private RecordActivistDeclarationUseCase recordActivistDeclarationUseCase;
-
-    @MockitoBean
-    private GetRoundStatusUseCase getRoundStatusUseCase;
-
-    @MockitoBean
-    private GetParadoxResolutionStatusUseCase getParadoxResolutionStatusUseCase;
 
     @MockitoBean
     private SelectHandUseCase selectHandUseCase;

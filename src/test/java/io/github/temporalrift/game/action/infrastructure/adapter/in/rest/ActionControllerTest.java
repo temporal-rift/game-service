@@ -6,7 +6,6 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.BDDMockito.willThrow;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -26,8 +25,6 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
 import io.github.temporalrift.game.TestSecurityConfig;
-import io.github.temporalrift.game.action.application.port.in.GetParadoxResolutionStatusUseCase;
-import io.github.temporalrift.game.action.application.port.in.GetRoundStatusUseCase;
 import io.github.temporalrift.game.action.application.port.in.PassActionRoundUseCase;
 import io.github.temporalrift.game.action.application.port.in.PassParadoxResolutionUseCase;
 import io.github.temporalrift.game.action.application.port.in.PlayCardUseCase;
@@ -49,7 +46,6 @@ import io.github.temporalrift.game.action.domain.activisterastate.ExposeAlreadyR
 import io.github.temporalrift.game.action.domain.handselection.InvalidHandSelectionException;
 import io.github.temporalrift.game.action.domain.paradoxresolutionphase.CardNotEligibleForParadoxResolutionException;
 import io.github.temporalrift.game.action.domain.paradoxresolutionphase.DuplicateParadoxResolutionSubmissionException;
-import io.github.temporalrift.game.action.domain.paradoxresolutionphase.ParadoxResolutionPhaseNotFoundException;
 import io.github.temporalrift.game.action.domain.paradoxresolutionphase.ParadoxResolutionPhaseNotOpenException;
 import io.github.temporalrift.game.action.domain.specialactionerausage.SpecialActionEraBudgetExhaustedException;
 import io.github.temporalrift.game.shared.domain.model.CardCategory;
@@ -94,12 +90,6 @@ class ActionControllerTest {
 
     @MockitoBean
     RecordActivistDeclarationUseCase recordActivistDeclarationUseCase;
-
-    @MockitoBean
-    GetRoundStatusUseCase getRoundStatusUseCase;
-
-    @MockitoBean
-    GetParadoxResolutionStatusUseCase getParadoxResolutionStatusUseCase;
 
     @MockitoBean
     SelectHandUseCase selectHandUseCase;
@@ -312,20 +302,6 @@ class ActionControllerTest {
     }
 
     @Test
-    @DisplayName("Given caller passed, when GET status, then reports mySubmission as PASS")
-    void getRoundStatusReportsPass() throws Exception {
-        given(getRoundStatusUseCase.handle(any()))
-                .willReturn(new GetRoundStatusUseCase.Result(
-                        ERA, ROUND, "OPEN", 42, 1, 2, List.of(), new GetRoundStatusUseCase.MySubmission(true, "PASS")));
-
-        mockMvc.perform(get("/api/v1/games/{gameId}/eras/{eraNumber}/rounds/{roundNumber}/status", GAME_ID, ERA, ROUND)
-                        .with(auth()))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.mySubmission.submitted").value(true))
-                .andExpect(jsonPath("$.mySubmission.actionType").value("PASS"));
-    }
-
-    @Test
     @DisplayName("Given no JWT, when POST action, then 401")
     void submitActionNoJwt() throws Exception {
         mockMvc.perform(post(
@@ -520,148 +496,20 @@ class ActionControllerTest {
     }
 
     @Test
-    @DisplayName("Given no JWT, when GET status, then 401")
-    void getRoundStatusNoJwt() throws Exception {
-        mockMvc.perform(get("/api/v1/games/{gameId}/eras/{eraNumber}/rounds/{roundNumber}/status", GAME_ID, ERA, ROUND))
-                .andExpect(status().isUnauthorized());
-    }
-
-    @Test
-    @DisplayName("Given round status, when GET status, then returns public status and caller's own unsubmitted state")
-    void getRoundStatus() throws Exception {
-        // given
-        var pendingPlayerId = UUID.randomUUID();
-        given(getRoundStatusUseCase.handle(any()))
-                .willReturn(new GetRoundStatusUseCase.Result(
-                        ERA,
-                        ROUND,
-                        "OPEN",
-                        42,
-                        2,
-                        3,
-                        List.of(pendingPlayerId),
-                        new GetRoundStatusUseCase.MySubmission(false, null)));
-
-        // when / then
-        mockMvc.perform(get("/api/v1/games/{gameId}/eras/{eraNumber}/rounds/{roundNumber}/status", GAME_ID, ERA, ROUND)
-                        .with(auth()))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.eraNumber").value(ERA))
-                .andExpect(jsonPath("$.roundNumber").value(ROUND))
-                .andExpect(jsonPath("$.status").value("OPEN"))
-                .andExpect(jsonPath("$.timerRemainingSeconds").value(42))
-                .andExpect(jsonPath("$.submittedCount").value(2))
-                .andExpect(jsonPath("$.totalPlayers").value(3))
-                .andExpect(jsonPath("$.pendingPlayerIds[0]").value(pendingPlayerId.toString()))
-                .andExpect(jsonPath("$.mySubmission.submitted").value(false))
-                .andExpect(jsonPath("$.mySubmission.actionType").doesNotExist());
-    }
-
-    @Test
-    @DisplayName("Given caller already submitted a card, when GET status, then reports mySubmission")
-    void getRoundStatusReportsMySubmission() throws Exception {
-        // given
-        given(getRoundStatusUseCase.handle(any()))
-                .willReturn(new GetRoundStatusUseCase.Result(
-                        ERA, ROUND, "OPEN", 42, 1, 2, List.of(), new GetRoundStatusUseCase.MySubmission(true, "CARD")));
-
-        // when / then
-        mockMvc.perform(get("/api/v1/games/{gameId}/eras/{eraNumber}/rounds/{roundNumber}/status", GAME_ID, ERA, ROUND)
-                        .with(auth()))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.mySubmission.submitted").value(true))
-                .andExpect(jsonPath("$.mySubmission.actionType").value("CARD"));
-    }
-
-    @Test
     @DisplayName("Given RoundNotFoundException, then returns 404")
     void roundNotFound() throws Exception {
         // given
-        given(getRoundStatusUseCase.handle(any())).willThrow(new RoundNotFoundException(GAME_ID, ERA, ROUND));
+        given(playCardUseCase.handle(any())).willThrow(new RoundNotFoundException(GAME_ID, ERA, ROUND));
 
         // when / then
-        mockMvc.perform(get("/api/v1/games/{gameId}/eras/{eraNumber}/rounds/{roundNumber}/status", GAME_ID, ERA, ROUND)
-                        .with(auth()))
-                .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.code").value("404-01"));
-    }
-
-    @Test
-    @DisplayName("Given no JWT, when GET paradox-resolution status, then 401")
-    void getParadoxResolutionStatusNoJwt() throws Exception {
-        mockMvc.perform(get("/api/v1/games/{gameId}/eras/{eraNumber}/paradox-resolution/status", GAME_ID, ERA))
-                .andExpect(status().isUnauthorized());
-    }
-
-    @Test
-    @DisplayName("Given an open phase, when GET paradox-resolution status, then returns caller-scoped recovery")
-    void getParadoxResolutionStatus() throws Exception {
-        // given
-        var pendingPlayerId = UUID.randomUUID();
-        var affectedEventId = UUID.randomUUID();
-        var eligibleCardId = UUID.randomUUID();
-        given(getParadoxResolutionStatusUseCase.handle(any()))
-                .willReturn(new GetParadoxResolutionStatusUseCase.Result(
-                        ERA,
-                        true,
-                        42,
-                        2,
-                        3,
-                        List.of(pendingPlayerId),
-                        false,
-                        List.of(affectedEventId),
-                        List.of(new GetParadoxResolutionStatusUseCase.EligibleCard(
-                                eligibleCardId,
-                                io.github.temporalrift.game.shared.domain.model.CardType.STABILIZE,
-                                io.github.temporalrift.game.shared.domain.model.CardGrade.I))));
-
-        // when / then
-        mockMvc.perform(get("/api/v1/games/{gameId}/eras/{eraNumber}/paradox-resolution/status", GAME_ID, ERA)
-                        .with(auth()))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.eraNumber").value(ERA))
-                .andExpect(jsonPath("$.phaseOpen").value(true))
-                .andExpect(jsonPath("$.timerRemainingSeconds").value(42))
-                .andExpect(jsonPath("$.submittedCount").value(2))
-                .andExpect(jsonPath("$.totalPlayers").value(3))
-                .andExpect(jsonPath("$.pendingPlayerIds[0]").value(pendingPlayerId.toString()))
-                .andExpect(jsonPath("$.mySubmitted").value(false))
-                .andExpect(jsonPath("$.affectedEventIds[0]").value(affectedEventId.toString()))
-                .andExpect(
-                        jsonPath("$.eligibleResolutionCards[0].cardInstanceId").value(eligibleCardId.toString()))
-                .andExpect(jsonPath("$.eligibleResolutionCards[0].cardType").value("STABILIZE"))
-                .andExpect(jsonPath("$.eligibleResolutionCards[0].grade").value("I"));
-    }
-
-    @Test
-    @DisplayName("Given a closed phase, when GET paradox-resolution status, then omits timer and pending players")
-    void getParadoxResolutionStatusClosed() throws Exception {
-        // given
-        given(getParadoxResolutionStatusUseCase.handle(any()))
-                .willReturn(new GetParadoxResolutionStatusUseCase.Result(
-                        ERA, false, null, 3, 3, null, true, List.of(UUID.randomUUID()), null));
-
-        // when / then
-        mockMvc.perform(get("/api/v1/games/{gameId}/eras/{eraNumber}/paradox-resolution/status", GAME_ID, ERA)
-                        .with(auth()))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.phaseOpen").value(false))
-                .andExpect(jsonPath("$.timerRemainingSeconds").doesNotExist())
-                .andExpect(jsonPath("$.pendingPlayerIds").doesNotExist())
-                .andExpect(jsonPath("$.eligibleResolutionCards").isEmpty())
-                .andExpect(jsonPath("$.mySubmitted").value(true));
-    }
-
-    @Test
-    @DisplayName("Given no paradox-resolution phase, then returns 404")
-    void paradoxResolutionPhaseNotFound() throws Exception {
-        // given
-        given(getParadoxResolutionStatusUseCase.handle(any()))
-                .willThrow(new ParadoxResolutionPhaseNotFoundException(GAME_ID, ERA));
-
-        // when / then
-        mockMvc.perform(get("/api/v1/games/{gameId}/eras/{eraNumber}/paradox-resolution/status", GAME_ID, ERA)
-                        .with(auth()))
+        mockMvc.perform(post(
+                                "/api/v1/games/{gameId}/eras/{eraNumber}/rounds/{roundNumber}/actions",
+                                GAME_ID,
+                                ERA,
+                                ROUND)
+                        .with(auth())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(cardJson()))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("404-01"));
     }
