@@ -68,9 +68,10 @@ class ActionStateProjectionEventListener {
     /**
      * A hand projected after the era's paradox-resolution phase opened belongs to a participant the phase opening
      * could not see yet, so they are dealt their offer and eligible resolution cards now. For anyone already dealt,
-     * the offering is a no-op.
+     * the offering is a no-op. The roster lock keeps a concurrent phase opening from missing this participant too.
      */
     private void adoptIntoOpenParadoxResolutionPhase(HandSelected event, PlayerState participant) {
+        paradoxResolutionPhaseRepository.lockParticipantRoster(event.gameId(), event.eraNumber());
         paradoxResolutionPhaseRepository
                 .findByGameIdAndEraNumber(event.gameId(), event.eraNumber())
                 .filter(phase -> phase.status() == ParadoxResolutionPhaseStatus.OPEN)

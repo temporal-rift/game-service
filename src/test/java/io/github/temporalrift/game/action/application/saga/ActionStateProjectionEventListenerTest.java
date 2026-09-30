@@ -144,8 +144,10 @@ class ActionStateProjectionEventListenerTest {
 
         listener.onHandSelected(handSelected(gameId, 2, playerId));
 
-        var inOrder = inOrder(playerStateRepository, paradoxResolutionCardsOffering);
+        var inOrder = inOrder(playerStateRepository, paradoxResolutionPhaseRepository, paradoxResolutionCardsOffering);
         inOrder.verify(playerStateRepository).save(state);
+        inOrder.verify(paradoxResolutionPhaseRepository).lockParticipantRoster(gameId, 2);
+        inOrder.verify(paradoxResolutionPhaseRepository).findByGameIdAndEraNumber(gameId, 2);
         inOrder.verify(paradoxResolutionCardsOffering).offer(phase, state);
         assertThat(state.hand()).extracting(PlayerState.CardInstance::cardType).containsExactly(CardType.STABILIZE);
     }

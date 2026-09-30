@@ -103,6 +103,7 @@ class ParadoxResolutionPhaseKafkaConsumer {
         var affectedEventIds = started.affectedEventIds() == null
                 ? new LinkedHashSet<UUID>()
                 : new LinkedHashSet<>(started.affectedEventIds());
+        phaseRepository.lockParticipantRoster(started.gameId(), started.eraNumber());
         var existing = phaseRepository.findByGameIdAndEraNumber(started.gameId(), started.eraNumber());
         if (existing.isPresent()) {
             if (existing.get().recoverAffectedEventIds(affectedEventIds)) {
