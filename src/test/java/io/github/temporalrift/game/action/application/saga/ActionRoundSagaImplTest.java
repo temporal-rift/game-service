@@ -45,12 +45,12 @@ import io.github.temporalrift.game.action.domain.activisterastate.ActivistDeclar
 import io.github.temporalrift.game.action.domain.activisterastate.ActivistEraState;
 import io.github.temporalrift.game.action.domain.activisterastate.ProbabilityInfluenceSignature;
 import io.github.temporalrift.game.action.domain.event.ActionEventPayload;
+import io.github.temporalrift.game.action.domain.event.ActionRoundPassed;
 import io.github.temporalrift.game.action.domain.event.ActionRoundStarted;
 import io.github.temporalrift.game.action.domain.event.ActionRoundTimerExpired;
 import io.github.temporalrift.game.action.domain.event.HandCardIntercepted;
 import io.github.temporalrift.game.action.domain.event.InfluenceTraced;
 import io.github.temporalrift.game.action.domain.event.PlayerJammed;
-import io.github.temporalrift.game.action.domain.event.PlayerPassed;
 import io.github.temporalrift.game.action.domain.event.RoundSummaryPublished;
 import io.github.temporalrift.game.action.domain.event.RoundSummaryPublished.ActionSummary;
 import io.github.temporalrift.game.action.domain.playerstate.PlayerState;
@@ -1712,7 +1712,7 @@ class ActionRoundSagaImplTest {
             // then
             assertThat(passedPayloads)
                     .isNotEmpty()
-                    .noneMatch(PlayerPassed.class::isInstance)
+                    .noneMatch(ActionRoundPassed.class::isInstance)
                     .isEqualTo(timedOutPayloads)
                     .filteredOn(RoundSummaryPublished.class::isInstance)
                     .singleElement(type(RoundSummaryPublished.class))

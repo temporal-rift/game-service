@@ -8,6 +8,7 @@ package io.github.temporalrift.game.action.domain.event;
  */
 public sealed interface ActionEventPayload
         permits ActivistDeclarationRecorded,
+                ActionRoundPassed,
                 ActionRoundStarted,
                 ActionRoundTimerExpired,
                 CardPlayed,
@@ -16,6 +17,7 @@ public sealed interface ActionEventPayload
                 HandCardIntercepted,
                 InfluenceTraced,
                 ParadoxResolutionCardPlayed,
+                ParadoxResolutionCardsOffered,
                 ParadoxResolutionPassed,
                 PlayerJammed,
                 PlayerSkipped,

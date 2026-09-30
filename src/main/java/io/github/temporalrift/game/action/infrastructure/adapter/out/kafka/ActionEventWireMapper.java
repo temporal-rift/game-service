@@ -3,11 +3,13 @@ package io.github.temporalrift.game.action.infrastructure.adapter.out.kafka;
 import org.mapstruct.Mapper;
 
 import io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract.ActionRoundClosedPayload;
+import io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract.ActionRoundPassedPayload;
 import io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract.ActionRoundStartedPayload;
 import io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract.ActionRoundTimerExpiredPayload;
 import io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract.ActionSummary;
 import io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract.ActivistDeclarationRecordedPayload;
 import io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract.CardPlayedPayload;
+import io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract.EligibleResolutionCard;
 import io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract.ExposeBehaviorChangedPayload;
 import io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract.ExposeInfluenceSignature;
 import io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract.ExposeSignatureRevealedPayload;
@@ -16,11 +18,13 @@ import io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract.Inf
 import io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract.InfluenceTracedPayload;
 import io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract.InterceptedHandCard;
 import io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract.ParadoxResolutionCardPlayedPayload;
+import io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract.ParadoxResolutionCardsOfferedPayload;
 import io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract.ParadoxResolutionPassedPayload;
 import io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract.PlayerJammedPayload;
 import io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract.PlayerSkippedPayload;
 import io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract.RoundSummaryPublishedPayload;
 import io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract.SpecialActionPlayedPayload;
+import io.github.temporalrift.game.action.domain.event.ActionRoundPassed;
 import io.github.temporalrift.game.action.domain.event.ActionRoundStarted;
 import io.github.temporalrift.game.action.domain.event.ActionRoundTimerExpired;
 import io.github.temporalrift.game.action.domain.event.ActivistDeclarationRecorded;
@@ -30,6 +34,7 @@ import io.github.temporalrift.game.action.domain.event.ExposeSignatureRevealed;
 import io.github.temporalrift.game.action.domain.event.HandCardIntercepted;
 import io.github.temporalrift.game.action.domain.event.InfluenceTraced;
 import io.github.temporalrift.game.action.domain.event.ParadoxResolutionCardPlayed;
+import io.github.temporalrift.game.action.domain.event.ParadoxResolutionCardsOffered;
 import io.github.temporalrift.game.action.domain.event.ParadoxResolutionPassed;
 import io.github.temporalrift.game.action.domain.event.PlayerJammed;
 import io.github.temporalrift.game.action.domain.event.PlayerSkipped;
@@ -68,6 +73,8 @@ interface ActionEventWireMapper {
 
     CardPlayedPayload toWire(CardPlayed event);
 
+    ActionRoundPassedPayload toWire(ActionRoundPassed event);
+
     SpecialActionPlayedPayload toWire(SpecialActionPlayed event);
 
     ActionRoundTimerExpiredPayload toWire(ActionRoundTimerExpired event);
@@ -75,6 +82,10 @@ interface ActionEventWireMapper {
     PlayerSkippedPayload toWire(PlayerSkipped event);
 
     ParadoxResolutionCardPlayedPayload toWire(ParadoxResolutionCardPlayed event);
+
+    ParadoxResolutionCardsOfferedPayload toWire(ParadoxResolutionCardsOffered event);
+
+    EligibleResolutionCard toWire(ParadoxResolutionCardsOffered.EligibleCard card);
 
     ParadoxResolutionPassedPayload toWire(ParadoxResolutionPassed event);
 

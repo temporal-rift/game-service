@@ -4,7 +4,6 @@ import java.time.Clock;
 
 import io.github.temporalrift.game.action.domain.actionround.ActionRound;
 import io.github.temporalrift.game.action.domain.event.ActionEventPayload;
-import io.github.temporalrift.game.action.domain.event.PlayerPassed;
 import io.github.temporalrift.game.action.domain.port.out.ActionEventPublisher;
 import io.github.temporalrift.game.shared.domain.event.ActionRoundClosed;
 import io.github.temporalrift.game.shared.domain.event.ForesightDeclared;
@@ -49,9 +48,6 @@ public final class ActionRoundEventPublication {
                         clock));
             case ForesightDeclared _ -> {
                 // Scoring-internal projection fact only — publishInternally() below is the only path.
-            }
-            case PlayerPassed _ -> {
-                // Saga-internal only: a pass surfaces publicly at round close, as a skip, never on its own.
             }
             default -> throw new IllegalStateException("Unsupported action aggregate event: " + payload.getClass());
         }

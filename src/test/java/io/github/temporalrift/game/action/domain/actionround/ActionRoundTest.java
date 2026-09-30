@@ -10,9 +10,9 @@ import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import io.github.temporalrift.game.action.domain.event.ActionRoundPassed;
 import io.github.temporalrift.game.action.domain.event.ActionRoundStarted;
 import io.github.temporalrift.game.action.domain.event.CardPlayed;
-import io.github.temporalrift.game.action.domain.event.PlayerPassed;
 import io.github.temporalrift.game.action.domain.event.PlayerSkipped;
 import io.github.temporalrift.game.action.domain.event.SpecialActionPlayed;
 import io.github.temporalrift.game.shared.domain.event.ActionRoundClosed;
@@ -723,7 +723,7 @@ class ActionRoundTest {
     }
 
     @Test
-    @DisplayName("pass — consumes the slot, registers only the in-process PlayerPassed, records no action")
+    @DisplayName("pass — consumes the slot, registers the private ActionRoundPassed, records no action")
     void passConsumesSlotWithoutRecordingAnAction() {
         // given
         var round = openRound(List.of(PLAYER_A, PLAYER_B));
@@ -737,7 +737,7 @@ class ActionRoundTest {
         assertThat(round.pendingPlayerIds()).containsExactly(PLAYER_B);
         assertThat(round.passedPlayerIds()).containsExactly(PLAYER_A);
         assertThat(round.submittedActions()).isEmpty();
-        assertThat(round.pullEvents()).containsExactly(new PlayerPassed(GAME_ID, ERA, ROUND, PLAYER_A));
+        assertThat(round.pullEvents()).containsExactly(new ActionRoundPassed(GAME_ID, ERA, ROUND, PLAYER_A));
     }
 
     @Test

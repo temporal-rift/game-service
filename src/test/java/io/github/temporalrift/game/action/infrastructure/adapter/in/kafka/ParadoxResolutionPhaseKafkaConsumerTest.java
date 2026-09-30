@@ -2,15 +2,20 @@ package io.github.temporalrift.game.action.infrastructure.adapter.in.kafka;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 
 import java.nio.charset.StandardCharsets;
+import java.time.Clock;
 import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -26,14 +31,23 @@ import tools.jackson.databind.json.JsonMapper;
 import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.AdjustedBandsPublishedPayload;
 import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.EraResolutionCompletedPayload;
 import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.ParadoxResolutionPhaseStartedPayload;
+import io.github.temporalrift.game.action.application.ParadoxResolutionCardsOffering;
+import io.github.temporalrift.game.action.domain.event.ActionEventPayload;
+import io.github.temporalrift.game.action.domain.event.ParadoxResolutionCardsOffered;
+import io.github.temporalrift.game.action.domain.event.ParadoxResolutionCardsOffered.EligibleCard;
 import io.github.temporalrift.game.action.domain.paradoxresolutionphase.ParadoxResolutionPhase;
 import io.github.temporalrift.game.action.domain.paradoxresolutionphase.ParadoxResolutionPhaseStatus;
 import io.github.temporalrift.game.action.domain.playerstate.PlayerState;
+import io.github.temporalrift.game.action.domain.port.out.ActionEventPublisher;
 import io.github.temporalrift.game.action.domain.port.out.ParadoxResolutionPhaseRepository;
 import io.github.temporalrift.game.action.domain.port.out.PlayerStateRepository;
 import io.github.temporalrift.game.action.domain.port.out.ReactiveOfferRepository;
 import io.github.temporalrift.game.action.domain.reactiveoffer.ReactiveOffer;
 import io.github.temporalrift.game.action.domain.reactiveoffer.ReactiveOfferStatus;
+import io.github.temporalrift.game.shared.domain.messaging.DomainEventEnvelope;
+import io.github.temporalrift.game.shared.domain.model.CardGrade;
+import io.github.temporalrift.game.shared.domain.model.CardType;
+import io.github.temporalrift.game.shared.domain.model.Faction;
 import io.github.temporalrift.game.shared.domain.port.out.ProcessedEventRepository;
 
 @ExtendWith(MockitoExtension.class)
@@ -58,12 +72,22 @@ class ParadoxResolutionPhaseKafkaConsumerTest {
     @Mock
     ReactiveOfferRepository reactiveOfferRepository;
 
+    @Mock
+    ActionEventPublisher actionEventPublisher;
+
     ParadoxResolutionPhaseKafkaConsumer consumer;
 
     @BeforeEach
     void setUp() {
+        var cardsOffering = new ParadoxResolutionCardsOffering(
+                reactiveOfferRepository, actionEventPublisher, Clock.fixed(OCCURRED_AT, ZoneOffset.UTC));
         consumer = new ParadoxResolutionPhaseKafkaConsumer(
-                processedEventRepository, phaseRepository, playerStateRepository, reactiveOfferRepository, JSON_MAPPER);
+                processedEventRepository,
+                phaseRepository,
+                playerStateRepository,
+                reactiveOfferRepository,
+                cardsOffering,
+                JSON_MAPPER);
     }
 
     @Test
@@ -114,6 +138,81 @@ class ParadoxResolutionPhaseKafkaConsumerTest {
     }
 
     @Test
+    void phaseStartedPublishesEachParticipantsEligibleResolutionCardsOnce() {
+        var message = message("ParadoxResolutionPhaseStarted", 1, phaseStarted(GAME_ID, List.of(UUID.randomUUID())));
+        givenClaim(message, true);
+        given(phaseRepository.findByGameIdAndEraNumber(GAME_ID, ERA)).willReturn(Optional.empty());
+        var push = new PlayerState.CardInstance(UUID.randomUUID(), CardType.PUSH, CardGrade.II);
+        var scan = new PlayerState.CardInstance(UUID.randomUUID(), CardType.SCAN, CardGrade.I);
+        var holder = participant(UUID.randomUUID(), List.of(scan, push));
+        var withoutEligibleHand = participant(UUID.randomUUID(), List.of(scan));
+        given(playerStateRepository.findAllByGameId(GAME_ID)).willReturn(List.of(holder, withoutEligibleHand));
+        given(reactiveOfferRepository.createIfAbsent(any())).willReturn(true);
+
+        consumer.handle(message);
+
+        var offers = ArgumentCaptor.forClass(ReactiveOffer.class);
+        then(reactiveOfferRepository).should(times(2)).createIfAbsent(offers.capture());
+        var holderOffer = offers.getAllValues().getFirst();
+        var otherOffer = offers.getAllValues().getLast();
+        var published = publishedPayloads();
+        assertThat(published)
+                .containsExactly(
+                        new ParadoxResolutionCardsOffered(
+                                GAME_ID,
+                                ERA,
+                                holder.playerId(),
+                                List.of(
+                                        new EligibleCard(push.cardInstanceId(), CardType.PUSH, CardGrade.II),
+                                        new EligibleCard(
+                                                holderOffer.stabilizeCardInstanceId(), CardType.STABILIZE, CardGrade.I),
+                                        new EligibleCard(
+                                                holderOffer.detonateCardInstanceId(), CardType.DETONATE, CardGrade.I))),
+                        new ParadoxResolutionCardsOffered(
+                                GAME_ID,
+                                ERA,
+                                withoutEligibleHand.playerId(),
+                                List.of(
+                                        new EligibleCard(
+                                                otherOffer.stabilizeCardInstanceId(), CardType.STABILIZE, CardGrade.I),
+                                        new EligibleCard(
+                                                otherOffer.detonateCardInstanceId(), CardType.DETONATE, CardGrade.I))));
+    }
+
+    @Test
+    void phaseStartedPublishesTheFactOnThePhaseAggregate() {
+        var message = message("ParadoxResolutionPhaseStarted", 1, phaseStarted(GAME_ID, List.of()));
+        givenClaim(message, true);
+        given(phaseRepository.findByGameIdAndEraNumber(GAME_ID, ERA)).willReturn(Optional.empty());
+        given(playerStateRepository.findAllByGameId(GAME_ID))
+                .willReturn(List.of(participant(UUID.randomUUID(), List.of())));
+        given(reactiveOfferRepository.createIfAbsent(any())).willReturn(true);
+
+        consumer.handle(message);
+
+        then(actionEventPublisher)
+                .should()
+                .publish(argThat(envelope -> envelope.aggregateId().equals(eventIdOf(message))
+                        && envelope.aggregateType().equals(ParadoxResolutionPhase.AGGREGATE_TYPE)
+                        && envelope.gameId().equals(GAME_ID)
+                        && envelope.occurredAt().equals(OCCURRED_AT)));
+    }
+
+    @Test
+    void phaseStartedDoesNotRepublishForAParticipantAlreadyDealt() {
+        var message = message("ParadoxResolutionPhaseStarted", 1, phaseStarted(GAME_ID, List.of()));
+        givenClaim(message, true);
+        given(phaseRepository.findByGameIdAndEraNumber(GAME_ID, ERA)).willReturn(Optional.empty());
+        given(playerStateRepository.findAllByGameId(GAME_ID))
+                .willReturn(List.of(participant(UUID.randomUUID(), List.of())));
+        given(reactiveOfferRepository.createIfAbsent(any())).willReturn(false);
+
+        consumer.handle(message);
+
+        then(actionEventPublisher).shouldHaveNoInteractions();
+    }
+
+    @Test
     void duplicatePhaseStartDoesNotDealAgain() {
         var message = message(
                 "ParadoxResolutionPhaseStarted",
@@ -128,6 +227,7 @@ class ParadoxResolutionPhaseKafkaConsumerTest {
 
         then(playerStateRepository).shouldHaveNoInteractions();
         then(reactiveOfferRepository).shouldHaveNoInteractions();
+        then(actionEventPublisher).shouldHaveNoInteractions();
     }
 
     @Test
@@ -254,6 +354,25 @@ class ParadoxResolutionPhaseKafkaConsumerTest {
 
         then(processedEventRepository).should(never()).tryMarkProcessed(any(), any());
         then(phaseRepository).shouldHaveNoInteractions();
+    }
+
+    private List<ActionEventPayload> publishedPayloads() {
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<DomainEventEnvelope<ActionEventPayload>> envelopes =
+                ArgumentCaptor.forClass(DomainEventEnvelope.class);
+        then(actionEventPublisher).should(atLeastOnce()).publish(envelopes.capture());
+        return envelopes.getAllValues().stream()
+                .map(DomainEventEnvelope::payload)
+                .toList();
+    }
+
+    private static PlayerState participant(UUID playerId, List<PlayerState.CardInstance> hand) {
+        return PlayerState.reconstitute(
+                UUID.randomUUID(),
+                GAME_ID,
+                playerId,
+                Faction.ERASERS,
+                new PlayerState.PersistedState(hand, Set.of(), false, false));
     }
 
     private void givenClaim(Message<Object> message, boolean claimed) {

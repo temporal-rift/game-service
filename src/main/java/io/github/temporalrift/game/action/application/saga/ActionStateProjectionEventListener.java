@@ -5,8 +5,11 @@ import org.slf4j.LoggerFactory;
 import org.springframework.modulith.events.ApplicationModuleListener;
 import org.springframework.stereotype.Component;
 
+import io.github.temporalrift.game.action.application.ParadoxResolutionCardsOffering;
+import io.github.temporalrift.game.action.domain.paradoxresolutionphase.ParadoxResolutionPhaseStatus;
 import io.github.temporalrift.game.action.domain.playerstate.PlayerState;
 import io.github.temporalrift.game.action.domain.port.out.FutureEventDefinitionPort;
+import io.github.temporalrift.game.action.domain.port.out.ParadoxResolutionPhaseRepository;
 import io.github.temporalrift.game.action.domain.port.out.PlayerStateRepository;
 import io.github.temporalrift.game.shared.domain.event.EventsDrawn;
 import io.github.temporalrift.game.shared.domain.event.FactionAssigned;
@@ -20,11 +23,18 @@ class ActionStateProjectionEventListener {
 
     private final PlayerStateRepository playerStateRepository;
     private final FutureEventDefinitionPort futureEventDefinitionPort;
+    private final ParadoxResolutionPhaseRepository paradoxResolutionPhaseRepository;
+    private final ParadoxResolutionCardsOffering paradoxResolutionCardsOffering;
 
     ActionStateProjectionEventListener(
-            PlayerStateRepository playerStateRepository, FutureEventDefinitionPort futureEventDefinitionPort) {
+            PlayerStateRepository playerStateRepository,
+            FutureEventDefinitionPort futureEventDefinitionPort,
+            ParadoxResolutionPhaseRepository paradoxResolutionPhaseRepository,
+            ParadoxResolutionCardsOffering paradoxResolutionCardsOffering) {
         this.playerStateRepository = playerStateRepository;
         this.futureEventDefinitionPort = futureEventDefinitionPort;
+        this.paradoxResolutionPhaseRepository = paradoxResolutionPhaseRepository;
+        this.paradoxResolutionCardsOffering = paradoxResolutionCardsOffering;
     }
 
     @ApplicationModuleListener
@@ -52,6 +62,19 @@ class ActionStateProjectionEventListener {
                 .map(card -> new PlayerState.CardInstance(card.cardInstanceId(), card.cardType(), card.grade()))
                 .toList());
         playerStateRepository.save(state);
+        adoptIntoOpenParadoxResolutionPhase(event, state);
+    }
+
+    /**
+     * A hand projected after the era's paradox-resolution phase opened belongs to a participant the phase opening
+     * could not see yet, so they are dealt their offer and eligible resolution cards now. For anyone already dealt,
+     * the offering is a no-op.
+     */
+    private void adoptIntoOpenParadoxResolutionPhase(HandSelected event, PlayerState participant) {
+        paradoxResolutionPhaseRepository
+                .findByGameIdAndEraNumber(event.gameId(), event.eraNumber())
+                .filter(phase -> phase.status() == ParadoxResolutionPhaseStatus.OPEN)
+                .ifPresent(phase -> paradoxResolutionCardsOffering.offer(phase, participant));
     }
 
     @ApplicationModuleListener

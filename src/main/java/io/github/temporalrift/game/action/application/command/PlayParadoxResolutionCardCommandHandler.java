@@ -86,7 +86,8 @@ class PlayParadoxResolutionCardCommandHandler implements PlayParadoxResolutionCa
     /**
      * Resolves the submitted card against the final five-card hand first, then the player's
      * phase-opening reactive offer. A card in neither fails with card-not-in-hand; offers exist
-     * only as dealt at phase opening, so no offer row is ever created on the submission path.
+     * only as dealt by the phase, at opening or on adoption, so no offer row is ever created on the
+     * submission path.
      */
     private ResolvedCard resolveCard(Command command, PlayerState playerState) {
         var offer = reactiveOfferRepository.findByGameIdAndEraNumberAndPlayerIdWithLock(

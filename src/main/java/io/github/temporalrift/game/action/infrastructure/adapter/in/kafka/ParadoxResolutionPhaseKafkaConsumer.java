@@ -17,12 +17,11 @@ import tools.jackson.databind.ObjectMapper;
 
 import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.EraResolutionCompletedPayload;
 import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.ParadoxResolutionPhaseStartedPayload;
+import io.github.temporalrift.game.action.application.ParadoxResolutionCardsOffering;
 import io.github.temporalrift.game.action.domain.paradoxresolutionphase.ParadoxResolutionPhase;
-import io.github.temporalrift.game.action.domain.playerstate.PlayerState;
 import io.github.temporalrift.game.action.domain.port.out.ParadoxResolutionPhaseRepository;
 import io.github.temporalrift.game.action.domain.port.out.PlayerStateRepository;
 import io.github.temporalrift.game.action.domain.port.out.ReactiveOfferRepository;
-import io.github.temporalrift.game.action.domain.reactiveoffer.ReactiveOffer;
 import io.github.temporalrift.game.shared.domain.messaging.DomainEventEnvelope;
 import io.github.temporalrift.game.shared.domain.port.out.ProcessedEventRepository;
 import io.github.temporalrift.game.shared.infrastructure.adapter.in.kafka.MessagePayloads;
@@ -38,6 +37,7 @@ class ParadoxResolutionPhaseKafkaConsumer {
     private final ParadoxResolutionPhaseRepository phaseRepository;
     private final PlayerStateRepository playerStateRepository;
     private final ReactiveOfferRepository reactiveOfferRepository;
+    private final ParadoxResolutionCardsOffering cardsOffering;
     private final ObjectMapper objectMapper;
 
     ParadoxResolutionPhaseKafkaConsumer(
@@ -45,11 +45,13 @@ class ParadoxResolutionPhaseKafkaConsumer {
             ParadoxResolutionPhaseRepository phaseRepository,
             PlayerStateRepository playerStateRepository,
             ReactiveOfferRepository reactiveOfferRepository,
+            ParadoxResolutionCardsOffering cardsOffering,
             ObjectMapper objectMapper) {
         this.processedEventRepository = processedEventRepository;
         this.phaseRepository = phaseRepository;
         this.playerStateRepository = playerStateRepository;
         this.reactiveOfferRepository = reactiveOfferRepository;
+        this.cardsOffering = cardsOffering;
         this.objectMapper = objectMapper;
     }
 
@@ -108,26 +110,25 @@ class ParadoxResolutionPhaseKafkaConsumer {
             }
             return;
         }
-        phaseRepository.save(new ParadoxResolutionPhase(
+        var phase = new ParadoxResolutionPhase(
                 envelope.eventId(),
                 started.gameId(),
                 started.eraNumber(),
                 envelope.occurredAt().plusSeconds(started.timerSeconds()),
-                affectedEventIds));
-        dealReactiveOffers(started.gameId(), started.eraNumber());
+                affectedEventIds);
+        phaseRepository.save(phase);
+        offerResolutionCards(phase);
     }
 
     /**
-     * Deals one private Stabilize + Detonate offer per known participant. Offers are created
-     * idempotently per player, so a redelivered phase fact never double-deals; a roster that is
-     * still unknown simply yields no offers yet — the submission path adopts those players lazily.
+     * Deals each known participant's private offer and publishes their eligible resolution cards. Offers are
+     * created idempotently per player, so a redelivered phase fact never double-deals or republishes; a
+     * participant still unknown here gets theirs when the hand projection adopts them.
      */
-    private void dealReactiveOffers(UUID gameId, int eraNumber) {
-        playerStateRepository.findAllByGameId(gameId).stream()
-                .map(PlayerState::playerId)
-                .distinct()
-                .forEach(playerId -> reactiveOfferRepository.createIfAbsent(new ReactiveOffer(
-                        UUID.randomUUID(), gameId, eraNumber, playerId, UUID.randomUUID(), UUID.randomUUID())));
+    private void offerResolutionCards(ParadoxResolutionPhase phase) {
+        playerStateRepository
+                .findAllByGameId(phase.gameId())
+                .forEach(participant -> cardsOffering.offer(phase, participant));
     }
 
     private void closePhase(TimelineEventEnvelope envelope, Message<Object> message) {
