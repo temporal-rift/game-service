@@ -36,6 +36,11 @@ class ParadoxResolutionPhaseRepositoryAdapter implements ParadoxResolutionPhaseR
         return jpaRepository.findByGameIdAndEraNumberWithLock(gameId, eraNumber).map(this::toDomain);
     }
 
+    @Override
+    public void lockParticipantRoster(UUID gameId, int eraNumber) {
+        jpaRepository.lockTransactionScoped("paradox-resolution-roster:" + gameId + ":" + eraNumber);
+    }
+
     private ParadoxResolutionPhaseJpaEntity toEntity(ParadoxResolutionPhase phase) {
         var entity = new ParadoxResolutionPhaseJpaEntity();
         entity.setId(phase.id());

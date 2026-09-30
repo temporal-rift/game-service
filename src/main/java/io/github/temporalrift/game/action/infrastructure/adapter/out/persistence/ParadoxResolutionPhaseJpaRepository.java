@@ -18,4 +18,10 @@ interface ParadoxResolutionPhaseJpaRepository extends JpaRepository<ParadoxResol
             + "where phase.gameId = :gameId and phase.eraNumber = :eraNumber")
     Optional<ParadoxResolutionPhaseJpaEntity> findByGameIdAndEraNumberWithLock(
             @Param("gameId") UUID gameId, @Param("eraNumber") int eraNumber);
+
+    /** Takes a transaction-scoped advisory lock on {@code lockKey}; Postgres releases it at commit or rollback. */
+    @Query(value = """
+                    SELECT 1 FROM (SELECT pg_advisory_xact_lock(hashtextextended(:lockKey, 0))) AS roster_lock
+                    """, nativeQuery = true)
+    int lockTransactionScoped(@Param("lockKey") String lockKey);
 }

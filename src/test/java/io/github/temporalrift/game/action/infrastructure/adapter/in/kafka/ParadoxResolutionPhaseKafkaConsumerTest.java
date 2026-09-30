@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 
@@ -196,6 +197,20 @@ class ParadoxResolutionPhaseKafkaConsumerTest {
                         && envelope.aggregateType().equals(ParadoxResolutionPhase.AGGREGATE_TYPE)
                         && envelope.gameId().equals(GAME_ID)
                         && envelope.occurredAt().equals(OCCURRED_AT)));
+    }
+
+    @Test
+    void phaseStartedTakesTheRosterLockBeforeReadingThePhaseOrItsParticipants() {
+        var message = message("ParadoxResolutionPhaseStarted", 1, phaseStarted(GAME_ID, List.of()));
+        givenClaim(message, true);
+        given(phaseRepository.findByGameIdAndEraNumber(GAME_ID, ERA)).willReturn(Optional.empty());
+
+        consumer.handle(message);
+
+        var inOrder = inOrder(phaseRepository, playerStateRepository);
+        inOrder.verify(phaseRepository).lockParticipantRoster(GAME_ID, ERA);
+        inOrder.verify(phaseRepository).findByGameIdAndEraNumber(GAME_ID, ERA);
+        inOrder.verify(playerStateRepository).findAllByGameId(GAME_ID);
     }
 
     @Test
