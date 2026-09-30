@@ -8,9 +8,12 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.BDDMockito.willReturn;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
 
+import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
@@ -21,8 +24,11 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import io.github.temporalrift.game.action.application.ParadoxResolutionCardsOffering;
+import io.github.temporalrift.game.action.domain.paradoxresolutionphase.ParadoxResolutionPhase;
 import io.github.temporalrift.game.action.domain.playerstate.PlayerState;
 import io.github.temporalrift.game.action.domain.port.out.FutureEventDefinitionPort;
+import io.github.temporalrift.game.action.domain.port.out.ParadoxResolutionPhaseRepository;
 import io.github.temporalrift.game.action.domain.port.out.PlayerStateRepository;
 import io.github.temporalrift.game.shared.domain.event.EventsDrawn;
 import io.github.temporalrift.game.shared.domain.event.FactionAssigned;
@@ -41,6 +47,12 @@ class ActionStateProjectionEventListenerTest {
 
     @Mock
     FutureEventDefinitionPort futureEventDefinitionPort;
+
+    @Mock
+    ParadoxResolutionPhaseRepository paradoxResolutionPhaseRepository;
+
+    @Mock
+    ParadoxResolutionCardsOffering paradoxResolutionCardsOffering;
 
     @InjectMocks
     ActionStateProjectionEventListener listener;
@@ -104,6 +116,54 @@ class ActionStateProjectionEventListenerTest {
                 .singleElement()
                 .extracting(PlayerState.CardInstance::grade)
                 .isEqualTo(CardGrade.III);
+    }
+
+    @Test
+    void onHandSelected_beforeTheErasParadoxResolutionPhase_offersNothing() {
+        var gameId = UUID.randomUUID();
+        var playerId = UUID.randomUUID();
+        given(playerStateRepository.findOrCreateWithLock(gameId, playerId))
+                .willReturn(new PlayerState(UUID.randomUUID(), gameId, playerId));
+        given(paradoxResolutionPhaseRepository.findByGameIdAndEraNumber(gameId, 2))
+                .willReturn(Optional.empty());
+
+        listener.onHandSelected(handSelected(gameId, 2, playerId));
+
+        then(paradoxResolutionCardsOffering).shouldHaveNoInteractions();
+    }
+
+    @Test
+    void onHandSelected_afterTheErasParadoxResolutionPhaseOpened_adoptsThePlayerWithTheirProjectedHand() {
+        var gameId = UUID.randomUUID();
+        var playerId = UUID.randomUUID();
+        var state = new PlayerState(UUID.randomUUID(), gameId, playerId);
+        given(playerStateRepository.findOrCreateWithLock(gameId, playerId)).willReturn(state);
+        var phase = new ParadoxResolutionPhase(UUID.randomUUID(), gameId, 2, Instant.parse("2026-08-09T12:00:30Z"));
+        given(paradoxResolutionPhaseRepository.findByGameIdAndEraNumber(gameId, 2))
+                .willReturn(Optional.of(phase));
+
+        listener.onHandSelected(handSelected(gameId, 2, playerId));
+
+        var inOrder = inOrder(playerStateRepository, paradoxResolutionCardsOffering);
+        inOrder.verify(playerStateRepository).save(state);
+        inOrder.verify(paradoxResolutionCardsOffering).offer(phase, state);
+        assertThat(state.hand()).extracting(PlayerState.CardInstance::cardType).containsExactly(CardType.STABILIZE);
+    }
+
+    @Test
+    void onHandSelected_afterTheErasParadoxResolutionPhaseClosed_offersNothing() {
+        var gameId = UUID.randomUUID();
+        var playerId = UUID.randomUUID();
+        given(playerStateRepository.findOrCreateWithLock(gameId, playerId))
+                .willReturn(new PlayerState(UUID.randomUUID(), gameId, playerId));
+        var phase = new ParadoxResolutionPhase(UUID.randomUUID(), gameId, 2, Instant.parse("2026-08-09T12:00:30Z"));
+        phase.close();
+        given(paradoxResolutionPhaseRepository.findByGameIdAndEraNumber(gameId, 2))
+                .willReturn(Optional.of(phase));
+
+        listener.onHandSelected(handSelected(gameId, 2, playerId));
+
+        then(paradoxResolutionCardsOffering).shouldHaveNoInteractions();
     }
 
     @Test
@@ -230,5 +290,14 @@ class ActionStateProjectionEventListenerTest {
                 .withMessageContaining("Conflicting faction assignment");
 
         then(playerStateRepository).should(never()).save(any());
+    }
+
+    private static HandSelected handSelected(UUID gameId, int eraNumber, UUID playerId) {
+        return new HandSelected(
+                gameId,
+                eraNumber,
+                playerId,
+                HandSelected.SelectionOrigin.PLAYER,
+                List.of(new HandDealt.CardInstance(UUID.randomUUID(), CardType.STABILIZE)));
     }
 }

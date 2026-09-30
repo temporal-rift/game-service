@@ -13,8 +13,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import io.github.temporalrift.game.action.domain.event.ActionRoundPassed;
 import io.github.temporalrift.game.action.domain.event.CardPlayed;
-import io.github.temporalrift.game.action.domain.event.PlayerPassed;
 import io.github.temporalrift.game.action.domain.event.SpecialActionPlayed;
 import io.github.temporalrift.game.shared.domain.event.StartActionRoundRequested;
 import io.github.temporalrift.game.shared.domain.model.CardType;
@@ -94,13 +94,13 @@ class ActionRoundSagaEventListenerTest {
     }
 
     @Test
-    @DisplayName("onPlayerPassed delegates the consumed slot to the saga, like any submission")
-    void onPlayerPassed_delegatesToSaga() {
+    @DisplayName("onActionRoundPassed delegates the consumed slot to the saga, like any submission")
+    void onActionRoundPassed_delegatesToSaga() {
         // given
         var listener = new ActionRoundSagaEventListener(saga, timerScheduler);
 
         // when
-        listener.onPlayerPassed(new PlayerPassed(GAME_ID, ERA_NUMBER, ROUND_NUMBER, PLAYER_ID));
+        listener.onActionRoundPassed(new ActionRoundPassed(GAME_ID, ERA_NUMBER, ROUND_NUMBER, PLAYER_ID));
 
         // then
         then(saga).should().handlePlayerSubmitted(GAME_ID, ERA_NUMBER, ROUND_NUMBER, PLAYER_ID);

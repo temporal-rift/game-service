@@ -7,6 +7,7 @@ import org.springframework.stereotype.Component;
 import tools.jackson.databind.ObjectMapper;
 
 import io.github.temporalrift.game.action.domain.event.ActionEventPayload;
+import io.github.temporalrift.game.action.domain.event.ActionRoundPassed;
 import io.github.temporalrift.game.action.domain.event.ActionRoundStarted;
 import io.github.temporalrift.game.action.domain.event.ActionRoundTimerExpired;
 import io.github.temporalrift.game.action.domain.event.ActivistDeclarationRecorded;
@@ -16,6 +17,7 @@ import io.github.temporalrift.game.action.domain.event.ExposeSignatureRevealed;
 import io.github.temporalrift.game.action.domain.event.HandCardIntercepted;
 import io.github.temporalrift.game.action.domain.event.InfluenceTraced;
 import io.github.temporalrift.game.action.domain.event.ParadoxResolutionCardPlayed;
+import io.github.temporalrift.game.action.domain.event.ParadoxResolutionCardsOffered;
 import io.github.temporalrift.game.action.domain.event.ParadoxResolutionPassed;
 import io.github.temporalrift.game.action.domain.event.PlayerJammed;
 import io.github.temporalrift.game.action.domain.event.PlayerSkipped;
@@ -62,6 +64,8 @@ class ActionEventPublisherAdapter implements ActionEventPublisher {
             case ActionRoundStarted payload ->
                 outboundEvents.publish("ActionRoundStarted", mapper.toWire(payload), event);
             case CardPlayed payload -> outboundEvents.publish("CardPlayed", mapper.toWire(payload), event);
+            case ActionRoundPassed payload ->
+                outboundEvents.publish("ActionRoundPassed", mapper.toWire(payload), event);
             case ExposeSignatureRevealed payload ->
                 outboundEvents.publish("ExposeSignatureRevealed", mapper.toWire(payload), event);
             case ExposeBehaviorChanged payload ->
@@ -71,6 +75,8 @@ class ActionEventPublisherAdapter implements ActionEventPublisher {
                 outboundEvents.publish("HandCardIntercepted", mapper.toWire(payload), event);
             case ParadoxResolutionCardPlayed payload ->
                 outboundEvents.publish("ParadoxResolutionCardPlayed", mapper.toWire(payload), event);
+            case ParadoxResolutionCardsOffered payload ->
+                outboundEvents.publish("ParadoxResolutionCardsOffered", mapper.toWire(payload), event);
             case ParadoxResolutionPassed payload ->
                 outboundEvents.publish("ParadoxResolutionPassed", mapper.toWire(payload), event);
             case PlayerJammed payload -> outboundEvents.publish("PlayerJammed", mapper.toWire(payload), event);

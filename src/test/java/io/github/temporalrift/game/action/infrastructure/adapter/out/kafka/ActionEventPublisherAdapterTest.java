@@ -16,6 +16,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 
+import io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract.ActionRoundPassedPayload;
 import io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract.ActionRoundStartedPayload;
 import io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract.ActionRoundTimerExpiredPayload;
 import io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract.ActivistDeclarationRecordedPayload;
@@ -25,6 +26,7 @@ import io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract.Exp
 import io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract.HandCardInterceptedPayload;
 import io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract.InfluenceTracedPayload;
 import io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract.ParadoxResolutionCardPlayedPayload;
+import io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract.ParadoxResolutionCardsOfferedPayload;
 import io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract.ParadoxResolutionPassedPayload;
 import io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract.PlayerJammedPayload;
 import io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract.PlayerSkippedPayload;
@@ -33,6 +35,7 @@ import io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract.Spe
 import io.github.temporalrift.game.action.domain.activisterastate.ActivistDeclarationMode;
 import io.github.temporalrift.game.action.domain.activisterastate.ProbabilityInfluenceSignature;
 import io.github.temporalrift.game.action.domain.event.ActionEventPayload;
+import io.github.temporalrift.game.action.domain.event.ActionRoundPassed;
 import io.github.temporalrift.game.action.domain.event.ActionRoundStarted;
 import io.github.temporalrift.game.action.domain.event.ActionRoundTimerExpired;
 import io.github.temporalrift.game.action.domain.event.ActivistDeclarationRecorded;
@@ -42,6 +45,7 @@ import io.github.temporalrift.game.action.domain.event.ExposeSignatureRevealed;
 import io.github.temporalrift.game.action.domain.event.HandCardIntercepted;
 import io.github.temporalrift.game.action.domain.event.InfluenceTraced;
 import io.github.temporalrift.game.action.domain.event.ParadoxResolutionCardPlayed;
+import io.github.temporalrift.game.action.domain.event.ParadoxResolutionCardsOffered;
 import io.github.temporalrift.game.action.domain.event.ParadoxResolutionPassed;
 import io.github.temporalrift.game.action.domain.event.PlayerJammed;
 import io.github.temporalrift.game.action.domain.event.PlayerSkipped;
@@ -106,6 +110,34 @@ class ActionEventPublisherAdapterTest {
         adapter.publish(event);
 
         then(outboundEvents).should().publish(eq("HandCardIntercepted"), same(wire), same(event));
+    }
+
+    @Test
+    void publishActionRoundPassed_usesStableMessageType() {
+        var adapter = new ActionEventPublisherAdapter(applicationEventPublisher, mapper, outboundEvents);
+        var gameId = UUID.randomUUID();
+        var passed = new ActionRoundPassed(gameId, 2, 1, UUID.randomUUID());
+        var wire = mock(ActionRoundPassedPayload.class);
+        var event = envelope(gameId, passed);
+        given(mapper.toWire(passed)).willReturn(wire);
+
+        adapter.publish(event);
+
+        then(outboundEvents).should().publish(eq("ActionRoundPassed"), same(wire), same(event));
+    }
+
+    @Test
+    void publishParadoxResolutionCardsOffered_usesStableMessageType() {
+        var adapter = new ActionEventPublisherAdapter(applicationEventPublisher, mapper, outboundEvents);
+        var gameId = UUID.randomUUID();
+        var offered = new ParadoxResolutionCardsOffered(gameId, 2, UUID.randomUUID(), List.of());
+        var wire = mock(ParadoxResolutionCardsOfferedPayload.class);
+        var event = envelope(gameId, offered);
+        given(mapper.toWire(offered)).willReturn(wire);
+
+        adapter.publish(event);
+
+        then(outboundEvents).should().publish(eq("ParadoxResolutionCardsOffered"), same(wire), same(event));
     }
 
     @Test

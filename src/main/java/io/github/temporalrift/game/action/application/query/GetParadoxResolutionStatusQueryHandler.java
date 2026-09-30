@@ -2,7 +2,6 @@ package io.github.temporalrift.game.action.application.query;
 
 import java.time.Clock;
 import java.time.Duration;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -10,16 +9,15 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import io.github.temporalrift.game.action.application.ParadoxResolutionCardsOffering;
 import io.github.temporalrift.game.action.application.port.in.GetParadoxResolutionStatusUseCase;
-import io.github.temporalrift.game.action.domain.paradoxresolutionphase.ParadoxResolutionPhase;
 import io.github.temporalrift.game.action.domain.paradoxresolutionphase.ParadoxResolutionPhaseNotFoundException;
 import io.github.temporalrift.game.action.domain.paradoxresolutionphase.ParadoxResolutionPhaseStatus;
 import io.github.temporalrift.game.action.domain.playerstate.PlayerState;
 import io.github.temporalrift.game.action.domain.port.out.ParadoxResolutionPhaseRepository;
 import io.github.temporalrift.game.action.domain.port.out.PlayerStateRepository;
 import io.github.temporalrift.game.action.domain.port.out.ReactiveOfferRepository;
-import io.github.temporalrift.game.action.domain.reactiveoffer.ReactiveOfferStatus;
-import io.github.temporalrift.game.shared.domain.model.CardGrade;
+import io.github.temporalrift.game.action.domain.reactiveoffer.ReactiveOffer;
 
 @Service
 @ConditionalOnBean({ParadoxResolutionPhaseRepository.class, PlayerStateRepository.class, ReactiveOfferRepository.class})
@@ -87,18 +85,13 @@ class GetParadoxResolutionStatusQueryHandler implements GetParadoxResolutionStat
     }
 
     private List<EligibleCard> eligibleResolutionCards(Query query, PlayerState caller) {
-        var cards = new ArrayList<EligibleCard>();
-        caller.hand().stream()
-                .filter(card -> ParadoxResolutionPhase.ELIGIBLE_CARD_TYPES.contains(card.cardType()))
-                .map(card -> new EligibleCard(card.cardInstanceId(), card.cardType(), card.grade()))
-                .forEach(cards::add);
-        reactiveOfferRepository
+        var offeredCards = reactiveOfferRepository
                 .findByGameIdAndEraNumberAndPlayerId(query.gameId(), query.eraNumber(), query.callerPlayerId())
-                .filter(offer -> offer.status() == ReactiveOfferStatus.OFFERED)
-                .ifPresent(offer -> offer.eligibleCards().stream()
-                        .map(card -> new EligibleCard(card.cardInstanceId(), card.cardType(), CardGrade.I))
-                        .forEach(cards::add));
-        return List.copyOf(cards);
+                .map(ReactiveOffer::eligibleCards)
+                .orElse(List.of());
+        return ParadoxResolutionCardsOffering.eligibleCards(caller.hand(), offeredCards).stream()
+                .map(card -> new EligibleCard(card.cardInstanceId(), card.cardType(), card.grade()))
+                .toList();
     }
 
     private int timerRemainingSeconds(java.time.Instant expiresAt) {

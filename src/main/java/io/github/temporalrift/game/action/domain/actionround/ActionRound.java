@@ -7,8 +7,8 @@ import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Stream;
 
+import io.github.temporalrift.game.action.domain.event.ActionRoundPassed;
 import io.github.temporalrift.game.action.domain.event.ActionRoundStarted;
-import io.github.temporalrift.game.action.domain.event.PlayerPassed;
 import io.github.temporalrift.game.action.domain.event.PlayerSkipped;
 import io.github.temporalrift.game.shared.domain.AggregateRoot;
 import io.github.temporalrift.game.shared.domain.event.ActionRoundClosed;
@@ -115,7 +115,7 @@ public class ActionRound extends AggregateRoot {
     /**
      * Accepts one player's explicit pass: it consumes their slot exactly like a submission, so it counts
      * toward closing the round early, but records no action and spends no card. Jam does not restrict it.
-     * Only an in-process {@link PlayerPassed} is registered; the pass surfaces publicly at close as a skip.
+     * The private {@link ActionRoundPassed} is registered; publicly the pass surfaces only at close, as a skip.
      */
     public boolean pass(UUID playerId) {
         Objects.requireNonNull(playerId, "playerId must not be null");
@@ -128,7 +128,7 @@ public class ActionRound extends AggregateRoot {
 
         pendingPlayerIds.remove(playerId);
         passedPlayerIds.add(playerId);
-        registerEvent(new PlayerPassed(gameId, eraNumber, roundNumber, playerId));
+        registerEvent(new ActionRoundPassed(gameId, eraNumber, roundNumber, playerId));
 
         return allSubmitted();
     }

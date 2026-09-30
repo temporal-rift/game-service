@@ -3,8 +3,10 @@ package io.github.temporalrift.game.action.application.command;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 
@@ -28,7 +30,7 @@ import io.github.temporalrift.game.action.domain.actionround.ActionRoundConfig;
 import io.github.temporalrift.game.action.domain.actionround.DuplicateSubmissionException;
 import io.github.temporalrift.game.action.domain.actionround.RoundNotFoundException;
 import io.github.temporalrift.game.action.domain.actionround.SubmittedAction;
-import io.github.temporalrift.game.action.domain.event.PlayerPassed;
+import io.github.temporalrift.game.action.domain.event.ActionRoundPassed;
 import io.github.temporalrift.game.action.domain.playerstate.PlayerState;
 import io.github.temporalrift.game.action.domain.playerstate.PlayerStateNotFoundException;
 import io.github.temporalrift.game.action.domain.port.out.ActionEventPublisher;
@@ -65,8 +67,8 @@ class PassActionRoundCommandHandlerTest {
     PassActionRoundCommandHandler handler;
 
     @Test
-    @DisplayName("handle — pending player passes — saves the round and publishes only the in-process pass")
-    void handlePassesPrivately() {
+    @DisplayName("handle — pending player passes — saves the round, then publishes the private pass once on both paths")
+    void handlePublishesPrivatePass() {
         // given
         var round = openRound();
         givenRound(round);
@@ -78,9 +80,15 @@ class PassActionRoundCommandHandlerTest {
         // then
         assertThat(result).isEqualTo(new PassActionRoundUseCase.Result(GAME_ID, ERA, ROUND, PLAYER_ID, false));
         assertThat(round.passedPlayerIds()).containsExactly(PLAYER_ID);
-        then(actionRoundRepository).should().save(round);
-        then(actionEventPublisher).should().publishInternally(new PlayerPassed(GAME_ID, ERA, ROUND, PLAYER_ID));
-        then(actionEventPublisher).should(never()).publish(any());
+        var pass = new ActionRoundPassed(GAME_ID, ERA, ROUND, PLAYER_ID);
+        var inOrder = inOrder(actionRoundRepository, actionEventPublisher);
+        inOrder.verify(actionRoundRepository).save(round);
+        inOrder.verify(actionEventPublisher)
+                .publish(argThat(envelope -> envelope.aggregateId().equals(round.id())
+                        && envelope.aggregateType().equals(ActionRound.AGGREGATE_TYPE)
+                        && envelope.payload().equals(pass)));
+        inOrder.verify(actionEventPublisher).publishInternally(pass);
+        then(actionEventPublisher).shouldHaveNoMoreInteractions();
         then(playerStateRepository).should(never()).save(any());
     }
 
@@ -132,6 +140,25 @@ class PassActionRoundCommandHandlerTest {
         // when / then
         assertThatExceptionOfType(DuplicateSubmissionException.class).isThrownBy(() -> handler.handle(command));
         then(actionRoundRepository).should(never()).save(any());
+        then(actionEventPublisher).shouldHaveNoInteractions();
+    }
+
+    @Test
+    @DisplayName("handle — player already submitted a card — rejects the pass and publishes nothing")
+    void handleRejectsPassAfterSubmission() {
+        // given
+        var round = openRound();
+        round.submit(new SubmittedAction.CardAction(
+                PLAYER_ID, UUID.randomUUID(), CardType.PUSH, UUID.randomUUID(), null, null));
+        givenRound(round);
+        given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(playerState));
+
+        var command = command();
+
+        // when / then
+        assertThatExceptionOfType(DuplicateSubmissionException.class).isThrownBy(() -> handler.handle(command));
+        then(actionRoundRepository).should(never()).save(any());
+        then(actionEventPublisher).shouldHaveNoInteractions();
     }
 
     @Test
@@ -147,6 +174,7 @@ class PassActionRoundCommandHandlerTest {
 
         // when / then
         assertThatExceptionOfType(ActionRoundClosedException.class).isThrownBy(() -> handler.handle(command));
+        then(actionEventPublisher).shouldHaveNoInteractions();
     }
 
     @Test
