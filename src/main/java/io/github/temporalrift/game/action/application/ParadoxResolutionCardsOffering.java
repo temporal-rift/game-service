@@ -60,7 +60,7 @@ public class ParadoxResolutionCardsOffering {
      * The eligible resolution set: the hand cards whose type may resolve a paradox, then the still-offered reactive
      * cards, which are always grade I.
      */
-    public static List<EligibleCard> eligibleCards(
+    static List<EligibleCard> eligibleCards(
             List<PlayerState.CardInstance> hand, List<ReactiveOffer.EligibleCard> offeredCards) {
         return Stream.concat(
                         hand.stream()

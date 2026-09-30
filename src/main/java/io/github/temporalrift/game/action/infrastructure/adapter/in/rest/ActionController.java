@@ -5,8 +5,6 @@ import java.util.UUID;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
 
-import io.github.temporalrift.game.action.application.port.in.GetParadoxResolutionStatusUseCase;
-import io.github.temporalrift.game.action.application.port.in.GetRoundStatusUseCase;
 import io.github.temporalrift.game.action.application.port.in.PassActionRoundUseCase;
 import io.github.temporalrift.game.action.application.port.in.PassParadoxResolutionUseCase;
 import io.github.temporalrift.game.action.application.port.in.PlayCardUseCase;
@@ -20,18 +18,11 @@ import io.github.temporalrift.game.action.infrastructure.adapter.in.rest.v1.mode
 import io.github.temporalrift.game.action.infrastructure.adapter.in.rest.v1.model.ActivistDeclarationRequest;
 import io.github.temporalrift.game.action.infrastructure.adapter.in.rest.v1.model.ActivistDeclarationResponse;
 import io.github.temporalrift.game.action.infrastructure.adapter.in.rest.v1.model.CardActionRequest;
-import io.github.temporalrift.game.action.infrastructure.adapter.in.rest.v1.model.CardGrade;
-import io.github.temporalrift.game.action.infrastructure.adapter.in.rest.v1.model.CardType;
-import io.github.temporalrift.game.action.infrastructure.adapter.in.rest.v1.model.EligibleResolutionCard;
 import io.github.temporalrift.game.action.infrastructure.adapter.in.rest.v1.model.HandSelectionRequest;
 import io.github.temporalrift.game.action.infrastructure.adapter.in.rest.v1.model.HandSelectionResponse;
 import io.github.temporalrift.game.action.infrastructure.adapter.in.rest.v1.model.HandSelectionStatus;
-import io.github.temporalrift.game.action.infrastructure.adapter.in.rest.v1.model.MyRoundSubmission;
 import io.github.temporalrift.game.action.infrastructure.adapter.in.rest.v1.model.ParadoxResolutionCardRequest;
 import io.github.temporalrift.game.action.infrastructure.adapter.in.rest.v1.model.ParadoxResolutionCardResponse;
-import io.github.temporalrift.game.action.infrastructure.adapter.in.rest.v1.model.ParadoxResolutionStatusResponse;
-import io.github.temporalrift.game.action.infrastructure.adapter.in.rest.v1.model.RoundStatus;
-import io.github.temporalrift.game.action.infrastructure.adapter.in.rest.v1.model.RoundStatusResponse;
 import io.github.temporalrift.game.action.infrastructure.adapter.in.rest.v1.model.SpecialActionRequest;
 import io.github.temporalrift.game.action.infrastructure.adapter.in.rest.v1.model.SubmitActionRequest;
 import io.github.temporalrift.game.action.infrastructure.adapter.in.rest.v1.model.SubmitActionResponse;
@@ -52,13 +43,8 @@ class ActionController implements ActionApi {
 
     private final RecordActivistDeclarationUseCase recordActivistDeclarationUseCase;
 
-    private final GetRoundStatusUseCase getRoundStatusUseCase;
-    private final GetParadoxResolutionStatusUseCase getParadoxResolutionStatusUseCase;
     private final SelectHandUseCase selectHandUseCase;
 
-    // One input port per ActionApi operation (REST adapters may depend only on port.in use cases), and the
-    // generated ActionApi makes a single controller implement every operation, so the port count tracks the API.
-    @SuppressWarnings("java:S107")
     ActionController(
             PlayCardUseCase playCardUseCase,
             PlaySpecialActionUseCase playSpecialActionUseCase,
@@ -66,8 +52,6 @@ class ActionController implements ActionApi {
             PassActionRoundUseCase passActionRoundUseCase,
             PassParadoxResolutionUseCase passParadoxResolutionUseCase,
             RecordActivistDeclarationUseCase recordActivistDeclarationUseCase,
-            GetRoundStatusUseCase getRoundStatusUseCase,
-            GetParadoxResolutionStatusUseCase getParadoxResolutionStatusUseCase,
             SelectHandUseCase selectHandUseCase) {
         this.playCardUseCase = playCardUseCase;
         this.playSpecialActionUseCase = playSpecialActionUseCase;
@@ -75,8 +59,6 @@ class ActionController implements ActionApi {
         this.passActionRoundUseCase = passActionRoundUseCase;
         this.passParadoxResolutionUseCase = passParadoxResolutionUseCase;
         this.recordActivistDeclarationUseCase = recordActivistDeclarationUseCase;
-        this.getRoundStatusUseCase = getRoundStatusUseCase;
-        this.getParadoxResolutionStatusUseCase = getParadoxResolutionStatusUseCase;
         this.selectHandUseCase = selectHandUseCase;
     }
 
@@ -176,59 +158,6 @@ class ActionController implements ActionApi {
                         result.playerId(),
                         ActionSubmissionStatus.SUBMITTED,
                         result.roundClosed()));
-    }
-
-    @Override
-    public ResponseEntity<RoundStatusResponse> getRoundStatus(UUID gameId, Integer eraNumber, Integer roundNumber) {
-        var result = getRoundStatusUseCase.handle(
-                new GetRoundStatusUseCase.Query(gameId, eraNumber, roundNumber, CurrentPlayer.id()));
-        var response = new RoundStatusResponse(
-                result.eraNumber(),
-                result.roundNumber(),
-                RoundStatus.fromValue(result.status()),
-                result.timerRemainingSeconds(),
-                result.submittedCount(),
-                result.totalPlayers(),
-                result.pendingPlayerIds());
-        response.setMySubmission(toMyRoundSubmission(result.mySubmission()));
-        return ResponseEntity.ok(response);
-    }
-
-    private MyRoundSubmission toMyRoundSubmission(GetRoundStatusUseCase.MySubmission mySubmission) {
-        var response = new MyRoundSubmission(mySubmission.submitted());
-        if (mySubmission.submitted()) {
-            response.setActionType(ActionType.fromValue(mySubmission.actionType()));
-        }
-        return response;
-    }
-
-    @Override
-    public ResponseEntity<ParadoxResolutionStatusResponse> getParadoxResolutionStatus(UUID gameId, Integer eraNumber) {
-        var result = getParadoxResolutionStatusUseCase.handle(
-                new GetParadoxResolutionStatusUseCase.Query(gameId, eraNumber, CurrentPlayer.id()));
-        var response = new ParadoxResolutionStatusResponse(
-                result.eraNumber(),
-                result.phaseOpen(),
-                result.submittedCount(),
-                result.totalPlayers(),
-                result.mySubmitted());
-        response.setTimerRemainingSeconds(result.timerRemainingSeconds());
-        response.setPendingPlayerIds(result.pendingPlayerIds());
-        response.setAffectedEventIds(result.affectedEventIds());
-        if (result.eligibleResolutionCards() != null) {
-            response.setEligibleResolutionCards(result.eligibleResolutionCards().stream()
-                    .map(ActionController::toEligibleResolutionCard)
-                    .toList());
-        }
-        return ResponseEntity.ok(response);
-    }
-
-    private static EligibleResolutionCard toEligibleResolutionCard(
-            GetParadoxResolutionStatusUseCase.EligibleCard card) {
-        return new EligibleResolutionCard(
-                card.cardInstanceId(),
-                CardType.fromValue(card.cardType().name()),
-                CardGrade.fromValue(card.grade().name()));
     }
 
     private SubmissionResult submitCard(
