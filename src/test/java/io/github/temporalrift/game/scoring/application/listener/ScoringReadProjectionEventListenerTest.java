@@ -38,7 +38,8 @@ class ScoringReadProjectionEventListenerTest {
                 LOBBY_ID,
                 List.of(new GameStarted.Player(PLAYER_ID, "Ada"), new GameStarted.Player(other, "Ben")),
                 2,
-                30));
+                30,
+                20));
 
         then(playerRepository).should().upsertPlayerName(GAME_ID, PLAYER_ID, "Ada");
         then(playerRepository).should().upsertPlayerName(GAME_ID, other, "Ben");
