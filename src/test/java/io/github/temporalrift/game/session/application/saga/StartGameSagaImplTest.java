@@ -47,6 +47,7 @@ import io.github.temporalrift.game.session.domain.port.out.FutureEventCatalogPor
 import io.github.temporalrift.game.session.domain.port.out.GameRepository;
 import io.github.temporalrift.game.session.domain.port.out.LobbyRepository;
 import io.github.temporalrift.game.session.domain.port.out.SessionEventPublisher;
+import io.github.temporalrift.game.session.domain.port.out.SessionGameRulesPort;
 import io.github.temporalrift.game.shared.domain.event.FactionAssigned;
 import io.github.temporalrift.game.shared.domain.event.GameStarted;
 import io.github.temporalrift.game.shared.domain.messaging.DomainEventEnvelope;
@@ -86,6 +87,9 @@ class StartGameSagaImplTest {
     FutureEventCatalogPort futureEventCatalog;
 
     @Mock
+    SessionGameRulesPort gameRules;
+
+    @Mock
     Lobby lobby;
 
     @Spy
@@ -107,6 +111,7 @@ class StartGameSagaImplTest {
                 stateManager,
                 compensator,
                 futureEventCatalog,
+                gameRules,
                 clock);
     }
 
@@ -297,6 +302,31 @@ class StartGameSagaImplTest {
                 .containsExactlyElementsOf(TWO_PLAYERS.stream()
                         .map(player -> new GameStarted.Player(player.playerId(), player.playerName()))
                         .toList());
+    }
+
+    @Test
+    @DisplayName("happy path — GameStarted carries the configured score-victory threshold")
+    void start_happyPath_gameStartedCarriesTheConfiguredWinScoreThreshold() {
+        // given
+        stubStartableLobby();
+        given(lobby.id()).willReturn(LOBBY_ID);
+        given(lobby.currentPlayers()).willReturn(TWO_PLAYERS);
+        given(futureEventCatalog.allEventIds()).willReturn(CATALOG_IDS);
+        given(gameRules.winScoreThreshold()).willReturn(25);
+        var captor = ArgumentCaptor.forClass(DomainEventEnvelope.class);
+
+        // when
+        saga.start(LOBBY_ID, REQUESTING_PLAYER_ID);
+
+        // then
+        then(eventPublisher).should(atLeastOnce()).publish(captor.capture());
+        var gameStarted = captor.getAllValues().stream()
+                .map(DomainEventEnvelope::payload)
+                .filter(GameStarted.class::isInstance)
+                .map(GameStarted.class::cast)
+                .findFirst()
+                .orElseThrow();
+        assertThat(gameStarted.winScoreThreshold()).isEqualTo(25);
     }
 
     @Test

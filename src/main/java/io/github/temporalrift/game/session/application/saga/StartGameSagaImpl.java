@@ -31,6 +31,7 @@ import io.github.temporalrift.game.session.domain.port.out.FutureEventCatalogPor
 import io.github.temporalrift.game.session.domain.port.out.GameRepository;
 import io.github.temporalrift.game.session.domain.port.out.LobbyRepository;
 import io.github.temporalrift.game.session.domain.port.out.SessionEventPublisher;
+import io.github.temporalrift.game.session.domain.port.out.SessionGameRulesPort;
 import io.github.temporalrift.game.session.domain.saga.FactionAssignment;
 import io.github.temporalrift.game.shared.application.SagaHandoffPublisher;
 import io.github.temporalrift.game.shared.domain.event.FactionAssigned;
@@ -48,6 +49,7 @@ class StartGameSagaImpl implements StartGameSaga {
     private final StartGameSagaStateManager stateManager;
     private final StartGameSagaCompensator compensator;
     private final FutureEventCatalogPort futureEventCatalog;
+    private final SessionGameRulesPort gameRules;
     private final SecureRandom random;
     private final Clock clock;
 
@@ -59,6 +61,7 @@ class StartGameSagaImpl implements StartGameSaga {
             StartGameSagaStateManager stateManager,
             StartGameSagaCompensator compensator,
             FutureEventCatalogPort futureEventCatalog,
+            SessionGameRulesPort gameRules,
             Clock clock) {
         this.lobbyRepository = lobbyRepository;
         this.gameRepository = gameRepository;
@@ -67,6 +70,7 @@ class StartGameSagaImpl implements StartGameSaga {
         this.stateManager = stateManager;
         this.compensator = compensator;
         this.futureEventCatalog = futureEventCatalog;
+        this.gameRules = gameRules;
         this.random = new SecureRandom();
         this.clock = clock;
     }
@@ -176,7 +180,13 @@ class StartGameSagaImpl implements StartGameSaga {
                         Lobby.AGGREGATE_TYPE,
                         gameId,
                         DomainEventEnvelope.SCHEMA_VERSION_V1,
-                        new GameStarted(gameId, lobby.id(), roster, assignments.size(), gameDeck.size()),
+                        new GameStarted(
+                                gameId,
+                                lobby.id(),
+                                roster,
+                                assignments.size(),
+                                gameDeck.size(),
+                                gameRules.winScoreThreshold()),
                         clock));
 
         var eraStarted = new EraStarted(gameId, 1, List.of(), playerIds);
