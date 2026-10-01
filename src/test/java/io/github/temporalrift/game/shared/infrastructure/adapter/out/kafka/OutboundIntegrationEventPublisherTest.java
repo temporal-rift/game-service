@@ -60,7 +60,7 @@ class OutboundIntegrationEventPublisherTest {
     void publish_validSessionPayload_publishesEvent() {
         var gameId = UUID.randomUUID();
         var payload = new GameStartedPayload(
-                gameId, UUID.randomUUID(), List.of(new GameStartedPlayer(UUID.randomUUID(), "Ada")), 3, 30);
+                gameId, UUID.randomUUID(), List.of(new GameStartedPlayer(UUID.randomUUID(), "Ada")), 3, 30, 20);
 
         outboundEvents.publish("GameStarted", payload, envelope(gameId));
 
@@ -113,7 +113,7 @@ class OutboundIntegrationEventPublisherTest {
     @Test
     void publish_rejectedPayload_doesNotExposeEventData() {
         var gameId = UUID.randomUUID();
-        var payload = new GameStartedPayload(null, UUID.randomUUID(), List.of(), 3, 30);
+        var payload = new GameStartedPayload(null, UUID.randomUUID(), List.of(), 3, 30, 20);
 
         var envelope = envelope(gameId);
         var thrown = org.junit.jupiter.api.Assertions.assertThrows(
