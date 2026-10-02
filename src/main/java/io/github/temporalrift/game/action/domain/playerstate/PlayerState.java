@@ -10,6 +10,7 @@ import java.util.Set;
 import java.util.UUID;
 
 import io.github.temporalrift.game.action.domain.CardNotInHandException;
+import io.github.temporalrift.game.action.domain.activisterastate.ActivistDeclarationMode;
 import io.github.temporalrift.game.shared.domain.AggregateRoot;
 import io.github.temporalrift.game.shared.domain.model.CardGrade;
 import io.github.temporalrift.game.shared.domain.model.CardType;
@@ -149,6 +150,16 @@ public class PlayerState extends AggregateRoot {
 
     public boolean isJammed() {
         return jammed;
+    }
+
+    /** The modes this player may declare in an open declaration window; empty for anyone but an unjammed Activist. */
+    public List<ActivistDeclarationMode> eligibleDeclarationModes(boolean momentumEligible) {
+        if (faction != Faction.ACTIVISTS || jammed) {
+            return List.of();
+        }
+        return momentumEligible
+                ? List.of(ActivistDeclarationMode.RALLY, ActivistDeclarationMode.MOMENTUM)
+                : List.of(ActivistDeclarationMode.RALLY);
     }
 
     public boolean isObscured() {

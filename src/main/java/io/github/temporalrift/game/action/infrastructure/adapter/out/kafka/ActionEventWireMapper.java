@@ -9,6 +9,8 @@ import io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract.Act
 import io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract.ActionSummary;
 import io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract.ActivistDeclarationRecordedPayload;
 import io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract.CardPlayedPayload;
+import io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract.DeclarationOptionsOfferedPayload;
+import io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract.DeclarationWindowOpenedPayload;
 import io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract.EligibleResolutionCard;
 import io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract.ExposeBehaviorChangedPayload;
 import io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract.ExposeInfluenceSignature;
@@ -29,6 +31,8 @@ import io.github.temporalrift.game.action.domain.event.ActionRoundStarted;
 import io.github.temporalrift.game.action.domain.event.ActionRoundTimerExpired;
 import io.github.temporalrift.game.action.domain.event.ActivistDeclarationRecorded;
 import io.github.temporalrift.game.action.domain.event.CardPlayed;
+import io.github.temporalrift.game.action.domain.event.DeclarationOptionsOffered;
+import io.github.temporalrift.game.action.domain.event.DeclarationWindowOpened;
 import io.github.temporalrift.game.action.domain.event.ExposeBehaviorChanged;
 import io.github.temporalrift.game.action.domain.event.ExposeSignatureRevealed;
 import io.github.temporalrift.game.action.domain.event.HandCardIntercepted;
@@ -44,6 +48,10 @@ import io.github.temporalrift.game.shared.domain.event.ActionRoundClosed;
 
 @Mapper(componentModel = "spring")
 interface ActionEventWireMapper {
+
+    DeclarationWindowOpenedPayload toWire(DeclarationWindowOpened event);
+
+    DeclarationOptionsOfferedPayload toWire(DeclarationOptionsOffered event);
 
     ActivistDeclarationRecordedPayload toWire(ActivistDeclarationRecorded event);
 

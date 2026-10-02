@@ -12,6 +12,8 @@ import io.github.temporalrift.game.action.domain.event.ActionRoundStarted;
 import io.github.temporalrift.game.action.domain.event.ActionRoundTimerExpired;
 import io.github.temporalrift.game.action.domain.event.ActivistDeclarationRecorded;
 import io.github.temporalrift.game.action.domain.event.CardPlayed;
+import io.github.temporalrift.game.action.domain.event.DeclarationOptionsOffered;
+import io.github.temporalrift.game.action.domain.event.DeclarationWindowOpened;
 import io.github.temporalrift.game.action.domain.event.ExposeBehaviorChanged;
 import io.github.temporalrift.game.action.domain.event.ExposeSignatureRevealed;
 import io.github.temporalrift.game.action.domain.event.HandCardIntercepted;
@@ -59,6 +61,10 @@ class ActionEventPublisherAdapter implements ActionEventPublisher {
     @Override
     public void publish(DomainEventEnvelope<ActionEventPayload> event) {
         switch (event.payload()) {
+            case DeclarationWindowOpened payload ->
+                outboundEvents.publish("DeclarationWindowOpened", mapper.toWire(payload), event);
+            case DeclarationOptionsOffered payload ->
+                outboundEvents.publish("DeclarationOptionsOffered", mapper.toWire(payload), event);
             case ActivistDeclarationRecorded payload ->
                 outboundEvents.publish("ActivistDeclarationRecorded", mapper.toWire(payload), event);
             case ActionRoundStarted payload ->
