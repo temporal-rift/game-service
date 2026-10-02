@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import io.github.temporalrift.game.action.application.ActionTargetValidator;
+import io.github.temporalrift.game.action.application.ActivistMomentumEligibility;
 import io.github.temporalrift.game.action.application.port.in.RecordActivistDeclarationUseCase;
 import io.github.temporalrift.game.action.domain.actionround.FactionRequiredException;
 import io.github.temporalrift.game.action.domain.actionround.InvalidSpecialActionException;
@@ -36,6 +37,7 @@ class RecordActivistDeclarationCommandHandler implements RecordActivistDeclarati
     private final DeclarationPhaseRepository declarationPhaseRepository;
     private final PlayerStateRepository playerStateRepository;
     private final ActionTargetValidator actionTargetValidator;
+    private final ActivistMomentumEligibility momentumEligibility;
     private final ActionEventPublisher actionEventPublisher;
     private final SagaHandoffPublisher sagaHandoffPublisher;
     private final Clock clock;
@@ -46,6 +48,7 @@ class RecordActivistDeclarationCommandHandler implements RecordActivistDeclarati
             DeclarationPhaseRepository declarationPhaseRepository,
             PlayerStateRepository playerStateRepository,
             ActionTargetValidator actionTargetValidator,
+            ActivistMomentumEligibility momentumEligibility,
             ActionEventPublisher actionEventPublisher,
             ApplicationEventPublisher applicationEventPublisher,
             Clock clock) {
@@ -54,6 +57,7 @@ class RecordActivistDeclarationCommandHandler implements RecordActivistDeclarati
         this.declarationPhaseRepository = declarationPhaseRepository;
         this.playerStateRepository = playerStateRepository;
         this.actionTargetValidator = actionTargetValidator;
+        this.momentumEligibility = momentumEligibility;
         this.actionEventPublisher = actionEventPublisher;
         this.sagaHandoffPublisher = new SagaHandoffPublisher(applicationEventPublisher);
         this.clock = clock;
@@ -84,7 +88,7 @@ class RecordActivistDeclarationCommandHandler implements RecordActivistDeclarati
                         command.gameId(),
                         command.eraNumber(),
                         command.playerId(),
-                        previousDeclarationSucceeded(command)));
+                        momentumEligibility.isEligible(command.gameId(), command.eraNumber(), command.playerId())));
         state.declare(command.mode(), command.targetEventId(), command.targetOutcomeId());
         activistEraStateRepository.save(state);
         publishDeclarationRecorded(state);
@@ -95,17 +99,6 @@ class RecordActivistDeclarationCommandHandler implements RecordActivistDeclarati
                 command.mode(),
                 command.targetEventId(),
                 command.targetOutcomeId());
-    }
-
-    private boolean previousDeclarationSucceeded(Command command) {
-        if (command.eraNumber() == 1) {
-            return false;
-        }
-        return activistEraStateRepository
-                .findByGameIdAndEraNumberAndActivistPlayerId(
-                        command.gameId(), command.eraNumber() - 1, command.playerId())
-                .map(ActivistEraState::declarationSucceeded)
-                .orElse(false);
     }
 
     private void publishDeclarationRecorded(ActivistEraState state) {

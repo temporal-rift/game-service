@@ -27,6 +27,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 
 import io.github.temporalrift.game.action.application.ActionTargetValidator;
+import io.github.temporalrift.game.action.application.ActivistMomentumEligibility;
 import io.github.temporalrift.game.action.application.port.in.RecordActivistDeclarationUseCase;
 import io.github.temporalrift.game.action.domain.activisterastate.ActivistDeclarationMode;
 import io.github.temporalrift.game.action.domain.activisterastate.ActivistEraState;
@@ -89,6 +90,7 @@ class RecordActivistDeclarationCommandHandlerTest {
                 declarationPhaseRepository,
                 playerStateRepository,
                 actionTargetValidator,
+                new ActivistMomentumEligibility(activistEraStateRepository),
                 actionEventPublisher,
                 applicationEventPublisher,
                 clock);

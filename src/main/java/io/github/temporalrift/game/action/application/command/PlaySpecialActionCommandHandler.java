@@ -8,6 +8,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import io.github.temporalrift.game.action.application.ActionRoundEventPublication;
 import io.github.temporalrift.game.action.application.ActionTargetValidator;
+import io.github.temporalrift.game.action.application.ActivistMomentumEligibility;
 import io.github.temporalrift.game.action.application.GameParticipantValidator;
 import io.github.temporalrift.game.action.application.StalledEventTargetLock;
 import io.github.temporalrift.game.action.application.port.in.PlaySpecialActionUseCase;
@@ -52,6 +53,7 @@ class PlaySpecialActionCommandHandler implements PlaySpecialActionUseCase {
     private final ActionEventPublisher actionEventPublisher;
 
     private final ActionTargetValidator actionTargetValidator;
+    private final ActivistMomentumEligibility momentumEligibility;
 
     private final GameParticipantValidator gameParticipantValidator;
 
@@ -69,6 +71,7 @@ class PlaySpecialActionCommandHandler implements PlaySpecialActionUseCase {
             SealGameUsageRepository sealGameUsageRepository,
             ActionEventPublisher actionEventPublisher,
             ActionTargetValidator actionTargetValidator,
+            ActivistMomentumEligibility momentumEligibility,
             GameParticipantValidator gameParticipantValidator,
             StalledEventTargetLock stalledEventTargetLock,
             GameRulesPort gameRules,
@@ -80,6 +83,7 @@ class PlaySpecialActionCommandHandler implements PlaySpecialActionUseCase {
         this.sealGameUsageRepository = sealGameUsageRepository;
         this.actionEventPublisher = actionEventPublisher;
         this.actionTargetValidator = actionTargetValidator;
+        this.momentumEligibility = momentumEligibility;
         this.gameParticipantValidator = gameParticipantValidator;
         this.stalledEventTargetLock = stalledEventTargetLock;
         this.gameRules = gameRules;
@@ -189,19 +193,8 @@ class PlaySpecialActionCommandHandler implements PlaySpecialActionUseCase {
                         command.gameId(),
                         command.eraNumber(),
                         command.playerId(),
-                        previousDeclarationSucceeded(command)));
+                        momentumEligibility.isEligible(command.gameId(), command.eraNumber(), command.playerId())));
         state.expose(targetPlayerId, signature);
         activistEraStateRepository.save(state);
-    }
-
-    private boolean previousDeclarationSucceeded(Command command) {
-        if (command.eraNumber() == 1) {
-            return false;
-        }
-        return activistEraStateRepository
-                .findByGameIdAndEraNumberAndActivistPlayerId(
-                        command.gameId(), command.eraNumber() - 1, command.playerId())
-                .map(ActivistEraState::declarationSucceeded)
-                .orElse(false);
     }
 }
