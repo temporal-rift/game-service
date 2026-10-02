@@ -12,6 +12,8 @@ public sealed interface ActionEventPayload
                 ActionRoundStarted,
                 ActionRoundTimerExpired,
                 CardPlayed,
+                DeclarationOptionsOffered,
+                DeclarationWindowOpened,
                 ExposeBehaviorChanged,
                 ExposeSignatureRevealed,
                 HandCardIntercepted,

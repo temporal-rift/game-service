@@ -3,6 +3,7 @@ package io.github.temporalrift.game.action.infrastructure.adapter.out.kafka;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.groups.Tuple.tuple;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
@@ -11,8 +12,11 @@ import org.mapstruct.factory.Mappers;
 
 import io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract;
 import io.github.temporalrift.game.action.domain.actionround.ActionFamily;
+import io.github.temporalrift.game.action.domain.activisterastate.ActivistDeclarationMode;
 import io.github.temporalrift.game.action.domain.event.ActionRoundPassed;
 import io.github.temporalrift.game.action.domain.event.CardPlayed;
+import io.github.temporalrift.game.action.domain.event.DeclarationOptionsOffered;
+import io.github.temporalrift.game.action.domain.event.DeclarationWindowOpened;
 import io.github.temporalrift.game.action.domain.event.ExposeBehaviorChanged;
 import io.github.temporalrift.game.action.domain.event.HandCardIntercepted;
 import io.github.temporalrift.game.action.domain.event.InfluenceTraced;
@@ -58,6 +62,36 @@ class ActionEventWireMapperTest {
         assertThat(wire.eraNumber()).isEqualTo(domain.eraNumber());
         assertThat(wire.roundNumber()).isEqualTo(domain.roundNumber());
         assertThat(wire.playerId()).isEqualTo(domain.playerId());
+    }
+
+    @Test
+    void declarationWindowOpened_carriesOnlyTheGameEraAndExpiry() {
+        var domain = new DeclarationWindowOpened(UUID.randomUUID(), 2, Instant.parse("2030-01-01T10:00:30Z"));
+
+        var wire = mapper.toWire(domain);
+
+        assertThat(wire)
+                .isEqualTo(new GeneratedChannelContract.DeclarationWindowOpenedPayload(
+                        domain.gameId(), 2, Instant.parse("2030-01-01T10:00:30Z")));
+    }
+
+    @Test
+    void declarationOptionsOffered_mapsTheRecipientAndEveryModeInOrder() {
+        var domain = new DeclarationOptionsOffered(
+                UUID.randomUUID(),
+                2,
+                UUID.randomUUID(),
+                List.of(ActivistDeclarationMode.RALLY, ActivistDeclarationMode.MOMENTUM));
+
+        var wire = mapper.toWire(domain);
+
+        assertThat(wire.gameId()).isEqualTo(domain.gameId());
+        assertThat(wire.eraNumber()).isEqualTo(2);
+        assertThat(wire.playerId()).isEqualTo(domain.playerId());
+        assertThat(wire.eligibleModes())
+                .containsExactly(
+                        GeneratedChannelContract.ActivistDeclarationMode.RALLY,
+                        GeneratedChannelContract.ActivistDeclarationMode.MOMENTUM);
     }
 
     @Test

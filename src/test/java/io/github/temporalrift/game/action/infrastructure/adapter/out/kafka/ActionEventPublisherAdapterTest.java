@@ -7,6 +7,7 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.mock;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
@@ -21,6 +22,8 @@ import io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract.Act
 import io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract.ActionRoundTimerExpiredPayload;
 import io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract.ActivistDeclarationRecordedPayload;
 import io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract.CardPlayedPayload;
+import io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract.DeclarationOptionsOfferedPayload;
+import io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract.DeclarationWindowOpenedPayload;
 import io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract.ExposeBehaviorChangedPayload;
 import io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract.ExposeSignatureRevealedPayload;
 import io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract.HandCardInterceptedPayload;
@@ -40,6 +43,8 @@ import io.github.temporalrift.game.action.domain.event.ActionRoundStarted;
 import io.github.temporalrift.game.action.domain.event.ActionRoundTimerExpired;
 import io.github.temporalrift.game.action.domain.event.ActivistDeclarationRecorded;
 import io.github.temporalrift.game.action.domain.event.CardPlayed;
+import io.github.temporalrift.game.action.domain.event.DeclarationOptionsOffered;
+import io.github.temporalrift.game.action.domain.event.DeclarationWindowOpened;
 import io.github.temporalrift.game.action.domain.event.ExposeBehaviorChanged;
 import io.github.temporalrift.game.action.domain.event.ExposeSignatureRevealed;
 import io.github.temporalrift.game.action.domain.event.HandCardIntercepted;
@@ -138,6 +143,35 @@ class ActionEventPublisherAdapterTest {
         adapter.publish(event);
 
         then(outboundEvents).should().publish(eq("ParadoxResolutionCardsOffered"), same(wire), same(event));
+    }
+
+    @Test
+    void publishDeclarationWindowOpened_usesStableMessageType() {
+        var adapter = new ActionEventPublisherAdapter(applicationEventPublisher, mapper, outboundEvents);
+        var gameId = UUID.randomUUID();
+        var opened = new DeclarationWindowOpened(gameId, 2, Instant.parse("2030-01-01T10:00:30Z"));
+        var wire = mock(DeclarationWindowOpenedPayload.class);
+        var event = envelope(gameId, opened);
+        given(mapper.toWire(opened)).willReturn(wire);
+
+        adapter.publish(event);
+
+        then(outboundEvents).should().publish(eq("DeclarationWindowOpened"), same(wire), same(event));
+    }
+
+    @Test
+    void publishDeclarationOptionsOffered_usesStableMessageType() {
+        var adapter = new ActionEventPublisherAdapter(applicationEventPublisher, mapper, outboundEvents);
+        var gameId = UUID.randomUUID();
+        var offered =
+                new DeclarationOptionsOffered(gameId, 2, UUID.randomUUID(), List.of(ActivistDeclarationMode.RALLY));
+        var wire = mock(DeclarationOptionsOfferedPayload.class);
+        var event = envelope(gameId, offered);
+        given(mapper.toWire(offered)).willReturn(wire);
+
+        adapter.publish(event);
+
+        then(outboundEvents).should().publish(eq("DeclarationOptionsOffered"), same(wire), same(event));
     }
 
     @Test

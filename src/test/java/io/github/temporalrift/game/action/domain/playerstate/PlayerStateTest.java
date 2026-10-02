@@ -11,6 +11,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import io.github.temporalrift.game.action.domain.CardNotInHandException;
+import io.github.temporalrift.game.action.domain.activisterastate.ActivistDeclarationMode;
 import io.github.temporalrift.game.shared.domain.model.CardType;
 import io.github.temporalrift.game.shared.domain.model.Faction;
 
@@ -248,5 +249,34 @@ class PlayerStateTest {
         assertThat(ps.revealedCards()).isEmpty();
         assertThat(ps.isJammed()).isTrue();
         assertThat(ps.isObscured()).isTrue();
+    }
+
+    @Test
+    @DisplayName("eligibleDeclarationModes — unjammed Activist — Rally, plus Momentum when eligible")
+    void eligibleDeclarationModesForAnActivist() {
+        // given
+        var ps = newState();
+        ps.assignFaction(Faction.ACTIVISTS);
+
+        // then
+        assertThat(ps.eligibleDeclarationModes(false)).containsExactly(ActivistDeclarationMode.RALLY);
+        assertThat(ps.eligibleDeclarationModes(true))
+                .containsExactly(ActivistDeclarationMode.RALLY, ActivistDeclarationMode.MOMENTUM);
+    }
+
+    @Test
+    @DisplayName("eligibleDeclarationModes — non-Activist, unassigned, or jammed Activist — none")
+    void eligibleDeclarationModesForAnyoneElse() {
+        // given
+        var prophet = newState();
+        prophet.assignFaction(Faction.PROPHETS);
+        var jammed = newState();
+        jammed.assignFaction(Faction.ACTIVISTS);
+        jammed.applyJam();
+
+        // then
+        assertThat(prophet.eligibleDeclarationModes(true)).isEmpty();
+        assertThat(newState().eligibleDeclarationModes(true)).isEmpty();
+        assertThat(jammed.eligibleDeclarationModes(true)).isEmpty();
     }
 }
