@@ -29,6 +29,7 @@ import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import io.github.temporalrift.game.action.application.ActionTargetValidator;
+import io.github.temporalrift.game.action.application.ActivistMomentumEligibility;
 import io.github.temporalrift.game.action.application.GameParticipantValidator;
 import io.github.temporalrift.game.action.application.port.in.PlaySpecialActionUseCase;
 import io.github.temporalrift.game.action.domain.actionround.ActionRound;
@@ -101,6 +102,9 @@ class PlaySpecialActionCommandHandlerTest {
 
     @Mock
     ActionTargetValidator actionTargetValidator;
+
+    @Mock
+    ActivistMomentumEligibility momentumEligibility;
 
     @Mock
     GameParticipantValidator gameParticipantValidator;
@@ -847,8 +851,6 @@ class PlaySpecialActionCommandHandlerTest {
         given(gameRules.onceEraBudgetedSpecials()).willReturn(Set.of());
         given(activistEraStateRepository.findByGameIdAndEraNumberAndActivistPlayerId(GAME_ID, 2, PLAYER_ID))
                 .willReturn(Optional.empty());
-        given(activistEraStateRepository.findByGameIdAndEraNumberAndActivistPlayerId(GAME_ID, 1, PLAYER_ID))
-                .willReturn(Optional.empty());
         given(round.submit(any())).willReturn(false);
         given(round.id()).willReturn(UUID.randomUUID());
         given(round.gameId()).willReturn(GAME_ID);
@@ -975,8 +977,6 @@ class PlaySpecialActionCommandHandlerTest {
         if (!roundOneActions.isEmpty()
                 && roundOneActions.getFirst().publicCategory().orElse(null) == CardCategory.PROBABILITY_SHIFTER) {
             given(activistEraStateRepository.findByGameIdAndEraNumberAndActivistPlayerId(GAME_ID, 2, PLAYER_ID))
-                    .willReturn(Optional.empty());
-            given(activistEraStateRepository.findByGameIdAndEraNumberAndActivistPlayerId(GAME_ID, 1, PLAYER_ID))
                     .willReturn(Optional.empty());
             given(round.submit(any())).willReturn(false);
             given(round.id()).willReturn(UUID.randomUUID());
