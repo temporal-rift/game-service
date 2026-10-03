@@ -27,5 +27,21 @@
                 tableName="declaration_phase"
                 columnNames="game_id,era_number"
                 constraintName="uq_declaration_phase_game_era"/>
+        <createTable tableName="declaration_decision">
+            <column name="phase_id" type="UUID">
+                <constraints nullable="false"/>
+            </column>
+            <column name="player_id" type="UUID">
+                <constraints nullable="false"/>
+            </column>
+            <column name="decision" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addPrimaryKey tableName="declaration_decision" columnNames="phase_id,player_id"
+                constraintName="pk_declaration_decision"/>
+        <addForeignKeyConstraint baseTableName="declaration_decision" baseColumnNames="phase_id"
+                referencedTableName="declaration_phase" referencedColumnNames="id"
+                constraintName="fk_declaration_decision_phase" onDelete="CASCADE"/>
     </changeSet>
 </databaseChangeLog>

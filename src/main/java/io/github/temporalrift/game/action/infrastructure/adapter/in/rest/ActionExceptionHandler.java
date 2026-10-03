@@ -26,6 +26,7 @@ import io.github.temporalrift.game.action.domain.activisterastate.ExposeAlreadyR
 import io.github.temporalrift.game.action.domain.activisterastate.ExposeTargetNotEligibleException;
 import io.github.temporalrift.game.action.domain.activisterastate.ExposeUnavailableException;
 import io.github.temporalrift.game.action.domain.activisterastate.MomentumNotEligibleException;
+import io.github.temporalrift.game.action.domain.declarationphase.DeclarationAlreadyDecidedException;
 import io.github.temporalrift.game.action.domain.handselection.HandSelectionAlreadyResolvedException;
 import io.github.temporalrift.game.action.domain.handselection.HandSelectionNotOpenException;
 import io.github.temporalrift.game.action.domain.handselection.InvalidHandSelectionException;
@@ -42,6 +43,11 @@ import io.github.temporalrift.game.shared.infrastructure.adapter.in.rest.RestAdv
 @Order(RestAdviceOrder.MODULE)
 @RestControllerAdvice(basePackageClasses = ActionController.class)
 class ActionExceptionHandler {
+
+    @ExceptionHandler(DeclarationAlreadyDecidedException.class)
+    ProblemDetail handleDeclarationAlreadyDecided(DeclarationAlreadyDecidedException ex) {
+        return ProblemDetails.of(HttpStatus.CONFLICT, ex.getMessage(), "409-04");
+    }
 
     @ExceptionHandler({RoundNotFoundException.class, PlayerStateNotFoundException.class})
     ProblemDetail handleNotFound(RuntimeException ex) {

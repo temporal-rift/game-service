@@ -5,6 +5,7 @@ import java.util.UUID;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
 
+import io.github.temporalrift.game.action.application.port.in.DeclineDeclarationUseCase;
 import io.github.temporalrift.game.action.application.port.in.PassActionRoundUseCase;
 import io.github.temporalrift.game.action.application.port.in.PassParadoxResolutionUseCase;
 import io.github.temporalrift.game.action.application.port.in.PlayCardUseCase;
@@ -18,6 +19,7 @@ import io.github.temporalrift.game.action.infrastructure.adapter.in.rest.v1.mode
 import io.github.temporalrift.game.action.infrastructure.adapter.in.rest.v1.model.ActivistDeclarationRequest;
 import io.github.temporalrift.game.action.infrastructure.adapter.in.rest.v1.model.ActivistDeclarationResponse;
 import io.github.temporalrift.game.action.infrastructure.adapter.in.rest.v1.model.CardActionRequest;
+import io.github.temporalrift.game.action.infrastructure.adapter.in.rest.v1.model.DeclarationDeclineResponse;
 import io.github.temporalrift.game.action.infrastructure.adapter.in.rest.v1.model.HandSelectionRequest;
 import io.github.temporalrift.game.action.infrastructure.adapter.in.rest.v1.model.HandSelectionResponse;
 import io.github.temporalrift.game.action.infrastructure.adapter.in.rest.v1.model.HandSelectionStatus;
@@ -30,6 +32,8 @@ import io.github.temporalrift.game.shared.infrastructure.config.CurrentPlayer;
 
 @RestController
 class ActionController implements ActionApi {
+
+    private final DeclineDeclarationUseCase declineDeclarationUseCase;
 
     private final PlayCardUseCase playCardUseCase;
 
@@ -52,7 +56,8 @@ class ActionController implements ActionApi {
             PassActionRoundUseCase passActionRoundUseCase,
             PassParadoxResolutionUseCase passParadoxResolutionUseCase,
             RecordActivistDeclarationUseCase recordActivistDeclarationUseCase,
-            SelectHandUseCase selectHandUseCase) {
+            SelectHandUseCase selectHandUseCase,
+            DeclineDeclarationUseCase declineDeclarationUseCase) {
         this.playCardUseCase = playCardUseCase;
         this.playSpecialActionUseCase = playSpecialActionUseCase;
         this.playParadoxResolutionCardUseCase = playParadoxResolutionCardUseCase;
@@ -60,6 +65,19 @@ class ActionController implements ActionApi {
         this.passParadoxResolutionUseCase = passParadoxResolutionUseCase;
         this.recordActivistDeclarationUseCase = recordActivistDeclarationUseCase;
         this.selectHandUseCase = selectHandUseCase;
+        this.declineDeclarationUseCase = declineDeclarationUseCase;
+    }
+
+    @Override
+    public ResponseEntity<DeclarationDeclineResponse> declineDeclaration(UUID gameId, Integer eraNumber) {
+        var result = declineDeclarationUseCase.handle(
+                new DeclineDeclarationUseCase.Command(gameId, eraNumber, CurrentPlayer.id()));
+        return ResponseEntity.accepted()
+                .body(new DeclarationDeclineResponse(
+                        result.gameId(),
+                        result.eraNumber(),
+                        result.playerId(),
+                        DeclarationDeclineResponse.StatusEnum.DECLINED));
     }
 
     @Override
