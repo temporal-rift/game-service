@@ -11,7 +11,7 @@ import io.github.temporalrift.game.session.domain.saga.EraSagaStatus;
 import io.github.temporalrift.game.shared.domain.event.DeclarationPhaseClosed;
 import io.github.temporalrift.game.shared.domain.event.StartActionRoundRequested;
 
-/** Advances the era to Action Round 1 once the declaration window closes on expiry. */
+/** Advances the era to Action Round 1 once the declaration window completes or expires. */
 @Component
 class DeclarationPhaseClosedListener {
 

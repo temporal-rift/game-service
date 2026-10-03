@@ -43,8 +43,8 @@ public record SessionRulesProperties(
         @NotNull ProbabilityBounds probability)
         implements SessionGameRulesPort {
 
-    private static final int DEFAULT_ACTION_ROUND_TIMER_SECONDS = 60;
-    private static final int DEFAULT_DECLARATION_TIMER_SECONDS = 30;
+    private static final int DEFAULT_ACTION_ROUND_TIMER_SECONDS = 180;
+    private static final int DEFAULT_DECLARATION_TIMER_SECONDS = 120;
 
     public record Stabilization(
             @DefaultValue("3") @Min(1) int prophetWrittenResolutions,
@@ -62,6 +62,7 @@ public record SessionRulesProperties(
         if (handDealForcedTypes.size() > cardsPerDeal) {
             throw new IllegalArgumentException("hand-deal-forced-types must not exceed cards-per-deal");
         }
+        validatePositiveValues(actionRoundTimerSeconds, "action-round-timer-seconds");
         validatePositiveValues(declarationTimerSeconds, "declaration-timer-seconds");
         validateWeights(cardCategoryWeights, "card-category-weights");
         validateWeights(cardGradeWeights, "card-grade-weights");

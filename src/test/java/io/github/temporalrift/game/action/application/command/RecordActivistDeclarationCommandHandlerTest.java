@@ -133,8 +133,10 @@ class RecordActivistDeclarationCommandHandlerTest {
         }));
         then(activistEraStateRepository).should().save(any(ActivistEraState.class));
         var internalEventCaptor = ArgumentCaptor.forClass(Object.class);
-        then(applicationEventPublisher).should().publishEvent(internalEventCaptor.capture());
-        assertThat(internalEventCaptor.getValue())
+        then(applicationEventPublisher)
+                .should(org.mockito.Mockito.times(2))
+                .publishEvent(internalEventCaptor.capture());
+        assertThat(internalEventCaptor.getAllValues().getFirst())
                 .isEqualTo(new io.github.temporalrift.game.shared.domain.event.ActivistDeclarationRecorded(
                         GAME_ID,
                         ERA_NUMBER,
@@ -143,6 +145,9 @@ class RecordActivistDeclarationCommandHandlerTest {
                         io.github.temporalrift.game.shared.domain.model.SpecialAction.RALLY,
                         TARGET_EVENT_ID,
                         TARGET_OUTCOME_ID));
+        assertThat(internalEventCaptor.getAllValues().getLast())
+                .isEqualTo(new io.github.temporalrift.game.shared.domain.event.DeclarationPhaseClosed(
+                        GAME_ID, ERA_NUMBER));
     }
 
     @Test
@@ -155,7 +160,11 @@ class RecordActivistDeclarationCommandHandlerTest {
                 .willReturn(Optional.of(playerState));
         given(declarationPhaseRepository.findByGameIdAndEraNumberWithLock(GAME_ID, nextEra))
                 .willReturn(Optional.of(new io.github.temporalrift.game.action.domain.declarationphase.DeclarationPhase(
-                        UUID.randomUUID(), GAME_ID, nextEra, CLOCK.instant().plusSeconds(30))));
+                        UUID.randomUUID(),
+                        GAME_ID,
+                        nextEra,
+                        CLOCK.instant().plusSeconds(30),
+                        java.util.List.of(PLAYER_ID))));
         given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumber(GAME_ID, nextEra, 1))
                 .willReturn(Optional.empty());
         given(playerState.faction()).willReturn(Faction.ACTIVISTS);
@@ -194,6 +203,7 @@ class RecordActivistDeclarationCommandHandlerTest {
         // then — the timeout close takes the same row lock, so this serializes validation
         // against closure; an unlocked read must never be used here.
         then(declarationPhaseRepository).should().findByGameIdAndEraNumberWithLock(GAME_ID, ERA_NUMBER);
+        then(declarationPhaseRepository).should().save(any());
         then(declarationPhaseRepository).shouldHaveNoMoreInteractions();
     }
 
@@ -269,6 +279,7 @@ class RecordActivistDeclarationCommandHandlerTest {
                 java.util.UUID.randomUUID(),
                 GAME_ID,
                 ERA_NUMBER,
-                CLOCK.instant().plusSeconds(60));
+                CLOCK.instant().plusSeconds(60),
+                java.util.List.of(PLAYER_ID));
     }
 }

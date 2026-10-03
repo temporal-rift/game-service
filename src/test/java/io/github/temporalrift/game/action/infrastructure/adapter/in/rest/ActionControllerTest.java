@@ -94,8 +94,46 @@ class ActionControllerTest {
     @MockitoBean
     SelectHandUseCase selectHandUseCase;
 
+    @MockitoBean
+    io.github.temporalrift.game.action.application.port.in.DeclineDeclarationUseCase declineDeclarationUseCase;
+
     private RequestPostProcessor auth() {
         return authentication(new PlayerAuthenticationToken(new PlayerPrincipal(PLAYER_ID)));
+    }
+
+    @Test
+    void declineRequiresAuthentication() throws Exception {
+        mockMvc.perform(post("/api/v1/games/{gameId}/eras/{eraNumber}/declarations/decline", GAME_ID, ERA))
+                .andExpect(status().isUnauthorized());
+        then(declineDeclarationUseCase).shouldHaveNoInteractions();
+    }
+
+    @Test
+    void declineUsesAuthenticatedIdentityAndAcknowledgesTerminalDecision() throws Exception {
+        given(declineDeclarationUseCase.handle(any()))
+                .willReturn(new io.github.temporalrift.game.action.application.port.in.DeclineDeclarationUseCase.Result(
+                        GAME_ID, ERA, PLAYER_ID));
+        mockMvc.perform(post("/api/v1/games/{gameId}/eras/{eraNumber}/declarations/decline", GAME_ID, ERA)
+                        .with(auth()))
+                .andExpect(status().isAccepted())
+                .andExpect(jsonPath("$.playerId").value(PLAYER_ID.toString()))
+                .andExpect(jsonPath("$.status").value("DECLINED"));
+        then(declineDeclarationUseCase)
+                .should()
+                .handle(new io.github.temporalrift.game.action.application.port.in.DeclineDeclarationUseCase.Command(
+                        GAME_ID, ERA, PLAYER_ID));
+    }
+
+    @Test
+    void declineCannotReplaceDeclaration() throws Exception {
+        given(declineDeclarationUseCase.handle(any()))
+                .willThrow(
+                        new io.github.temporalrift.game.action.domain.declarationphase
+                                .DeclarationAlreadyDecidedException(PLAYER_ID, ERA));
+        mockMvc.perform(post("/api/v1/games/{gameId}/eras/{eraNumber}/declarations/decline", GAME_ID, ERA)
+                        .with(auth()))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("409-04"));
     }
 
     @Test

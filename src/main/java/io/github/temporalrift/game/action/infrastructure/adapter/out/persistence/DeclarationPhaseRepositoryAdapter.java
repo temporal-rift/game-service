@@ -31,13 +31,17 @@ class DeclarationPhaseRepositoryAdapter implements DeclarationPhaseRepository {
         if (phase.status() != DeclarationPhaseStatus.OPEN) {
             throw new IllegalArgumentException("Only open declaration phases can be created");
         }
-        return jpaRepository.insertIfAbsent(
+        var inserted = jpaRepository.insertIfAbsent(
                         phase.id(),
                         phase.gameId(),
                         phase.eraNumber(),
                         phase.status().name(),
                         phase.expiresAt())
                 == 1;
+        if (inserted) {
+            save(phase);
+        }
+        return inserted;
     }
 
     @Override
@@ -67,6 +71,7 @@ class DeclarationPhaseRepositoryAdapter implements DeclarationPhaseRepository {
         entity.setEraNumber(phase.eraNumber());
         entity.setStatus(phase.status().name());
         entity.setExpiresAt(phase.expiresAt());
+        entity.setDecisions(phase.decisions());
         return entity;
     }
 
@@ -76,6 +81,7 @@ class DeclarationPhaseRepositoryAdapter implements DeclarationPhaseRepository {
                 entity.getGameId(),
                 entity.getEraNumber(),
                 entity.getExpiresAt(),
-                DeclarationPhaseStatus.valueOf(entity.getStatus()));
+                DeclarationPhaseStatus.valueOf(entity.getStatus()),
+                entity.getDecisions());
     }
 }

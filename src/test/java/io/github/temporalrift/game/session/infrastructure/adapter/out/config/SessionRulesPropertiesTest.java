@@ -70,13 +70,13 @@ class SessionRulesPropertiesTest {
     }
 
     @Test
-    @DisplayName("actionRoundTimerSeconds returns 60 for an unmapped player count")
+    @DisplayName("actionRoundTimerSeconds returns 180 for an unmapped player count")
     void actionRoundTimerSeconds_unknownCount_returnsDefault() {
         // given
         var props = properties(Map.of(4, 45));
 
         // when / then
-        assertThat(props.actionRoundTimerSeconds(7)).isEqualTo(60);
+        assertThat(props.actionRoundTimerSeconds(7)).isEqualTo(180);
     }
 
     @Test
@@ -171,7 +171,7 @@ class SessionRulesPropertiesTest {
                                 Set.of(),
                                 PROBABILITY)
                         .declarationTimerSeconds(7))
-                .isEqualTo(30);
+                .isEqualTo(120);
     }
 
     @ParameterizedTest
@@ -283,6 +283,13 @@ class SessionRulesPropertiesTest {
         var source = minimalRules().withProperty("game.rules.stabilization.weaver-active-chain-links", "0");
 
         assertThatExceptionOfType(BindException.class).isThrownBy(() -> bindValidated(source));
+    }
+
+    @Test
+    void nonPositiveActionTimer_isRejected() {
+        assertThatIllegalArgumentException()
+                .isThrownBy(() -> properties(Map.of(3, -1)))
+                .withMessage("action-round-timer-seconds must contain only positive values");
     }
 
     @Test
