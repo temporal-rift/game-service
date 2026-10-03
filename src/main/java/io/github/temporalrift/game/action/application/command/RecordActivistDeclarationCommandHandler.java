@@ -15,6 +15,7 @@ import io.github.temporalrift.game.action.domain.actionround.InvalidSpecialActio
 import io.github.temporalrift.game.action.domain.actionround.JammedPlayerException;
 import io.github.temporalrift.game.action.domain.activisterastate.ActivistEraState;
 import io.github.temporalrift.game.action.domain.activisterastate.DeclarationWindowClosedException;
+import io.github.temporalrift.game.action.domain.declarationphase.DeclarationDecision;
 import io.github.temporalrift.game.action.domain.event.ActionEventPayload;
 import io.github.temporalrift.game.action.domain.event.ActivistDeclarationRecorded;
 import io.github.temporalrift.game.action.domain.playerstate.PlayerStateNotFoundException;
@@ -24,6 +25,7 @@ import io.github.temporalrift.game.action.domain.port.out.ActivistEraStateReposi
 import io.github.temporalrift.game.action.domain.port.out.DeclarationPhaseRepository;
 import io.github.temporalrift.game.action.domain.port.out.PlayerStateRepository;
 import io.github.temporalrift.game.shared.application.SagaHandoffPublisher;
+import io.github.temporalrift.game.shared.domain.event.DeclarationPhaseClosed;
 import io.github.temporalrift.game.shared.domain.messaging.DomainEventEnvelope;
 import io.github.temporalrift.game.shared.domain.model.Faction;
 
@@ -41,6 +43,7 @@ class RecordActivistDeclarationCommandHandler implements RecordActivistDeclarati
     private final ActionEventPublisher actionEventPublisher;
     private final SagaHandoffPublisher sagaHandoffPublisher;
     private final Clock clock;
+    private final ApplicationEventPublisher applicationEvents;
 
     RecordActivistDeclarationCommandHandler(
             ActivistEraStateRepository activistEraStateRepository,
@@ -61,6 +64,7 @@ class RecordActivistDeclarationCommandHandler implements RecordActivistDeclarati
         this.actionEventPublisher = actionEventPublisher;
         this.sagaHandoffPublisher = new SagaHandoffPublisher(applicationEventPublisher);
         this.clock = clock;
+        this.applicationEvents = applicationEventPublisher;
     }
 
     @Override
@@ -71,16 +75,17 @@ class RecordActivistDeclarationCommandHandler implements RecordActivistDeclarati
         var playerState = playerStateRepository
                 .findByGameIdAndPlayerIdWithLock(command.gameId(), command.playerId())
                 .orElseThrow(() -> new PlayerStateNotFoundException(command.gameId(), command.playerId()));
-        declarationPhaseRepository
+        var phase = declarationPhaseRepository
                 .findByGameIdAndEraNumberWithLock(command.gameId(), command.eraNumber())
-                .orElseThrow(() -> new DeclarationWindowClosedException(command.gameId(), command.eraNumber()))
-                .assertOpen(clock.instant());
+                .orElseThrow(() -> new DeclarationWindowClosedException(command.gameId(), command.eraNumber()));
+        phase.assertOpen(clock.instant());
         if (actionRoundRepository
                 .findByGameIdAndEraNumberAndRoundNumber(command.gameId(), command.eraNumber(), DECLARATION_ROUND_NUMBER)
                 .isPresent()) {
             throw new DeclarationWindowClosedException(command.gameId(), command.eraNumber());
         }
         validateActivist(playerState.faction(), playerState.isJammed(), command.playerId(), command.mode());
+        phase.assertPending(command.playerId(), clock.instant());
         var state = activistEraStateRepository
                 .findByGameIdAndEraNumberAndActivistPlayerId(command.gameId(), command.eraNumber(), command.playerId())
                 .orElseGet(() -> new ActivistEraState(
@@ -92,6 +97,11 @@ class RecordActivistDeclarationCommandHandler implements RecordActivistDeclarati
         state.declare(command.mode(), command.targetEventId(), command.targetOutcomeId());
         activistEraStateRepository.save(state);
         publishDeclarationRecorded(state);
+        var closed = phase.decide(command.playerId(), DeclarationDecision.DECLARED, clock.instant());
+        declarationPhaseRepository.save(phase);
+        if (closed) {
+            applicationEvents.publishEvent(new DeclarationPhaseClosed(command.gameId(), command.eraNumber()));
+        }
         return new Result(
                 command.gameId(),
                 command.eraNumber(),

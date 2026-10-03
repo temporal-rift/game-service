@@ -1,6 +1,7 @@
 package io.github.temporalrift.game.action.application.saga;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.argThat;
@@ -68,6 +69,9 @@ class DeclarationPhaseEventListenerTest {
     @Mock
     GameRulesPort gameRules;
 
+    @Mock
+    org.springframework.context.ApplicationEventPublisher events;
+
     DeclarationPhaseEventListener listener;
 
     @BeforeEach
@@ -79,16 +83,19 @@ class DeclarationPhaseEventListenerTest {
                 new ActivistMomentumEligibility(activistEraStateRepository),
                 actionEventPublisher,
                 gameRules,
-                Clock.fixed(NOW, ZoneOffset.UTC));
+                Clock.fixed(NOW, ZoneOffset.UTC),
+                events);
     }
 
     @Test
     @DisplayName("first opening — persists the phase, publishes its expiry once, and schedules expiry")
     void firstOpeningPublishesPersistedExpiry() {
         // given
-        var playerIds = List.of(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID());
-        given(gameRules.declarationTimerSeconds(3)).willReturn(30);
-        given(repository.createIfAbsent(any(DeclarationPhase.class))).willReturn(true);
+        var activist = participant(Faction.ACTIVISTS);
+        var prophet = participant(Faction.PROPHETS);
+        var weaver = participant(Faction.WEAVERS);
+        givenOpening(activist, prophet, weaver);
+        var playerIds = List.of(activist.playerId(), prophet.playerId(), weaver.playerId());
 
         // when
         listener.onHandSelectionCompleted(new HandSelectionCompleted(GAME_ID, ERA, playerIds));
@@ -99,7 +106,7 @@ class DeclarationPhaseEventListenerTest {
         assertThat(phase.getValue().gameId()).isEqualTo(GAME_ID);
         assertThat(phase.getValue().eraNumber()).isEqualTo(ERA);
         assertThat(phase.getValue().expiresAt()).isEqualTo(Instant.parse("2030-01-01T10:00:30Z"));
-        var published = publishedEnvelopes(1);
+        var published = publishedEnvelopes(2);
         assertThat(published.getFirst().payload())
                 .isEqualTo(new DeclarationWindowOpened(GAME_ID, ERA, Instant.parse("2030-01-01T10:00:30Z")));
         assertThat(published.getFirst().aggregateId())
@@ -157,22 +164,33 @@ class DeclarationPhaseEventListenerTest {
     }
 
     @Test
-    @DisplayName("first opening — a jammed Activist or an unprojected participant receives no offer")
-    void firstOpeningSkipsIneligibleParticipants() {
-        // given
+    void noEligibleParticipants_closesWithoutSchedulingAWait() {
         var jammed = participant(Faction.ACTIVISTS);
         jammed.applyJam();
-        var unprojected = UUID.randomUUID();
-        givenOpening(jammed);
-        given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, unprojected))
-                .willReturn(Optional.empty());
-
-        // when
+        var prophet = participant(Faction.PROPHETS);
+        givenOpening(jammed, prophet);
         listener.onHandSelectionCompleted(
-                new HandSelectionCompleted(GAME_ID, ERA, List.of(jammed.playerId(), unprojected)));
-
-        // then
+                new HandSelectionCompleted(GAME_ID, ERA, List.of(jammed.playerId(), prophet.playerId())));
         assertThat(publishedEnvelopes(1).getFirst().payload()).isInstanceOf(DeclarationWindowOpened.class);
+        then(repository)
+                .should()
+                .save(argThat(phase -> phase.status()
+                        == io.github.temporalrift.game.action.domain.declarationphase.DeclarationPhaseStatus.CLOSED));
+        then(events)
+                .should()
+                .publishEvent(new io.github.temporalrift.game.shared.domain.event.DeclarationPhaseClosed(GAME_ID, ERA));
+        then(timerScheduler).shouldHaveNoInteractions();
+    }
+
+    @Test
+    void unprojectedParticipant_defersOpeningInsteadOfSilentlyDroppingOpportunity() {
+        var unprojected = UUID.randomUUID();
+        assertThatThrownBy(() -> listener.onHandSelectionCompleted(
+                        new HandSelectionCompleted(GAME_ID, ERA, List.of(unprojected))))
+                .isInstanceOf(IllegalStateException.class);
+        then(repository).should(never()).createIfAbsent(any());
+        then(actionEventPublisher).shouldHaveNoInteractions();
+        then(events).shouldHaveNoInteractions();
     }
 
     @Test
@@ -199,8 +217,8 @@ class DeclarationPhaseEventListenerTest {
     @DisplayName("duplicate, stale, or post-close trigger — publishes nothing and does not reschedule")
     void existingPhasePublishesNothing() {
         // given
-        given(gameRules.declarationTimerSeconds(2)).willReturn(30);
-        given(repository.createIfAbsent(any(DeclarationPhase.class))).willReturn(false);
+        given(repository.findByGameIdAndEraNumber(GAME_ID, ERA))
+                .willReturn(Optional.of(new DeclarationPhase(UUID.randomUUID(), GAME_ID, ERA, NOW.plusSeconds(120))));
 
         // when
         listener.onHandSelectionCompleted(

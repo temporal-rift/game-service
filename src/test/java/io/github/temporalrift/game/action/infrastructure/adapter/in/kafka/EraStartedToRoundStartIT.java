@@ -9,15 +9,19 @@ import java.util.Optional;
 import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import io.github.temporalrift.game.GameServiceIntegrationTest;
+import io.github.temporalrift.game.action.application.port.in.DeclineDeclarationUseCase;
 import io.github.temporalrift.game.action.domain.actionround.ActionRound;
 import io.github.temporalrift.game.action.domain.actionround.RoundStatus;
 import io.github.temporalrift.game.action.domain.handselection.HandSelection;
 import io.github.temporalrift.game.action.domain.handselection.HandSelectionStatus;
+import io.github.temporalrift.game.action.domain.playerstate.PlayerState;
 import io.github.temporalrift.game.action.domain.port.out.ActionRoundRepository;
 import io.github.temporalrift.game.action.domain.port.out.ActionRoundSagaRepository;
 import io.github.temporalrift.game.action.domain.port.out.HandSelectionRepository;
@@ -33,6 +37,7 @@ import io.github.temporalrift.game.session.domain.port.out.SessionGameRulesPort;
 import io.github.temporalrift.game.session.domain.saga.EraSagaState;
 import io.github.temporalrift.game.session.domain.saga.EraSagaStatus;
 import io.github.temporalrift.game.shared.domain.event.HandSelected;
+import io.github.temporalrift.game.shared.domain.model.Faction;
 import io.github.temporalrift.game.shared.domain.port.out.GameRulesPort;
 
 @GameServiceIntegrationTest
@@ -74,8 +79,14 @@ class EraStartedToRoundStartIT {
     @Autowired
     TransactionTemplate transactionTemplate;
 
-    @Test
-    void eraStarted_waitsForEveryFinalHandBeforeRoundOneStarts() {
+    @Autowired
+    DeclineDeclarationUseCase declineDeclaration;
+
+    @ParameterizedTest
+    @EnumSource(
+            value = Faction.class,
+            names = {"ACTIVISTS", "PROPHETS"})
+    void eraStarted_waitsForFinalHandsAndAdvancesAfterDeclarationDecisions(Faction firstFaction) {
         var gameId = UUID.randomUUID();
         var eraNumber = 1;
         var roundNumber = 1;
@@ -83,6 +94,14 @@ class EraStartedToRoundStartIT {
 
         transactionTemplate.executeWithoutResult(_ -> {
             gameRepository.save(new Game(gameId, UUID.randomUUID(), futureEventCatalog.allEventIds()));
+            for (var playerId : playerIds) {
+                var player = new PlayerState(UUID.randomUUID(), gameId, playerId);
+                player.assignFaction(
+                        playerId.equals(playerIds.getFirst())
+                                ? firstFaction
+                                : playerId.equals(playerIds.get(1)) ? Faction.WEAVERS : Faction.REVISIONISTS);
+                playerStateRepository.save(player);
+            }
             applicationEventPublisher.publishEvent(new EraStarted(gameId, eraNumber, List.of(), playerIds));
         });
 
@@ -107,11 +126,18 @@ class EraStartedToRoundStartIT {
                                 .toList()))));
 
         var declarationPhase = awaitDeclarationPhase(gameId, eraNumber);
-        assertThat(declarationPhase.status())
-                .isEqualTo(io.github.temporalrift.game.action.domain.declarationphase.DeclarationPhaseStatus.OPEN);
-        assertThat(awaitEraSagaState(gameId).status()).isEqualTo(EraSagaStatus.WAITING_DECLARATION);
-        assertThat(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumber(gameId, eraNumber, roundNumber))
-                .isEmpty();
+        if (firstFaction == Faction.ACTIVISTS) {
+            assertThat(declarationPhase.status())
+                    .isEqualTo(io.github.temporalrift.game.action.domain.declarationphase.DeclarationPhaseStatus.OPEN);
+            assertThat(awaitEraSagaState(gameId).status()).isEqualTo(EraSagaStatus.WAITING_DECLARATION);
+            assertThat(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumber(gameId, eraNumber, roundNumber))
+                    .isEmpty();
+            declineDeclaration.handle(new DeclineDeclarationUseCase.Command(gameId, eraNumber, playerIds.getFirst()));
+        } else {
+            assertThat(declarationPhase.status())
+                    .isEqualTo(
+                            io.github.temporalrift.game.action.domain.declarationphase.DeclarationPhaseStatus.CLOSED);
+        }
 
         var actionRound = awaitActionRound(gameId, eraNumber, roundNumber);
         assertThat(actionRound.gameId()).isEqualTo(gameId);
