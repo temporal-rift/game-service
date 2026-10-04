@@ -1,6 +1,8 @@
 package io.github.temporalrift.game;
 
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -12,6 +14,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import io.github.temporalrift.game.action.application.port.in.DeclineDeclarationUseCase;
 import io.github.temporalrift.game.action.application.port.in.PassActionRoundUseCase;
 import io.github.temporalrift.game.action.application.port.in.PassParadoxResolutionUseCase;
 import io.github.temporalrift.game.action.application.port.in.PlayCardUseCase;
@@ -55,6 +58,9 @@ class SecurityIT {
     private RecordActivistDeclarationUseCase recordActivistDeclarationUseCase;
 
     @MockitoBean
+    private DeclineDeclarationUseCase declineDeclarationUseCase;
+
+    @MockitoBean
     private SelectHandUseCase selectHandUseCase;
 
     @MockitoBean
@@ -87,5 +93,14 @@ class SecurityIT {
         mockMvc.perform(get("/api/v1/games/00000000-0000-0000-0000-000000000001"))
                 .andExpect(status().isUnauthorized())
                 .andExpect(content().contentType("application/problem+json"));
+    }
+
+    @Test
+    @DisplayName("Given no Authorization header, when a declaration decline is requested, then returns 401")
+    void givenNoAuthorizationHeader_whenDeclarationDeclined_thenRejectsBeforeInvokingUseCase() throws Exception {
+        mockMvc.perform(post("/api/v1/games/00000000-0000-0000-0000-000000000001/eras/1/declarations/decline"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(content().contentType("application/problem+json"));
+        verifyNoInteractions(declineDeclarationUseCase);
     }
 }
