@@ -58,7 +58,7 @@ class DeclarationPhaseRepositoryAdapterIT {
             var loaded = repository.findByGameIdAndEraNumberWithLock(game, 1).orElseThrow();
             assertThat(loaded.status()).isEqualTo(DeclarationPhaseStatus.CLOSED);
             assertThat(loaded.hasDeclined(first)).isTrue();
-            assertThat(loaded.decisions().get(second)).isEqualTo(DeclarationDecision.DECLARED);
+            assertThat(loaded.decisions()).containsEntry(second, DeclarationDecision.DECLARED);
         });
     }
 }

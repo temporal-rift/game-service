@@ -185,8 +185,8 @@ class DeclarationPhaseEventListenerTest {
     @Test
     void unprojectedParticipant_defersOpeningInsteadOfSilentlyDroppingOpportunity() {
         var unprojected = UUID.randomUUID();
-        assertThatThrownBy(() -> listener.onHandSelectionCompleted(
-                        new HandSelectionCompleted(GAME_ID, ERA, List.of(unprojected))))
+        var completed = new HandSelectionCompleted(GAME_ID, ERA, List.of(unprojected));
+        assertThatThrownBy(() -> listener.onHandSelectionCompleted(completed))
                 .isInstanceOf(IllegalStateException.class);
         then(repository).should(never()).createIfAbsent(any());
         then(actionEventPublisher).shouldHaveNoInteractions();
