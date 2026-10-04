@@ -79,8 +79,8 @@ class DeclineDeclarationCommandHandlerTest {
     void declineCannotReplaceAcceptedDeclaration() {
         player.assignFaction(Faction.ACTIVISTS);
         phase.decide(PLAYER, DeclarationDecision.DECLARED, NOW);
-        assertThatThrownBy(() -> handler.handle(new DeclineDeclarationUseCase.Command(GAME, 1, PLAYER)))
-                .isInstanceOf(DeclarationAlreadyDecidedException.class);
+        var command = new DeclineDeclarationUseCase.Command(GAME, 1, PLAYER);
+        assertThatThrownBy(() -> handler.handle(command)).isInstanceOf(DeclarationAlreadyDecidedException.class);
         then(phases).should(never()).save(any());
         then(events).shouldHaveNoInteractions();
     }
@@ -90,16 +90,16 @@ class DeclineDeclarationCommandHandlerTest {
         player.assignFaction(Faction.ACTIVISTS);
         handler = new DeclineDeclarationCommandHandler(
                 players, phases, events, Clock.fixed(NOW.plusSeconds(120), ZoneOffset.UTC));
-        assertThatThrownBy(() -> handler.handle(new DeclineDeclarationUseCase.Command(GAME, 1, PLAYER)))
-                .isInstanceOf(DeclarationWindowClosedException.class);
+        var command = new DeclineDeclarationUseCase.Command(GAME, 1, PLAYER);
+        assertThatThrownBy(() -> handler.handle(command)).isInstanceOf(DeclarationWindowClosedException.class);
         then(events).shouldHaveNoInteractions();
     }
 
     @Test
     void otherFaction_isRejected() {
         player.assignFaction(Faction.PROPHETS);
-        assertThatThrownBy(() -> handler.handle(new DeclineDeclarationUseCase.Command(GAME, 1, PLAYER)))
-                .isInstanceOf(InvalidSpecialActionException.class);
+        var command = new DeclineDeclarationUseCase.Command(GAME, 1, PLAYER);
+        assertThatThrownBy(() -> handler.handle(command)).isInstanceOf(InvalidSpecialActionException.class);
         then(phases).should(never()).save(any());
     }
 
@@ -107,8 +107,8 @@ class DeclineDeclarationCommandHandlerTest {
     void jammedPlayer_isRejected() {
         player.assignFaction(Faction.ACTIVISTS);
         player.applyJam();
-        assertThatThrownBy(() -> handler.handle(new DeclineDeclarationUseCase.Command(GAME, 1, PLAYER)))
-                .isInstanceOf(JammedPlayerException.class);
+        var command = new DeclineDeclarationUseCase.Command(GAME, 1, PLAYER);
+        assertThatThrownBy(() -> handler.handle(command)).isInstanceOf(JammedPlayerException.class);
         then(events).shouldHaveNoInteractions();
     }
 }

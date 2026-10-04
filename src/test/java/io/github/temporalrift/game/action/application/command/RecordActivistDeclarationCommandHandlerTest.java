@@ -8,6 +8,7 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 
 import java.time.Clock;
 import java.time.Instant;
@@ -133,9 +134,7 @@ class RecordActivistDeclarationCommandHandlerTest {
         }));
         then(activistEraStateRepository).should().save(any(ActivistEraState.class));
         var internalEventCaptor = ArgumentCaptor.forClass(Object.class);
-        then(applicationEventPublisher)
-                .should(org.mockito.Mockito.times(2))
-                .publishEvent(internalEventCaptor.capture());
+        then(applicationEventPublisher).should(times(2)).publishEvent(internalEventCaptor.capture());
         assertThat(internalEventCaptor.getAllValues().getFirst())
                 .isEqualTo(new io.github.temporalrift.game.shared.domain.event.ActivistDeclarationRecorded(
                         GAME_ID,

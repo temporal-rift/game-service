@@ -44,7 +44,7 @@ class DeclarationPhaseTest {
         var phase = new DeclarationPhase(UUID.randomUUID(), UUID.randomUUID(), 1, NOW, List.of(player));
         assertThatThrownBy(() -> phase.decide(player, DeclarationDecision.DECLARED, NOW))
                 .isInstanceOf(DeclarationWindowClosedException.class);
-        assertThat(phase.decisions().get(player)).isEqualTo(DeclarationDecision.PENDING);
+        assertThat(phase.decisions()).containsEntry(player, DeclarationDecision.PENDING);
         assertThat(phase.closeIfOpen(NOW)).isTrue();
     }
 
@@ -52,7 +52,8 @@ class DeclarationPhaseTest {
     void unofferedPlayer_cannotDecide() {
         var phase = new DeclarationPhase(
                 UUID.randomUUID(), UUID.randomUUID(), 1, NOW.plusSeconds(120), List.of(UUID.randomUUID()));
-        assertThatThrownBy(() -> phase.decide(UUID.randomUUID(), DeclarationDecision.DECLINED, NOW))
+        var unofferedPlayer = UUID.randomUUID();
+        assertThatThrownBy(() -> phase.decide(unofferedPlayer, DeclarationDecision.DECLINED, NOW))
                 .isInstanceOf(DeclarationWindowClosedException.class);
     }
 
