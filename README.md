@@ -5,7 +5,7 @@ Spring Modulith service that owns the full game lifecycle: lobby management, gam
 ## Requirements
 
 - Java 26+
-- Maven 3.9.13+
+- Maven 4.0.0-rc-7+
 - Docker (for Testcontainers and local infrastructure)
 
 ## Local infrastructure
