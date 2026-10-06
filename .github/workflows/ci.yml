@@ -69,8 +69,11 @@ jobs:
               }
             ]
 
+      # Newer CLI releases fail with a Snyk server timeout (504) on this project's dependency graph.
       - name: Setup Snyk CLI
         uses: snyk/actions/setup@12140f4059e244892ae643824a95459a102120dd # master
+        with:
+          snyk-version: v1.1305.2
 
       - name: Snyk scan
         env:
