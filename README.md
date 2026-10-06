@@ -5,8 +5,12 @@ Spring Modulith service that owns the full game lifecycle: lobby management, gam
 ## Requirements
 
 - Java 26+
-- Maven 3.9.13+
+- Maven 4.0.0-rc-7+
 - Docker (for Testcontainers and local infrastructure)
+- A `github` server in `~/.m2/settings.xml` holding your GitHub username and a token with `read:packages`: shared
+  artifacts resolve from GitHub Packages, which needs a token even for public packages. The registry itself is declared
+  in `.mvn/settings.xml`. To build the image, pass the settings as a secret:
+  `docker build --secret id=maven_settings,src=$HOME/.m2/settings.xml .`
 
 ## Local infrastructure
 
