@@ -92,6 +92,13 @@ class ExecutionTest {
     }
 
     @Test
+    @DisplayName("an advance without an operation id or a target time is not valid")
+    void clockAdvance_missingFields_isInvalid() {
+        assertThatThrownBy(() -> new ClockAdvance(null, 0, START)).isInstanceOf(InvalidClockAdvanceException.class);
+        assertThatThrownBy(() -> new ClockAdvance(OPERATION, 0, null)).isInstanceOf(InvalidClockAdvanceException.class);
+    }
+
+    @Test
     @DisplayName("a negative expected revision is not a valid advance")
     void clockAdvance_negativeRevision_isInvalid() {
         var target = START.plus(Duration.ofSeconds(1));
