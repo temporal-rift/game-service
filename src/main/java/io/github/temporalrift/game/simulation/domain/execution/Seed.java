@@ -6,7 +6,7 @@ import java.util.regex.Pattern;
 /** An unsigned 64-bit seed held in its canonical decimal form. */
 public record Seed(String decimal) {
 
-    private static final Pattern CANONICAL = Pattern.compile("0|[1-9][0-9]{0,19}");
+    private static final Pattern CANONICAL = Pattern.compile("0|[1-9]\\d{0,19}");
     private static final BigInteger MAX = BigInteger.ONE.shiftLeft(64).subtract(BigInteger.ONE);
 
     public Seed {

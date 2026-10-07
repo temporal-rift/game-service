@@ -30,6 +30,8 @@ class ExecutionRepositoryAdapter implements ExecutionRepository {
             FROM simulation_execution WHERE id = 1
             """;
 
+    private static final String REVISION = "revision";
+
     private final JdbcClient jdbc;
 
     ExecutionRepositoryAdapter(JdbcClient jdbc) {
@@ -63,7 +65,7 @@ class ExecutionRepositoryAdapter implements ExecutionRepository {
                 .param("manifestDigest", context.manifestDigest())
                 .param("configuredLogicalTime", utc(context.logicalTime()))
                 .param("logicalTime", utc(execution.logicalTime()))
-                .param("revision", execution.revision())
+                .param(REVISION, execution.revision())
                 .update();
         if (inserted == 0) {
             return false;
@@ -84,7 +86,7 @@ class ExecutionRepositoryAdapter implements ExecutionRepository {
     public void update(Execution execution) {
         jdbc.sql("UPDATE simulation_execution SET logical_time = :logicalTime, revision = :revision WHERE id = 1")
                 .param("logicalTime", utc(execution.logicalTime()))
-                .param("revision", execution.revision())
+                .param(REVISION, execution.revision())
                 .update();
     }
 
@@ -96,7 +98,7 @@ class ExecutionRepositoryAdapter implements ExecutionRepository {
                 rs.getString("manifest_digest"),
                 instant(rs, "configured_logical_time"),
                 seats());
-        return new Execution(context, rs.getLong("revision"), instant(rs, "logical_time"));
+        return new Execution(context, rs.getLong(REVISION), instant(rs, "logical_time"));
     }
 
     private List<SimulationSeat> seats() {

@@ -133,17 +133,19 @@ class AdvanceSimulationClockCommandHandlerTest {
     void handle_changedBody_isIdempotencyConflict() {
         handler.handle(new ClockAdvance(OPERATION, 0, START.plusSeconds(61)));
 
-        assertThatThrownBy(() -> handler.handle(new ClockAdvance(OPERATION, 0, START.plusSeconds(90))))
-                .isInstanceOf(IdempotencyConflictException.class);
+        var changed = new ClockAdvance(OPERATION, 0, START.plusSeconds(90));
+
+        assertThatThrownBy(() -> handler.handle(changed)).isInstanceOf(IdempotencyConflictException.class);
     }
 
     @Test
     @DisplayName("a stale revision and backward time are rejected without moving the clock or running handlers")
     void handle_staleOrBackward_leavesTimeAlone() {
-        assertThatThrownBy(() -> handler.handle(new ClockAdvance(OPERATION, 5, START.plusSeconds(61))))
-                .isInstanceOf(StaleExecutionRevisionException.class);
-        assertThatThrownBy(() -> handler.handle(new ClockAdvance(UUID.randomUUID(), 0, START.minusSeconds(1))))
-                .isInstanceOf(ClockRegressionException.class);
+        var stale = new ClockAdvance(OPERATION, 5, START.plusSeconds(61));
+        var backward = new ClockAdvance(UUID.randomUUID(), 0, START.minusSeconds(1));
+
+        assertThatThrownBy(() -> handler.handle(stale)).isInstanceOf(StaleExecutionRevisionException.class);
+        assertThatThrownBy(() -> handler.handle(backward)).isInstanceOf(ClockRegressionException.class);
 
         then(clockControl).shouldHaveNoInteractions();
         then(events).shouldHaveNoInteractions();
@@ -155,7 +157,8 @@ class AdvanceSimulationClockCommandHandlerTest {
     void handle_unconfigured_isRejected() {
         given(executions.findWithLock()).willReturn(Optional.empty());
 
-        assertThatThrownBy(() -> handler.handle(new ClockAdvance(OPERATION, 0, START)))
-                .isInstanceOf(ExecutionNotConfiguredException.class);
+        var request = new ClockAdvance(OPERATION, 0, START);
+
+        assertThatThrownBy(() -> handler.handle(request)).isInstanceOf(ExecutionNotConfiguredException.class);
     }
 }

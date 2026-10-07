@@ -21,6 +21,8 @@ import io.github.temporalrift.game.shared.domain.model.Faction;
 
 class ExecutionContextTest {
 
+    private static final Seed SEED = new Seed("1");
+
     @ParameterizedTest
     @ValueSource(strings = {"0", "42", "18446744073709551615"})
     @DisplayName("a seed inside the unsigned 64-bit range is accepted")
@@ -38,8 +40,11 @@ class ExecutionContextTest {
     @Test
     @DisplayName("a manifest digest must be lowercase SHA-256 hex")
     void manifestDigest_notLowercaseSha256_isRejected() {
-        assertThatThrownBy(() -> new ExecutionContext(
-                        CASE_KEY, new Seed("1"), EntropyVersion.SHA256_V1, "A".repeat(64), START, threeSeats()))
+        var lowercaseRequired = "A".repeat(64);
+        var seats = threeSeats();
+
+        assertThatThrownBy(() ->
+                        new ExecutionContext(CASE_KEY, SEED, EntropyVersion.SHA256_V1, lowercaseRequired, START, seats))
                 .isInstanceOf(InvalidExecutionContextException.class);
     }
 

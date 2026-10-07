@@ -42,29 +42,24 @@ final class SimulationControlMapper {
 
     static io.github.temporalrift.game.simulation.infrastructure.adapter.in.rest.v1.model.ExecutionCheckpoint toModel(
             ExecutionCheckpoint checkpoint) {
-        var model =
-                new io.github.temporalrift.game.simulation.infrastructure.adapter.in.rest.v1.model.ExecutionCheckpoint(
-                        checkpoint.caseKey(),
-                        checkpoint.manifestDigest(),
-                        checkpoint.revision(),
-                        checkpoint.logicalTime().atOffset(ZoneOffset.UTC),
-                        checkpoint.gameId(),
-                        ExecutionState.fromValue(checkpoint.state().name()),
-                        checkpoint.drained(),
-                        checkpoint.outboxPending(),
-                        checkpoint.continuationsPending(),
-                        checkpoint.dueTimersPending(),
-                        checkpoint.nextDeadline() == null
-                                ? null
-                                : checkpoint.nextDeadline().atOffset(ZoneOffset.UTC),
-                        checkpoint.sourceWatermarks().stream()
-                                .map(watermark -> new SourceWatermark(
-                                        watermark.groupId(),
-                                        watermark.topic(),
-                                        watermark.partition(),
-                                        watermark.nextOffset()))
-                                .toList());
-        return model;
+        return new io.github.temporalrift.game.simulation.infrastructure.adapter.in.rest.v1.model.ExecutionCheckpoint(
+                checkpoint.caseKey(),
+                checkpoint.manifestDigest(),
+                checkpoint.revision(),
+                checkpoint.logicalTime().atOffset(ZoneOffset.UTC),
+                checkpoint.gameId(),
+                ExecutionState.fromValue(checkpoint.state().name()),
+                checkpoint.drained(),
+                checkpoint.outboxPending(),
+                checkpoint.continuationsPending(),
+                checkpoint.dueTimersPending(),
+                checkpoint.nextDeadline() == null
+                        ? null
+                        : checkpoint.nextDeadline().atOffset(ZoneOffset.UTC),
+                checkpoint.sourceWatermarks().stream()
+                        .map(watermark -> new SourceWatermark(
+                                watermark.groupId(), watermark.topic(), watermark.partition(), watermark.nextOffset()))
+                        .toList());
     }
 
     static io.github.temporalrift.game.simulation.infrastructure.adapter.in.rest.v1.model.ClockAcknowledgement toModel(

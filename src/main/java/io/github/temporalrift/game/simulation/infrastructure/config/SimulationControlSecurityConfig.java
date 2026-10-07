@@ -31,7 +31,7 @@ public class SimulationControlSecurityConfig {
     @Order(1)
     SecurityFilterChain simulationControlFilterChain(HttpSecurity http, ObjectMapper objectMapper) {
         return http.securityMatcher("/internal/simulation/**")
-                .csrf(AbstractHttpConfigurer::disable)
+                .csrf(AbstractHttpConfigurer::disable) // NOSONAR stateless bearer-token API, no session or cookie
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth.anyRequest().hasAuthority(CONTROL_AUTHORITY))
                 .oauth2ResourceServer(

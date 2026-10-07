@@ -3,6 +3,7 @@ package io.github.temporalrift.game.simulation.infrastructure.adapter.in.rest;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -172,7 +173,7 @@ class SimulationControlApiIT {
                 .andExpect(jsonPath("$.sourceWatermarks[0].nextOffset").value(7));
 
         var captor = ArgumentCaptor.forClass(ExecutionContext.class);
-        org.mockito.Mockito.verify(configureExecution).handle(captor.capture());
+        verify(configureExecution).handle(captor.capture());
         assertThat(captor.getValue())
                 .isEqualTo(new ExecutionContext(
                         CASE_KEY,
@@ -249,7 +250,7 @@ class SimulationControlApiIT {
                 .andExpect(jsonPath("$.appliedRevision").value(1));
 
         var captor = ArgumentCaptor.forClass(ClockAdvance.class);
-        org.mockito.Mockito.verify(advanceClock).handle(captor.capture());
+        verify(advanceClock).handle(captor.capture());
         assertThat(captor.getValue()).isEqualTo(new ClockAdvance(OPERATION, 0, target));
     }
 

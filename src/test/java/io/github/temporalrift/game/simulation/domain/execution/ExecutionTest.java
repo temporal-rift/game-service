@@ -59,22 +59,26 @@ class ExecutionTest {
         var first = execution.advance(new ClockAdvance(OPERATION, 0, START.plusSeconds(61)), null);
         var changed = new ClockAdvance(OPERATION, 0, START.plusSeconds(62));
 
-        assertThatThrownBy(() -> first.execution().advance(changed, first.operation()))
-                .isInstanceOf(IdempotencyConflictException.class);
+        var applied = first.execution();
+        var recorded = first.operation();
+
+        assertThatThrownBy(() -> applied.advance(changed, recorded)).isInstanceOf(IdempotencyConflictException.class);
     }
 
     @Test
     @DisplayName("a stale expected revision is rejected")
     void advance_staleRevision_isRejected() {
-        assertThatThrownBy(() -> execution.advance(new ClockAdvance(OPERATION, 3, START.plusSeconds(1)), null))
-                .isInstanceOf(StaleExecutionRevisionException.class);
+        var stale = new ClockAdvance(OPERATION, 3, START.plusSeconds(1));
+
+        assertThatThrownBy(() -> execution.advance(stale, null)).isInstanceOf(StaleExecutionRevisionException.class);
     }
 
     @Test
     @DisplayName("a target before the current logical time is a clock regression")
     void advance_backwardTime_isClockRegression() {
-        assertThatThrownBy(() -> execution.advance(new ClockAdvance(OPERATION, 0, START.minusSeconds(1)), null))
-                .isInstanceOf(ClockRegressionException.class);
+        var backward = new ClockAdvance(OPERATION, 0, START.minusSeconds(1));
+
+        assertThatThrownBy(() -> execution.advance(backward, null)).isInstanceOf(ClockRegressionException.class);
     }
 
     @Test
@@ -90,7 +94,9 @@ class ExecutionTest {
     @Test
     @DisplayName("a negative expected revision is not a valid advance")
     void clockAdvance_negativeRevision_isInvalid() {
-        assertThatThrownBy(() -> new ClockAdvance(OPERATION, -1, START.plus(Duration.ofSeconds(1))))
+        var target = START.plus(Duration.ofSeconds(1));
+
+        assertThatThrownBy(() -> new ClockAdvance(OPERATION, -1, target))
                 .isInstanceOf(InvalidClockAdvanceException.class);
     }
 }
