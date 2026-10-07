@@ -2,14 +2,12 @@ package io.github.temporalrift.game.action.application.saga;
 
 import static org.springframework.transaction.annotation.Propagation.REQUIRES_NEW;
 
-import java.security.SecureRandom;
 import java.time.Clock;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Random;
 import java.util.Set;
 import java.util.UUID;
 
@@ -48,6 +46,10 @@ import io.github.temporalrift.game.shared.domain.event.EraActionFactsFinalized;
 import io.github.temporalrift.game.shared.domain.messaging.DomainEventEnvelope;
 import io.github.temporalrift.game.shared.domain.model.CardDrawWeights;
 import io.github.temporalrift.game.shared.domain.model.CardType;
+import io.github.temporalrift.game.shared.domain.model.EntropyCoordinate;
+import io.github.temporalrift.game.shared.domain.model.EntropyPurpose;
+import io.github.temporalrift.game.shared.domain.model.IdentityKind;
+import io.github.temporalrift.game.shared.domain.port.out.ExecutionEntropy;
 import io.github.temporalrift.game.shared.domain.port.out.GameRulesPort;
 
 @Service
@@ -59,8 +61,6 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
     private static final String CLOSE_REASON_ALL_SUBMITTED = "ALL_SUBMITTED";
     private static final String CLOSE_REASON_TIMER_EXPIRED = "TIMER_EXPIRED";
     private static final int SIGNATURE_REVEAL_ROUND_NUMBER = 2;
-
-    private static final Random INTERCEPT_RANDOMNESS = new SecureRandom();
 
     // Era saga hard-caps rounds at 3 (see EraSagaAdvancer.FINAL_ROUND, session module) — this module
     // needs its own copy because it is the one computing the round boundary; scoring no longer needs
@@ -75,6 +75,7 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
     private final GameRulesPort gameRules;
     private final TraceResolver traceResolver;
     private final ActionRoundTimerRegistry timerRegistry;
+    private final ExecutionEntropy entropy;
     private final Clock clock;
 
     ActionRoundSagaImpl(
@@ -86,6 +87,7 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
             GameRulesPort gameRules,
             FutureEventDefinitionPort futureEventDefinitionPort,
             ActionRoundTimerRegistry timerRegistry,
+            ExecutionEntropy entropy,
             Clock clock) {
         this.actionRoundRepository = actionRoundRepository;
         this.activistEraStateRepository = activistEraStateRepository;
@@ -95,6 +97,7 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
         this.gameRules = gameRules;
         this.traceResolver = new TraceResolver(actionRoundRepository, futureEventDefinitionPort);
         this.timerRegistry = timerRegistry;
+        this.entropy = entropy;
         this.clock = clock;
     }
 
@@ -346,17 +349,19 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
         // two reveals cannot tell it apart from a real hand.
         var decoyHands = new HashMap<UUID, List<PlayerState.CardInstance>>();
         var revealedTargets = new LinkedHashSet<PlayerState>();
+        var roundCoordinate = EntropyCoordinate.none().era(eraNumber).round(roundNumber);
         for (var intercept : intercepts) {
             var target = java.util.Optional.ofNullable(statesByPlayer.get(intercept.targetPlayerId()));
+            var revealRandom = entropy.generator(
+                    EntropyPurpose.INTERCEPT_REVEAL,
+                    roundCoordinate.player(intercept.playerId()).subject(intercept.targetPlayerId()));
             var sample = target.map(state -> InterceptHandSampler.select(
                             state.isObscured()
                                     ? decoyHands.computeIfAbsent(
-                                            state.playerId(),
-                                            ignored -> InterceptHandSampler.decoyHand(
-                                                    state, cardDrawWeights(), INTERCEPT_RANDOMNESS))
+                                            state.playerId(), ignored -> decoyHand(state, roundCoordinate))
                                     : state.hand(),
                             intercept.grade(),
-                            INTERCEPT_RANDOMNESS))
+                            revealRandom))
                     .orElseGet(List::of);
             target.filter(state -> !state.isObscured()).ifPresent(state -> {
                 state.markRevealed(sample);
@@ -376,6 +381,15 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
                     clock));
         }
         revealedTargets.forEach(playerStateRepository::save);
+    }
+
+    private List<PlayerState.CardInstance> decoyHand(PlayerState target, EntropyCoordinate roundCoordinate) {
+        var targetCoordinate = roundCoordinate.player(target.playerId());
+        return InterceptHandSampler.decoyHand(
+                target,
+                cardDrawWeights(),
+                entropy.generator(EntropyPurpose.INTERCEPT_DECOY, targetCoordinate),
+                slot -> entropy.identity(IdentityKind.DECOY_CARD_INSTANCE, targetCoordinate.slot(slot)));
     }
 
     private CardDrawWeights cardDrawWeights() {

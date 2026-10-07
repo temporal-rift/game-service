@@ -3,8 +3,9 @@ package io.github.temporalrift.game.action.application.saga;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Random;
 import java.util.UUID;
+import java.util.function.IntFunction;
+import java.util.random.RandomGenerator;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
@@ -23,7 +24,7 @@ final class InterceptHandSampler {
     private InterceptHandSampler() {}
 
     static List<PlayerState.CardInstance> select(
-            List<PlayerState.CardInstance> hand, CardGrade grade, Random randomness) {
+            List<PlayerState.CardInstance> hand, CardGrade grade, RandomGenerator randomness) {
         if (hand.isEmpty()) {
             return List.of();
         }
@@ -36,11 +37,13 @@ final class InterceptHandSampler {
      * The hand an obscured target shows every Intercept resolving at one round close: the cards already revealed
      * from its real hand this era, topped up with fresh draws to the real hand's size, so it reveals nothing new.
      */
-    static List<PlayerState.CardInstance> decoyHand(PlayerState target, CardDrawWeights weights, Random randomness) {
+    static List<PlayerState.CardInstance> decoyHand(
+            PlayerState target, CardDrawWeights weights, RandomGenerator randomness, IntFunction<UUID> freshCardId) {
         var revealed = target.revealedCards();
-        var fresh = IntStream.range(0, target.hand().size() - revealed.size()).mapToObj(ignored -> {
+        var fresh = IntStream.range(0, target.hand().size() - revealed.size()).mapToObj(slot -> {
             var cardType = weights.drawType(randomness);
-            return new PlayerState.CardInstance(UUID.randomUUID(), cardType, weights.drawGrade(cardType, randomness));
+            return new PlayerState.CardInstance(
+                    freshCardId.apply(slot), cardType, weights.drawGrade(cardType, randomness));
         });
         return Stream.concat(revealed.stream(), fresh).toList();
     }

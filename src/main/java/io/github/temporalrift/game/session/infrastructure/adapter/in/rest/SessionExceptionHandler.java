@@ -17,6 +17,7 @@ import io.github.temporalrift.game.session.domain.lobby.NotEnoughPlayersExceptio
 import io.github.temporalrift.game.session.domain.lobby.NotLobbyHostException;
 import io.github.temporalrift.game.session.domain.lobby.PlayerAlreadyInLobbyException;
 import io.github.temporalrift.game.session.domain.lobby.PlayerNotInLobbyException;
+import io.github.temporalrift.game.session.domain.lobby.SeatingPlanMismatchException;
 import io.github.temporalrift.game.shared.infrastructure.adapter.in.rest.ProblemDetails;
 import io.github.temporalrift.game.shared.infrastructure.adapter.in.rest.RestAdviceOrder;
 
@@ -79,5 +80,10 @@ class SessionExceptionHandler {
     @ExceptionHandler(InvalidPlayerNameException.class)
     ProblemDetail handleInvalidPlayerName(InvalidPlayerNameException ex) {
         return ProblemDetails.of(HttpStatus.BAD_REQUEST, ex.getMessage(), "400-01");
+    }
+
+    @ExceptionHandler(SeatingPlanMismatchException.class)
+    ProblemDetail handleSeatingPlanMismatch(SeatingPlanMismatchException ex) {
+        return ProblemDetails.of(HttpStatus.UNPROCESSABLE_CONTENT, ex.getMessage(), "SEATING_PLAN_MISMATCH");
     }
 }

@@ -2,13 +2,13 @@ package io.github.temporalrift.game.session.application.saga;
 
 import static org.springframework.transaction.annotation.Propagation.REQUIRES_NEW;
 
-import java.security.SecureRandom;
 import java.time.Clock;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import org.springframework.context.ApplicationEventPublisher;
@@ -37,7 +37,11 @@ import io.github.temporalrift.game.shared.application.SagaHandoffPublisher;
 import io.github.temporalrift.game.shared.domain.event.FactionAssigned;
 import io.github.temporalrift.game.shared.domain.event.GameStarted;
 import io.github.temporalrift.game.shared.domain.messaging.DomainEventEnvelope;
+import io.github.temporalrift.game.shared.domain.model.EntropyCoordinate;
+import io.github.temporalrift.game.shared.domain.model.EntropyPurpose;
 import io.github.temporalrift.game.shared.domain.model.Faction;
+import io.github.temporalrift.game.shared.domain.port.out.ExecutionEntropy;
+import io.github.temporalrift.game.shared.domain.port.out.SeatingPlan;
 
 @Service
 class StartGameSagaImpl implements StartGameSaga {
@@ -50,7 +54,8 @@ class StartGameSagaImpl implements StartGameSaga {
     private final StartGameSagaCompensator compensator;
     private final FutureEventCatalogPort futureEventCatalog;
     private final SessionGameRulesPort gameRules;
-    private final SecureRandom random;
+    private final ExecutionEntropy entropy;
+    private final SeatingPlan seatingPlan;
     private final Clock clock;
 
     StartGameSagaImpl(
@@ -62,6 +67,8 @@ class StartGameSagaImpl implements StartGameSaga {
             StartGameSagaCompensator compensator,
             FutureEventCatalogPort futureEventCatalog,
             SessionGameRulesPort gameRules,
+            ExecutionEntropy entropy,
+            SeatingPlan seatingPlan,
             Clock clock) {
         this.lobbyRepository = lobbyRepository;
         this.gameRepository = gameRepository;
@@ -71,7 +78,8 @@ class StartGameSagaImpl implements StartGameSaga {
         this.compensator = compensator;
         this.futureEventCatalog = futureEventCatalog;
         this.gameRules = gameRules;
-        this.random = new SecureRandom();
+        this.entropy = entropy;
+        this.seatingPlan = seatingPlan;
         this.clock = clock;
     }
 
@@ -89,7 +97,7 @@ class StartGameSagaImpl implements StartGameSaga {
         try {
             stateManager.initRunning(sagaId, gameId, lobby.id());
 
-            var assignments = drawFactionAssignments(lobby.currentPlayers());
+            var assignments = assignFactions(lobby.currentPlayers());
             applyFactionAssignments(lobby, assignments);
             publishFactionEvents(gameId, lobby, assignments);
             createAndSaveGame(gameId, lobby, assignments);
@@ -201,9 +209,20 @@ class StartGameSagaImpl implements StartGameSaga {
                         clock));
     }
 
+    private List<FactionAssignment> assignFactions(List<LobbyPlayer> players) {
+        return seatingPlan
+                .configuredSeats()
+                .map(seats -> FactionAssignment.fromAgreedFactions(
+                        players.stream().map(LobbyPlayer::playerId).toList(),
+                        seats.stream()
+                                .collect(Collectors.toMap(
+                                        SeatingPlan.SeatAssignment::playerId, SeatingPlan.SeatAssignment::faction))))
+                .orElseGet(() -> drawFactionAssignments(players));
+    }
+
     private List<FactionAssignment> drawFactionAssignments(List<LobbyPlayer> players) {
         var roster = new ArrayList<>(Arrays.asList(Faction.values()));
-        Collections.shuffle(roster, random);
+        Collections.shuffle(roster, entropy.generator(EntropyPurpose.FACTION_ASSIGNMENT, EntropyCoordinate.none()));
         return IntStream.range(0, players.size())
                 .mapToObj(i -> new FactionAssignment(players.get(i).playerId(), roster.get(i)))
                 .toList();
@@ -211,7 +230,7 @@ class StartGameSagaImpl implements StartGameSaga {
 
     private List<UUID> buildDeck() {
         var deck = new ArrayList<>(futureEventCatalog.allEventIds());
-        Collections.shuffle(deck, random);
+        Collections.shuffle(deck, entropy.generator(EntropyPurpose.EVENT_DECK_SHUFFLE, EntropyCoordinate.none()));
         return List.copyOf(deck);
     }
 }

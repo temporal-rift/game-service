@@ -37,6 +37,9 @@ import io.github.temporalrift.game.shared.domain.event.EventsDrawn;
 import io.github.temporalrift.game.shared.domain.event.HandDealt;
 import io.github.temporalrift.game.shared.domain.messaging.DomainEventEnvelope;
 import io.github.temporalrift.game.shared.domain.model.CarryOverState;
+import io.github.temporalrift.game.shared.domain.model.EntropyCoordinate;
+import io.github.temporalrift.game.shared.domain.model.IdentityKind;
+import io.github.temporalrift.game.shared.domain.port.out.ExecutionEntropy;
 
 @Service
 class EraSagaImpl implements EraSaga {
@@ -50,6 +53,7 @@ class EraSagaImpl implements EraSaga {
     private final EraSagaStateManager stateManager;
     private final SessionGameRulesPort gameRules;
     private final WeightedCardDealer cardDealer;
+    private final ExecutionEntropy entropy;
     private final Clock clock;
 
     EraSagaImpl(
@@ -60,6 +64,7 @@ class EraSagaImpl implements EraSaga {
             EraSagaStateManager stateManager,
             SessionGameRulesPort gameRules,
             WeightedCardDealer cardDealer,
+            ExecutionEntropy entropy,
             Clock clock) {
         this.gameRepository = gameRepository;
         this.futureEventCatalog = futureEventCatalog;
@@ -68,6 +73,7 @@ class EraSagaImpl implements EraSaga {
         this.stateManager = stateManager;
         this.gameRules = gameRules;
         this.cardDealer = cardDealer;
+        this.entropy = entropy;
         this.clock = clock;
     }
 
@@ -87,7 +93,7 @@ class EraSagaImpl implements EraSaga {
 
         try {
             var drawnIds = game.startEra(carryOverEvents.size(), gameRules.eventsPerEra());
-            var freshDraw = toFreshFutureEvents(drawnIds);
+            var freshDraw = toFreshFutureEvents(eraNumber, drawnIds);
             game.recordDrawnEvents(freshDraw.eventIdToDrawnEvent());
             gameRepository.save(game);
 
@@ -138,13 +144,17 @@ class EraSagaImpl implements EraSaga {
      * Returns the resulting {@code eventId -> DrawnFutureEvent} mapping alongside the events so the
      * caller can record it on {@link Game} for later carry-over lookups.
      */
-    private FreshDraw toFreshFutureEvents(List<UUID> ids) {
+    private FreshDraw toFreshFutureEvents(int eraNumber, List<UUID> ids) {
         var eventIdToDrawnEvent = new HashMap<UUID, DrawnFutureEvent>();
         var events = futureEventCatalog.findByEventIds(ids).stream()
                 .map(def -> {
-                    var eventId = UUID.randomUUID();
-                    var outcomes = def.outcomes().stream()
-                            .map(o -> new EventsDrawn.Outcome(UUID.randomUUID(), o.description(), o.probability()))
+                    var catalogEvent = EntropyCoordinate.none().era(eraNumber).subject(def.eventId());
+                    var eventId = entropy.identity(IdentityKind.DRAWN_EVENT, catalogEvent);
+                    var outcomes = IntStream.range(0, def.outcomes().size())
+                            .mapToObj(index -> new EventsDrawn.Outcome(
+                                    entropy.identity(IdentityKind.DRAWN_OUTCOME, catalogEvent.slot(index)),
+                                    def.outcomes().get(index).description(),
+                                    def.outcomes().get(index).probability()))
                             .toList();
                     eventIdToDrawnEvent.put(
                             eventId,
@@ -212,7 +222,7 @@ class EraSagaImpl implements EraSaga {
     }
 
     private void publishHandDealt(Game game, UUID gameId, int eraNumber, UUID playerId) {
-        var dealtCards = cardDealer.deal(gameRules.cardsPerDeal());
+        var dealtCards = cardDealer.deal(playerId, eraNumber, gameRules.cardsPerDeal());
         var cards = IntStream.range(0, dealtCards.size())
                 .mapToObj(index -> {
                     var card = dealtCards.get(index);

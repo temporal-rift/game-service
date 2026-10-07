@@ -51,6 +51,7 @@ import io.github.temporalrift.game.session.domain.port.out.SessionGameRulesPort;
 import io.github.temporalrift.game.shared.domain.event.FactionAssigned;
 import io.github.temporalrift.game.shared.domain.event.GameStarted;
 import io.github.temporalrift.game.shared.domain.messaging.DomainEventEnvelope;
+import io.github.temporalrift.game.shared.domain.port.out.StubExecutionEntropy;
 
 @ExtendWith(MockitoExtension.class)
 class StartGameSagaImplTest {
@@ -112,6 +113,8 @@ class StartGameSagaImplTest {
                 compensator,
                 futureEventCatalog,
                 gameRules,
+                StubExecutionEntropy.unpredictable(),
+                Optional::empty,
                 clock);
     }
 

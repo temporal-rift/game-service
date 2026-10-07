@@ -50,6 +50,7 @@ import io.github.temporalrift.game.shared.domain.model.CardGrade;
 import io.github.temporalrift.game.shared.domain.model.CardType;
 import io.github.temporalrift.game.shared.domain.model.Faction;
 import io.github.temporalrift.game.shared.domain.port.out.ProcessedEventRepository;
+import io.github.temporalrift.game.shared.domain.port.out.StubExecutionEntropy;
 
 @ExtendWith(MockitoExtension.class)
 class ParadoxResolutionPhaseKafkaConsumerTest {
@@ -81,7 +82,10 @@ class ParadoxResolutionPhaseKafkaConsumerTest {
     @BeforeEach
     void setUp() {
         var cardsOffering = new ParadoxResolutionCardsOffering(
-                reactiveOfferRepository, actionEventPublisher, Clock.fixed(OCCURRED_AT, ZoneOffset.UTC));
+                reactiveOfferRepository,
+                actionEventPublisher,
+                StubExecutionEntropy.unpredictable(),
+                Clock.fixed(OCCURRED_AT, ZoneOffset.UTC));
         consumer = new ParadoxResolutionPhaseKafkaConsumer(
                 processedEventRepository,
                 phaseRepository,

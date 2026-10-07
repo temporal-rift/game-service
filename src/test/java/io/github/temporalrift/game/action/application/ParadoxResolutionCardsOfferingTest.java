@@ -31,6 +31,7 @@ import io.github.temporalrift.game.action.domain.reactiveoffer.ReactiveOffer;
 import io.github.temporalrift.game.shared.domain.model.CardGrade;
 import io.github.temporalrift.game.shared.domain.model.CardType;
 import io.github.temporalrift.game.shared.domain.model.Faction;
+import io.github.temporalrift.game.shared.domain.port.out.StubExecutionEntropy;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("ParadoxResolutionCardsOffering")
@@ -54,7 +55,10 @@ class ParadoxResolutionCardsOfferingTest {
     @BeforeEach
     void setUp() {
         offering = new ParadoxResolutionCardsOffering(
-                reactiveOfferRepository, actionEventPublisher, Clock.fixed(NOW, ZoneOffset.UTC));
+                reactiveOfferRepository,
+                actionEventPublisher,
+                StubExecutionEntropy.unpredictable(),
+                Clock.fixed(NOW, ZoneOffset.UTC));
         phase = new ParadoxResolutionPhase(UUID.randomUUID(), GAME_ID, ERA, NOW.plusSeconds(30));
     }
 
