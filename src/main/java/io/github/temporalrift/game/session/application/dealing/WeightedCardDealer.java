@@ -31,8 +31,10 @@ public class WeightedCardDealer {
     public List<HandDealt.CardInstance> deal(UUID playerId, int eraNumber, int cardCount) {
         var dealCoordinate = EntropyCoordinate.none().era(eraNumber).player(playerId);
         var random = entropy.generator(EntropyPurpose.CARD_DEAL, dealCoordinate);
-        var forcedTypes =
-                gameRules.handDealForcedTypes().stream().limit(cardCount).toList();
+        var forcedTypes = gameRules.handDealForcedTypes().stream()
+                .sorted()
+                .limit(cardCount)
+                .toList();
         return IntStream.range(0, cardCount)
                 .mapToObj(slot -> {
                     var cardType = slot < forcedTypes.size()

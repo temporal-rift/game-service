@@ -153,6 +153,26 @@ class WeightedCardDealerTest {
     }
 
     @Test
+    @DisplayName("forced types take the first slots in a fixed order whatever the configured set's iteration order")
+    void deal_forcedTypes_landOnStableSlots() {
+        // given
+        var reversed = new java.util.LinkedHashSet<>(java.util.List.of(CardType.NULLIFY, CardType.TRACE));
+        given(gameRules.handDealForcedTypes()).willReturn(reversed);
+        given(gameRules.cardCategoryWeights()).willReturn(weights(CardCategory.PARADOX, 1));
+        given(gameRules.cardGradeWeights()).willReturn(weights(CardGrade.I, 1));
+        var dealer = new WeightedCardDealer(gameRules, StubExecutionEntropy.seeded(42));
+
+        // when
+        var cards = dealer.deal(PLAYER_ID, 1, 7);
+
+        // then
+        assertThat(cards.stream().limit(2).map(HandDealt.CardInstance::cardType))
+                .containsExactly(java.util.stream.Stream.of(CardType.NULLIFY, CardType.TRACE)
+                        .sorted()
+                        .toArray(CardType[]::new));
+    }
+
+    @Test
     @DisplayName("no forced types configured deals every card from the normal weighted path")
     void deal_noForcedTypesConfigured_dealsOnlyFromNormalWeightedPath() {
         // given
