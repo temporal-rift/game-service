@@ -18,19 +18,22 @@ import tools.jackson.databind.ObjectMapper;
 import io.github.temporalrift.game.shared.infrastructure.adapter.in.rest.ProblemDetails;
 
 /**
- * Guards the control routes by the {@code simulation:control} scope, independently of participant authentication.
- * The chain exists only in an isolated simulation deployment, so an ordinary one never knows these routes.
+ * Owns the control routes independently of participant authentication. An isolated simulation deployment guards
+ * them by the {@code simulation:control} scope; an ordinary deployment answers that they do not exist, to every
+ * caller, without reading credentials.
  */
 @Configuration
-@ConditionalOnProperty(name = "game.simulation.enabled", havingValue = "true")
 public class SimulationControlSecurityConfig {
+
+    private static final String CONTROL_ROUTES = "/internal/simulation/**";
 
     private static final String CONTROL_AUTHORITY = "SCOPE_simulation:control";
 
     @Bean
     @Order(1)
+    @ConditionalOnProperty(name = "game.simulation.enabled", havingValue = "true")
     SecurityFilterChain simulationControlFilterChain(HttpSecurity http, ObjectMapper objectMapper) {
-        return http.securityMatcher("/internal/simulation/**")
+        return http.securityMatcher(CONTROL_ROUTES)
                 .csrf(AbstractHttpConfigurer::disable) // NOSONAR stateless bearer-token API, no session or cookie
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth.anyRequest().hasAuthority(CONTROL_AUTHORITY))
@@ -50,6 +53,31 @@ public class SimulationControlSecurityConfig {
                                 "SIMULATION_CONTROL_FORBIDDEN",
                                 "The simulation:control scope is required")))
                 .build();
+    }
+
+    @Bean
+    @Order(1)
+    @ConditionalOnProperty(name = "game.simulation.enabled", havingValue = "false", matchIfMissing = true)
+    SecurityFilterChain simulationControlUnavailableFilterChain(HttpSecurity http, ObjectMapper objectMapper) {
+        return http.securityMatcher(CONTROL_ROUTES)
+                .csrf(AbstractHttpConfigurer::disable) // NOSONAR no route is served behind this chain
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .authorizeHttpRequests(auth -> auth.anyRequest().denyAll())
+                .exceptionHandling(exceptions -> exceptions
+                        .authenticationEntryPoint(
+                                (request, response, exception) -> writeUnavailable(objectMapper, response))
+                        .accessDeniedHandler(
+                                (request, response, exception) -> writeUnavailable(objectMapper, response)))
+                .build();
+    }
+
+    private static void writeUnavailable(ObjectMapper objectMapper, HttpServletResponse response) throws IOException {
+        writeProblem(
+                objectMapper,
+                response,
+                HttpStatus.NOT_FOUND,
+                "SIMULATION_CONTROL_UNAVAILABLE",
+                "Simulation control is not available in this deployment");
     }
 
     private static void writeProblem(

@@ -65,7 +65,7 @@ repository secret to re-enable the step.
 
 | Behavior | Ordinary deployment | Isolated simulation deployment |
 | --- | --- | --- |
-| `/internal/simulation/v1/*` | not registered, `404` for every caller | requires the `simulation:control` scope; participant tokens receive `403` |
+| `/internal/simulation/v1/*` | not registered, `404 SIMULATION_CONTROL_UNAVAILABLE` for every caller, without reading credentials | requires the `simulation:control` scope; participant tokens receive `403` |
 | Random choices and gameplay identities | unpredictable | derived from the configured case seed and stable semantic coordinates, and stored durably |
 | Time | system clock, wall-clock timers | logical clock moved only by `PUT /internal/simulation/v1/clock`; due work runs when it advances |
 | Faction assignment | random draw | the seats configured for the case; the lobby must contain exactly those players |
