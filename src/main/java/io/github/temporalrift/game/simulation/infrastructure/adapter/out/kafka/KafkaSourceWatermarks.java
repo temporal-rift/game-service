@@ -6,7 +6,7 @@ import java.util.List;
 import java.util.concurrent.ExecutionException;
 
 import org.apache.kafka.clients.admin.AdminClient;
-import org.apache.kafka.clients.admin.ConsumerGroupListing;
+import org.apache.kafka.clients.admin.GroupListing;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.kafka.core.KafkaAdmin;
 import org.springframework.stereotype.Component;
@@ -31,8 +31,8 @@ class KafkaSourceWatermarks implements SourceWatermarks {
     public List<SourceWatermark> current() {
         try (var admin = AdminClient.create(kafkaAdmin.getConfigurationProperties())) {
             var watermarks = new ArrayList<SourceWatermark>();
-            var groupIds = admin.listConsumerGroups().all().get().stream()
-                    .map(ConsumerGroupListing::groupId)
+            var groupIds = admin.listGroups().all().get().stream()
+                    .map(GroupListing::groupId)
                     .filter(groupId -> groupId.startsWith(GROUP_PREFIX))
                     .sorted()
                     .toList();
