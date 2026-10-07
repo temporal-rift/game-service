@@ -38,7 +38,7 @@ class KafkaSourceWatermarks implements SourceWatermarks {
                     .toList();
             for (var groupId : groupIds) {
                 admin.listConsumerGroupOffsets(groupId)
-                        .partitionsToOffsetAndMetadata()
+                        .partitionsToOffsetAndMetadata(groupId)
                         .get()
                         .forEach((partition, offset) -> watermarks.add(new SourceWatermark(
                                 groupId, partition.topic(), partition.partition(), offset.offset())));

@@ -1,5 +1,7 @@
 package io.github.temporalrift.game.simulation.infrastructure.adapter.out.entropy;
 
+import java.util.concurrent.atomic.AtomicReference;
+
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
@@ -14,17 +16,17 @@ import io.github.temporalrift.game.simulation.domain.port.out.ExecutionRepositor
 class PinnedExecutionContext {
 
     private final ExecutionRepository executions;
-    private volatile ExecutionContext context;
+    private final AtomicReference<ExecutionContext> context = new AtomicReference<>();
 
     PinnedExecutionContext(ExecutionRepository executions) {
         this.executions = executions;
     }
 
     ExecutionContext require() {
-        var pinned = context;
+        var pinned = context.get();
         if (pinned == null) {
             pinned = executions.find().map(Execution::context).orElseThrow(ExecutionNotConfiguredException::new);
-            context = pinned;
+            context.set(pinned);
         }
         return pinned;
     }

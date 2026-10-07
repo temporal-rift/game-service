@@ -51,7 +51,7 @@ public class TimerTaskScheduler extends ThreadPoolTaskScheduler {
 
         @Override
         public boolean isDone() {
-            return cancelled;
+            return isCancelled();
         }
 
         @Override

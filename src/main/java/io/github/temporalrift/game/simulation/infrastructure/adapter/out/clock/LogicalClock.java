@@ -46,6 +46,16 @@ class LogicalClock extends Clock implements LogicalClockControl {
     }
 
     @Override
+    public boolean equals(Object other) {
+        return this == other;
+    }
+
+    @Override
+    public int hashCode() {
+        return System.identityHashCode(this);
+    }
+
+    @Override
     public ZoneId getZone() {
         return ZoneOffset.UTC;
     }

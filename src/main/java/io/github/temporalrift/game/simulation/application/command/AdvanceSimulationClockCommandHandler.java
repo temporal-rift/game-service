@@ -50,13 +50,13 @@ class AdvanceSimulationClockCommandHandler implements AdvanceSimulationClockUseC
      */
     @Override
     public ClockAcknowledgement handle(ClockAdvance advance) {
-        var acknowledgement = Objects.requireNonNull(transaction.execute(status -> record(advance)));
+        var acknowledgement = Objects.requireNonNull(transaction.execute(status -> applyAdvance(advance)));
         clockControl.advanceTo(acknowledgement.logicalTime());
         transaction.executeWithoutResult(status -> events.publishEvent(new LogicalClockAdvanced(clock.instant())));
         return acknowledgement;
     }
 
-    private ClockAcknowledgement record(ClockAdvance advance) {
+    private ClockAcknowledgement applyAdvance(ClockAdvance advance) {
         var execution = executions.findWithLock().orElseThrow(ExecutionNotConfiguredException::new);
         var recorded = operations.find(advance.operationId()).orElse(null);
         var outcome = execution.advance(advance, recorded);

@@ -83,8 +83,10 @@ class SeededExecutionEntropyTest {
         var otherSeat = entropy.generator(
                 EntropyPurpose.CARD_DEAL, EntropyCoordinate.none().era(1).player(ExecutionContextTestData.PLAYER_1));
 
-        assertThat(IntStream.range(0, 4).mapToObj(i -> otherPurpose.nextLong())).isNotEqualTo(deal);
-        assertThat(IntStream.range(0, 4).mapToObj(i -> otherSeat.nextLong())).isNotEqualTo(deal);
+        assertThat(IntStream.range(0, 4).mapToObj(i -> otherPurpose.nextLong()).toList())
+                .isNotEqualTo(deal);
+        assertThat(IntStream.range(0, 4).mapToObj(i -> otherSeat.nextLong()).toList())
+                .isNotEqualTo(deal);
     }
 
     @Test
@@ -141,7 +143,9 @@ class SeededExecutionEntropyTest {
 
         assertThatThrownBy(() -> entropy.generator(EntropyPurpose.CARD_DEAL, SEAT_0_ERA_1))
                 .isInstanceOf(ExecutionNotConfiguredException.class);
-        assertThatThrownBy(() -> entropy.identity(IdentityKind.GAME, EntropyCoordinate.none()))
+        var noCoordinate = EntropyCoordinate.none();
+
+        assertThatThrownBy(() -> entropy.identity(IdentityKind.GAME, noCoordinate))
                 .isInstanceOf(ExecutionNotConfiguredException.class);
     }
 

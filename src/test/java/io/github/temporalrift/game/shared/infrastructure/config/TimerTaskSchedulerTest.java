@@ -19,11 +19,17 @@ class TimerTaskSchedulerTest {
         scheduler.initialize();
         try {
             var fired = new AtomicBoolean();
+            var armed = new CountDownLatch(1);
 
-            var timer = scheduler.schedule(() -> fired.set(true), Instant.now());
-            Thread.sleep(200);
+            var timer = scheduler.schedule(
+                    () -> {
+                        fired.set(true);
+                        armed.countDown();
+                    },
+                    Instant.now());
+            var firedEarly = fired.get() || armed.await(200, TimeUnit.MILLISECONDS);
 
-            assertThat(fired).isFalse();
+            assertThat(firedEarly).isFalse();
             assertThat(timer.isDone()).isFalse();
             assertThat(timer.cancel(false)).isTrue();
             assertThat(timer.isCancelled()).isTrue();
