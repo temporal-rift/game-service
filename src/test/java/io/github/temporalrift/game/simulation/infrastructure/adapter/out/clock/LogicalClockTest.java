@@ -60,6 +60,6 @@ class LogicalClockTest {
         assertThat(clock.getZone()).isEqualTo(ZoneOffset.UTC);
         assertThat(clock.withZone(ZoneOffset.ofHours(2))).isSameAs(clock);
         assertThat(clock).isEqualTo(clock).isNotEqualTo(new LogicalClock(executions));
-        assertThat(clock.hashCode()).isEqualTo(clock.hashCode());
+        assertThat(clock).hasSameHashCodeAs(clock);
     }
 }
