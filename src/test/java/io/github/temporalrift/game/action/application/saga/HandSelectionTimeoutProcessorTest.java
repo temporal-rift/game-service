@@ -25,6 +25,9 @@ import io.github.temporalrift.game.shared.domain.event.HandDealt;
 import io.github.temporalrift.game.shared.domain.event.HandSelected;
 import io.github.temporalrift.game.shared.domain.model.CardGrade;
 import io.github.temporalrift.game.shared.domain.model.CardType;
+import io.github.temporalrift.game.shared.domain.model.EntropyCoordinate;
+import io.github.temporalrift.game.shared.domain.model.EntropyPurpose;
+import io.github.temporalrift.game.shared.domain.port.out.ExecutionEntropy;
 
 @ExtendWith(MockitoExtension.class)
 class HandSelectionTimeoutProcessorTest {
@@ -37,6 +40,9 @@ class HandSelectionTimeoutProcessorTest {
     @Mock
     RandomGenerator random;
 
+    @Mock
+    ExecutionEntropy entropy;
+
     @Spy
     Clock clock = Clock.fixed(Instant.EPOCH, ZoneOffset.UTC);
 
@@ -47,6 +53,8 @@ class HandSelectionTimeoutProcessorTest {
     void resolve_expiredOpenSelection_persistsAndPublishesOneTimeoutResult() {
         var selection = selection();
         given(repository.findByIdWithLock(selection.id())).willReturn(Optional.of(selection));
+        given(entropy.generator(EntropyPurpose.HAND_TIMEOUT_SELECTION, timeoutCoordinate(selection)))
+                .willReturn(random);
         given(random.nextInt(7)).willReturn(0);
         given(random.nextInt(6)).willReturn(0);
 
@@ -66,6 +74,10 @@ class HandSelectionTimeoutProcessorTest {
         then(repository).should().findByIdWithLock(resolved.id());
         then(repository).shouldHaveNoMoreInteractions();
         then(events).shouldHaveNoInteractions();
+    }
+
+    private static EntropyCoordinate timeoutCoordinate(HandSelection selection) {
+        return EntropyCoordinate.none().era(selection.eraNumber()).player(selection.playerId());
     }
 
     private static HandSelection selection() {

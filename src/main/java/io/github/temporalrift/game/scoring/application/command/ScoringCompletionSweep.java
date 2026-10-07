@@ -2,11 +2,13 @@ package io.github.temporalrift.game.scoring.application.command;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.modulith.events.ApplicationModuleListener;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import io.github.temporalrift.game.scoring.domain.context.PendingEraScoringCompletion;
 import io.github.temporalrift.game.scoring.domain.port.out.EraScoringContextRepository;
+import io.github.temporalrift.game.shared.domain.event.LogicalClockAdvanced;
 
 /**
  * Database-driven safety net for era scoring completion. {@link EraScoringCompletionChecker} is
@@ -31,6 +33,11 @@ class ScoringCompletionSweep {
             EraScoringContextRepository contextRepository, EraScoringCompletionChecker completionChecker) {
         this.contextRepository = contextRepository;
         this.completionChecker = completionChecker;
+    }
+
+    @ApplicationModuleListener
+    void onLogicalClockAdvanced(LogicalClockAdvanced ignored) {
+        sweep();
     }
 
     @Scheduled(fixedDelayString = "${game.timers.scoring-completion-sweep-interval}")

@@ -23,12 +23,17 @@ import io.github.temporalrift.game.session.domain.lobby.Lobby;
 import io.github.temporalrift.game.session.domain.port.out.JoinCodePort;
 import io.github.temporalrift.game.session.domain.port.out.LobbyRepository;
 import io.github.temporalrift.game.session.domain.port.out.SessionGameRulesPort;
+import io.github.temporalrift.game.shared.domain.model.EntropyCoordinate;
+import io.github.temporalrift.game.shared.domain.model.IdentityKind;
+import io.github.temporalrift.game.shared.domain.port.out.ExecutionEntropy;
 
 @ExtendWith(MockitoExtension.class)
 class CreateLobbyCommandHandlerTest {
 
     static final String JOIN_CODE = "X7K2P9";
     static final Instant NOW = Instant.parse("2026-04-16T12:00:00Z");
+    static final UUID LOBBY_ID = UUID.fromString("00000000-0000-4000-8000-0000000000a1");
+    static final UUID GAME_ID = UUID.fromString("00000000-0000-4000-8000-0000000000a2");
 
     @Mock
     LobbyRepository lobbyRepository;
@@ -42,12 +47,17 @@ class CreateLobbyCommandHandlerTest {
     @Mock
     Clock clock;
 
+    @Mock
+    ExecutionEntropy entropy;
+
     @InjectMocks
     CreateLobbyCommandHandler handler;
 
     @BeforeEach
     void setUp() {
         given(lobbyRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
+        given(entropy.identity(IdentityKind.LOBBY, EntropyCoordinate.none())).willReturn(LOBBY_ID);
+        given(entropy.identity(IdentityKind.GAME, EntropyCoordinate.none())).willReturn(GAME_ID);
         given(gameRules.minPlayers()).willReturn(2);
         given(gameRules.maxPlayers()).willReturn(5);
         given(joinCodePort.generate()).willReturn(JOIN_CODE);
@@ -67,6 +77,22 @@ class CreateLobbyCommandHandlerTest {
         var captor = ArgumentCaptor.forClass(Lobby.class);
         then(lobbyRepository).should().save(captor.capture());
         assertThat(captor.getValue().hostPlayerId()).isEqualTo(command.playerId());
+    }
+
+    @Test
+    @DisplayName("takes the lobby and game identities from the execution entropy")
+    void handle_identitiesComeFromExecutionEntropy() {
+        // given
+        var command = new CreateLobbyUseCase.Command(UUID.randomUUID(), "Alice");
+
+        // when
+        handler.handle(command);
+
+        // then
+        var captor = ArgumentCaptor.forClass(Lobby.class);
+        then(lobbyRepository).should().save(captor.capture());
+        assertThat(captor.getValue().id()).isEqualTo(LOBBY_ID);
+        assertThat(captor.getValue().gameId()).isEqualTo(GAME_ID);
     }
 
     @Test

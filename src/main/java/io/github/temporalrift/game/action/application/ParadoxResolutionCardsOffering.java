@@ -16,6 +16,9 @@ import io.github.temporalrift.game.action.domain.port.out.ReactiveOfferRepositor
 import io.github.temporalrift.game.action.domain.reactiveoffer.ReactiveOffer;
 import io.github.temporalrift.game.shared.domain.messaging.DomainEventEnvelope;
 import io.github.temporalrift.game.shared.domain.model.CardGrade;
+import io.github.temporalrift.game.shared.domain.model.EntropyCoordinate;
+import io.github.temporalrift.game.shared.domain.model.IdentityKind;
+import io.github.temporalrift.game.shared.domain.port.out.ExecutionEntropy;
 
 /**
  * Deals a participant's private Stabilize + Detonate offer for a paradox-resolution phase and publishes their
@@ -27,19 +30,30 @@ public class ParadoxResolutionCardsOffering {
 
     private final ReactiveOfferRepository reactiveOfferRepository;
     private final ActionEventPublisher actionEventPublisher;
+    private final ExecutionEntropy entropy;
     private final Clock clock;
 
     public ParadoxResolutionCardsOffering(
-            ReactiveOfferRepository reactiveOfferRepository, ActionEventPublisher actionEventPublisher, Clock clock) {
+            ReactiveOfferRepository reactiveOfferRepository,
+            ActionEventPublisher actionEventPublisher,
+            ExecutionEntropy entropy,
+            Clock clock) {
         this.reactiveOfferRepository = reactiveOfferRepository;
         this.actionEventPublisher = actionEventPublisher;
+        this.entropy = entropy;
         this.clock = clock;
     }
 
     public void offer(ParadoxResolutionPhase phase, PlayerState participant) {
         var playerId = participant.playerId();
+        var offerCoordinate = EntropyCoordinate.none().era(phase.eraNumber()).player(playerId);
         var offer = new ReactiveOffer(
-                UUID.randomUUID(), phase.gameId(), phase.eraNumber(), playerId, UUID.randomUUID(), UUID.randomUUID());
+                UUID.randomUUID(),
+                phase.gameId(),
+                phase.eraNumber(),
+                playerId,
+                entropy.identity(IdentityKind.OFFERED_STABILIZE_CARD_INSTANCE, offerCoordinate),
+                entropy.identity(IdentityKind.OFFERED_DETONATE_CARD_INSTANCE, offerCoordinate));
         if (!reactiveOfferRepository.createIfAbsent(offer)) {
             return;
         }

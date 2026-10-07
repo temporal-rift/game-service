@@ -5,7 +5,6 @@ import static org.mockito.BDDMockito.given;
 
 import java.util.EnumMap;
 import java.util.Map;
-import java.util.Random;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -18,6 +17,7 @@ import io.github.temporalrift.game.shared.domain.event.HandDealt;
 import io.github.temporalrift.game.shared.domain.model.CardCategory;
 import io.github.temporalrift.game.shared.domain.model.CardGrade;
 import io.github.temporalrift.game.shared.domain.model.CardType;
+import io.github.temporalrift.game.shared.domain.port.out.StubExecutionEntropy;
 
 @ExtendWith(MockitoExtension.class)
 class WeightedCardDealerTest {
@@ -25,16 +25,18 @@ class WeightedCardDealerTest {
     @Mock
     SessionGameRulesPort gameRules;
 
+    private static final java.util.UUID PLAYER_ID = java.util.UUID.fromString("11111111-1111-1111-1111-111111111111");
+
     @Test
     @DisplayName("a category with the only positive weight is selected for every dealt card")
     void deal_onlyPositiveCategoryWeight_dealsThatCategory() {
         // given
         given(gameRules.cardCategoryWeights()).willReturn(weights(CardCategory.PARADOX, 1));
         given(gameRules.cardGradeWeights()).willReturn(weights(CardGrade.I, 1));
-        var dealer = new WeightedCardDealer(gameRules, new Random(42));
+        var dealer = new WeightedCardDealer(gameRules, StubExecutionEntropy.seeded(42));
 
         // when
-        var cards = dealer.deal(50);
+        var cards = dealer.deal(PLAYER_ID, 1, 50);
 
         // then
         assertThat(cards).isNotEmpty().allSatisfy(card -> {
@@ -49,10 +51,10 @@ class WeightedCardDealerTest {
         // given
         given(gameRules.cardCategoryWeights()).willReturn(weights(CardCategory.INFORMATION, 1));
         given(gameRules.cardGradeWeights()).willReturn(weights(CardGrade.III, 1));
-        var dealer = new WeightedCardDealer(gameRules, new Random(7));
+        var dealer = new WeightedCardDealer(gameRules, StubExecutionEntropy.seeded(7));
 
         // when
-        var cards = dealer.deal(50);
+        var cards = dealer.deal(PLAYER_ID, 1, 50);
 
         // then
         assertThat(cards).isNotEmpty().allSatisfy(card -> {
@@ -72,10 +74,10 @@ class WeightedCardDealerTest {
                         CardCategory.DISRUPTION, 100,
                         CardCategory.PARADOX, 0));
         given(gameRules.cardGradeWeights()).willReturn(weights(CardGrade.III, 1));
-        var dealer = new WeightedCardDealer(gameRules, new Random(11));
+        var dealer = new WeightedCardDealer(gameRules, StubExecutionEntropy.seeded(11));
 
         // when
-        var cards = dealer.deal(50);
+        var cards = dealer.deal(PLAYER_ID, 1, 50);
 
         // then
         assertThat(cards).isNotEmpty().allSatisfy(card -> {
@@ -95,10 +97,10 @@ class WeightedCardDealerTest {
                         CardCategory.DISRUPTION, 25,
                         CardCategory.PARADOX, 15));
         given(gameRules.cardGradeWeights()).willReturn(Map.of(CardGrade.I, 60, CardGrade.II, 30, CardGrade.III, 10));
-        var dealer = new WeightedCardDealer(gameRules, new Random(99));
+        var dealer = new WeightedCardDealer(gameRules, StubExecutionEntropy.seeded(99));
 
         // when
-        var cards = dealer.deal(1_000);
+        var cards = dealer.deal(PLAYER_ID, 1, 1_000);
 
         // then
         assertThat(cards)
@@ -115,9 +117,9 @@ class WeightedCardDealerTest {
         // Restrict to the fully graded probability-shifter group so the configured grade rarity is directly observable.
         given(gameRules.cardCategoryWeights()).willReturn(weights(CardCategory.PROBABILITY_SHIFTER, 1));
         given(gameRules.cardGradeWeights()).willReturn(Map.of(CardGrade.I, 60, CardGrade.II, 30, CardGrade.III, 10));
-        var dealer = new WeightedCardDealer(gameRules, new Random(1234));
+        var dealer = new WeightedCardDealer(gameRules, StubExecutionEntropy.seeded(1234));
 
-        var cards = dealer.deal(10_000);
+        var cards = dealer.deal(PLAYER_ID, 1, 10_000);
         var grades = cards.stream()
                 .collect(java.util.stream.Collectors.groupingBy(
                         HandDealt.CardInstance::grade, java.util.stream.Collectors.counting()));
@@ -137,10 +139,10 @@ class WeightedCardDealerTest {
         given(gameRules.handDealForcedTypes()).willReturn(java.util.Set.of(CardType.TRACE, CardType.NULLIFY));
         given(gameRules.cardCategoryWeights()).willReturn(weights(CardCategory.PARADOX, 1));
         given(gameRules.cardGradeWeights()).willReturn(weights(CardGrade.I, 1));
-        var dealer = new WeightedCardDealer(gameRules, new Random(42));
+        var dealer = new WeightedCardDealer(gameRules, StubExecutionEntropy.seeded(42));
 
         // when
-        var cards = dealer.deal(7);
+        var cards = dealer.deal(PLAYER_ID, 1, 7);
 
         // then
         assertThat(cards).hasSize(7);
@@ -156,10 +158,10 @@ class WeightedCardDealerTest {
         // given
         given(gameRules.cardCategoryWeights()).willReturn(weights(CardCategory.PARADOX, 1));
         given(gameRules.cardGradeWeights()).willReturn(weights(CardGrade.I, 1));
-        var dealer = new WeightedCardDealer(gameRules, new Random(42));
+        var dealer = new WeightedCardDealer(gameRules, StubExecutionEntropy.seeded(42));
 
         // when
-        var cards = dealer.deal(7);
+        var cards = dealer.deal(PLAYER_ID, 1, 7);
 
         // then
         assertThat(cards)

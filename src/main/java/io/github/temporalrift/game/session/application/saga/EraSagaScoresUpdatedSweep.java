@@ -2,10 +2,12 @@ package io.github.temporalrift.game.session.application.saga;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.modulith.events.ApplicationModuleListener;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import io.github.temporalrift.game.session.domain.port.out.EraSagaScoresUpdatedInboxRepository;
+import io.github.temporalrift.game.shared.domain.event.LogicalClockAdvanced;
 import io.github.temporalrift.game.shared.domain.event.ScoresUpdated;
 
 /**
@@ -37,6 +39,11 @@ class EraSagaScoresUpdatedSweep {
         this.scoresUpdatedInbox = scoresUpdatedInbox;
         this.eraSagaAdvancer = eraSagaAdvancer;
         this.recoveryMetrics = recoveryMetrics;
+    }
+
+    @ApplicationModuleListener
+    void onLogicalClockAdvanced(LogicalClockAdvanced ignored) {
+        sweep();
     }
 
     @Scheduled(fixedDelayString = "${game.timers.era-saga-scores-updated-sweep-interval}")

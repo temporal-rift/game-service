@@ -48,6 +48,7 @@ import io.github.temporalrift.game.shared.domain.event.HandDealt;
 import io.github.temporalrift.game.shared.domain.messaging.DomainEventEnvelope;
 import io.github.temporalrift.game.shared.domain.model.CardType;
 import io.github.temporalrift.game.shared.domain.model.CarryOverState;
+import io.github.temporalrift.game.shared.domain.port.out.StubExecutionEntropy;
 
 @ExtendWith(MockitoExtension.class)
 class EraSagaImplTest {
@@ -96,12 +97,13 @@ class EraSagaImplTest {
                 stateManager,
                 gameRules,
                 cardDealer,
+                StubExecutionEntropy.unpredictable(),
                 clock);
         lenient().when(gameRules.cardsPerDeal()).thenReturn(7);
         lenient().when(gameRules.handSelectionTimerSeconds()).thenReturn(60);
         lenient()
-                .when(cardDealer.deal(anyInt()))
-                .thenAnswer(invocation -> IntStream.range(0, invocation.getArgument(0))
+                .when(cardDealer.deal(any(UUID.class), anyInt(), anyInt()))
+                .thenAnswer(invocation -> IntStream.range(0, invocation.<Integer>getArgument(2))
                         .mapToObj(index -> new HandDealt.CardInstance(UUID.randomUUID(), CardType.PUSH))
                         .toList());
     }

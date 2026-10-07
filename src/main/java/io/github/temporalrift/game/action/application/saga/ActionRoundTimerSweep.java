@@ -5,10 +5,12 @@ import java.time.Clock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
+import org.springframework.modulith.events.ApplicationModuleListener;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import io.github.temporalrift.game.action.domain.saga.ActionRoundSagaState;
+import io.github.temporalrift.game.shared.domain.event.LogicalClockAdvanced;
 
 /**
  * Database-driven safety net for action-round timers. The in-memory timer scheduled at round start
@@ -35,6 +37,11 @@ class ActionRoundTimerSweep {
         this.stateManager = stateManager;
         this.timeoutProcessor = timeoutProcessor;
         this.clock = clock;
+    }
+
+    @ApplicationModuleListener
+    void onLogicalClockAdvanced(LogicalClockAdvanced ignored) {
+        sweep();
     }
 
     @Scheduled(fixedDelayString = "${game.timers.action-round-sweep-interval}")

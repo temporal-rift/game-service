@@ -59,6 +59,19 @@ CI's `Deploy to Render` step (`.github/workflows/ci.yml`) is dormant: no Render 
 `main` reports it as skipped rather than failing. When a hosted target is chosen, set `RENDER_DEPLOY_HOOK_URL` as a
 repository secret to re-enable the step.
 
+### Isolated simulation deployment
+
+`GAME_SIMULATION_ENABLED=true` (property `game.simulation.enabled`, default `false`) turns a deployment into an isolated simulation lane. Never set it on an ordinary deployment: it replaces the system clock and randomness.
+
+| Behavior | Ordinary deployment | Isolated simulation deployment |
+| --- | --- | --- |
+| `/internal/simulation/v1/*` | not registered, `404` for every caller | requires the `simulation:control` scope; participant tokens receive `403` |
+| Random choices and gameplay identities | unpredictable | derived from the configured case seed and stable semantic coordinates, and stored durably |
+| Time | system clock, wall-clock timers | logical clock moved only by `PUT /internal/simulation/v1/clock`; due work runs when it advances |
+| Faction assignment | random draw | the seats configured for the case; the lobby must contain exactly those players |
+
+A lane hosts one case on its own database and topics. Configure it first with `PUT /internal/simulation/v1/execution`; until then gameplay routes return `409 EXECUTION_NOT_CONFIGURED`. After a restart the configured context, realized random choices and clock operations are read back from the database, so a repeated step makes the same choices and spends no extra draw. Poll `GET /internal/simulation/v1/checkpoint` until `drained` after each clock advance.
+
 ## Build and test
 
 ```bash
@@ -88,6 +101,7 @@ src/main/java/io/github/temporalrift/game/
 ├── session/    ← lobby + game lifecycle
 ├── action/     ← action round processing
 ├── scoring/    ← score tracking
+├── simulation/ ← isolated simulation controls (disabled by default)
 └── shared/     ← cross-cutting concerns
 ```
 
@@ -99,4 +113,5 @@ Modules communicate only via Spring `ApplicationEvent` — never by direct cross
 - Parent BOM: `temporal-rift-bom:1.0.14` (Spotless, Checkstyle, OpenAPI generator)
 - Event contracts (spec-only AsyncAPI modules from `apis`, code-generated at build time):
   `session-event`, `action-event`, `scoring-event`, `timeline-event` — versions pinned as `<*-event.version>` properties in `pom.xml`
+- Operator contract: `simulation-control-api` (spec-only OpenAPI), pinned as `<simulation-control-api.version>`
 - Timeline compatibility: consumes `timeline.events` published under timeline-event 3.0.0 — producer and consumer pin the same contract major.

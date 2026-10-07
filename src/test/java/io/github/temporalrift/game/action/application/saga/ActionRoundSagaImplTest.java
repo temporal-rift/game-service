@@ -70,6 +70,7 @@ import io.github.temporalrift.game.shared.domain.model.CardType;
 import io.github.temporalrift.game.shared.domain.model.Faction;
 import io.github.temporalrift.game.shared.domain.model.SpecialAction;
 import io.github.temporalrift.game.shared.domain.port.out.GameRulesPort;
+import io.github.temporalrift.game.shared.domain.port.out.StubExecutionEntropy;
 
 @ExtendWith(MockitoExtension.class)
 class ActionRoundSagaImplTest {
@@ -123,6 +124,7 @@ class ActionRoundSagaImplTest {
                 gameRules,
                 futureEventDefinitionPort,
                 timerRegistry,
+                StubExecutionEntropy.unpredictable(),
                 CLOCK);
     }
 
