@@ -52,7 +52,7 @@ import io.github.temporalrift.game.simulation.infrastructure.config.SimulationCo
 
 @WebMvcTest(controllers = SimulationControlController.class, properties = "game.simulation.enabled=true")
 @Import({SecurityConfig.class, SimulationControlSecurityConfig.class, TestSecurityConfig.class})
-class SimulationControlApiIT {
+class SimulationControlApiTest {
 
     private static final String EXECUTION_PATH = "/internal/simulation/v1/execution";
     private static final String CHECKPOINT_PATH = "/internal/simulation/v1/checkpoint";
