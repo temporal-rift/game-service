@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import org.junit.jupiter.api.DisplayName;
@@ -15,15 +17,22 @@ import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import io.github.temporalrift.game.TestSecurityConfig;
 import io.github.temporalrift.game.shared.infrastructure.config.SecurityConfig;
+import io.github.temporalrift.game.simulation.infrastructure.config.SimulationControlSecurityConfig;
 
 @WebMvcTest(controllers = OrdinaryDeploymentSimulationControlIT.Probe.class)
-@Import({SecurityConfig.class, TestSecurityConfig.class, OrdinaryDeploymentSimulationControlIT.Probe.class})
+@Import({
+    SecurityConfig.class,
+    SimulationControlSecurityConfig.class,
+    TestSecurityConfig.class,
+    OrdinaryDeploymentSimulationControlIT.Probe.class
+})
 class OrdinaryDeploymentSimulationControlIT {
 
     @Autowired
@@ -48,18 +57,28 @@ class OrdinaryDeploymentSimulationControlIT {
     @Test
     @DisplayName("an ordinary deployment answers 404 on every control route, even for a control-scoped token")
     void control_inOrdinaryDeployment_returns404() throws Exception {
-        mockMvc.perform(put("/internal/simulation/v1/execution")
-                        .with(controlToken())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{}"))
-                .andExpect(status().isNotFound());
-        mockMvc.perform(get("/internal/simulation/v1/checkpoint").with(controlToken()))
-                .andExpect(status().isNotFound());
-        mockMvc.perform(put("/internal/simulation/v1/clock")
-                        .with(controlToken())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{}"))
-                .andExpect(status().isNotFound());
+        expectUnavailable(mockMvc.perform(put("/internal/simulation/v1/execution")
+                .with(controlToken())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{}")));
+        expectUnavailable(
+                mockMvc.perform(get("/internal/simulation/v1/checkpoint").with(controlToken())));
+        expectUnavailable(mockMvc.perform(put("/internal/simulation/v1/clock")
+                .with(controlToken())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{}")));
+    }
+
+    @Test
+    @DisplayName("an ordinary deployment answers 404 to an unauthenticated caller instead of asking for a token")
+    void control_withoutToken_inOrdinaryDeployment_returns404() throws Exception {
+        expectUnavailable(mockMvc.perform(get("/internal/simulation/v1/checkpoint")));
+    }
+
+    private static void expectUnavailable(ResultActions result) throws Exception {
+        result.andExpect(status().isNotFound())
+                .andExpect(content().contentTypeCompatibleWith("application/problem+json"))
+                .andExpect(jsonPath("$.code").value("SIMULATION_CONTROL_UNAVAILABLE"));
     }
 
     @RestController

@@ -170,6 +170,8 @@ class SimulationControlApiIT {
                 .andExpect(jsonPath("$.revision").value(0))
                 .andExpect(jsonPath("$.state").value("READY"))
                 .andExpect(jsonPath("$.drained").value(true))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("\"gameId\":null")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("\"nextDeadline\":null")))
                 .andExpect(jsonPath("$.sourceWatermarks[0].nextOffset").value(7));
 
         var captor = ArgumentCaptor.forClass(ExecutionContext.class);
