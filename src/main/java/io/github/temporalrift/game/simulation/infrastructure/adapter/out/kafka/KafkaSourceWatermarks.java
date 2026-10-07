@@ -7,10 +7,12 @@ import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.function.Supplier;
 
 import jakarta.annotation.PreDestroy;
 import org.apache.kafka.clients.admin.Admin;
 import org.apache.kafka.clients.admin.GroupListing;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.kafka.core.KafkaAdmin;
 import org.springframework.stereotype.Component;
@@ -26,11 +28,16 @@ class KafkaSourceWatermarks implements SourceWatermarks {
     private static final String GROUP_PREFIX = "game-service";
     private static final Duration BROKER_TIMEOUT = Duration.ofSeconds(10);
 
-    private final KafkaAdmin kafkaAdmin;
+    private final Supplier<Admin> adminFactory;
     private Admin admin;
 
+    @Autowired
     KafkaSourceWatermarks(KafkaAdmin kafkaAdmin) {
-        this.kafkaAdmin = kafkaAdmin;
+        this(() -> Admin.create(kafkaAdmin.getConfigurationProperties()));
+    }
+
+    KafkaSourceWatermarks(Supplier<Admin> adminFactory) {
+        this.adminFactory = adminFactory;
     }
 
     @Override
@@ -65,7 +72,7 @@ class KafkaSourceWatermarks implements SourceWatermarks {
     // The broker connection is opened on first use and shared, so a polling operator does not reconnect every call.
     private synchronized Admin client() {
         if (admin == null) {
-            admin = Admin.create(kafkaAdmin.getConfigurationProperties());
+            admin = adminFactory.get();
         }
         return admin;
     }
