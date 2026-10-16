@@ -66,6 +66,7 @@ public class InMemoryDatabase {
     }
 
     void commit(InMemoryTransaction transaction) {
+        transaction.flushManaged();
         visibility.writeLock().lock();
         try {
             transaction.writes().forEach(InMemoryTable::forgetReplaced);

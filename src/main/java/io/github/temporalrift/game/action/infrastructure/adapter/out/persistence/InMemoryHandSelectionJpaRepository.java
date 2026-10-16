@@ -8,6 +8,7 @@ import java.util.UUID;
 import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.ObjectMapper;
 
+import io.github.temporalrift.game.action.domain.handselection.HandSelectionStatus;
 import io.github.temporalrift.game.shared.infrastructure.adapter.out.memory.InMemoryDatabase;
 import io.github.temporalrift.game.shared.infrastructure.adapter.out.memory.InMemoryJpaRepository;
 import io.github.temporalrift.game.shared.infrastructure.adapter.out.memory.InMemoryRepository;
@@ -17,7 +18,7 @@ import io.github.temporalrift.game.shared.infrastructure.adapter.out.memory.Tabl
 class InMemoryHandSelectionJpaRepository extends InMemoryJpaRepository<HandSelectionJpaEntity, UUID>
         implements HandSelectionJpaRepository {
 
-    private static final String OPEN = "OPEN";
+    private static final String OPEN = HandSelectionStatus.OPEN.name();
 
     private final ObjectMapper objectMapper;
 
@@ -47,8 +48,9 @@ class InMemoryHandSelectionJpaRepository extends InMemoryJpaRepository<HandSelec
         selection.playerId = playerId;
         selection.status = status;
         selection.selectionExpiresAt = selectionExpiresAt;
-        selection.dealtCards =
-                objectMapper.readValue(dealtCards, new TypeReference<List<StoredHandSelectionCard>>() {});
+        selection.dealtCards = parseJson(
+                "dealt_cards",
+                () -> objectMapper.readValue(dealtCards, new TypeReference<List<StoredHandSelectionCard>>() {}));
         return insertRowIfAbsent(selection) ? 1 : 0;
     }
 

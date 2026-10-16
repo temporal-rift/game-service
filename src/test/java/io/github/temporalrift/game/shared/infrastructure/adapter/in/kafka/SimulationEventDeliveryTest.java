@@ -109,6 +109,32 @@ class SimulationEventDeliveryTest {
     }
 
     @Test
+    void recordEntriesOfTheWrongTypeAreRejectedAsIllegalArguments() {
+        var wrongPayload = new LinkedHashMap<String, Object>(message("timeline.events", "{}"));
+        wrongPayload.put("payload", "text");
+        var wrongHeaders = new LinkedHashMap<String, Object>(message("timeline.events", "{}"));
+        wrongHeaders.put("headers", Map.of("eventId", 1));
+        var wrongTopic = new LinkedHashMap<String, Object>(message("timeline.events", "{}"));
+        wrongTopic.put("topic", 7);
+        var notAMap = new LinkedHashMap<String, Object>(message("timeline.events", "{}"));
+        notAMap.put("headers", "headers");
+
+        assertThatThrownBy(() -> delivery.accept(wrongPayload))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("payload");
+        assertThatThrownBy(() -> delivery.accept(wrongHeaders))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("headers");
+        assertThatThrownBy(() -> delivery.accept(notAMap))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("headers");
+        assertThatThrownBy(() -> delivery.accept(wrongTopic))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("topic");
+        assertThat(listeners.handled).isEmpty();
+    }
+
+    @Test
     void aMalformedRecordNamesTheMissingKey() {
         var malformed = new LinkedHashMap<String, Object>(message("timeline.events", "{\"x\":1}"));
         malformed.remove("headers");

@@ -7,12 +7,14 @@ import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.IdentityHashMap;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.IntStream;
 
 /**
  * Deep-copies persisted row objects, so that what an in-memory table hands out or keeps can never be changed through
@@ -48,6 +50,75 @@ final class RowCopier {
             return copyRecord(source, copies);
         }
         return copyObject(value, copies);
+    }
+
+    /** Whether two rows hold equal state, compared field by field as a persistence context compares loaded rows. */
+    static boolean sameState(Object left, Object right) {
+        return same(left, right, new IdentityHashMap<>());
+    }
+
+    private static boolean same(Object left, Object right, Map<Object, Object> visiting) {
+        if (left == right) {
+            return true;
+        }
+        if (left == null || right == null || left.getClass() != right.getClass()) {
+            return false;
+        }
+        if (isImmutableLeaf(left)) {
+            return left.equals(right);
+        }
+        if (visiting.get(left) == right) {
+            return true;
+        }
+        visiting.put(left, right);
+        if (left.getClass().isArray()) {
+            return sameElements(
+                    IntStream.range(0, Array.getLength(left))
+                            .mapToObj(i -> Array.get(left, i))
+                            .iterator(),
+                    IntStream.range(0, Array.getLength(right))
+                            .mapToObj(i -> Array.get(right, i))
+                            .iterator(),
+                    visiting);
+        }
+        if (left instanceof Collection<?> collection) {
+            return collection.size() == ((Collection<?>) right).size()
+                    && sameElements(collection.iterator(), ((Collection<?>) right).iterator(), visiting);
+        }
+        if (left instanceof Map<?, ?> map) {
+            var other = (Map<?, ?>) right;
+            return map.size() == other.size()
+                    && sameElements(map.keySet().iterator(), other.keySet().iterator(), visiting)
+                    && sameElements(map.values().iterator(), other.values().iterator(), visiting);
+        }
+        return sameFields(left, right, visiting);
+    }
+
+    private static boolean sameElements(Iterator<?> left, Iterator<?> right, Map<Object, Object> visiting) {
+        while (left.hasNext() && right.hasNext()) {
+            if (!same(left.next(), right.next(), visiting)) {
+                return false;
+            }
+        }
+        return left.hasNext() == right.hasNext();
+    }
+
+    private static boolean sameFields(Object left, Object right, Map<Object, Object> visiting) {
+        try {
+            for (Class<?> type = left.getClass(); type != Object.class; type = type.getSuperclass()) {
+                for (Field field : type.getDeclaredFields()) {
+                    if (!Modifier.isStatic(field.getModifiers())) {
+                        field.setAccessible(true);
+                        if (!same(field.get(left), field.get(right), visiting)) {
+                            return false;
+                        }
+                    }
+                }
+            }
+            return true;
+        } catch (IllegalAccessException e) {
+            throw new IllegalStateException("Cannot compare " + left.getClass().getName(), e);
+        }
     }
 
     private static boolean isImmutableLeaf(Object value) {

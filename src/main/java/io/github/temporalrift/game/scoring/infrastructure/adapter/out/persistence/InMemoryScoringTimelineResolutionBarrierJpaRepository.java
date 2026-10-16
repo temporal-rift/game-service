@@ -41,7 +41,10 @@ class InMemoryScoringTimelineResolutionBarrierJpaRepository
     @Override
     public int insertIfAbsent(UUID id, UUID gameId, int eraNumber, String payload) {
         var barrier = ScoringTimelineResolutionBarrierJpaEntity.restore(
-                id, gameId, eraNumber, objectMapper.readValue(payload, EraResolutionCompleted.class));
+                id,
+                gameId,
+                eraNumber,
+                parseJson("payload", () -> objectMapper.readValue(payload, EraResolutionCompleted.class)));
         return insertRowIfAbsent(barrier) ? 1 : 0;
     }
 

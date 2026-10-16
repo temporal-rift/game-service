@@ -8,6 +8,7 @@ import java.util.UUID;
 
 import org.springframework.data.domain.Pageable;
 
+import io.github.temporalrift.game.action.domain.saga.ActionRoundSagaStatus;
 import io.github.temporalrift.game.shared.infrastructure.adapter.out.memory.InMemoryDatabase;
 import io.github.temporalrift.game.shared.infrastructure.adapter.out.memory.InMemoryJpaRepository;
 import io.github.temporalrift.game.shared.infrastructure.adapter.out.memory.InMemoryRepository;
@@ -17,7 +18,7 @@ import io.github.temporalrift.game.shared.infrastructure.adapter.out.memory.Tabl
 class InMemoryActionRoundSagaStateJpaRepository extends InMemoryJpaRepository<ActionRoundSagaStateJpaEntity, UUID>
         implements ActionRoundSagaStateJpaRepository {
 
-    private static final String WAITING = "WAITING";
+    private static final String WAITING = ActionRoundSagaStatus.WAITING.name();
 
     InMemoryActionRoundSagaStateJpaRepository(InMemoryDatabase database) {
         super(

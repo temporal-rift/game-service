@@ -5,6 +5,7 @@ import java.util.UUID;
 
 import tools.jackson.databind.ObjectMapper;
 
+import io.github.temporalrift.game.session.domain.saga.EraSagaStatus;
 import io.github.temporalrift.game.shared.domain.event.ScoresUpdated;
 import io.github.temporalrift.game.shared.infrastructure.adapter.out.memory.InMemoryDatabase;
 import io.github.temporalrift.game.shared.infrastructure.adapter.out.memory.InMemoryJpaRepository;
@@ -16,7 +17,7 @@ class InMemoryEraSagaScoresUpdatedInboxJpaRepository
         extends InMemoryJpaRepository<EraSagaScoresUpdatedInboxJpaEntity, UUID>
         implements EraSagaScoresUpdatedInboxJpaRepository {
 
-    private static final String WAITING_SCORES = "WAITING_SCORES";
+    private static final String WAITING_SCORES = EraSagaStatus.WAITING_SCORES.name();
 
     private final EraSagaStateJpaRepository sagas;
     private final ObjectMapper objectMapper;
@@ -35,7 +36,10 @@ class InMemoryEraSagaScoresUpdatedInboxJpaRepository
     @Override
     public int insertIfAbsent(UUID id, UUID gameId, int eraNumber, String payload) {
         var inbox = EraSagaScoresUpdatedInboxJpaEntity.restore(
-                id, gameId, eraNumber, objectMapper.readValue(payload, ScoresUpdated.class));
+                id,
+                gameId,
+                eraNumber,
+                parseJson("payload", () -> objectMapper.readValue(payload, ScoresUpdated.class)));
         return insertRowIfAbsent(inbox) ? 1 : 0;
     }
 

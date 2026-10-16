@@ -42,6 +42,9 @@ public class SimulationEventDelivery implements Consumer<Map<String, Object>> {
     @Override
     public void accept(Map<String, Object> delivered) {
         var topic = text(delivered, "topic");
+        text(delivered, "key");
+        headers(delivered);
+        payload(delivered);
         var listeners = registry.listenersOf(topic);
         RuntimeException failure = null;
         for (var listener : listeners) {
@@ -87,8 +90,8 @@ public class SimulationEventDelivery implements Consumer<Map<String, Object>> {
 
     private static ConsumerRecord<String, byte[]> consumerRecord(
             KafkaListenerRegistry.Listener listener, Map<String, Object> delivered, long offset) {
-        var consumed = new ConsumerRecord<>(
-                listener.topic(), PARTITION, offset, text(delivered, "key"), (byte[]) required(delivered, "payload"));
+        var consumed =
+                new ConsumerRecord<>(listener.topic(), PARTITION, offset, text(delivered, "key"), payload(delivered));
         HEADER_MAPPER.fromHeaders(
                 new MessageHeaders(new LinkedHashMap<String, Object>(headers(delivered))), consumed.headers());
         return consumed;
@@ -103,13 +106,32 @@ public class SimulationEventDelivery implements Consumer<Map<String, Object>> {
         return declared;
     }
 
-    @SuppressWarnings("unchecked")
     private static Map<String, String> headers(Map<String, Object> delivered) {
-        return (Map<String, String>) required(delivered, "headers");
+        if (!(required(delivered, "headers") instanceof Map<?, ?> headers)) {
+            throw new IllegalArgumentException("Simulation record 'headers' must be a Map<String, String>");
+        }
+        var typed = new LinkedHashMap<String, String>();
+        headers.forEach((name, value) -> {
+            if (!(name instanceof String headerName) || !(value instanceof String headerValue)) {
+                throw new IllegalArgumentException("Simulation record 'headers' must be a Map<String, String>");
+            }
+            typed.put(headerName, headerValue);
+        });
+        return typed;
+    }
+
+    private static byte[] payload(Map<String, Object> delivered) {
+        if (!(required(delivered, "payload") instanceof byte[] payload)) {
+            throw new IllegalArgumentException("Simulation record 'payload' must be a byte[]");
+        }
+        return payload;
     }
 
     private static String text(Map<String, Object> delivered, String name) {
-        return (String) required(delivered, name);
+        if (!(required(delivered, name) instanceof String text)) {
+            throw new IllegalArgumentException("Simulation record '" + name + "' must be a String");
+        }
+        return text;
     }
 
     private static Object required(Map<String, Object> delivered, String name) {

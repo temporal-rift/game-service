@@ -2,29 +2,33 @@ package io.github.temporalrift.game.action.infrastructure.adapter.out.persistenc
 
 import java.time.Instant;
 import java.util.Comparator;
-import java.util.function.Function;
+import java.util.List;
 import java.util.stream.Stream;
 
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
+import io.github.temporalrift.game.action.domain.declarationphase.DeclarationPhaseStatus;
+import io.github.temporalrift.game.action.domain.handselection.HandSelectionStatus;
+import io.github.temporalrift.game.action.domain.saga.ActionRoundSagaStatus;
 import io.github.temporalrift.game.shared.domain.port.out.ExecutionProbe;
 
 @Component
 @Profile("in-memory")
 class InMemoryActionExecutionProbe implements ExecutionProbe {
 
-    private static final String OPEN = "OPEN";
-    private static final String WAITING = "WAITING";
+    private static final String OPEN_SELECTION = HandSelectionStatus.OPEN.name();
+    private static final String OPEN_DECLARATION = DeclarationPhaseStatus.OPEN.name();
+    private static final String WAITING = ActionRoundSagaStatus.WAITING.name();
 
-    private final HandSelectionJpaRepository handSelections;
-    private final DeclarationPhaseJpaRepository declarationPhases;
-    private final ActionRoundSagaStateJpaRepository roundSagas;
+    private final InMemoryHandSelectionJpaRepository handSelections;
+    private final InMemoryDeclarationPhaseJpaRepository declarationPhases;
+    private final InMemoryActionRoundSagaStateJpaRepository roundSagas;
 
     InMemoryActionExecutionProbe(
-            HandSelectionJpaRepository handSelections,
-            DeclarationPhaseJpaRepository declarationPhases,
-            ActionRoundSagaStateJpaRepository roundSagas) {
+            InMemoryHandSelectionJpaRepository handSelections,
+            InMemoryDeclarationPhaseJpaRepository declarationPhases,
+            InMemoryActionRoundSagaStateJpaRepository roundSagas) {
         this.handSelections = handSelections;
         this.declarationPhases = declarationPhases;
         this.roundSagas = roundSagas;
@@ -32,17 +36,17 @@ class InMemoryActionExecutionProbe implements ExecutionProbe {
 
     @Override
     public Observation observe(Instant now) {
-        var deadlines = Stream.of(
-                        handSelections.findAll().stream()
-                                .filter(selection -> OPEN.equals(selection.status))
-                                .map(selection -> selection.selectionExpiresAt),
-                        declarationPhases.findAll().stream()
-                                .filter(phase -> OPEN.equals(phase.getStatus()))
-                                .map(DeclarationPhaseJpaEntity::getExpiresAt),
-                        roundSagas.findAll().stream()
-                                .filter(saga -> WAITING.equals(saga.getStatus()))
-                                .map(ActionRoundSagaStateJpaEntity::getTimerExpiresAt))
-                .flatMap(Function.identity())
+        List<Instant> deadlines = Stream.of(
+                        handSelections.project(
+                                selection -> OPEN_SELECTION.equals(selection.status),
+                                selection -> selection.selectionExpiresAt),
+                        declarationPhases.project(
+                                phase -> OPEN_DECLARATION.equals(phase.getStatus()),
+                                DeclarationPhaseJpaEntity::getExpiresAt),
+                        roundSagas.project(
+                                saga -> WAITING.equals(saga.getStatus()),
+                                ActionRoundSagaStateJpaEntity::getTimerExpiresAt))
+                .flatMap(List::stream)
                 .toList();
         var due = (int)
                 deadlines.stream().filter(deadline -> !deadline.isAfter(now)).count();
