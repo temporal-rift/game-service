@@ -23,30 +23,30 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional
 class InMemoryEventPublicationRepository implements EventPublicationRepository {
 
-    static final TableDefinition<UUID, PublicationRow> PUBLICATIONS =
+    static final TableDefinition<UUID, PublicationRow> TABLE =
             TableDefinition.of("event_publication", PublicationRow::id);
 
     private static final Comparator<PublicationRow> OLDEST_FIRST =
             Comparator.comparing(PublicationRow::publicationDate);
 
-    private final InMemoryTable<UUID, PublicationRow> publications;
+    private final InMemoryTable<UUID, PublicationRow> table;
     private final EventSerializer serializer;
 
     InMemoryEventPublicationRepository(InMemoryDatabase database, EventSerializer serializer) {
-        this.publications = database.table(PUBLICATIONS);
+        this.table = database.table(TABLE);
         this.serializer = serializer;
     }
 
     @Override
     public TargetEventPublication create(TargetEventPublication publication) {
         var event = publication.getEvent();
-        publications.save(new PublicationRow(
+        table.save(new PublicationRow(
                 publication.getIdentifier(),
                 publication.getPublicationDate(),
                 publication.getTargetIdentifier().getValue(),
                 serializer.serialize(event).toString(),
                 event.getClass(),
-                publication.getStatus() == null ? Status.PROCESSING : publication.getStatus(),
+                publication.getStatus(),
                 null,
                 publication.getLastResubmissionDate(),
                 publication.getCompletionAttempts()));
@@ -61,11 +61,10 @@ class InMemoryEventPublicationRepository implements EventPublicationRepository {
     @Override
     public void markCompleted(Object event, PublicationTargetIdentifier identifier, Instant completionDate) {
         var serialized = serializer.serialize(event).toString();
-        publications
-                .findAll(row -> row.completionDate() == null
+        table.findAll(row -> row.completionDate() == null
                         && row.listenerId().equals(identifier.getValue())
                         && row.serializedEvent().equals(serialized))
-                .forEach(row -> publications.save(row.completed(completionDate)));
+                .forEach(row -> table.save(row.completed(completionDate)));
     }
 
     @Override
@@ -120,17 +119,17 @@ class InMemoryEventPublicationRepository implements EventPublicationRepository {
 
     @Override
     public void deletePublications(List<UUID> identifiers) {
-        identifiers.forEach(publications::delete);
+        identifiers.forEach(table::delete);
     }
 
     @Override
     public void deleteCompletedPublications() {
-        publications.deleteAll(row -> row.completionDate() != null);
+        table.deleteAll(row -> row.completionDate() != null);
     }
 
     @Override
     public void deleteCompletedPublicationsBefore(Instant instant) {
-        publications.deleteAll(
+        table.deleteAll(
                 row -> row.completionDate() != null && row.completionDate().isBefore(instant));
     }
 
@@ -141,22 +140,21 @@ class InMemoryEventPublicationRepository implements EventPublicationRepository {
 
     @Override
     public int countByStatus(Status status) {
-        return publications.findAll(row -> row.status() == status).size();
+        return table.findAll(row -> row.status() == status).size();
     }
 
     private boolean update(UUID identifier, Predicate<PublicationRow> condition, UnaryOperator<PublicationRow> change) {
-        return publications
-                .findForUpdate(identifier)
+        return table.findForUpdate(identifier)
                 .filter(condition)
                 .map(row -> {
-                    publications.save(change.apply(row));
+                    table.save(change.apply(row));
                     return true;
                 })
                 .orElse(false);
     }
 
     private List<TargetEventPublication> find(Predicate<PublicationRow> filter) {
-        return publications.findAll(filter).stream()
+        return table.findAll(filter).stream()
                 .sorted(OLDEST_FIRST)
                 .<TargetEventPublication>map(row -> new StoredPublication(row, serializer))
                 .toList();

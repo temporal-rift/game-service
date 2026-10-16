@@ -20,13 +20,15 @@ import org.springframework.data.repository.query.FluentQuery;
  * changing what it read changes nothing until it saves, as with a database. Query-by-example, sorting and paging are
  * not supported; a repository implements the queries its interface declares through the protected helpers.
  */
-public abstract class InMemoryJpaRepository<E, ID> implements JpaRepository<E, ID> {
+public abstract class InMemoryJpaRepository<E, I> implements JpaRepository<E, I> {
+
+    private static final String QUERY_BY_EXAMPLE = "query by example";
 
     private final InMemoryDatabase database;
-    private final InMemoryTable<ID, E> table;
-    private final Function<E, ID> idOf;
+    private final InMemoryTable<I, E> table;
+    private final Function<E, I> idOf;
 
-    protected InMemoryJpaRepository(InMemoryDatabase database, TableDefinition<ID, E> definition) {
+    protected InMemoryJpaRepository(InMemoryDatabase database, TableDefinition<I, E> definition) {
         this.database = database;
         this.table = database.table(definition);
         this.idOf = definition.primaryKey();
@@ -44,7 +46,7 @@ public abstract class InMemoryJpaRepository<E, ID> implements JpaRepository<E, I
         return table.findAll(filter).stream().sorted(order).map(RowCopier::copy).toList();
     }
 
-    protected final Optional<E> findByIdForUpdate(ID id) {
+    protected final Optional<E> findByIdForUpdate(I id) {
         return table.findForUpdate(id).map(RowCopier::copy);
     }
 
@@ -101,12 +103,12 @@ public abstract class InMemoryJpaRepository<E, ID> implements JpaRepository<E, I
     }
 
     @Override
-    public Optional<E> findById(ID id) {
+    public Optional<E> findById(I id) {
         return table.find(id).map(RowCopier::copy);
     }
 
     @Override
-    public boolean existsById(ID id) {
+    public boolean existsById(I id) {
         return table.find(id).isPresent();
     }
 
@@ -116,7 +118,7 @@ public abstract class InMemoryJpaRepository<E, ID> implements JpaRepository<E, I
     }
 
     @Override
-    public List<E> findAllById(Iterable<ID> ids) {
+    public List<E> findAllById(Iterable<I> ids) {
         var found = new ArrayList<E>();
         ids.forEach(id -> findById(id).ifPresent(found::add));
         return found;
@@ -128,7 +130,7 @@ public abstract class InMemoryJpaRepository<E, ID> implements JpaRepository<E, I
     }
 
     @Override
-    public void deleteById(ID id) {
+    public void deleteById(I id) {
         table.delete(id);
     }
 
@@ -138,7 +140,7 @@ public abstract class InMemoryJpaRepository<E, ID> implements JpaRepository<E, I
     }
 
     @Override
-    public void deleteAllById(Iterable<? extends ID> ids) {
+    public void deleteAllById(Iterable<? extends I> ids) {
         ids.forEach(table::delete);
     }
 
@@ -163,7 +165,7 @@ public abstract class InMemoryJpaRepository<E, ID> implements JpaRepository<E, I
     }
 
     @Override
-    public void deleteAllByIdInBatch(Iterable<ID> ids) {
+    public void deleteAllByIdInBatch(Iterable<I> ids) {
         deleteAllById(ids);
     }
 
@@ -173,17 +175,17 @@ public abstract class InMemoryJpaRepository<E, ID> implements JpaRepository<E, I
     }
 
     @Override
-    public E getOne(ID id) {
+    public E getOne(I id) {
         return getReferenceById(id);
     }
 
     @Override
-    public E getById(ID id) {
+    public E getById(I id) {
         return getReferenceById(id);
     }
 
     @Override
-    public E getReferenceById(ID id) {
+    public E getReferenceById(I id) {
         return findById(id).orElseThrow(() -> new EntityNotFoundException("No row " + id));
     }
 
@@ -199,38 +201,38 @@ public abstract class InMemoryJpaRepository<E, ID> implements JpaRepository<E, I
 
     @Override
     public <S extends E> Optional<S> findOne(Example<S> example) {
-        throw unsupported("query by example");
+        throw unsupported(QUERY_BY_EXAMPLE);
     }
 
     @Override
     public <S extends E> List<S> findAll(Example<S> example) {
-        throw unsupported("query by example");
+        throw unsupported(QUERY_BY_EXAMPLE);
     }
 
     @Override
     public <S extends E> List<S> findAll(Example<S> example, Sort sort) {
-        throw unsupported("query by example");
+        throw unsupported(QUERY_BY_EXAMPLE);
     }
 
     @Override
     public <S extends E> Page<S> findAll(Example<S> example, Pageable pageable) {
-        throw unsupported("query by example");
+        throw unsupported(QUERY_BY_EXAMPLE);
     }
 
     @Override
     public <S extends E> long count(Example<S> example) {
-        throw unsupported("query by example");
+        throw unsupported(QUERY_BY_EXAMPLE);
     }
 
     @Override
     public <S extends E> boolean exists(Example<S> example) {
-        throw unsupported("query by example");
+        throw unsupported(QUERY_BY_EXAMPLE);
     }
 
     @Override
     public <S extends E, R> R findBy(
             Example<S> example, Function<FluentQuery.FetchableFluentQuery<S>, R> queryFunction) {
-        throw unsupported("query by example");
+        throw unsupported(QUERY_BY_EXAMPLE);
     }
 
     private static UnsupportedOperationException unsupported(String feature) {

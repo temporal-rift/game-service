@@ -86,14 +86,19 @@ final class KafkaListenerRegistry implements BeanPostProcessor, Ordered {
             return method.getParameterTypes()[0];
         }
 
-        void invoke(Object argument) throws Exception {
+        void invoke(Object argument) {
             try {
                 method.invoke(bean, argument);
             } catch (InvocationTargetException e) {
-                if (e.getCause() instanceof Exception cause) {
+                if (e.getCause() instanceof RuntimeException cause) {
                     throw cause;
                 }
-                throw e;
+                if (e.getCause() instanceof Error cause) {
+                    throw cause;
+                }
+                throw new IllegalStateException("Listener " + this + " failed", e.getCause());
+            } catch (IllegalAccessException e) {
+                throw new IllegalStateException("Listener " + this + " is not accessible", e);
             }
         }
 

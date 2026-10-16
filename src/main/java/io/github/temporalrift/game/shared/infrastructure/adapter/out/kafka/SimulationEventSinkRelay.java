@@ -31,11 +31,11 @@ class SimulationEventSinkRelay {
         if (!OutboundIntegrationEventPublisher.GAME_EVENTS_CHANNEL.equals(event.channel())) {
             throw new IllegalArgumentException("Unsupported outbound AsyncAPI channel: " + event.channel());
         }
-        var record = new LinkedHashMap<String, Object>();
-        record.put("topic", TOPIC);
-        record.put("key", event.key());
-        record.put("headers", GameEventHeaders.of(event));
-        record.put("payload", objectMapper.writeValueAsBytes(event.payload()));
-        sink.accept(record);
+        var message = new LinkedHashMap<String, Object>();
+        message.put("topic", TOPIC);
+        message.put("key", event.key());
+        message.put("headers", GameEventHeaders.of(event));
+        message.put("payload", objectMapper.writeValueAsBytes(event.payload()));
+        sink.accept(message);
     }
 }

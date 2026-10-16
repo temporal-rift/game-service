@@ -5,14 +5,14 @@ import java.util.Optional;
 
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Profile;
-import org.springframework.stereotype.Component;
+import org.springframework.stereotype.Repository;
 
 import io.github.temporalrift.game.shared.infrastructure.adapter.out.memory.InMemoryDatabase;
 import io.github.temporalrift.game.shared.infrastructure.adapter.out.memory.InMemoryTable;
 import io.github.temporalrift.game.shared.infrastructure.adapter.out.memory.TableDefinition;
 import io.github.temporalrift.game.simulation.domain.port.out.EntropyDecisionRepository;
 
-@Component
+@Repository
 @Profile("in-memory")
 @ConditionalOnProperty(name = "game.simulation.enabled", havingValue = "true")
 class InMemoryEntropyDecisionRepository implements EntropyDecisionRepository {
@@ -20,20 +20,20 @@ class InMemoryEntropyDecisionRepository implements EntropyDecisionRepository {
     private static final TableDefinition<Draw, Draw> DRAWS =
             TableDefinition.of("simulation_entropy_decision", draw -> draw);
 
-    private final InMemoryTable<Draw, Draw> draws;
+    private final InMemoryTable<Draw, Draw> store;
 
     InMemoryEntropyDecisionRepository(InMemoryDatabase database) {
-        this.draws = database.table(DRAWS);
+        this.store = database.table(DRAWS);
     }
 
     @Override
     public Optional<Long> find(String purpose, String coordinate, int drawIndex) {
-        return draws.find(new Draw(purpose, coordinate, drawIndex, 0)).map(Draw::word);
+        return store.find(new Draw(purpose, coordinate, drawIndex, 0)).map(Draw::word);
     }
 
     @Override
     public void save(String purpose, String coordinate, int drawIndex, long word) {
-        draws.insertIfAbsent(new Draw(purpose, coordinate, drawIndex, word));
+        store.insertIfAbsent(new Draw(purpose, coordinate, drawIndex, word));
     }
 
     private record Draw(String purpose, String coordinate, int drawIndex, long word) {

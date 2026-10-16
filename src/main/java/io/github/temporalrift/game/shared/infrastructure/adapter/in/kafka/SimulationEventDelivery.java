@@ -40,25 +40,18 @@ public class SimulationEventDelivery implements Consumer<Map<String, Object>> {
     }
 
     @Override
-    public void accept(Map<String, Object> record) {
-        var topic = text(record, "topic");
+    public void accept(Map<String, Object> delivered) {
+        var topic = text(delivered, "topic");
         var listeners = registry.listenersOf(topic);
         RuntimeException failure = null;
         for (var listener : listeners) {
             try {
-                deliver(listener, record);
+                deliver(listener, delivered);
             } catch (RuntimeException e) {
                 if (failure == null) {
                     failure = e;
                 } else {
                     failure.addSuppressed(e);
-                }
-            } catch (Exception e) {
-                var wrapped = new IllegalStateException("Listener " + listener + " failed", e);
-                if (failure == null) {
-                    failure = wrapped;
-                } else {
-                    failure.addSuppressed(wrapped);
                 }
             }
         }
@@ -83,21 +76,21 @@ public class SimulationEventDelivery implements Consumer<Map<String, Object>> {
         return List.copyOf(positions);
     }
 
-    private void deliver(KafkaListenerRegistry.Listener listener, Map<String, Object> record) throws Exception {
+    private void deliver(KafkaListenerRegistry.Listener listener, Map<String, Object> delivered) {
         var counter =
                 handled.computeIfAbsent(new GroupTopic(listener.groupId(), listener.topic()), key -> new AtomicLong());
-        var message =
-                converter.toMessage(consumerRecord(listener, record, counter.get()), null, null, payloadType(listener));
+        var message = converter.toMessage(
+                consumerRecord(listener, delivered, counter.get()), null, null, payloadType(listener));
         listener.invoke(Message.class.isAssignableFrom(listener.parameterType()) ? message : message.getPayload());
         counter.incrementAndGet();
     }
 
     private static ConsumerRecord<String, byte[]> consumerRecord(
-            KafkaListenerRegistry.Listener listener, Map<String, Object> record, long offset) {
+            KafkaListenerRegistry.Listener listener, Map<String, Object> delivered, long offset) {
         var consumed = new ConsumerRecord<>(
-                listener.topic(), PARTITION, offset, text(record, "key"), (byte[]) required(record, "payload"));
+                listener.topic(), PARTITION, offset, text(delivered, "key"), (byte[]) required(delivered, "payload"));
         HEADER_MAPPER.fromHeaders(
-                new MessageHeaders(new LinkedHashMap<String, Object>(headers(record))), consumed.headers());
+                new MessageHeaders(new LinkedHashMap<String, Object>(headers(delivered))), consumed.headers());
         return consumed;
     }
 
@@ -111,16 +104,16 @@ public class SimulationEventDelivery implements Consumer<Map<String, Object>> {
     }
 
     @SuppressWarnings("unchecked")
-    private static Map<String, String> headers(Map<String, Object> record) {
-        return (Map<String, String>) required(record, "headers");
+    private static Map<String, String> headers(Map<String, Object> delivered) {
+        return (Map<String, String>) required(delivered, "headers");
     }
 
-    private static String text(Map<String, Object> record, String name) {
-        return (String) required(record, name);
+    private static String text(Map<String, Object> delivered, String name) {
+        return (String) required(delivered, name);
     }
 
-    private static Object required(Map<String, Object> record, String name) {
-        var value = record.get(name);
+    private static Object required(Map<String, Object> delivered, String name) {
+        var value = delivered.get(name);
         if (value == null) {
             throw new IllegalArgumentException("Simulation record lacks '" + name + "'");
         }
