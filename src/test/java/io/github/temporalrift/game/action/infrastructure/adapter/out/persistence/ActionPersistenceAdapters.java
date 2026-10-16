@@ -6,6 +6,7 @@ import org.springframework.context.annotation.Import;
 /** The adapters are package-private, so the shared persistence test configuration reaches them through here. */
 @TestConfiguration(proxyBeanMethods = false)
 @Import({
+    ActionExecutionProbe.class,
     ActionRoundRepositoryAdapter.class,
     ActionRoundSagaAdapter.class,
     ActivistEraStateRepositoryAdapter.class,

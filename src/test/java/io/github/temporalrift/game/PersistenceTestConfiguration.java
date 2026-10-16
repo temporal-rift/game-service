@@ -15,6 +15,7 @@ import io.github.temporalrift.game.scoring.infrastructure.adapter.out.persistenc
 import io.github.temporalrift.game.session.domain.port.out.SessionEventPublisher;
 import io.github.temporalrift.game.session.infrastructure.adapter.out.persistence.SessionPersistenceAdapters;
 import io.github.temporalrift.game.shared.infrastructure.adapter.out.persistence.SharedPersistenceAdapters;
+import io.github.temporalrift.game.simulation.infrastructure.adapter.out.persistence.SimulationJdbcAdapters;
 
 /**
  * Everything the persistence slice needs, in one place: a context is cached per distinct configuration, and
@@ -30,6 +31,7 @@ import io.github.temporalrift.game.shared.infrastructure.adapter.out.persistence
     ScoringPersistenceAdapters.class,
     SessionPersistenceAdapters.class,
     SharedPersistenceAdapters.class,
+    SimulationJdbcAdapters.class,
     // Application services whose transaction boundaries are only observable against a real database.
     PlayerScoreQueryService.class
 })
