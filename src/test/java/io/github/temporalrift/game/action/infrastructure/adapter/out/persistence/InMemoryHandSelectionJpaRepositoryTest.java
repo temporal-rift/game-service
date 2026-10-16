@@ -20,8 +20,11 @@ class InMemoryHandSelectionJpaRepositoryTest {
                 new InMemoryDatabase(Duration.ofSeconds(1)),
                 JsonMapper.builder().build());
 
-        assertThatThrownBy(() -> repository.insertIfAbsent(
-                        UUID.randomUUID(), UUID.randomUUID(), 1, UUID.randomUUID(), "OPEN", Instant.EPOCH, "not json"))
+        var id = UUID.randomUUID();
+        var gameId = UUID.randomUUID();
+        var playerId = UUID.randomUUID();
+
+        assertThatThrownBy(() -> repository.insertIfAbsent(id, gameId, 1, playerId, "OPEN", Instant.EPOCH, "not json"))
                 .isInstanceOf(DataIntegrityViolationException.class)
                 .hasMessageContaining("dealt_cards");
     }

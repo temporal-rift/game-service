@@ -122,7 +122,7 @@ public final class InMemoryTable<K, R> {
     void forgetReplaced(Map<Object, Object> writes) {
         writes.keySet().forEach(key -> {
             @SuppressWarnings("unchecked")
-            var previous = committed.get((K) key);
+            var previous = committed.get(key);
             if (previous != null) {
                 forgetUniques(previous);
             }
@@ -133,7 +133,7 @@ public final class InMemoryTable<K, R> {
     void applyCommitted(Map<Object, Object> writes) {
         writes.forEach((key, written) -> {
             if (written == DELETED) {
-                committed.remove((K) key);
+                committed.remove(key);
             } else {
                 committed.put((K) key, (R) written);
                 rememberUniques((R) written);

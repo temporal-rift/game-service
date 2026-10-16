@@ -29,7 +29,9 @@ public interface ProcessedEventPortContract extends PortContract {
     default void processedEvent_withoutATransactionFailsFast() {
         var repository = port(ProcessedEventRepository.class);
 
-        assertThatThrownBy(() -> repository.tryMarkProcessed(UUID.randomUUID(), "consumer-a"))
+        var eventId = UUID.randomUUID();
+
+        assertThatThrownBy(() -> repository.tryMarkProcessed(eventId, "consumer-a"))
                 .isInstanceOf(IllegalTransactionStateException.class);
     }
 

@@ -104,11 +104,11 @@ class InMemoryRuntimeIT {
         var objectMapper = application.getBean(ObjectMapper.class);
         sink.forEach(message -> {
             assertThat(message.keySet()).containsExactly("topic", "key", "headers", "payload");
-            assertThat(message.get("topic")).isEqualTo("game.events");
+            assertThat(message).containsEntry("topic", "game.events");
             @SuppressWarnings("unchecked")
             var headers = (Map<String, String>) message.get("headers");
             assertThat(headers.keySet()).isEqualTo(WIRE_HEADERS);
-            assertThat(headers.get("gameId")).isEqualTo(message.get("key"));
+            assertThat(headers).containsEntry("gameId", (String) message.get("key"));
             assertThat(objectMapper.readTree((byte[]) message.get("payload")).isObject())
                     .isTrue();
         });
