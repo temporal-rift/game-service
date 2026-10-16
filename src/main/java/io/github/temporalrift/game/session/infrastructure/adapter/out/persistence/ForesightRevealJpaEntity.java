@@ -62,6 +62,10 @@ class ForesightRevealJpaEntity {
         return entity;
     }
 
+    UUID id() {
+        return id;
+    }
+
     UUID gameId() {
         return gameId;
     }

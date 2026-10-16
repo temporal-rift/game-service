@@ -2,12 +2,14 @@ package io.github.temporalrift.game.scoring.infrastructure.adapter.out.persisten
 
 import java.time.Instant;
 
+import org.springframework.context.annotation.Profile;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Component;
 
 import io.github.temporalrift.game.shared.domain.port.out.ExecutionProbe;
 
 @Component
+@Profile("!in-memory")
 class ScoringExecutionProbe implements ExecutionProbe {
 
     private final JdbcClient jdbc;

@@ -10,6 +10,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.context.annotation.Profile;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Component;
 
@@ -22,6 +23,7 @@ import io.github.temporalrift.game.simulation.domain.execution.SimulationSeat;
 import io.github.temporalrift.game.simulation.domain.port.out.ExecutionRepository;
 
 @Component
+@Profile("!in-memory")
 @ConditionalOnProperty(name = "game.simulation.enabled", havingValue = "true")
 class ExecutionRepositoryAdapter implements ExecutionRepository {
 

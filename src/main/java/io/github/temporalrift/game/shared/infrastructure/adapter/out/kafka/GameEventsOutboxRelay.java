@@ -1,20 +1,17 @@
 package io.github.temporalrift.game.shared.infrastructure.adapter.out.kafka;
 
-import java.util.Map;
-import java.util.Set;
-
 import org.springframework.cloud.stream.function.StreamBridge;
+import org.springframework.context.annotation.Profile;
 import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.modulith.events.ApplicationModuleListener;
 import org.springframework.stereotype.Component;
 
 /** Relays durably registered game events to the single Spring Cloud Stream output binding. */
 @Component
+@Profile("!in-memory")
 class GameEventsOutboxRelay {
 
     private static final String OUTPUT_BINDING = "game-events-out";
-    private static final Set<String> ALLOWED_HEADERS =
-            Set.of("eventType", "eventId", "aggregateId", "aggregateType", "gameId", "occurredAt", "version");
 
     private final StreamBridge streamBridge;
 
@@ -33,20 +30,10 @@ class GameEventsOutboxRelay {
         }
 
         var message = MessageBuilder.withPayload(event.payload());
-        copyAllowedHeaders(event.headers(), message);
-        message.setHeader("eventType", event.eventType());
-        message.setHeader("gameId", event.key());
+        GameEventHeaders.of(event).forEach(message::setHeader);
 
         if (!streamBridge.send(OUTPUT_BINDING, message.build())) {
             throw new IllegalStateException("Spring Cloud Stream rejected game event " + event.eventType());
         }
-    }
-
-    private static void copyAllowedHeaders(Map<String, Object> headers, MessageBuilder<?> message) {
-        headers.forEach((name, value) -> {
-            if (ALLOWED_HEADERS.contains(name)) {
-                message.setHeader(name, value);
-            }
-        });
     }
 }

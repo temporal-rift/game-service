@@ -30,6 +30,18 @@ class ScoringContextActionFactJpaEntity extends GameEraScopedJpaEntity {
         return playerId;
     }
 
+    void setPlayerId(UUID playerId) {
+        this.playerId = playerId;
+    }
+
+    void setFaction(String faction) {
+        this.faction = faction;
+    }
+
+    void setReason(String reason) {
+        this.reason = reason;
+    }
+
     String getFaction() {
         return faction;
     }

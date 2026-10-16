@@ -14,6 +14,7 @@ import org.apache.kafka.clients.admin.Admin;
 import org.apache.kafka.clients.admin.GroupListing;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.context.annotation.Profile;
 import org.springframework.kafka.core.KafkaAdmin;
 import org.springframework.stereotype.Component;
 
@@ -22,6 +23,7 @@ import io.github.temporalrift.game.simulation.domain.port.out.SourceWatermarks;
 
 /** Committed offsets of this service's consumer groups: how far each group has handled its source partitions. */
 @Component
+@Profile("!in-memory")
 @ConditionalOnProperty(name = "game.simulation.enabled", havingValue = "true")
 class KafkaSourceWatermarks implements SourceWatermarks {
 
