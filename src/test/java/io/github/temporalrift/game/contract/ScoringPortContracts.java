@@ -197,6 +197,25 @@ public final class ScoringPortContracts {
         }
 
         @Test
+        default void eraScoringContext_theFirstWrittenOutcomeOfAnEventWins() {
+            var repository = port(EraScoringContextRepository.class);
+            var gameId = UUID.randomUUID();
+            var event = UUID.randomUUID();
+            var firstOutcome = UUID.randomUUID();
+            repository.upsertPlayerFaction(gameId, UUID.randomUUID(), Faction.PROPHETS);
+
+            repository.upsertWrittenOutcome(gameId, 1, event, firstOutcome, UUID.randomUUID());
+            repository.upsertWrittenOutcome(gameId, 1, event, UUID.randomUUID(), UUID.randomUUID());
+
+            assertThat(repository.getRequired(gameId, 1).eventOutcomes())
+                    .singleElement()
+                    .satisfies(fact -> {
+                        assertThat(fact.eventId()).isEqualTo(event);
+                        assertThat(fact.writtenOutcomeId()).isEqualTo(firstOutcome);
+                    });
+        }
+
+        @Test
         default void eraScoringContext_eraResolutionBarrierDrivesThePendingCompletionSweep() {
             var repository = port(EraScoringContextRepository.class);
             var completions = port(ScoringEraCompletionRepository.class);
