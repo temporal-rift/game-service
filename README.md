@@ -72,6 +72,24 @@ repository secret to re-enable the step.
 
 A lane hosts one case on its own database and topics. Configure it first with `PUT /internal/simulation/v1/execution`; until then gameplay routes return `409 EXECUTION_NOT_CONFIGURED`. After a restart the configured context, realized random choices and clock operations are read back from the database, so a repeated step makes the same choices and spends no extra draw. Poll `GET /internal/simulation/v1/checkpoint` until `drained` after each clock advance.
 
+#### Running in a host JVM without PostgreSQL or Kafka
+
+A simulation host can run the service in-process with the Spring profile `in-memory`, which replaces PostgreSQL, the Spring Modulith event registry and Kafka with in-memory equivalents. It needs `game.simulation.enabled=true` and a parent application context that supplies:
+
+- a `Consumer<Map<String, Object>>` bean named `simulationEventSink`, which receives every record the service would publish to `game.events`;
+- the rules properties (`game.rules.*`), the JWT settings and, if tokens are not issued by a real issuer, its own `JwtDecoder`.
+
+The application exposes a `Consumer<Map<String, Object>>` bean named `simulationEventDelivery`; passing it a record runs every Kafka listener subscribed to the record's topic once per consumer group and returns after their transactions commit. A record is a map with `topic` (`String`), `key` (`String`, the game id), `headers` (`Map<String, String>`: `eventType`, `eventId`, `aggregateId`, `aggregateType`, `gameId`, `occurredAt`, `version`) and `payload` (`byte[]`, the JSON the Kafka adapter would send).
+
+```java
+new SpringApplicationBuilder(GameServiceApplication.class)
+        .parent(hostContext)
+        .profiles("in-memory")
+        .run("--game.simulation.enabled=true");
+```
+
+The profile listens on an ephemeral port unless `server.port` is given. State lives in the application context, so several instances can share a JVM.
+
 ## Build and test
 
 ```bash
