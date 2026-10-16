@@ -12,6 +12,8 @@ import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 
+import io.github.temporalrift.contracttest.InMemoryPersistenceTestConfiguration;
+
 /** The in-memory counterpart of {@link PersistenceIntegrationTest}: the same adapters over the in-memory store. */
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.RUNTIME)

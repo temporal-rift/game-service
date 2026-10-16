@@ -433,18 +433,25 @@ public final class SessionPortContracts {
         }
 
         @Test
+        @Transactional(propagation = Propagation.NOT_SUPPORTED)
         default void reconnectSaga_compareAndSetStatusSucceedsOnlyFromTheExpectedStatus() {
             var repository = port(PlayerReconnectSagaRepository.class);
             var gameId = UUID.randomUUID();
-            var saga = save(gameId, PlayerReconnectSagaStatus.GRACE_PERIOD, Instant.parse("2026-01-01T00:00:30Z"));
+            var saga = inNewTransaction(
+                    () -> save(gameId, PlayerReconnectSagaStatus.GRACE_PERIOD, Instant.parse("2026-01-01T00:00:30Z")));
 
-            assertThat(repository.compareAndSetStatus(
-                            saga.sagaId(), PlayerReconnectSagaStatus.GRACE_PERIOD, PlayerReconnectSagaStatus.ABANDONED))
+            assertThat(inNewTransaction(() -> repository.compareAndSetStatus(
+                            saga.sagaId(),
+                            PlayerReconnectSagaStatus.GRACE_PERIOD,
+                            PlayerReconnectSagaStatus.ABANDONED)))
                     .isTrue();
-            assertThat(repository.compareAndSetStatus(
-                            saga.sagaId(), PlayerReconnectSagaStatus.GRACE_PERIOD, PlayerReconnectSagaStatus.ABANDONED))
+            assertThat(inNewTransaction(() -> repository.compareAndSetStatus(
+                            saga.sagaId(),
+                            PlayerReconnectSagaStatus.GRACE_PERIOD,
+                            PlayerReconnectSagaStatus.ABANDONED)))
                     .isFalse();
-            assertThat(repository.findBySagaId(saga.sagaId()).orElseThrow().status())
+            assertThat(inNewTransaction(() ->
+                            repository.findBySagaId(saga.sagaId()).orElseThrow().status()))
                     .isEqualTo(PlayerReconnectSagaStatus.ABANDONED);
         }
 

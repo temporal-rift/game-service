@@ -1,4 +1,4 @@
-package io.github.temporalrift.game;
+package io.github.temporalrift.contracttest;
 
 import java.time.Clock;
 
@@ -25,7 +25,7 @@ import io.github.temporalrift.game.shared.infrastructure.adapter.out.persistence
 import io.github.temporalrift.game.shared.infrastructure.adapter.out.persistence.SharedPersistenceAdapters;
 import io.github.temporalrift.game.simulation.infrastructure.adapter.out.persistence.SimulationInMemoryAdapters;
 
-/** The persistence adapters over the in-memory store: no container, no database, no broker. */
+/** The persistence adapters over the in-memory store; outside the application package so its scan skips it. */
 @Configuration(proxyBeanMethods = false)
 @EnableTransactionManagement
 @EnableConfigurationProperties(ScoreRulesProperties.class)
