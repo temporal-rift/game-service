@@ -2,9 +2,9 @@ package io.github.temporalrift.game.shared.infrastructure.adapter.in.kafka;
 
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -12,8 +12,10 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.springframework.kafka.support.JsonKafkaHeaderMapper;
 import org.springframework.kafka.support.converter.RecordMessageConverter;
 import org.springframework.messaging.Message;
+import org.springframework.messaging.MessageHeaders;
 
 /**
  * The inbound edge of the in-memory runtime: takes a record a host would have published to Kafka and runs, on the
@@ -25,6 +27,8 @@ import org.springframework.messaging.Message;
 public class SimulationEventDelivery implements Consumer<Map<String, Object>> {
 
     private static final int PARTITION = 0;
+    // Headers are encoded as a producer would, so the consumer-side mapper reads them back as strings.
+    private static final JsonKafkaHeaderMapper HEADER_MAPPER = new JsonKafkaHeaderMapper();
 
     private final KafkaListenerRegistry registry;
     private final RecordMessageConverter converter;
@@ -92,7 +96,8 @@ public class SimulationEventDelivery implements Consumer<Map<String, Object>> {
             KafkaListenerRegistry.Listener listener, Map<String, Object> record, long offset) {
         var consumed = new ConsumerRecord<>(
                 listener.topic(), PARTITION, offset, text(record, "key"), (byte[]) required(record, "payload"));
-        headers(record).forEach((name, value) -> consumed.headers().add(name, value.getBytes(StandardCharsets.UTF_8)));
+        HEADER_MAPPER.fromHeaders(
+                new MessageHeaders(new LinkedHashMap<String, Object>(headers(record))), consumed.headers());
         return consumed;
     }
 

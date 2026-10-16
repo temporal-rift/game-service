@@ -1,5 +1,7 @@
 # Runs the service inside a host JVM with no PostgreSQL and no Kafka. The host supplies the rules properties,
 # the simulation switch and the simulationEventSink bean.
+server:
+  port: 0
 management:
   tracing:
     sampling:

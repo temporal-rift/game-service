@@ -8,6 +8,8 @@ import java.util.List;
 import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 
 import io.github.temporalrift.game.action.domain.port.out.ActionRoundSagaRepository;
 import io.github.temporalrift.game.action.domain.saga.ActionRoundSagaState;
@@ -124,13 +126,16 @@ public final class SimulationPortContracts {
     public interface ExecutionProbePortContract extends PortContract {
 
         @Test
+        @Transactional(propagation = Propagation.NOT_SUPPORTED)
         default void executionProbes_countActionTimersAsDueOrNext() {
             var sagas = port(ActionRoundSagaRepository.class);
             var now = Instant.parse("2026-08-14T00:01:00Z");
             var before = observe(now);
 
-            sagas.save(actionSaga(now.minusSeconds(1)));
-            sagas.save(actionSaga(now.plusSeconds(60)));
+            inNewTransaction(() -> {
+                sagas.save(actionSaga(now.minusSeconds(1)));
+                sagas.save(actionSaga(now.plusSeconds(60)));
+            });
             var after = observe(now);
 
             assertThat(after.dueTimers()).isEqualTo(before.dueTimers() + 1);
@@ -138,37 +143,42 @@ public final class SimulationPortContracts {
         }
 
         @Test
+        @Transactional(propagation = Propagation.NOT_SUPPORTED)
         default void executionProbes_countReconnectGracePeriodsAsDue() {
             var sagas = port(PlayerReconnectSagaRepository.class);
             var now = Instant.parse("2026-08-14T00:01:00Z");
             var before = observe(now);
 
-            sagas.save(new PlayerReconnectSagaState(
-                    UUID.randomUUID(),
-                    UUID.randomUUID(),
-                    UUID.randomUUID(),
-                    PlayerReconnectSagaStatus.GRACE_PERIOD,
-                    now.minusSeconds(1)));
-            sagas.save(new PlayerReconnectSagaState(
-                    UUID.randomUUID(),
-                    UUID.randomUUID(),
-                    UUID.randomUUID(),
-                    PlayerReconnectSagaStatus.RECONNECTED,
-                    now.minusSeconds(1)));
+            inNewTransaction(() -> {
+                sagas.save(new PlayerReconnectSagaState(
+                        UUID.randomUUID(),
+                        UUID.randomUUID(),
+                        UUID.randomUUID(),
+                        PlayerReconnectSagaStatus.GRACE_PERIOD,
+                        now.minusSeconds(1)));
+                sagas.save(new PlayerReconnectSagaState(
+                        UUID.randomUUID(),
+                        UUID.randomUUID(),
+                        UUID.randomUUID(),
+                        PlayerReconnectSagaStatus.RECONNECTED,
+                        now.minusSeconds(1)));
+            });
 
             assertThat(observe(now).dueTimers()).isEqualTo(before.dueTimers() + 1);
         }
 
         @Test
+        @Transactional(propagation = Propagation.NOT_SUPPORTED)
         default void executionProbes_countResolvedErasWithoutACompletionAsContinuations() {
             var contexts = port(EraScoringContextRepository.class);
             var completions = port(ScoringEraCompletionRepository.class);
             var gameId = UUID.randomUUID();
             var before = observe(Instant.parse("2026-08-14T00:01:00Z"));
 
-            contexts.saveEraResolutionCompleted(new EraResolutionCompleted(gameId, 1, List.of()));
+            inNewTransaction(
+                    () -> contexts.saveEraResolutionCompleted(new EraResolutionCompleted(gameId, 1, List.of())));
             var pending = observe(Instant.parse("2026-08-14T00:01:00Z"));
-            completions.tryMarkScoringComplete(gameId, 1);
+            inNewTransaction(() -> completions.tryMarkScoringComplete(gameId, 1));
             var done = observe(Instant.parse("2026-08-14T00:01:00Z"));
 
             assertThat(pending.continuations()).isEqualTo(before.continuations() + 1);
