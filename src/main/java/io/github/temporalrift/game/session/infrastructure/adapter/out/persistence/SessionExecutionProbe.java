@@ -5,12 +5,14 @@ import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.UUID;
 
+import org.springframework.context.annotation.Profile;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Component;
 
 import io.github.temporalrift.game.shared.domain.port.out.ExecutionProbe;
 
 @Component
+@Profile("!in-memory")
 class SessionExecutionProbe implements ExecutionProbe {
 
     private final JdbcClient jdbc;

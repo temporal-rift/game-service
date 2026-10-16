@@ -30,6 +30,16 @@ class ScoringTimelineResolutionBarrierJpaEntity extends GameEraScopedJpaEntity {
         return entity;
     }
 
+    static ScoringTimelineResolutionBarrierJpaEntity restore(
+            UUID id, UUID gameId, int eraNumber, EraResolutionCompleted payload) {
+        var entity = new ScoringTimelineResolutionBarrierJpaEntity();
+        entity.setId(id);
+        entity.setGameId(gameId);
+        entity.setEraNumber(eraNumber);
+        entity.payload = payload;
+        return entity;
+    }
+
     EraResolutionCompleted payload() {
         return payload;
     }

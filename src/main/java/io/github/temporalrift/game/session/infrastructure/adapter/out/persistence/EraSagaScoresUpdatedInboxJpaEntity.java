@@ -40,6 +40,27 @@ class EraSagaScoresUpdatedInboxJpaEntity {
         return entity;
     }
 
+    static EraSagaScoresUpdatedInboxJpaEntity restore(UUID id, UUID gameId, int eraNumber, ScoresUpdated payload) {
+        var entity = new EraSagaScoresUpdatedInboxJpaEntity();
+        entity.id = id;
+        entity.gameId = gameId;
+        entity.eraNumber = eraNumber;
+        entity.payload = payload;
+        return entity;
+    }
+
+    UUID getId() {
+        return id;
+    }
+
+    UUID getGameId() {
+        return gameId;
+    }
+
+    int getEraNumber() {
+        return eraNumber;
+    }
+
     ScoresUpdated toDomain() {
         return payload;
     }

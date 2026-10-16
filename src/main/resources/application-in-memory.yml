@@ -1,0 +1,34 @@
+# Runs the service inside a host JVM with no PostgreSQL and no Kafka. The host supplies the rules properties,
+# the simulation switch and the simulationEventSink bean.
+management:
+  tracing:
+    sampling:
+      probability: 0.0
+spring:
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration
+      - org.springframework.boot.jdbc.autoconfigure.DataSourceInitializationAutoConfiguration
+      - org.springframework.boot.jdbc.autoconfigure.DataSourceTransactionManagerAutoConfiguration
+      - org.springframework.boot.jdbc.autoconfigure.JdbcClientAutoConfiguration
+      - org.springframework.boot.jdbc.autoconfigure.JdbcTemplateAutoConfiguration
+      - org.springframework.boot.jdbc.autoconfigure.JndiDataSourceAutoConfiguration
+      - org.springframework.boot.jdbc.autoconfigure.XADataSourceAutoConfiguration
+      - org.springframework.boot.jdbc.autoconfigure.health.DataSourceHealthContributorAutoConfiguration
+      - org.springframework.boot.jdbc.autoconfigure.metrics.DataSourcePoolMetricsAutoConfiguration
+      - org.springframework.boot.hibernate.autoconfigure.HibernateJpaAutoConfiguration
+      - org.springframework.boot.hibernate.autoconfigure.metrics.HibernateMetricsAutoConfiguration
+      - org.springframework.boot.data.jpa.autoconfigure.DataJpaRepositoriesAutoConfiguration
+      - org.springframework.boot.liquibase.autoconfigure.LiquibaseAutoConfiguration
+      - org.springframework.boot.liquibase.autoconfigure.LiquibaseEndpointAutoConfiguration
+      - org.springframework.boot.kafka.autoconfigure.KafkaAutoConfiguration
+      - org.springframework.boot.kafka.autoconfigure.metrics.KafkaMetricsAutoConfiguration
+      - org.springframework.cloud.stream.config.BindingServiceConfiguration
+      - org.springframework.cloud.stream.config.BindersHealthIndicatorAutoConfiguration
+      - org.springframework.cloud.stream.config.BindingsEndpointAutoConfiguration
+      - org.springframework.cloud.stream.config.ChannelsEndpointAutoConfiguration
+      - org.springframework.cloud.stream.function.FunctionConfiguration
+      - org.springframework.cloud.stream.binder.kafka.config.ExtendedBindingHandlerMappingsProviderConfiguration
+      - org.springframework.cloud.stream.binder.kafka.config.MessageConverterHelperConfiguration
+      - org.springframework.modulith.events.jpa.JpaEventPublicationAutoConfiguration
+      - org.springframework.modulith.events.jpa.archiving.ArchivingAutoConfiguration

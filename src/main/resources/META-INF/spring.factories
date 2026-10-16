@@ -1,1 +1,2 @@
-org.springframework.boot.diagnostics.FailureAnalyzer=io.github.temporalrift.game.shared.infrastructure.config.RequiredDeploymentEnvironmentFailureAnalyzer
+org.springframework.boot.diagnostics.FailureAnalyzer=io.github.temporalrift.game.shared.infrastructure.config.RequiredDeploymentEnvironmentFailureAnalyzer,\
+  io.github.temporalrift.game.shared.infrastructure.config.InMemoryProfileFailureAnalyzer
