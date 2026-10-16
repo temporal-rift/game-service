@@ -18,6 +18,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.transaction.support.TransactionTemplate;
 
 class InMemoryJpaRepositoryTest {
 
@@ -51,10 +52,13 @@ class InMemoryJpaRepositoryTest {
     }
 
     private Rows rows;
+    private TransactionTemplate transactions;
 
     @BeforeEach
     void setUp() {
-        rows = new Rows(new InMemoryDatabase(Duration.ofSeconds(1)));
+        var database = new InMemoryDatabase(Duration.ofSeconds(1));
+        rows = new Rows(database);
+        transactions = new TransactionTemplate(new InMemoryTransactionManager(database));
     }
 
     @Test
@@ -73,6 +77,51 @@ class InMemoryJpaRepositoryTest {
         assertThat(again.times).containsEntry("t", Instant.EPOCH);
         assertThat(again.self).isSameAs(again);
         assertThat(again).isNotSameAs(row);
+    }
+
+    @Test
+    void aLoadedRowChangedWithoutSavingIsWrittenBackBeforeReadsAndAtCommit() {
+        var row = rows.save(new Row("before"));
+
+        transactions.executeWithoutResult(status -> {
+            rows.findById(row.id).orElseThrow().name = "after";
+            assertThat(rows.named("after")).hasSize(1);
+        });
+
+        assertThat(rows.findById(row.id).orElseThrow().name).isEqualTo("after");
+    }
+
+    @Test
+    void aChangeToALoadedRowIsDiscardedByRollback() {
+        var row = rows.save(new Row("before"));
+
+        assertThatThrownBy(() -> transactions.executeWithoutResult(status -> {
+                    rows.findById(row.id).orElseThrow().name = "after";
+                    throw new IllegalStateException("boom");
+                }))
+                .isInstanceOf(IllegalStateException.class);
+
+        assertThat(rows.findById(row.id).orElseThrow().name).isEqualTo("before");
+    }
+
+    @Test
+    void aDeletedRowIsNotResurrectedByItsTrackedCopy() {
+        var row = rows.save(new Row("before"));
+
+        transactions.executeWithoutResult(status -> {
+            rows.findById(row.id).orElseThrow().name = "changed";
+            rows.deleteById(row.id);
+        });
+
+        assertThat(rows.findById(row.id)).isEmpty();
+    }
+
+    @Test
+    void projectionsReadRowsWithoutCopyingThem() {
+        rows.save(new Row("a"));
+        rows.save(new Row("b"));
+
+        assertThat(rows.project(row -> row.name.equals("a"), row -> row.name)).containsExactly("a");
     }
 
     @Test

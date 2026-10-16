@@ -59,7 +59,7 @@ class InMemoryScoringTimelineOutcomeInboxJpaRepository
         inbox.setEraNumber(eraNumber);
         inbox.setEventId(eventId);
         inbox.setWinningOutcomeId(winningOutcomeId);
-        inbox.setPayload(objectMapper.readValue(payload, OutcomeApplied.class));
+        inbox.setPayload(parseJson("payload", () -> objectMapper.readValue(payload, OutcomeApplied.class)));
         return insertRowIfAbsent(inbox) ? 1 : 0;
     }
 }

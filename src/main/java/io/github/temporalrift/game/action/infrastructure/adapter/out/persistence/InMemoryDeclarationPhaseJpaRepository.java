@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import io.github.temporalrift.game.action.domain.declarationphase.DeclarationPhaseStatus;
 import io.github.temporalrift.game.shared.infrastructure.adapter.out.memory.InMemoryDatabase;
 import io.github.temporalrift.game.shared.infrastructure.adapter.out.memory.InMemoryJpaRepository;
 import io.github.temporalrift.game.shared.infrastructure.adapter.out.memory.InMemoryRepository;
@@ -14,7 +15,7 @@ import io.github.temporalrift.game.shared.infrastructure.adapter.out.memory.Tabl
 class InMemoryDeclarationPhaseJpaRepository extends InMemoryJpaRepository<DeclarationPhaseJpaEntity, UUID>
         implements DeclarationPhaseJpaRepository {
 
-    private static final String OPEN = "OPEN";
+    private static final String OPEN = DeclarationPhaseStatus.OPEN.name();
 
     InMemoryDeclarationPhaseJpaRepository(InMemoryDatabase database) {
         super(

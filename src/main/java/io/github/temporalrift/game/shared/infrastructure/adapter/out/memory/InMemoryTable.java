@@ -33,11 +33,13 @@ public final class InMemoryTable<K, R> {
     }
 
     public Optional<R> find(K key) {
+        flushManaged();
         return database.read(() -> Optional.ofNullable(visibleIn(database.current(), key)));
     }
 
     /** Rows matching the filter in storage order: committed rows first, then this transaction's inserts. */
     public List<R> findAll(Predicate<? super R> filter) {
+        flushManaged();
         return database.read(() -> visibleRows().stream().filter(filter).toList());
     }
 
@@ -92,6 +94,7 @@ public final class InMemoryTable<K, R> {
     public void delete(K key) {
         database.write(transaction -> {
             database.lock(transaction, rowLock(key));
+            transaction.forget(this, key);
             transaction.overlay(this).put(key, DELETED);
             return null;
         });
@@ -102,10 +105,18 @@ public final class InMemoryTable<K, R> {
             var keys = findAll(filter).stream().map(definition.primaryKey()).toList();
             keys.forEach(key -> {
                 database.lock(transaction, rowLock(key));
+                transaction.forget(this, key);
                 transaction.overlay(this).put(key, DELETED);
             });
             return keys.size();
         });
+    }
+
+    private void flushManaged() {
+        var transaction = database.current();
+        if (transaction != null) {
+            transaction.flushManaged();
+        }
     }
 
     void forgetReplaced(Map<Object, Object> writes) {

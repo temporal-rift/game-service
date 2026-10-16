@@ -1,7 +1,9 @@
 package io.github.temporalrift.game.shared.infrastructure.adapter.out.memory;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -10,6 +12,7 @@ final class InMemoryTransaction {
 
     private final Map<InMemoryTable<?, ?>, Map<Object, Object>> writes = new LinkedHashMap<>();
     private final Set<Object> heldLocks = new LinkedHashSet<>();
+    private final List<Managed> managed = new ArrayList<>();
     private InMemoryTransaction waitingFor;
     private boolean rollbackOnly;
 
@@ -21,6 +24,19 @@ final class InMemoryTransaction {
     @SuppressWarnings("unchecked")
     <K> Map<K, Object> overlayIfPresent(InMemoryTable<K, ?> table) {
         return (Map<K, Object>) writes.get(table);
+    }
+
+    /** Tracks a loaded row: {@code flush} writes it back when it changed, before reads and at commit. */
+    void manage(InMemoryTable<?, ?> table, Object key, Runnable flush) {
+        managed.add(new Managed(table, key, flush));
+    }
+
+    void flushManaged() {
+        new ArrayList<>(managed).forEach(entry -> entry.flush().run());
+    }
+
+    void forget(InMemoryTable<?, ?> table, Object key) {
+        managed.removeIf(entry -> entry.table() == table && entry.key().equals(key));
     }
 
     Map<InMemoryTable<?, ?>, Map<Object, Object>> writes() {
@@ -38,6 +54,8 @@ final class InMemoryTransaction {
     void waitingFor(InMemoryTransaction owner) {
         this.waitingFor = owner;
     }
+
+    private record Managed(InMemoryTable<?, ?> table, Object key, Runnable flush) {}
 
     boolean rollbackOnly() {
         return rollbackOnly;

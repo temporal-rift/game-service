@@ -377,7 +377,6 @@ class EraScoringContextRepositoryAdapter implements EraScoringContextRepository 
             ScoringContextActivistDeclarationJpaEntity declaration, ScoringTimelineOutcomeInboxJpaEntity outcome) {
         var succeeded = outcome != null && declaration.getTargetOutcomeId().equals(outcome.getWinningOutcomeId());
         declaration.setResolutionSucceeded(succeeded);
-        activistDeclarationJpaRepository.save(declaration);
         if (succeeded) {
             var reason = declaration.getMode().equals("RALLY")
                     ? ScoreReason.DECLARED_OUTCOME_WON_WITH_RALLY
@@ -442,7 +441,6 @@ class EraScoringContextRepositoryAdapter implements EraScoringContextRepository 
             ScoringContextRevisionistActionJpaEntity action, EraResolutionCompleted.TerminalResolution resolution) {
         if (resolution.terminalState() != EraResolutionCompleted.TerminalState.OUTCOME_APPLIED) {
             action.setResolved(false);
-            revisionistActionJpaRepository.save(action);
             return;
         }
         outcomeInboxJpaRepository
@@ -450,7 +448,6 @@ class EraScoringContextRepositoryAdapter implements EraScoringContextRepository 
                         action.getGameId(), action.getEraNumber(), action.getTargetEventId())
                 .ifPresent(outcome -> {
                     action.setResolved(true);
-                    revisionistActionJpaRepository.save(action);
                     if (action.getTargetOutcomeId().equals(outcome.getWinningOutcomeId())) {
                         var reason = SpecialAction.REWRITE.name().equals(action.getAction())
                                 ? ScoreReason.SECRET_OUTCOME_WON

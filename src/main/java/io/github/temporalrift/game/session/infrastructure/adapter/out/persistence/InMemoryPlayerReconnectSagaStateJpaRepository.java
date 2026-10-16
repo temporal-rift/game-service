@@ -8,6 +8,7 @@ import java.util.UUID;
 
 import org.springframework.data.domain.Limit;
 
+import io.github.temporalrift.game.session.domain.saga.PlayerReconnectSagaStatus;
 import io.github.temporalrift.game.shared.infrastructure.adapter.out.memory.InMemoryDatabase;
 import io.github.temporalrift.game.shared.infrastructure.adapter.out.memory.InMemoryJpaRepository;
 import io.github.temporalrift.game.shared.infrastructure.adapter.out.memory.InMemoryRepository;
@@ -18,7 +19,7 @@ class InMemoryPlayerReconnectSagaStateJpaRepository
         extends InMemoryJpaRepository<PlayerReconnectSagaStateJpaEntity, UUID>
         implements PlayerReconnectSagaStateJpaRepository {
 
-    private static final String GRACE_PERIOD = "GRACE_PERIOD";
+    private static final String GRACE_PERIOD = PlayerReconnectSagaStatus.GRACE_PERIOD.name();
 
     InMemoryPlayerReconnectSagaStateJpaRepository(InMemoryDatabase database) {
         super(
