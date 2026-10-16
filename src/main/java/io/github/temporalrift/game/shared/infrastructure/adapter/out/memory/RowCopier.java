@@ -1,7 +1,9 @@
 package io.github.temporalrift.game.shared.infrastructure.adapter.out.memory;
 
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
+import java.lang.invoke.VarHandle;
 import java.lang.reflect.Array;
-import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
@@ -104,20 +106,24 @@ final class RowCopier {
     }
 
     private static boolean sameFields(Object left, Object right, Map<Object, Object> visiting) {
-        try {
-            for (Class<?> type = left.getClass(); type != Object.class; type = type.getSuperclass()) {
-                for (Field field : type.getDeclaredFields()) {
-                    if (!Modifier.isStatic(field.getModifiers())) {
-                        field.setAccessible(true);
-                        if (!same(field.get(left), field.get(right), visiting)) {
-                            return false;
-                        }
+        for (Class<?> type = left.getClass(); type != Object.class; type = type.getSuperclass()) {
+            for (Field field : type.getDeclaredFields()) {
+                if (!Modifier.isStatic(field.getModifiers())) {
+                    var handle = fieldHandle(type, field);
+                    if (!same(handle.get(left), handle.get(right), visiting)) {
+                        return false;
                     }
                 }
             }
-            return true;
+        }
+        return true;
+    }
+
+    private static VarHandle fieldHandle(Class<?> type, Field field) {
+        try {
+            return MethodHandles.privateLookupIn(type, MethodHandles.lookup()).unreflectVarHandle(field);
         } catch (IllegalAccessException e) {
-            throw new IllegalStateException("Cannot compare " + left.getClass().getName(), e);
+            throw new IllegalStateException("Cannot access " + type.getName() + "." + field.getName(), e);
         }
     }
 
@@ -166,47 +172,51 @@ final class RowCopier {
     }
 
     private static Object copyRecord(Record source, Map<Object, Object> copies) {
-        var components = source.getClass().getRecordComponents();
+        var type = source.getClass();
+        var components = type.getRecordComponents();
         var types = new Class<?>[components.length];
         var arguments = new Object[components.length];
         try {
+            var lookup = MethodHandles.privateLookupIn(type, MethodHandles.lookup());
             for (var i = 0; i < components.length; i++) {
                 types[i] = components[i].getType();
-                var accessor = components[i].getAccessor();
-                accessor.setAccessible(true);
+                var accessor = lookup.unreflect(components[i].getAccessor());
                 arguments[i] = copy(accessor.invoke(source), copies);
             }
-            var constructor = source.getClass().getDeclaredConstructor(types);
-            constructor.setAccessible(true);
-            var copy = constructor.newInstance(arguments);
+            var copy = lookup.findConstructor(type, MethodType.methodType(void.class, types))
+                    .invokeWithArguments(arguments);
             copies.put(source, copy);
             return copy;
         } catch (ReflectiveOperationException e) {
-            throw new IllegalStateException(
-                    "Cannot copy record " + source.getClass().getName(), e);
+            throw new IllegalStateException("Cannot copy record " + type.getName(), e);
+        } catch (Throwable e) {
+            throw new IllegalStateException("Copying record " + type.getName() + " failed", e);
         }
     }
 
     private static Object copyObject(Object value, Map<Object, Object> copies) {
+        var type = value.getClass();
         try {
-            Constructor<?> constructor = value.getClass().getDeclaredConstructor();
-            constructor.setAccessible(true);
-            var copy = constructor.newInstance();
+            var copy = MethodHandles.privateLookupIn(type, MethodHandles.lookup())
+                    .findConstructor(type, MethodType.methodType(void.class))
+                    .invoke();
             copies.put(value, copy);
-            for (Class<?> type = value.getClass(); type != Object.class; type = type.getSuperclass()) {
-                for (Field field : type.getDeclaredFields()) {
+            for (Class<?> declaring = type; declaring != Object.class; declaring = declaring.getSuperclass()) {
+                for (Field field : declaring.getDeclaredFields()) {
                     if (!Modifier.isStatic(field.getModifiers())) {
-                        field.setAccessible(true);
-                        field.set(copy, copy(field.get(value), copies));
+                        var handle = fieldHandle(declaring, field);
+                        handle.set(copy, copy(handle.get(value), copies));
                     }
                 }
             }
             return copy;
         } catch (NoSuchMethodException e) {
             throw new IllegalStateException(
-                    value.getClass().getName() + " needs a no-argument constructor to be stored in memory", e);
+                    type.getName() + " needs a no-argument constructor to be stored in memory", e);
         } catch (ReflectiveOperationException e) {
-            throw new IllegalStateException("Cannot copy " + value.getClass().getName(), e);
+            throw new IllegalStateException("Cannot copy " + type.getName(), e);
+        } catch (Throwable e) {
+            throw new IllegalStateException("Copying " + type.getName() + " failed", e);
         }
     }
 
