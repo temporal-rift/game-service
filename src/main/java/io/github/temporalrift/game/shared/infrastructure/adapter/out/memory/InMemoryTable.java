@@ -7,6 +7,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.Function;
 import java.util.function.Predicate;
 
 import org.springframework.dao.DuplicateKeyException;
@@ -183,22 +184,36 @@ public final class InMemoryTable<K, R> {
             if (value == null) {
                 continue;
             }
-            if (overlay != null) {
-                for (var entry : overlay.entrySet()) {
-                    if (!entry.getKey().equals(key)
-                            && entry.getValue() != DELETED
-                            && value.equals(extractor.apply((R) entry.getValue()))) {
-                        return entry.getKey();
-                    }
-                }
+            var owner = uncommittedOwner(overlay, extractor, key, value);
+            if (owner == null) {
+                owner = committedOwner(overlay, committedUniques.get(i), key, value);
             }
-            var index = committedUniques.get(i);
-            var owner = database.read(() -> index.get(value));
-            if (owner != null && !owner.equals(key) && (overlay == null || !overlay.containsKey(owner))) {
+            if (owner != null) {
                 return owner;
             }
         }
         return null;
+    }
+
+    @SuppressWarnings("unchecked")
+    private K uncommittedOwner(Map<K, Object> overlay, Function<R, ?> extractor, K key, Object value) {
+        if (overlay == null) {
+            return null;
+        }
+        for (var entry : overlay.entrySet()) {
+            if (!entry.getKey().equals(key)
+                    && entry.getValue() != DELETED
+                    && value.equals(extractor.apply((R) entry.getValue()))) {
+                return entry.getKey();
+            }
+        }
+        return null;
+    }
+
+    private K committedOwner(Map<K, Object> overlay, Map<Object, K> index, K key, Object value) {
+        var owner = database.read(() -> index.get(value));
+        boolean replacedInTransaction = overlay != null && owner != null && overlay.containsKey(owner);
+        return owner != null && !owner.equals(key) && !replacedInTransaction ? owner : null;
     }
 
     private void rememberUniques(R row) {

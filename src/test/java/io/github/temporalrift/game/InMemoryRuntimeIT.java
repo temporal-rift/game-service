@@ -41,6 +41,7 @@ import io.github.temporalrift.game.session.domain.port.out.GameRepository;
 import io.github.temporalrift.game.shared.domain.port.out.ProcessedEventRepository;
 import io.github.temporalrift.game.simulation.application.port.in.ConfigureSimulationExecutionUseCase;
 import io.github.temporalrift.game.simulation.domain.execution.ExecutionContextTestData;
+import io.github.temporalrift.game.simulation.domain.execution.SourceWatermark;
 import io.github.temporalrift.game.simulation.domain.port.out.SourceWatermarks;
 
 class InMemoryRuntimeIT {
@@ -101,14 +102,14 @@ class InMemoryRuntimeIT {
         await().atMost(Duration.ofSeconds(20))
                 .until(() -> eventTypes(sink, gameId).contains("GameStarted"));
         var objectMapper = application.getBean(ObjectMapper.class);
-        sink.forEach(record -> {
-            assertThat(record.keySet()).containsExactly("topic", "key", "headers", "payload");
-            assertThat(record.get("topic")).isEqualTo("game.events");
+        sink.forEach(message -> {
+            assertThat(message.keySet()).containsExactly("topic", "key", "headers", "payload");
+            assertThat(message.get("topic")).isEqualTo("game.events");
             @SuppressWarnings("unchecked")
-            var headers = (Map<String, String>) record.get("headers");
+            var headers = (Map<String, String>) message.get("headers");
             assertThat(headers.keySet()).isEqualTo(WIRE_HEADERS);
-            assertThat(headers.get("gameId")).isEqualTo(record.get("key"));
-            assertThat(objectMapper.readTree((byte[]) record.get("payload")).isObject())
+            assertThat(headers.get("gameId")).isEqualTo(message.get("key"));
+            assertThat(objectMapper.readTree((byte[]) message.get("payload")).isObject())
                     .isTrue();
         });
         var lifecycle = eventTypes(sink, gameId);
@@ -120,15 +121,15 @@ class InMemoryRuntimeIT {
         var application = startConfigured(new CopyOnWriteArrayList<>());
         var delivery = application.getBean("simulationEventDelivery", Consumer.class);
         var gameId = startGame(application);
-        var record = eraResolutionCompleted(application, gameId, UUID.randomUUID());
+        var message = eraResolutionCompleted(application, gameId, UUID.randomUUID());
         var sessionLog = captureLogs("EraResolutionCompletedKafkaConsumer");
 
-        deliver(delivery, record);
+        deliver(delivery, message);
 
         var scoring = application.getBean(EraScoringContextRepository.class);
         assertThat(inTransaction(application, () -> scoring.eraResolutionCompleted(gameId, 1)))
                 .isTrue();
-        var eventId = UUID.fromString(headers(record).get("eventId"));
+        var eventId = UUID.fromString(headers(message).get("eventId"));
         assertThat(inTransaction(
                         application,
                         () -> application
@@ -141,7 +142,7 @@ class InMemoryRuntimeIT {
         assertThat(sessionLog.list)
                 .noneMatch(event -> event.getFormattedMessage().contains("Duplicate"));
 
-        deliver(delivery, record);
+        deliver(delivery, message);
 
         assertThat(sessionLog.list)
                 .anyMatch(event -> event.getFormattedMessage().contains("Duplicate"));
@@ -154,10 +155,10 @@ class InMemoryRuntimeIT {
         var application = startConfigured(new CopyOnWriteArrayList<>());
         var delivery = application.getBean("simulationEventDelivery", Consumer.class);
         var before = application.getBean(SourceWatermarks.class).current();
-        var record = new LinkedHashMap<>(eraResolutionCompleted(application, UUID.randomUUID(), UUID.randomUUID()));
-        record.put("topic", "game.events");
+        var message = new LinkedHashMap<>(eraResolutionCompleted(application, UUID.randomUUID(), UUID.randomUUID()));
+        message.put("topic", "game.events");
 
-        deliver(delivery, record);
+        deliver(delivery, message);
 
         assertThat(application.getBean(SourceWatermarks.class).current()).isEqualTo(before);
     }
@@ -222,9 +223,9 @@ class InMemoryRuntimeIT {
 
     private static List<String> eventTypes(List<Map<String, Object>> sink, UUID gameId) {
         return sink.stream()
-                .filter(record -> gameId.toString().equals(record.get("key")))
-                .map(record ->
-                        ((Map<?, ?>) record.get("headers")).get("eventType").toString())
+                .filter(message -> gameId.toString().equals(message.get("key")))
+                .map(message ->
+                        ((Map<?, ?>) message.get("headers")).get("eventType").toString())
                 .toList();
     }
 
@@ -239,28 +240,28 @@ class InMemoryRuntimeIT {
         headers.put("gameId", gameId.toString());
         headers.put("occurredAt", "2026-03-01T10:00:00Z");
         headers.put("version", "1");
-        var record = new LinkedHashMap<String, Object>();
-        record.put("topic", "timeline.events");
-        record.put("key", gameId.toString());
-        record.put("headers", headers);
-        record.put("payload", mapper.writeValueAsBytes(new EraResolutionCompletedPayload(gameId, 1, List.of())));
-        return record;
+        var message = new LinkedHashMap<String, Object>();
+        message.put("topic", "timeline.events");
+        message.put("key", gameId.toString());
+        message.put("headers", headers);
+        message.put("payload", mapper.writeValueAsBytes(new EraResolutionCompletedPayload(gameId, 1, List.of())));
+        return message;
     }
 
     @SuppressWarnings("unchecked")
-    private static Map<String, String> headers(Map<String, Object> record) {
-        return (Map<String, String>) record.get("headers");
+    private static Map<String, String> headers(Map<String, Object> message) {
+        return (Map<String, String>) message.get("headers");
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
-    private static void deliver(Consumer delivery, Map<String, Object> record) {
-        delivery.accept(record);
+    private static void deliver(Consumer delivery, Map<String, Object> message) {
+        delivery.accept(message);
     }
 
     private static List<Long> timelinePositions(ConfigurableApplicationContext application) {
         return application.getBean(SourceWatermarks.class).current().stream()
                 .filter(watermark -> watermark.topic().equals("timeline.events"))
-                .map(watermark -> watermark.nextOffset())
+                .map(SourceWatermark::nextOffset)
                 .toList();
     }
 

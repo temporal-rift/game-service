@@ -20,9 +20,10 @@ final class RowLocks {
     synchronized void acquire(InMemoryTransaction transaction, Object key) {
         var deadline = System.nanoTime() + timeout.toNanos();
         try {
-            for (var owner = owners.get(key); owner != transaction; owner = owners.get(key)) {
+            for (var owner = owners.putIfAbsent(key, transaction);
+                    owner != transaction;
+                    owner = owners.putIfAbsent(key, transaction)) {
                 if (owner == null) {
-                    owners.put(key, transaction);
                     transaction.heldLocks().add(key);
                     return;
                 }

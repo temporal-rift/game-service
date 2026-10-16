@@ -68,8 +68,8 @@ public class InMemoryDatabase {
     void commit(InMemoryTransaction transaction) {
         visibility.writeLock().lock();
         try {
-            transaction.writes().forEach((table, rows) -> table.forgetReplaced(rows));
-            transaction.writes().forEach((table, rows) -> table.applyCommitted(rows));
+            transaction.writes().forEach(InMemoryTable::forgetReplaced);
+            transaction.writes().forEach(InMemoryTable::applyCommitted);
         } finally {
             visibility.writeLock().unlock();
             locks.releaseAll(transaction);
@@ -101,14 +101,16 @@ public class InMemoryDatabase {
             return writer.apply(current);
         }
         var implicit = begin();
+        var committed = false;
         try {
             var result = writer.apply(implicit);
             commit(implicit);
+            committed = true;
             return result;
-        } catch (RuntimeException | Error e) {
-            rollback(implicit);
-            throw e;
         } finally {
+            if (!committed) {
+                rollback(implicit);
+            }
             suspend();
         }
     }

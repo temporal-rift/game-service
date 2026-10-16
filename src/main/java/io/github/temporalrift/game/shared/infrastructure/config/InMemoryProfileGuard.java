@@ -9,7 +9,9 @@ import org.springframework.core.env.Environment;
 /** Stops startup, before any bean is built, when the in-memory profile lacks its simulation switch or event sink. */
 @Configuration(proxyBeanMethods = false)
 @Profile("in-memory")
-class InMemoryProfileGuard {
+final class InMemoryProfileGuard {
+
+    private InMemoryProfileGuard() {}
 
     static final String SIMULATION_PROPERTY = "game.simulation.enabled";
     static final String EVENT_SINK_BEAN = "simulationEventSink";
@@ -17,7 +19,7 @@ class InMemoryProfileGuard {
     @Bean
     static BeanFactoryPostProcessor inMemoryProfileRequirements(Environment environment) {
         return beanFactory -> {
-            if (!environment.getProperty(SIMULATION_PROPERTY, Boolean.class, false)) {
+            if (!Boolean.TRUE.equals(environment.getProperty(SIMULATION_PROPERTY, Boolean.class))) {
                 throw new InMemoryProfileException(
                         SIMULATION_PROPERTY, "Profile 'in-memory' requires " + SIMULATION_PROPERTY + "=true");
             }

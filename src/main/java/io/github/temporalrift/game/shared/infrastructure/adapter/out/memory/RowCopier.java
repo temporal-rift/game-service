@@ -44,8 +44,8 @@ final class RowCopier {
         if (value instanceof Map<?, ?> map) {
             return copyMap(map, copies);
         }
-        if (value instanceof Record record) {
-            return copyRecord(record, copies);
+        if (value instanceof Record source) {
+            return copyRecord(source, copies);
         }
         return copyObject(value, copies);
     }
@@ -94,8 +94,8 @@ final class RowCopier {
         return copy;
     }
 
-    private static Object copyRecord(Record record, Map<Object, Object> copies) {
-        var components = record.getClass().getRecordComponents();
+    private static Object copyRecord(Record source, Map<Object, Object> copies) {
+        var components = source.getClass().getRecordComponents();
         var types = new Class<?>[components.length];
         var arguments = new Object[components.length];
         try {
@@ -103,16 +103,16 @@ final class RowCopier {
                 types[i] = components[i].getType();
                 var accessor = components[i].getAccessor();
                 accessor.setAccessible(true);
-                arguments[i] = copy(accessor.invoke(record), copies);
+                arguments[i] = copy(accessor.invoke(source), copies);
             }
-            var constructor = record.getClass().getDeclaredConstructor(types);
+            var constructor = source.getClass().getDeclaredConstructor(types);
             constructor.setAccessible(true);
             var copy = constructor.newInstance(arguments);
-            copies.put(record, copy);
+            copies.put(source, copy);
             return copy;
         } catch (ReflectiveOperationException e) {
             throw new IllegalStateException(
-                    "Cannot copy record " + record.getClass().getName(), e);
+                    "Cannot copy record " + source.getClass().getName(), e);
         }
     }
 

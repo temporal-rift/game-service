@@ -1,5 +1,6 @@
 package io.github.temporalrift.game.action.infrastructure.adapter.out.persistence;
 
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
@@ -34,7 +35,11 @@ class InMemoryFutureEventDefinitionJpaRepository extends InMemoryJpaRepository<F
 
     @Override
     public void deleteOutcomesByGameIdAndEraNumber(UUID gameId, int eraNumber) {
-        // Outcomes are part of their definition row, so deleting the definitions removes them too.
+        findMatching(definition -> definition.getGameId().equals(gameId) && definition.getEraNumber() == eraNumber)
+                .forEach(definition -> {
+                    definition.setOutcomes(new ArrayList<>());
+                    save(definition);
+                });
     }
 
     @Override
