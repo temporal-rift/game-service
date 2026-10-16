@@ -120,7 +120,7 @@ public final class ActionConcurrencyPortContracts {
                 firstCreated.countDown();
                 try {
                     release.await(10, TimeUnit.SECONDS);
-                } catch (InterruptedException e) {
+                } catch (InterruptedException _) {
                     Thread.currentThread().interrupt();
                 }
                 return created;
@@ -161,7 +161,7 @@ public final class ActionConcurrencyPortContracts {
                 locked.countDown();
                 try {
                     release.await(10, TimeUnit.SECONDS);
-                } catch (InterruptedException e) {
+                } catch (InterruptedException _) {
                     Thread.currentThread().interrupt();
                 }
             }));

@@ -117,9 +117,7 @@ class SimulationEventSinkParityIT {
         for (var name : WIRE_HEADERS) {
             var kafkaHeader = kafkaRecord.headers().lastHeader(name);
             assertThat(kafkaHeader).as("Kafka header %s", name).isNotNull();
-            assertThat(sunkHeaders.get(name))
-                    .as("header %s", name)
-                    .isEqualTo(new String(kafkaHeader.value(), StandardCharsets.UTF_8));
+            assertThat(sunkHeaders).containsEntry(name, new String(kafkaHeader.value(), StandardCharsets.UTF_8));
         }
         assertThat(sunkHeaders.keySet()).containsExactlyInAnyOrderElementsOf(WIRE_HEADERS);
     }

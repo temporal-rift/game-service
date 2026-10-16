@@ -69,7 +69,9 @@ class SimulationEventDeliveryTest {
 
     @Test
     void everyGroupOfTheTopicHandlesTheRecordOnceInGroupOrderAndAFailureDoesNotStopTheOthers() {
-        assertThatThrownBy(() -> delivery.accept(message("timeline.events", "{\"x\":1}")))
+        var delivered = message("timeline.events", "{\"x\":1}");
+
+        assertThatThrownBy(() -> delivery.accept(delivered))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessage("handler failed");
 
@@ -103,7 +105,9 @@ class SimulationEventDeliveryTest {
 
     @Test
     void aCheckedListenerFailureIsWrapped() {
-        assertThatThrownBy(() -> delivery.accept(message("broken.topic", "{}")))
+        var broken = message("broken.topic", "{}");
+
+        assertThatThrownBy(() -> delivery.accept(broken))
                 .isInstanceOf(IllegalStateException.class)
                 .hasRootCauseMessage("checked failure");
     }

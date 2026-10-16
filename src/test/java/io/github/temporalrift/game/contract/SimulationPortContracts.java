@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
@@ -191,7 +192,7 @@ public final class SimulationPortContracts {
                     .toList();
             var next = observations.stream()
                     .map(ExecutionProbe.Observation::nextDeadline)
-                    .filter(deadline -> deadline != null)
+                    .filter(Objects::nonNull)
                     .min(java.util.Comparator.naturalOrder())
                     .orElse(null);
             return new ExecutionProbe.Observation(

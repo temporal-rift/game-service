@@ -264,7 +264,7 @@ public final class SessionPortContracts {
                 saved.countDown();
                 try {
                     release.await(10, java.util.concurrent.TimeUnit.SECONDS);
-                } catch (InterruptedException e) {
+                } catch (InterruptedException _) {
                     Thread.currentThread().interrupt();
                 }
             }));
@@ -272,7 +272,7 @@ public final class SessionPortContracts {
                 assertThat(saved.await(10, java.util.concurrent.TimeUnit.SECONDS))
                         .isTrue();
                 assertThat(inNewTransaction(() -> repository.findById(id))).isEmpty();
-            } catch (InterruptedException e) {
+            } catch (InterruptedException _) {
                 Thread.currentThread().interrupt();
             } finally {
                 release.countDown();

@@ -141,7 +141,8 @@ class InMemoryJpaRepositoryTest {
         assertThat(rows.getReferenceById(first.id).name).isEqualTo("a");
         assertThat(rows.getById(first.id).name).isEqualTo("a");
         assertThat(rows.getOne(first.id).name).isEqualTo("a");
-        assertThatThrownBy(() -> rows.getReferenceById(UUID.randomUUID())).isInstanceOf(EntityNotFoundException.class);
+        var unknown = UUID.randomUUID();
+        assertThatThrownBy(() -> rows.getReferenceById(unknown)).isInstanceOf(EntityNotFoundException.class);
 
         rows.deleteById(first.id);
         rows.delete(second);
@@ -163,8 +164,10 @@ class InMemoryJpaRepositoryTest {
 
     @Test
     void unsupportedQueriesSayTheyAreUnsupported() {
-        assertThatThrownBy(() -> rows.findAll(Sort.unsorted())).isInstanceOf(UnsupportedOperationException.class);
-        assertThatThrownBy(() -> rows.findAll(Pageable.unpaged())).isInstanceOf(UnsupportedOperationException.class);
+        var sort = Sort.unsorted();
+        var paging = Pageable.unpaged();
+        assertThatThrownBy(() -> rows.findAll(sort)).isInstanceOf(UnsupportedOperationException.class);
+        assertThatThrownBy(() -> rows.findAll(paging)).isInstanceOf(UnsupportedOperationException.class);
         assertThatThrownBy(() -> rows.findOne(null)).isInstanceOf(UnsupportedOperationException.class);
         assertThatThrownBy(() -> rows.count(null)).isInstanceOf(UnsupportedOperationException.class);
         assertThatThrownBy(() -> rows.exists(null)).isInstanceOf(UnsupportedOperationException.class);
@@ -181,8 +184,7 @@ class InMemoryJpaRepositoryTest {
         row.ids = new UUID[] {UUID.randomUUID()};
         row.numbers.add(3);
         var copied = RowCopier.copy(row);
-        assertThat(copied.ids).containsExactly(row.ids);
-        assertThat(copied.ids).isNotSameAs(row.ids);
+        assertThat(copied.ids).containsExactly(row.ids).isNotSameAs(row.ids);
         assertThat(copied.numbers).containsExactly(3);
         Object nothing = RowCopier.copy(null);
         assertThat(nothing).isNull();
@@ -195,7 +197,7 @@ class InMemoryJpaRepositoryTest {
         var high = UUID.fromString("ffffffff-ffff-ffff-ffff-ffffffffffff");
 
         assertThat(UuidOrder.POSTGRES.compare(low, high)).isNegative();
-        assertThat(low.compareTo(high)).isPositive();
+        assertThat(low).isGreaterThan(high);
     }
 
     @Test

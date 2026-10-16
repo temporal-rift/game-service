@@ -23,7 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional
 class InMemoryEventPublicationRepository implements EventPublicationRepository {
 
-    static final TableDefinition<UUID, PublicationRow> TABLE =
+    static final TableDefinition<UUID, PublicationRow> PUBLICATIONS_TABLE =
             TableDefinition.of("event_publication", PublicationRow::id);
 
     private static final Comparator<PublicationRow> OLDEST_FIRST =
@@ -33,7 +33,7 @@ class InMemoryEventPublicationRepository implements EventPublicationRepository {
     private final EventSerializer serializer;
 
     InMemoryEventPublicationRepository(InMemoryDatabase database, EventSerializer serializer) {
-        this.table = database.table(TABLE);
+        this.table = database.table(PUBLICATIONS_TABLE);
         this.serializer = serializer;
     }
 

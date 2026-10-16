@@ -155,7 +155,7 @@ class InMemoryTransactionTest {
                         transactions.executeWithoutResult(inner -> {
                             throw new IllegalStateException("inner");
                         });
-                    } catch (IllegalStateException ignored) {
+                    } catch (IllegalStateException _) {
                         // The participating failure already marked the shared transaction rollback-only.
                     }
                 }))

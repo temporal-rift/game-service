@@ -30,8 +30,7 @@ class SimulationEventSinkRelayTest {
 
         assertThat(sink).singleElement().satisfies(sent -> {
             assertThat(sent.keySet()).containsExactly("topic", "key", "headers", "payload");
-            assertThat(sent.get("topic")).isEqualTo("game.events");
-            assertThat(sent.get("key")).isEqualTo("game-1");
+            assertThat(sent).containsEntry("topic", "game.events").containsEntry("key", "game-1");
             assertThat((Map<String, String>) sent.get("headers"))
                     .containsEntry("eventType", "GameStarted")
                     .containsEntry("gameId", "game-1")
