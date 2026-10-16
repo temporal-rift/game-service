@@ -6,11 +6,14 @@ import org.springframework.context.annotation.Import;
 /** The adapters are package-private, so the shared persistence test configuration reaches them through here. */
 @TestConfiguration(proxyBeanMethods = false)
 @Import({
+    EndGameSagaAdapter.class,
     EraSagaAdapter.class,
     EraSagaScoresUpdatedInboxRepositoryAdapter.class,
     ForesightRevealRepositoryAdapter.class,
     GameRepositoryAdapter.class,
     LobbyRepositoryAdapter.class,
-    PlayerReconnectSagaAdapter.class
+    PlayerReconnectSagaAdapter.class,
+    SessionExecutionProbe.class,
+    StartGameSagaAdapter.class
 })
 public class SessionPersistenceAdapters {}

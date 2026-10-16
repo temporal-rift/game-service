@@ -10,7 +10,10 @@ import org.springframework.context.annotation.Import;
     PlayerScoreRepositoryAdapter.class,
     RevisionistExposureRepositoryAdapter.class,
     ScoringEraCompletionRepositoryAdapter.class,
+    ScoringGameVisibilityRepositoryAdapter.class,
+    ScoringExecutionProbe.class,
     ScoringPlayerRepositoryAdapter.class,
+    ScoringReadRepositoryAdapter.class,
     TimelineOutcomeInboxRepositoryAdapter.class
 })
 public class ScoringPersistenceAdapters {}
