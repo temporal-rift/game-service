@@ -1,39 +1,117 @@
 package io.github.temporalrift.game.session.application.saga;
 
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
 
 import java.util.List;
 import java.util.UUID;
 
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 
+import io.github.temporalrift.game.session.domain.event.EraStarted;
+import io.github.temporalrift.game.session.domain.game.PendingCarryOverEvent;
 import io.github.temporalrift.game.session.domain.port.out.EraSagaScoresUpdatedInboxRepository;
+import io.github.temporalrift.game.shared.domain.event.ActionRoundClosed;
 import io.github.temporalrift.game.shared.domain.event.ScoresUpdated;
+import io.github.temporalrift.game.shared.domain.model.CarryOverState;
+import io.github.temporalrift.game.shared.domain.model.Faction;
 
+@ExtendWith(MockitoExtension.class)
 class EraSagaEventListenerTest {
 
-    private static final UUID GAME_ID = UUID.randomUUID();
+    static final UUID GAME_ID = UUID.randomUUID();
+    static final UUID PLAYER_1 = UUID.randomUUID();
+    static final UUID PLAYER_2 = UUID.randomUUID();
+    static final List<UUID> PLAYER_IDS = List.of(PLAYER_1, PLAYER_2);
 
-    private final EraSaga eraSaga = mock(EraSaga.class);
-    private final EraSagaAdvancer advancer = mock(EraSagaAdvancer.class);
-    private final EraSagaScoresUpdatedInboxRepository inbox = mock(EraSagaScoresUpdatedInboxRepository.class);
-    private final EraSagaEventListener listener = new EraSagaEventListener(eraSaga, advancer, inbox);
+    @Mock
+    EraSaga eraSaga;
+
+    @Mock
+    EraSagaAdvancer eraSagaAdvancer;
+
+    @Mock
+    EraSagaScoresUpdatedInboxRepository scoresUpdatedInbox;
+
+    @InjectMocks
+    EraSagaEventListener listener;
 
     @Test
-    void aRecordedResolutionReplaysTheWaitingScoresOfThatEraOnly() {
+    @DisplayName("EraStarted — delegates to eraSaga.start with all fields from the event")
+    void onEraStarted_delegatesToEraSagaStart() {
+        // given
+        var carryOver = new PendingCarryOverEvent(UUID.randomUUID(), CarryOverState.CASCADED);
+        var event = new EraStarted(GAME_ID, 2, List.of(carryOver), PLAYER_IDS);
+
+        // when
+        listener.onEraStarted(event);
+
+        // then
+        then(eraSaga).should().start(GAME_ID, 2, PLAYER_IDS, List.of(carryOver));
+    }
+
+    @Test
+    @DisplayName("ActionRoundClosed — delegates to advancer.handleRoundClosed with gameId from event")
+    void onActionRoundClosed_delegatesToAdvancerHandleRoundClosed() {
+        // given
+        var event = new ActionRoundClosed(GAME_ID, 1, 2, "ALL_SUBMITTED", 4);
+
+        // when
+        listener.onActionRoundClosed(event);
+
+        // then
+        then(eraSagaAdvancer).should().handleRoundClosed(GAME_ID, event);
+    }
+
+    @Test
+    @DisplayName("ScoresUpdated — delegates to advancer.handleScoresUpdated with gameId from event")
+    void onScoresUpdated_delegatesToAdvancerHandleScoresUpdated() {
+        // given
+        var updates = List.of(new ScoresUpdated.ScoreUpdate(PLAYER_1, Faction.PROPHETS, 5, "bonus", 15));
+        var event = new ScoresUpdated(GAME_ID, 1, updates);
+
+        // when
+        listener.onScoresUpdated(event);
+
+        // then
+        then(eraSagaAdvancer).should().handleScoresUpdated(GAME_ID, event);
+    }
+
+    @Test
+    void onBandsPublished_delegatesCurrentEra() {
+        listener.onBandsPublished(new BandsPublishedApplicationEvent(GAME_ID, 2));
+        then(eraSagaAdvancer).should().handleBandsPublished(GAME_ID, 2);
+    }
+
+    @Test
+    @DisplayName("ResolutionFailed — delegates matching game and era to the advancer")
+    void onResolutionFailed_delegatesToAdvancerHandleResolutionFailed() {
+        // given
+        var event = new ResolutionFailedApplicationEvent(GAME_ID, 2, UUID.randomUUID(), "PROBABILITY_SUM_INVALID");
+
+        // when
+        listener.onResolutionFailed(event);
+
+        // then
+        then(eraSagaAdvancer).should().handleResolutionFailed(GAME_ID, 2);
+    }
+
+    @Test
+    @DisplayName("ResolutionApplied — replays only the waiting scores of that game and era")
+    void onResolutionApplied_replaysTheWaitingScoresOfThatEraOnly() {
         var waiting = new ScoresUpdated(GAME_ID, 1, List.of());
         var otherEra = new ScoresUpdated(GAME_ID, 2, List.of());
         var otherGame = new ScoresUpdated(UUID.randomUUID(), 1, List.of());
-        given(inbox.findRecordedButNotAdvanced()).willReturn(List.of(otherGame, otherEra, waiting));
+        given(scoresUpdatedInbox.findRecordedButNotAdvanced()).willReturn(List.of(otherGame, otherEra, waiting));
 
         listener.onResolutionApplied(new ResolutionAppliedApplicationEvent(GAME_ID, 1));
 
-        then(advancer).should().handleScoresUpdated(GAME_ID, waiting);
-        then(advancer).should(never()).handleScoresUpdated(any(), org.mockito.ArgumentMatchers.eq(otherEra));
-        then(advancer).should(never()).handleScoresUpdated(any(), org.mockito.ArgumentMatchers.eq(otherGame));
+        then(eraSagaAdvancer).should().handleScoresUpdated(GAME_ID, waiting);
+        then(eraSagaAdvancer).shouldHaveNoMoreInteractions();
     }
 }
