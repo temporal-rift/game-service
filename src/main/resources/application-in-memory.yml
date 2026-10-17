@@ -34,3 +34,5 @@ spring:
       - org.springframework.cloud.stream.binder.kafka.config.MessageConverterHelperConfiguration
       - org.springframework.modulith.events.jpa.JpaEventPublicationAutoConfiguration
       - org.springframework.modulith.events.jpa.archiving.ArchivingAutoConfiguration
+      - org.springframework.modulith.observability.autoconfigure.ModuleObservabilityAutoConfiguration
+      - org.springframework.modulith.observability.autoconfigure.SpringDataRestModuleObservabilityAutoConfiguration
