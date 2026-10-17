@@ -4,6 +4,7 @@ import org.springframework.modulith.events.ApplicationModuleListener;
 import org.springframework.stereotype.Component;
 
 import io.github.temporalrift.game.session.domain.event.EraStarted;
+import io.github.temporalrift.game.session.domain.port.out.EraSagaScoresUpdatedInboxRepository;
 import io.github.temporalrift.game.shared.domain.event.ActionRoundClosed;
 import io.github.temporalrift.game.shared.domain.event.ScoresUpdated;
 
@@ -12,10 +13,13 @@ class EraSagaEventListener {
 
     private final EraSaga eraSaga;
     private final EraSagaAdvancer eraSagaAdvancer;
+    private final EraSagaScoresUpdatedInboxRepository scoresUpdatedInbox;
 
-    EraSagaEventListener(EraSaga eraSaga, EraSagaAdvancer eraSagaAdvancer) {
+    EraSagaEventListener(
+            EraSaga eraSaga, EraSagaAdvancer eraSagaAdvancer, EraSagaScoresUpdatedInboxRepository scoresUpdatedInbox) {
         this.eraSaga = eraSaga;
         this.eraSagaAdvancer = eraSagaAdvancer;
+        this.scoresUpdatedInbox = scoresUpdatedInbox;
     }
 
     @ApplicationModuleListener
@@ -31,6 +35,13 @@ class EraSagaEventListener {
     @ApplicationModuleListener
     void onScoresUpdated(ScoresUpdated event) {
         eraSagaAdvancer.handleScoresUpdated(event.gameId(), event);
+    }
+
+    @ApplicationModuleListener
+    void onResolutionApplied(ResolutionAppliedApplicationEvent event) {
+        scoresUpdatedInbox.findRecordedButNotAdvanced().stream()
+                .filter(scores -> scores.gameId().equals(event.gameId()) && scores.eraNumber() == event.eraNumber())
+                .forEach(scores -> eraSagaAdvancer.handleScoresUpdated(scores.gameId(), scores));
     }
 
     @ApplicationModuleListener

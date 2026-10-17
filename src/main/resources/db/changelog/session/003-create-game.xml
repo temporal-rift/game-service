@@ -22,6 +22,9 @@
       <column name="collapse_pending" type="BOOLEAN">
         <constraints nullable="false"/>
       </column>
+      <column name="resolution_applied_era" type="INT" defaultValueNumeric="0">
+        <constraints nullable="false"/>
+      </column>
     </createTable>
   </changeSet>
 

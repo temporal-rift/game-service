@@ -13,7 +13,18 @@ public record GameProgress(
         boolean collapsePending,
         List<PendingCarryOverEvent> pendingCarryOverEvents,
         Map<UUID, DrawnFutureEvent> drawnEvents,
-        GameStatus status) {
+        GameStatus status,
+        int resolutionAppliedEra) {
+
+    public GameProgress(
+            int eraCounter,
+            Set<UUID> cascadedEventIds,
+            boolean collapsePending,
+            List<PendingCarryOverEvent> pendingCarryOverEvents,
+            Map<UUID, DrawnFutureEvent> drawnEvents,
+            GameStatus status) {
+        this(eraCounter, cascadedEventIds, collapsePending, pendingCarryOverEvents, drawnEvents, status, 0);
+    }
 
     public GameProgress {
         cascadedEventIds = Set.copyOf(Objects.requireNonNull(cascadedEventIds, "cascadedEventIds must not be null"));

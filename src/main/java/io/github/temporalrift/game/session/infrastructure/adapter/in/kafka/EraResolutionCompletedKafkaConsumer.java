@@ -9,6 +9,7 @@ import java.util.UUID;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.messaging.Message;
 import org.springframework.stereotype.Component;
@@ -19,6 +20,7 @@ import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract;
 import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.EraResolutionCompletedPayload;
 import io.github.temporalrift.game.session.application.saga.AbandonmentEndingPublisher;
 import io.github.temporalrift.game.session.application.saga.PlayerAbandonmentProcessor;
+import io.github.temporalrift.game.session.application.saga.ResolutionAppliedApplicationEvent;
 import io.github.temporalrift.game.session.application.saga.TimelineCollapsePublisher;
 import io.github.temporalrift.game.session.domain.event.EraResolutionCompleted;
 import io.github.temporalrift.game.session.domain.game.Game;
@@ -53,6 +55,7 @@ class EraResolutionCompletedKafkaConsumer {
     private final SessionGameRulesPort gameRules;
     private final TimelineSessionWireMapper wireMapper;
     private final ObjectMapper objectMapper;
+    private final ApplicationEventPublisher applicationEventPublisher;
 
     EraResolutionCompletedKafkaConsumer(
             ProcessedEventRepository processedEventRepository,
@@ -63,7 +66,8 @@ class EraResolutionCompletedKafkaConsumer {
             AbandonmentEndingPublisher endingPublisher,
             SessionGameRulesPort gameRules,
             TimelineSessionWireMapper wireMapper,
-            ObjectMapper objectMapper) {
+            ObjectMapper objectMapper,
+            ApplicationEventPublisher applicationEventPublisher) {
         this.processedEventRepository = processedEventRepository;
         this.eraSagaRepository = eraSagaRepository;
         this.gameRepository = gameRepository;
@@ -73,6 +77,7 @@ class EraResolutionCompletedKafkaConsumer {
         this.gameRules = gameRules;
         this.wireMapper = wireMapper;
         this.objectMapper = objectMapper;
+        this.applicationEventPublisher = applicationEventPublisher;
     }
 
     @KafkaListener(topics = "timeline.events", groupId = "game-service.session.era-resolution-completed")
@@ -105,9 +110,6 @@ class EraResolutionCompletedKafkaConsumer {
             return;
         }
         var carryOverEvents = carryOverEvents(resolution);
-        if (carryOverEvents.isEmpty()) {
-            return;
-        }
         var cascadedEventIds = cascadedEventIds(resolution);
 
         // Lock in saga-then-game order to match EraSagaAdvancer and avoid lock-order deadlocks.
@@ -128,7 +130,10 @@ class EraResolutionCompletedKafkaConsumer {
         if (game.status() == GameStatus.IN_PROGRESS) {
             game.recordPendingCarryOverEvents(carryOverEvents);
         }
+        game.markResolutionApplied(resolution.eraNumber());
         gameRepository.save(game);
+        applicationEventPublisher.publishEvent(
+                new ResolutionAppliedApplicationEvent(resolution.gameId(), resolution.eraNumber()));
 
         if (collapseReached) {
             finishCollapse(game, saga, resolution);

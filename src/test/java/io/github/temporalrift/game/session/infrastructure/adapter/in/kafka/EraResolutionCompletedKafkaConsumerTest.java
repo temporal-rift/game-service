@@ -21,6 +21,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.support.MessageBuilder;
 import tools.jackson.databind.json.JsonMapper;
@@ -30,6 +31,7 @@ import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.E
 import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.EraTerminalResolution;
 import io.github.temporalrift.game.session.application.saga.AbandonmentEndingPublisher;
 import io.github.temporalrift.game.session.application.saga.PlayerAbandonmentProcessor;
+import io.github.temporalrift.game.session.application.saga.ResolutionAppliedApplicationEvent;
 import io.github.temporalrift.game.session.application.saga.TimelineCollapsePublisher;
 import io.github.temporalrift.game.session.domain.game.Game;
 import io.github.temporalrift.game.session.domain.game.GameStatus;
@@ -79,6 +81,9 @@ class EraResolutionCompletedKafkaConsumerTest {
     @Mock
     SessionGameRulesPort gameRules;
 
+    @Mock
+    ApplicationEventPublisher applicationEventPublisher;
+
     EraResolutionCompletedKafkaConsumer consumer;
 
     @BeforeEach
@@ -92,7 +97,8 @@ class EraResolutionCompletedKafkaConsumerTest {
                 endingPublisher,
                 gameRules,
                 new TimelineSessionWireMapperImpl(),
-                JSON_MAPPER);
+                JSON_MAPPER,
+                applicationEventPublisher);
         lenient().when(abandonmentProcessor.abandonDuePlayers(any())).thenReturn(roster());
     }
 
@@ -193,6 +199,37 @@ class EraResolutionCompletedKafkaConsumerTest {
     }
 
     @Test
+    @DisplayName("a barrier with nothing to carry still records the resolution and wakes the era saga")
+    void handle_noCarryOver_marksResolutionAppliedAndPublishesIt() {
+        var game = Game.reconstitute(GAME_ID, LOBBY_ID, List.of(), 0, 0, GameStatus.IN_PROGRESS);
+        givenClaimedBarrier();
+        given(gameRepository.findByIdWithLock(GAME_ID)).willReturn(Optional.of(game));
+        given(gameRules.maxCascadedParadoxes()).willReturn(MAX_CASCADED);
+
+        consumer.handle(messageFor(resolution(1)));
+
+        assertThat(game.resolutionApplied(1)).isTrue();
+        assertThat(game.resolutionApplied(2)).isFalse();
+        then(gameRepository).should().save(game);
+        then(applicationEventPublisher).should().publishEvent(new ResolutionAppliedApplicationEvent(GAME_ID, 1));
+    }
+
+    @Test
+    @DisplayName("a barrier with carry-over records the resolution together with it")
+    void handle_carryOver_marksResolutionApplied() {
+        var game = Game.reconstitute(GAME_ID, LOBBY_ID, List.of(), 0, 0, GameStatus.IN_PROGRESS);
+        givenClaimedBarrier();
+        given(gameRepository.findByIdWithLock(GAME_ID)).willReturn(Optional.of(game));
+        given(gameRules.maxCascadedParadoxes()).willReturn(MAX_CASCADED);
+
+        consumer.handle(messageFor(resolution(1, stalled(UUID.randomUUID(), 0))));
+
+        assertThat(game.pendingCarryOverEvents()).hasSize(1);
+        assertThat(game.resolutionApplied(1)).isTrue();
+        then(applicationEventPublisher).should().publishEvent(new ResolutionAppliedApplicationEvent(GAME_ID, 1));
+    }
+
+    @Test
     @DisplayName("a barrier for an already-ended game is ignored instead of throwing")
     void handle_gameAlreadyOver_ignoredWithoutThrowing() {
         var game = Game.reconstitute(GAME_ID, LOBBY_ID, List.of(), 1, 1, GameStatus.ENDED_BY_COLLAPSE);
@@ -269,15 +306,19 @@ class EraResolutionCompletedKafkaConsumerTest {
     }
 
     @Test
-    @DisplayName("a barrier without cascades does not lock or mutate the game")
-    void handle_withoutCascades_noGameMutation() {
+    @DisplayName("a barrier without cascades records the resolution and leaves the cascade count unchanged")
+    void handle_withoutCascades_onlyRecordsTheResolution() {
+        var game = Game.reconstitute(GAME_ID, LOBBY_ID, List.of(), 0, 1, GameStatus.IN_PROGRESS);
         var resolution = resolution(1, applied(UUID.randomUUID(), 0));
         givenClaimedBarrier();
+        given(gameRepository.findByIdWithLock(GAME_ID)).willReturn(Optional.of(game));
+        given(gameRules.maxCascadedParadoxes()).willReturn(MAX_CASCADED);
 
         consumer.handle(messageFor(resolution));
 
-        then(gameRepository).should(never()).findByIdWithLock(any());
-        then(gameRepository).should(never()).save(any());
+        assertThat(game.cascadedParadoxCounter()).isEqualTo(1);
+        assertThat(game.pendingCarryOverEvents()).isEmpty();
+        assertThat(game.resolutionApplied(1)).isTrue();
         then(collapsePublisher).should(never()).publishCollapse(any(), anyInt());
     }
 
