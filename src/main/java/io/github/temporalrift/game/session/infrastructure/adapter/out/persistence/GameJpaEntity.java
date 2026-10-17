@@ -35,6 +35,9 @@ class GameJpaEntity {
     @Column(name = "collapse_pending", nullable = false)
     private boolean collapsePending;
 
+    @Column(name = "resolution_applied_era", nullable = false)
+    private int resolutionAppliedEra;
+
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "game_cascaded_event", joinColumns = @JoinColumn(name = "game_id"))
     @Column(name = "event_id", nullable = false)
@@ -87,6 +90,14 @@ class GameJpaEntity {
 
     void setEraCounter(int eraCounter) {
         this.eraCounter = eraCounter;
+    }
+
+    int getResolutionAppliedEra() {
+        return resolutionAppliedEra;
+    }
+
+    void setResolutionAppliedEra(int resolutionAppliedEra) {
+        this.resolutionAppliedEra = resolutionAppliedEra;
     }
 
     boolean isCollapsePending() {

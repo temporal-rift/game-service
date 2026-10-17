@@ -1,6 +1,7 @@
 package io.github.temporalrift.game.shared.domain.model;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.EnumSet;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -30,7 +31,7 @@ public enum CardType {
 
     CardType(CardCategory category, CardGrade... supportedGrades) {
         this.category = category;
-        this.supportedGrades = Set.copyOf(EnumSet.copyOf(Arrays.asList(supportedGrades)));
+        this.supportedGrades = Collections.unmodifiableSet(EnumSet.copyOf(Arrays.asList(supportedGrades)));
     }
 
     public static Set<CardType> byCategory(CardCategory category) {

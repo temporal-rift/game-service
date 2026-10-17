@@ -1,5 +1,6 @@
 package io.github.temporalrift.game.session.application.saga;
 
+import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 
 import java.util.List;
@@ -14,6 +15,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import io.github.temporalrift.game.session.domain.event.EraStarted;
 import io.github.temporalrift.game.session.domain.game.PendingCarryOverEvent;
+import io.github.temporalrift.game.session.domain.port.out.EraSagaScoresUpdatedInboxRepository;
 import io.github.temporalrift.game.shared.domain.event.ActionRoundClosed;
 import io.github.temporalrift.game.shared.domain.event.ScoresUpdated;
 import io.github.temporalrift.game.shared.domain.model.CarryOverState;
@@ -32,6 +34,9 @@ class EraSagaEventListenerTest {
 
     @Mock
     EraSagaAdvancer eraSagaAdvancer;
+
+    @Mock
+    EraSagaScoresUpdatedInboxRepository scoresUpdatedInbox;
 
     @InjectMocks
     EraSagaEventListener listener;
@@ -94,5 +99,19 @@ class EraSagaEventListenerTest {
 
         // then
         then(eraSagaAdvancer).should().handleResolutionFailed(GAME_ID, 2);
+    }
+
+    @Test
+    @DisplayName("ResolutionApplied — replays only the waiting scores of that game and era")
+    void onResolutionApplied_replaysTheWaitingScoresOfThatEraOnly() {
+        var waiting = new ScoresUpdated(GAME_ID, 1, List.of());
+        var otherEra = new ScoresUpdated(GAME_ID, 2, List.of());
+        var otherGame = new ScoresUpdated(UUID.randomUUID(), 1, List.of());
+        given(scoresUpdatedInbox.findRecordedButNotAdvanced()).willReturn(List.of(otherGame, otherEra, waiting));
+
+        listener.onResolutionApplied(new ResolutionAppliedApplicationEvent(GAME_ID, 1));
+
+        then(eraSagaAdvancer).should().handleScoresUpdated(GAME_ID, waiting);
+        then(eraSagaAdvancer).shouldHaveNoMoreInteractions();
     }
 }
