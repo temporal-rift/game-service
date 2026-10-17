@@ -487,7 +487,8 @@ class EraSagaAdvancerTest {
                         true,
                         List.of(new PendingCarryOverEvent(thirdCascadedEvent, CarryOverState.CASCADED)),
                         Map.of(),
-                        GameStatus.IN_PROGRESS));
+                        GameStatus.IN_PROGRESS,
+                        3));
         given(gameRepository.findByIdWithLock(GAME_ID)).willReturn(Optional.of(game));
         var updates = List.of(new ScoresUpdated.ScoreUpdate(PLAYER_1, Faction.PROPHETS, 8, "round-bonus", 24));
         var su = new ScoresUpdated(GAME_ID, 3, updates);
@@ -525,7 +526,8 @@ class EraSagaAdvancerTest {
                         true,
                         List.of(new PendingCarryOverEvent(thirdCascadedEvent, CarryOverState.CASCADED)),
                         Map.of(),
-                        GameStatus.IN_PROGRESS));
+                        GameStatus.IN_PROGRESS,
+                        3));
         given(gameRepository.findByIdWithLock(GAME_ID)).willReturn(Optional.of(game));
         var updates = List.of(
                 new ScoresUpdated.ScoreUpdate(PLAYER_1, Faction.ERASERS, 3, "bonus", 16),
@@ -565,7 +567,8 @@ class EraSagaAdvancerTest {
                                 new PendingCarryOverEvent(firstCascadedEvent, CarryOverState.CASCADED),
                                 new PendingCarryOverEvent(thirdCascadedEvent, CarryOverState.CASCADED)),
                         Map.of(),
-                        GameStatus.IN_PROGRESS));
+                        GameStatus.IN_PROGRESS,
+                        3));
         given(gameRepository.findByIdWithLock(GAME_ID)).willReturn(Optional.of(game));
 
         // when
@@ -603,7 +606,8 @@ class EraSagaAdvancerTest {
                                 new PendingCarryOverEvent(firstCascadedEvent, CarryOverState.CASCADED),
                                 new PendingCarryOverEvent(secondCascadedEvent, CarryOverState.CASCADED)),
                         Map.of(),
-                        GameStatus.IN_PROGRESS));
+                        GameStatus.IN_PROGRESS,
+                        1));
         given(gameRepository.findByIdWithLock(GAME_ID)).willReturn(Optional.of(game));
         var captor = ArgumentCaptor.forClass(Object.class);
 
@@ -665,7 +669,8 @@ class EraSagaAdvancerTest {
                 false,
                 List.of(new PendingCarryOverEvent(stalledId, CarryOverState.STALLED)),
                 Map.of(),
-                GameStatus.IN_PROGRESS);
+                GameStatus.IN_PROGRESS,
+                MAX_ERAS);
         var game = Game.reconstitute(GAME_ID, LOBBY_ID, List.of(), progress);
         given(gameRepository.findByIdWithLock(GAME_ID)).willReturn(Optional.of(game));
 
@@ -866,6 +871,27 @@ class EraSagaAdvancerTest {
         given(gameRules.stabilizationThresholds()).willReturn(THRESHOLDS);
         var game = Game.reconstitute(GAME_ID, LOBBY_ID, List.of(), MAX_ERAS, 0, GameStatus.IN_PROGRESS);
         given(gameRepository.findByIdWithLock(GAME_ID)).willReturn(Optional.of(game));
+    }
+
+    @Test
+    @DisplayName("scores that arrive before the era's resolution is recorded are kept and do not end the era")
+    void handleScoresUpdated_resolutionNotYetApplied_defersWithoutEndingTheEra() {
+        var state = new EraSagaState(GAME_ID, 1, EraSagaStatus.WAITING_SCORES, List.of(PLAYER_1, PLAYER_2, PLAYER_3));
+        var game = Game.reconstitute(
+                GAME_ID,
+                LOBBY_ID,
+                List.of(),
+                new GameProgress(1, Set.of(), false, List.of(), Map.of(), GameStatus.IN_PROGRESS, 0));
+        given(eraSagaRepository.findByGameIdWithLock(GAME_ID)).willReturn(Optional.of(state));
+        given(gameRepository.findByIdWithLock(GAME_ID)).willReturn(Optional.of(game));
+        var scores = noWinnerScores(1);
+
+        var advanced = advancer.handleScoresUpdated(GAME_ID, scores);
+
+        assertThat(advanced).isFalse();
+        then(scoresUpdatedInbox).should().save(scores);
+        then(eraSagaRepository).should(never()).save(any());
+        then(eventPublisher).shouldHaveNoInteractions();
     }
 
     private TimelineStabilized stabilizedFrom(ScoresUpdated su) {

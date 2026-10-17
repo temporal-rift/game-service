@@ -118,11 +118,20 @@ class EraSagaAdvancer {
         // WAITING_SCORES and ScoresUpdated fires from an independent async chain (timeline-service
         // resolution -> scoring), so either can arrive first. If this one loses the race, the record
         // lets EraSagaScoresUpdatedSweep complete the transition later without a second delivery.
+        // The era-end decision also waits for the era's timeline resolution to be recorded on the game: it carries the
+        // events the next era inherits, and its consumer runs in an independent group that may be behind this one.
+        // ResolutionAppliedApplicationEvent replays the recorded result once that consumer has caught up.
         scoresUpdatedInbox.save(su);
         return eraSagaRepository
                 .findByGameIdWithLock(gameId)
                 .filter(s -> s.status() == EraSagaStatus.WAITING_SCORES && s.eraNumber() == su.eraNumber())
                 .map(state -> {
+                    var game = gameRepository
+                            .findByIdWithLock(gameId)
+                            .orElseThrow(() -> new GameNotFoundException(gameId));
+                    if (game.status() == GameStatus.IN_PROGRESS && !game.resolutionApplied(su.eraNumber())) {
+                        return false;
+                    }
                     processScoresUpdated(gameId, state, su);
                     return true;
                 })

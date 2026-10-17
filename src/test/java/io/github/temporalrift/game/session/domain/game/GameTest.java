@@ -419,4 +419,19 @@ class GameTest {
         assertThatExceptionOfType(GameAlreadyOverException.class).isThrownBy(game::end);
         assertThatExceptionOfType(GameAlreadyOverException.class).isThrownBy(game::endAbnormally);
     }
+
+    @Test
+    void resolutionAppliedCoversTheMarkedEraAndEarlierOnes() {
+        var game = new Game(UUID.randomUUID(), UUID.randomUUID(), List.of());
+
+        assertThat(game.resolutionApplied(1)).isFalse();
+
+        game.markResolutionApplied(2);
+        game.markResolutionApplied(1);
+
+        assertThat(game.resolutionApplied(1)).isTrue();
+        assertThat(game.resolutionApplied(2)).isTrue();
+        assertThat(game.resolutionApplied(3)).isFalse();
+        assertThat(game.resolutionAppliedEra()).isEqualTo(2);
+    }
 }

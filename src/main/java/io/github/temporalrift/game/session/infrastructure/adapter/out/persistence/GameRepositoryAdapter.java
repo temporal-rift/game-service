@@ -44,6 +44,7 @@ class GameRepositoryAdapter implements GameRepository {
         entity.setStatus(game.status().name());
         entity.setEraCounter(game.eraCounter());
         entity.setCollapsePending(game.collapsePending());
+        entity.setResolutionAppliedEra(game.resolutionAppliedEra());
         entity.setCascadedEventIds(game.cascadedEventIds());
         entity.setEventDeck(new ArrayList<>(game.eventDeck()));
         entity.setPendingCarryOverEvents(game.pendingCarryOverEvents().stream()
@@ -70,6 +71,7 @@ class GameRepositoryAdapter implements GameRepository {
                         entity.getDrawnEvents().stream()
                                 .collect(Collectors.toMap(
                                         DrawnEventEmbeddable::eventId, DrawnEventEmbeddable::toDrawnFutureEvent)),
-                        GameStatus.valueOf(entity.getStatus())));
+                        GameStatus.valueOf(entity.getStatus()),
+                        entity.getResolutionAppliedEra()));
     }
 }

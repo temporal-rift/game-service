@@ -28,6 +28,8 @@ public class Game extends AggregateRoot {
     private int eraCounter;
     /** Whether the latest era's cascades reached the collapse threshold; recomputed every era. */
     private boolean collapsePending;
+    /** The latest era whose timeline resolution has been recorded, so the era-end decision never precedes it. */
+    private int resolutionAppliedEra;
 
     private GameStatus status;
 
@@ -52,6 +54,7 @@ public class Game extends AggregateRoot {
         this.cascadedEventIds = new HashSet<>(progress.cascadedEventIds());
         this.eraCounter = progress.eraCounter();
         this.collapsePending = progress.collapsePending();
+        this.resolutionAppliedEra = progress.resolutionAppliedEra();
         this.status = progress.status();
     }
 
@@ -59,7 +62,7 @@ public class Game extends AggregateRoot {
      * Test/legacy convenience: reconstitutes a game with {@code cascadedParadoxCounter} synthetic, distinct
      * cascaded-event IDs rather than real ones — callers that only assert on the counter's value, not on which
      * events cascaded, do not need real IDs. Callers that do (e.g. distinct-event counting) should build a
-     * {@link GameProgress} with explicit IDs instead.
+     * {@link GameProgress} with explicit IDs instead. The current era counts as already resolved.
      */
     public static Game reconstitute(
             UUID id,
@@ -76,7 +79,7 @@ public class Game extends AggregateRoot {
                 id,
                 lobbyId,
                 eventDeck,
-                new GameProgress(eraCounter, cascadedEventIds, false, List.of(), Map.of(), status));
+                new GameProgress(eraCounter, cascadedEventIds, false, List.of(), Map.of(), status, eraCounter));
     }
 
     public static Game reconstitute(UUID id, UUID lobbyId, List<UUID> eventDeck, GameProgress progress) {
@@ -134,6 +137,18 @@ public class Game extends AggregateRoot {
     public void endByCollapse() {
         requireInProgress();
         status = GameStatus.ENDED_BY_COLLAPSE;
+    }
+
+    public void markResolutionApplied(int eraNumber) {
+        resolutionAppliedEra = Math.max(resolutionAppliedEra, eraNumber);
+    }
+
+    public boolean resolutionApplied(int eraNumber) {
+        return resolutionAppliedEra >= eraNumber;
+    }
+
+    public int resolutionAppliedEra() {
+        return resolutionAppliedEra;
     }
 
     public void recordPendingCarryOverEvents(List<PendingCarryOverEvent> carryOverEvents) {
