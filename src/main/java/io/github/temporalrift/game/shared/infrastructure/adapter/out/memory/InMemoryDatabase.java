@@ -7,6 +7,8 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.dao.CannotAcquireLockException;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
@@ -15,6 +17,8 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
  * Transactions read committed rows and their own writes; their writes become visible to others atomically on commit.
  */
 public class InMemoryDatabase {
+
+    private static final Logger LOG = LoggerFactory.getLogger(InMemoryDatabase.class);
 
     private final ReentrantReadWriteLock visibility = new ReentrantReadWriteLock();
     private final Map<String, InMemoryTable<?, ?>> tables = new LinkedHashMap<>();
@@ -71,9 +75,33 @@ public class InMemoryDatabase {
         try {
             transaction.writes().forEach(InMemoryTable::forgetReplaced);
             transaction.writes().forEach(InMemoryTable::applyCommitted);
+            transaction.commitHooks().forEach(InMemoryDatabase::runCommitHook);
         } finally {
             visibility.writeLock().unlock();
             locks.releaseAll(transaction);
+        }
+    }
+
+    /**
+     * Runs the work at the transaction's place in the commit order: after its writes are visible and before any later
+     * commit, so hooks of concurrent transactions run in the order those transactions committed. A hook must be
+     * brief and must not re-enter the database.
+     *
+     * @throws CannotAcquireLockException when no transaction is active
+     */
+    public void onCommit(Runnable hook) {
+        var current = current();
+        if (current == null) {
+            throw new CannotAcquireLockException("A commit hook requires an active transaction");
+        }
+        current.onCommit(hook);
+    }
+
+    private static void runCommitHook(Runnable hook) {
+        try {
+            hook.run();
+        } catch (RuntimeException e) {
+            LOG.error("A commit hook failed after its transaction committed", e);
         }
     }
 
