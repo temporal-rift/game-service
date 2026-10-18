@@ -1,5 +1,7 @@
 package io.github.temporalrift.game.session.application.saga;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.modulith.events.ApplicationModuleListener;
 import org.springframework.stereotype.Component;
 
@@ -10,6 +12,8 @@ import io.github.temporalrift.game.shared.domain.event.ScoresUpdated;
 
 @Component
 class EraSagaEventListener {
+
+    private static final Logger log = LoggerFactory.getLogger(EraSagaEventListener.class);
 
     private final EraSaga eraSaga;
     private final EraSagaAdvancer eraSagaAdvancer;
@@ -41,7 +45,16 @@ class EraSagaEventListener {
     void onResolutionApplied(ResolutionAppliedApplicationEvent event) {
         scoresUpdatedInbox.findRecordedButNotAdvanced().stream()
                 .filter(scores -> scores.gameId().equals(event.gameId()) && scores.eraNumber() == event.eraNumber())
-                .forEach(scores -> eraSagaAdvancer.handleScoresUpdated(scores.gameId(), scores));
+                .forEach(this::replay);
+    }
+
+    // One failing replay must not skip the rest; the recorded scores stay in the inbox for EraSagaScoresUpdatedSweep.
+    private void replay(ScoresUpdated scores) {
+        try {
+            eraSagaAdvancer.handleScoresUpdated(scores.gameId(), scores);
+        } catch (RuntimeException e) {
+            log.error("Replay of scores for game {} era {} failed", scores.gameId(), scores.eraNumber(), e);
+        }
     }
 
     @ApplicationModuleListener

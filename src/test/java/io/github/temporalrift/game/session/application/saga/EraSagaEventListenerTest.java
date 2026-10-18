@@ -2,6 +2,7 @@ package io.github.temporalrift.game.session.application.saga;
 
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
+import static org.mockito.BDDMockito.willThrow;
 
 import java.util.List;
 import java.util.UUID;
@@ -113,5 +114,19 @@ class EraSagaEventListenerTest {
 
         then(eraSagaAdvancer).should().handleScoresUpdated(GAME_ID, waiting);
         then(eraSagaAdvancer).shouldHaveNoMoreInteractions();
+    }
+
+    @Test
+    @DisplayName("ResolutionApplied — a failing replay does not skip the other waiting scores")
+    void onResolutionApplied_oneFailingReplayDoesNotSkipTheRest() {
+        var first = new ScoresUpdated(GAME_ID, 1, List.of());
+        var second = new ScoresUpdated(
+                GAME_ID, 1, List.of(new ScoresUpdated.ScoreUpdate(PLAYER_1, Faction.PROPHETS, 5, "bonus", 15)));
+        given(scoresUpdatedInbox.findRecordedButNotAdvanced()).willReturn(List.of(first, second));
+        willThrow(new IllegalStateException("boom")).given(eraSagaAdvancer).handleScoresUpdated(GAME_ID, first);
+
+        listener.onResolutionApplied(new ResolutionAppliedApplicationEvent(GAME_ID, 1));
+
+        then(eraSagaAdvancer).should().handleScoresUpdated(GAME_ID, second);
     }
 }
