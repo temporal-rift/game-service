@@ -79,17 +79,18 @@ class SimulationEventSinkRelayTest {
     }
 
     @Test
-    void recordsOfConcurrentCommitsReachTheSinkOneAtATime() throws Exception {
+    void recordsOfConcurrentCommitsReachTheSinkOneAtATimeInCommitOrder() throws Exception {
         var threads = 8;
         var inSink = new AtomicInteger();
         var overlapped = new AtomicInteger();
-        var commitOrder = Collections.synchronizedList(new ArrayList<String>());
+        var committed = Collections.synchronizedList(new ArrayList<String>());
+        var delivered = Collections.synchronizedList(new ArrayList<String>());
         var slowSink = new SimulationEventSinkRelay(
                 message -> {
                     if (inSink.incrementAndGet() > 1) {
                         overlapped.incrementAndGet();
                     }
-                    commitOrder.add((String) message.get("key"));
+                    delivered.add((String) message.get("key"));
                     holdBriefly();
                     inSink.decrementAndGet();
                 },
@@ -101,7 +102,11 @@ class SimulationEventSinkRelayTest {
                 var key = "game-" + thread;
                 pool.submit(() -> {
                     start.await();
-                    transactions.executeWithoutResult(status -> slowSink.relay(event(key, key)));
+                    transactions.executeWithoutResult(status -> {
+                        // Hooks run inside the commit, so this list is the order the transactions committed in.
+                        database.onCommit(() -> committed.add(key));
+                        slowSink.relay(event(key, key));
+                    });
                     return null;
                 });
             }
@@ -110,7 +115,8 @@ class SimulationEventSinkRelayTest {
             assertThat(pool.awaitTermination(30, TimeUnit.SECONDS)).isTrue();
         }
 
-        assertThat(commitOrder).hasSize(threads).doesNotHaveDuplicates();
+        assertThat(committed).hasSize(threads).doesNotHaveDuplicates();
+        assertThat(delivered).containsExactlyElementsOf(committed);
         assertThat(overlapped).hasValue(0);
     }
 
