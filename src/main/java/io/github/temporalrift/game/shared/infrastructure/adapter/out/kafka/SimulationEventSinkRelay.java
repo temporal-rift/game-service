@@ -7,15 +7,17 @@ import java.util.function.Consumer;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Propagation;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 import tools.jackson.databind.ObjectMapper;
 
+import io.github.temporalrift.game.shared.infrastructure.adapter.out.memory.InMemoryDatabase;
+
 /**
- * Hands durably registered game events to the host sink instead of Kafka, as JDK-only records. It runs on the
- * committing thread rather than an async pool, so records leave in commit order as one partition would carry them.
+ * Hands durably registered game events to the host sink instead of Kafka, as JDK-only records. Each record is handed
+ * over at its transaction's place in the database's commit order, once its writes are visible, so records leave in
+ * commit order as one partition would carry them, whichever threads commit. The sink must return quickly and must not
+ * re-enter the application on the calling thread.
  */
 @Component
 @Profile("in-memory")
@@ -25,15 +27,18 @@ class SimulationEventSinkRelay {
 
     private final Consumer<Map<String, Object>> sink;
     private final ObjectMapper objectMapper;
+    private final InMemoryDatabase database;
 
     SimulationEventSinkRelay(
-            @Qualifier("simulationEventSink") Consumer<Map<String, Object>> sink, ObjectMapper objectMapper) {
+            @Qualifier("simulationEventSink") Consumer<Map<String, Object>> sink,
+            ObjectMapper objectMapper,
+            InMemoryDatabase database) {
         this.sink = sink;
         this.objectMapper = objectMapper;
+        this.database = database;
     }
 
-    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    @TransactionalEventListener(phase = TransactionPhase.BEFORE_COMMIT)
     void relay(OutboundIntegrationEvent event) {
         if (!OutboundIntegrationEventPublisher.GAME_EVENTS_CHANNEL.equals(event.channel())) {
             throw new IllegalArgumentException("Unsupported outbound AsyncAPI channel: " + event.channel());
@@ -43,6 +48,6 @@ class SimulationEventSinkRelay {
         message.put("key", event.key());
         message.put("headers", GameEventHeaders.of(event));
         message.put("payload", objectMapper.writeValueAsBytes(event.payload()));
-        sink.accept(message);
+        database.onCommit(() -> sink.accept(message));
     }
 }
