@@ -12,6 +12,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.LockSupport;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -78,7 +79,7 @@ class SimulationEventSinkRelayTest {
     }
 
     @Test
-    void recordsOfConcurrentCommitsReachTheSinkOneAtATimeInCommitOrder() throws Exception {
+    void recordsOfConcurrentCommitsReachTheSinkOneAtATime() throws Exception {
         var threads = 8;
         var inSink = new AtomicInteger();
         var overlapped = new AtomicInteger();
@@ -89,7 +90,7 @@ class SimulationEventSinkRelayTest {
                         overlapped.incrementAndGet();
                     }
                     commitOrder.add((String) message.get("key"));
-                    sleepBriefly();
+                    holdBriefly();
                     inSink.decrementAndGet();
                 },
                 mapper,
@@ -113,11 +114,7 @@ class SimulationEventSinkRelayTest {
         assertThat(overlapped).hasValue(0);
     }
 
-    private static void sleepBriefly() {
-        try {
-            TimeUnit.MILLISECONDS.sleep(5);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        }
+    private static void holdBriefly() {
+        LockSupport.parkNanos(TimeUnit.MILLISECONDS.toNanos(5));
     }
 }
