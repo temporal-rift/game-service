@@ -5,6 +5,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 
 import org.slf4j.Logger;
@@ -32,6 +33,15 @@ public class InMemoryDatabase {
     public synchronized <K, R> InMemoryTable<K, R> table(TableDefinition<K, R> definition) {
         return (InMemoryTable<K, R>)
                 tables.computeIfAbsent(definition.name(), name -> new InMemoryTable<>(this, definition));
+    }
+
+    /** Deletes every row of the tables whose name matches, in the active transaction or one of its own. */
+    public synchronized void deleteAllRowsOf(Predicate<String> tableName) {
+        tables.forEach((name, table) -> {
+            if (tableName.test(name)) {
+                table.deleteAll(row -> true);
+            }
+        });
     }
 
     /**

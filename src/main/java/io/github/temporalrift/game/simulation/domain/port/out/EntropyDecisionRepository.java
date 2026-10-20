@@ -8,4 +8,6 @@ public interface EntropyDecisionRepository {
     Optional<Long> find(String purpose, String coordinate, int drawIndex);
 
     void save(String purpose, String coordinate, int drawIndex, long word);
+
+    void clear();
 }

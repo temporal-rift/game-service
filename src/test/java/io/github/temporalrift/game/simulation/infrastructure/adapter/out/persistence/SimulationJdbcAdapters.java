@@ -9,6 +9,7 @@ import org.springframework.context.annotation.Import;
     ClockOperationRepositoryAdapter.class,
     EntropyDecisionRepositoryAdapter.class,
     ExecutionRepositoryAdapter.class,
+    GameplayDiscardAdapter.class,
     OutboxProbeAdapter.class
 })
 public class SimulationJdbcAdapters {}

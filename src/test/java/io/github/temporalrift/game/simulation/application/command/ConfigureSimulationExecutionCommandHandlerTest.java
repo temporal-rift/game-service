@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
+import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 
@@ -22,8 +23,10 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.transaction.support.TransactionCallback;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import io.github.temporalrift.game.shared.domain.model.InvalidExecutionRulesException;
 import io.github.temporalrift.game.shared.domain.port.out.ExecutionProbe;
 import io.github.temporalrift.game.shared.domain.port.out.ExecutionProbe.Observation;
+import io.github.temporalrift.game.shared.domain.port.out.ExecutionRulesValidator;
 import io.github.temporalrift.game.simulation.application.query.ExecutionCheckpointAssembler;
 import io.github.temporalrift.game.simulation.domain.execution.Execution;
 import io.github.temporalrift.game.simulation.domain.execution.ExecutionCheckpoint;
@@ -31,6 +34,7 @@ import io.github.temporalrift.game.simulation.domain.execution.ExecutionContext;
 import io.github.temporalrift.game.simulation.domain.execution.ExecutionContextConflictException;
 import io.github.temporalrift.game.simulation.domain.execution.ExecutionContextTestData;
 import io.github.temporalrift.game.simulation.domain.execution.ExecutionState;
+import io.github.temporalrift.game.simulation.domain.execution.InvalidExecutionContextException;
 import io.github.temporalrift.game.simulation.domain.port.out.ExecutionRepository;
 import io.github.temporalrift.game.simulation.domain.port.out.LogicalClockControl;
 
@@ -47,6 +51,9 @@ class ConfigureSimulationExecutionCommandHandlerTest {
     ExecutionProbe probe;
 
     @Mock
+    ExecutionRulesValidator rulesValidator;
+
+    @Mock
     LogicalClockControl clock;
 
     @Mock
@@ -59,6 +66,7 @@ class ConfigureSimulationExecutionCommandHandlerTest {
     private final ExecutionCheckpoint checkpoint = new ExecutionCheckpoint(
             CONTEXT.caseKey(),
             CONTEXT.manifestDigest(),
+            CONTEXT.rulesDigest(),
             0,
             CONTEXT.logicalTime(),
             null,
@@ -79,7 +87,7 @@ class ConfigureSimulationExecutionCommandHandlerTest {
                         invocation -> ((TransactionCallback<Object>) invocation.getArgument(0)).doInTransaction(null));
         lenient().when(assembler.assemble(any())).thenReturn(checkpoint);
         handler = new ConfigureSimulationExecutionCommandHandler(
-                executions, List.of(probe), clock, assembler, transaction);
+                executions, List.of(probe), List.of(rulesValidator), clock, assembler, transaction);
     }
 
     @Test
@@ -134,5 +142,20 @@ class ConfigureSimulationExecutionCommandHandlerTest {
         given(executions.insertIfAbsent(any())).willReturn(false);
 
         assertThat(handler.handle(CONTEXT)).isSameAs(checkpoint);
+    }
+
+    @Test
+    @DisplayName("the rules are checked in their bindable form before anything is stored")
+    void handle_rulesValidatorRejects_isInvalidContextAndNothingIsStored() {
+        willThrow(new InvalidExecutionRulesException("game.rules.cards-per-hand", "must be at least 1"))
+                .given(rulesValidator)
+                .validate(any());
+
+        assertThatThrownBy(() -> handler.handle(CONTEXT))
+                .isInstanceOf(InvalidExecutionContextException.class)
+                .hasMessageContaining("game.rules.cards-per-hand");
+
+        then(executions).should(never()).insertIfAbsent(any());
+        then(rulesValidator).should().validate(CONTEXT.rules().bindable());
     }
 }

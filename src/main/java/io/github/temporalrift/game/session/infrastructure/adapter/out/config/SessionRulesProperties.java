@@ -1,6 +1,7 @@
 package io.github.temporalrift.game.session.infrastructure.adapter.out.config;
 
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 import jakarta.validation.Valid;
@@ -54,10 +55,13 @@ public record SessionRulesProperties(
         if (cardsPerDeal < cardsPerHand) {
             throw new IllegalArgumentException("cards-per-deal must be greater than or equal to cards-per-hand");
         }
-        actionRoundTimerSeconds = Map.copyOf(actionRoundTimerSeconds);
+        actionRoundTimerSeconds = Map.copyOf(
+                Objects.requireNonNull(actionRoundTimerSeconds, "game.rules.action-round-timer-seconds is required"));
         declarationTimerSeconds = declarationTimerSeconds == null ? Map.of() : Map.copyOf(declarationTimerSeconds);
-        cardCategoryWeights = Map.copyOf(cardCategoryWeights);
-        cardGradeWeights = Map.copyOf(cardGradeWeights);
+        cardCategoryWeights =
+                Map.copyOf(Objects.requireNonNull(cardCategoryWeights, "game.rules.card-category-weights is required"));
+        cardGradeWeights =
+                Map.copyOf(Objects.requireNonNull(cardGradeWeights, "game.rules.card-grade-weights is required"));
         handDealForcedTypes = handDealForcedTypes == null ? Set.of() : Set.copyOf(handDealForcedTypes);
         if (handDealForcedTypes.size() > cardsPerDeal) {
             throw new IllegalArgumentException("hand-deal-forced-types must not exceed cards-per-deal");

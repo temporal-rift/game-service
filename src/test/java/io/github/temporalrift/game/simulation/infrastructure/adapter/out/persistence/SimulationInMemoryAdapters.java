@@ -9,6 +9,7 @@ import org.springframework.context.annotation.Import;
     InMemoryClockOperationRepository.class,
     InMemoryEntropyDecisionRepository.class,
     InMemoryExecutionRepository.class,
+    InMemoryGameplayDiscard.class,
     InMemoryOutboxProbe.class
 })
 public class SimulationInMemoryAdapters {}

@@ -4,6 +4,8 @@ import static io.github.temporalrift.game.simulation.domain.execution.ExecutionC
 import static io.github.temporalrift.game.simulation.domain.execution.ExecutionContextTestData.MANIFEST_DIGEST;
 import static io.github.temporalrift.game.simulation.domain.execution.ExecutionContextTestData.PLAYER_0;
 import static io.github.temporalrift.game.simulation.domain.execution.ExecutionContextTestData.PLAYER_1;
+import static io.github.temporalrift.game.simulation.domain.execution.ExecutionContextTestData.RULES;
+import static io.github.temporalrift.game.simulation.domain.execution.ExecutionContextTestData.RULES_DIGEST;
 import static io.github.temporalrift.game.simulation.domain.execution.ExecutionContextTestData.START;
 import static io.github.temporalrift.game.simulation.domain.execution.ExecutionContextTestData.threeSeats;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -43,8 +45,8 @@ class ExecutionContextTest {
         var lowercaseRequired = "A".repeat(64);
         var seats = threeSeats();
 
-        assertThatThrownBy(() ->
-                        new ExecutionContext(CASE_KEY, SEED, EntropyVersion.SHA256_V1, lowercaseRequired, START, seats))
+        assertThatThrownBy(() -> new ExecutionContext(
+                        CASE_KEY, SEED, EntropyVersion.SHA256_V1, lowercaseRequired, RULES, RULES_DIGEST, START, seats))
                 .isInstanceOf(InvalidExecutionContextException.class);
     }
 
@@ -97,6 +99,8 @@ class ExecutionContextTest {
                 new Seed("1"),
                 EntropyVersion.SHA256_V1,
                 MANIFEST_DIGEST,
+                RULES,
+                RULES_DIGEST,
                 Instant.parse("2026-03-01T10:00:00.123456789Z"),
                 threeSeats());
 
@@ -104,6 +108,57 @@ class ExecutionContextTest {
     }
 
     private static ExecutionContext context(List<SimulationSeat> seats) {
-        return new ExecutionContext(CASE_KEY, new Seed("1"), EntropyVersion.SHA256_V1, MANIFEST_DIGEST, START, seats);
+        return new ExecutionContext(
+                CASE_KEY, new Seed("1"), EntropyVersion.SHA256_V1, MANIFEST_DIGEST, RULES, RULES_DIGEST, START, seats);
+    }
+
+    @Test
+    @DisplayName("a rules digest that is not the digest of the rules is rejected")
+    void rulesDigest_differentFromTheRules_isRejected() {
+        var seats = threeSeats();
+        var other = "b".repeat(64);
+
+        assertThatThrownBy(() -> new ExecutionContext(
+                        CASE_KEY, SEED, EntropyVersion.SHA256_V1, MANIFEST_DIGEST, RULES, other, START, seats))
+                .isInstanceOf(InvalidExecutionContextException.class)
+                .hasMessageContaining("rulesDigest");
+    }
+
+    @Test
+    @DisplayName("a rules digest must be lowercase SHA-256 hex")
+    void rulesDigest_notLowercaseSha256_isRejected() {
+        var seats = threeSeats();
+        var upper = RULES_DIGEST.toUpperCase(java.util.Locale.ROOT);
+
+        assertThatThrownBy(() -> new ExecutionContext(
+                        CASE_KEY, SEED, EntropyVersion.SHA256_V1, MANIFEST_DIGEST, RULES, upper, START, seats))
+                .isInstanceOf(InvalidExecutionContextException.class);
+    }
+
+    @Test
+    @DisplayName("contexts with the same rules written with different number spellings are equal")
+    void equality_sameRulesDifferentSpelling_isEqual() {
+        var integral = new EffectiveRules(java.util.Map.of("game.rules.x", 2));
+        var decimal = new EffectiveRules(java.util.Map.of("game.rules.x", 2.0));
+        var seats = threeSeats();
+
+        assertThat(new ExecutionContext(
+                        CASE_KEY,
+                        SEED,
+                        EntropyVersion.SHA256_V1,
+                        MANIFEST_DIGEST,
+                        integral,
+                        integral.digest(),
+                        START,
+                        seats))
+                .isEqualTo(new ExecutionContext(
+                        CASE_KEY,
+                        SEED,
+                        EntropyVersion.SHA256_V1,
+                        MANIFEST_DIGEST,
+                        decimal,
+                        decimal.digest(),
+                        START,
+                        seats));
     }
 }

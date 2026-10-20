@@ -36,6 +36,11 @@ class InMemoryEntropyDecisionRepository implements EntropyDecisionRepository {
         store.insertIfAbsent(new Draw(purpose, coordinate, drawIndex, word));
     }
 
+    @Override
+    public void clear() {
+        store.deleteAll(draw -> true);
+    }
+
     private record Draw(String purpose, String coordinate, int drawIndex, long word) {
 
         @Override

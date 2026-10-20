@@ -23,6 +23,7 @@ import io.github.temporalrift.game.simulation.domain.execution.ExecutionContextT
 import io.github.temporalrift.game.simulation.domain.execution.ExecutionNotConfiguredException;
 import io.github.temporalrift.game.simulation.domain.port.out.EntropyDecisionRepository;
 import io.github.temporalrift.game.simulation.domain.port.out.ExecutionRepository;
+import io.github.temporalrift.game.simulation.infrastructure.adapter.out.context.PinnedExecutionContext;
 
 @ExtendWith(MockitoExtension.class)
 class SeededExecutionEntropyTest {
@@ -166,6 +167,11 @@ class SeededExecutionEntropyTest {
         @Override
         public void save(String purpose, String coordinate, int drawIndex, long word) {
             words.putIfAbsent(key(purpose, coordinate, drawIndex), word);
+        }
+
+        @Override
+        public void clear() {
+            words.clear();
         }
 
         int size() {

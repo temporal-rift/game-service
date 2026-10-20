@@ -17,6 +17,8 @@ import org.springframework.kafka.support.converter.RecordMessageConverter;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageHeaders;
 
+import io.github.temporalrift.game.shared.domain.port.out.GameScope;
+
 /**
  * The inbound edge of the in-memory runtime: takes a record a host would have published to Kafka and runs, on the
  * calling thread, exactly the handling of every {@code @KafkaListener} subscribed to its topic, once per consumer
@@ -32,11 +34,13 @@ public class SimulationEventDelivery implements Consumer<Map<String, Object>> {
 
     private final KafkaListenerRegistry registry;
     private final RecordMessageConverter converter;
+    private final GameScope scope;
     private final Map<GroupTopic, AtomicLong> handled = new ConcurrentHashMap<>();
 
-    SimulationEventDelivery(KafkaListenerRegistry registry, RecordMessageConverter converter) {
+    SimulationEventDelivery(KafkaListenerRegistry registry, RecordMessageConverter converter, GameScope scope) {
         this.registry = registry;
         this.converter = converter;
+        this.scope = scope;
     }
 
     @Override
@@ -46,10 +50,15 @@ public class SimulationEventDelivery implements Consumer<Map<String, Object>> {
         headers(delivered);
         payload(delivered);
         var listeners = registry.listenersOf(topic);
+        var inScope = scopeAdmits(topic, delivered);
         RuntimeException failure = null;
         for (var listener : listeners) {
             try {
-                deliver(listener, delivered);
+                if (inScope) {
+                    deliver(listener, delivered);
+                } else {
+                    skip(listener);
+                }
             } catch (RuntimeException e) {
                 if (failure == null) {
                     failure = e;
@@ -77,6 +86,17 @@ public class SimulationEventDelivery implements Consumer<Map<String, Object>> {
                 .thenComparing(ConsumerPosition::topic)
                 .thenComparingInt(ConsumerPosition::partition));
         return List.copyOf(positions);
+    }
+
+    /** Records of games outside the scope are consumed without any handler, as the broker-backed filter does. */
+    private boolean scopeAdmits(String topic, Map<String, Object> delivered) {
+        return !TimelineGameFilter.TOPIC.equals(topic)
+                || scope.admits(TimelineGameFilter.gameIdOf(headers(delivered).get(TimelineGameFilter.GAME_ID_HEADER)));
+    }
+
+    private void skip(KafkaListenerRegistry.Listener listener) {
+        handled.computeIfAbsent(new GroupTopic(listener.groupId(), listener.topic()), key -> new AtomicLong())
+                .incrementAndGet();
     }
 
     private void deliver(KafkaListenerRegistry.Listener listener, Map<String, Object> delivered) {

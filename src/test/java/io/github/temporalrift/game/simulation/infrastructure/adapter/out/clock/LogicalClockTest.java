@@ -53,6 +53,20 @@ class LogicalClockTest {
     }
 
     @Test
+    @DisplayName("after a reset the next context starts at its own logical time, even an earlier one")
+    void reset_thenAdvance_startsAtTheNextContextsTime() {
+        given(executions.find()).willReturn(Optional.empty());
+        var clock = new LogicalClock(executions);
+        clock.advanceTo(START.plusSeconds(3600));
+
+        clock.reset();
+
+        assertThat(clock.instant()).isEqualTo(Instant.EPOCH);
+        clock.advanceTo(START);
+        assertThat(clock.instant()).isEqualTo(START);
+    }
+
+    @Test
     @DisplayName("the clock is a UTC clock and identifies only itself")
     void clock_isUtcAndIdentityEqual() {
         var clock = new LogicalClock(executions);

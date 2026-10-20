@@ -7,6 +7,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 import io.github.temporalrift.game.shared.domain.port.out.SeatingPlan;
+import io.github.temporalrift.game.simulation.infrastructure.adapter.out.context.PinnedExecutionContext;
 
 @Component
 @ConditionalOnProperty(name = "game.simulation.enabled", havingValue = "true")

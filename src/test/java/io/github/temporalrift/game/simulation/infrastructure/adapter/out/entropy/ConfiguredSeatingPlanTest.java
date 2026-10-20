@@ -16,6 +16,7 @@ import io.github.temporalrift.game.shared.domain.port.out.SeatingPlan.SeatAssign
 import io.github.temporalrift.game.simulation.domain.execution.Execution;
 import io.github.temporalrift.game.simulation.domain.execution.ExecutionContextTestData;
 import io.github.temporalrift.game.simulation.domain.port.out.ExecutionRepository;
+import io.github.temporalrift.game.simulation.infrastructure.adapter.out.context.PinnedExecutionContext;
 
 @ExtendWith(MockitoExtension.class)
 class ConfiguredSeatingPlanTest {

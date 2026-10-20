@@ -2,6 +2,7 @@ package io.github.temporalrift.game.simulation.infrastructure.adapter.out.persis
 
 import java.time.temporal.ChronoUnit;
 import java.util.Optional;
+import java.util.UUID;
 
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Profile;
@@ -22,10 +23,15 @@ class InMemoryExecutionRepository implements ExecutionRepository {
     private static final TableDefinition<Integer, Execution> EXECUTION =
             TableDefinition.of("simulation_execution", execution -> SINGLETON);
 
+    private static final TableDefinition<Integer, ClosedExecution> CLOSED =
+            TableDefinition.of("simulation_closed_execution", closed -> SINGLETON);
+
     private final InMemoryTable<Integer, Execution> store;
+    private final InMemoryTable<Integer, ClosedExecution> closed;
 
     InMemoryExecutionRepository(InMemoryDatabase database) {
         this.store = database.table(EXECUTION);
+        this.closed = database.table(CLOSED);
     }
 
     @Override
@@ -52,10 +58,23 @@ class InMemoryExecutionRepository implements ExecutionRepository {
                         execution.logicalTime().truncatedTo(ChronoUnit.MICROS))));
     }
 
+    @Override
+    public void close(UUID caseKey) {
+        store.delete(SINGLETON);
+        closed.save(new ClosedExecution(caseKey));
+    }
+
+    @Override
+    public Optional<UUID> lastClosedCaseKey() {
+        return closed.find(SINGLETON).map(ClosedExecution::caseKey);
+    }
+
     private static Execution truncated(Execution execution) {
         return new Execution(
                 execution.context(),
                 execution.revision(),
                 execution.logicalTime().truncatedTo(ChronoUnit.MICROS));
     }
+
+    private record ClosedExecution(UUID caseKey) {}
 }
