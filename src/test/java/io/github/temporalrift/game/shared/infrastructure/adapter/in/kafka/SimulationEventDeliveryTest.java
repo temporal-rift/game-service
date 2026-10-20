@@ -8,7 +8,9 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -17,6 +19,8 @@ import org.springframework.kafka.support.converter.ByteArrayJacksonJsonMessageCo
 import org.springframework.messaging.Message;
 import org.springframework.mock.env.MockEnvironment;
 import tools.jackson.databind.json.JsonMapper;
+
+import io.github.temporalrift.game.shared.domain.port.out.GameScope;
 
 class SimulationEventDeliveryTest {
 
@@ -54,6 +58,9 @@ class SimulationEventDeliveryTest {
         }
     }
 
+    private static final String OPEN_GAME = "22222222-2222-2222-2222-222222222222";
+
+    private final AtomicReference<GameScope> scope = new AtomicReference<>(gameId -> true);
     private SimulationEventDelivery delivery;
     private Listeners listeners;
 
@@ -64,7 +71,8 @@ class SimulationEventDeliveryTest {
         registry.postProcessAfterInitialization(listeners, "listeners");
         delivery = new SimulationEventDelivery(
                 registry,
-                new ByteArrayJacksonJsonMessageConverter(JsonMapper.builder().build()));
+                new ByteArrayJacksonJsonMessageConverter(JsonMapper.builder().build()),
+                gameId -> scope.get().admits(gameId));
     }
 
     @Test
@@ -91,6 +99,40 @@ class SimulationEventDeliveryTest {
 
     @Test
     void aTypedListenerReceivesTheConvertedPayload() {
+        delivery.accept(message("game.commands", "{\"name\":\"reconnect\"}"));
+
+        assertThat(listeners.handled).containsExactly("typed:reconnect");
+    }
+
+    @Test
+    void aTimelineRecordOfAGameOutsideTheScopeRunsNoHandlerYetAdvancesEveryGroupPosition() {
+        scope.set(gameId -> UUID.fromString(OPEN_GAME).equals(gameId));
+
+        delivery.accept(withGame(message("timeline.events", "{\"x\":1}"), "33333333-3333-3333-3333-333333333333"));
+        delivery.accept(withoutGame(message("timeline.events", "{\"x\":1}")));
+
+        assertThat(listeners.handled).isEmpty();
+        assertThat(listeners.failures).hasValue(0);
+        assertThat(delivery.positions())
+                .filteredOn(position -> position.topic().equals("timeline.events"))
+                .extracting(SimulationEventDelivery.ConsumerPosition::nextOffset)
+                .containsExactly(2L, 2L, 2L);
+    }
+
+    @Test
+    void aTimelineRecordOfTheGameInScopeIsHandled() {
+        scope.set(gameId -> UUID.fromString(OPEN_GAME).equals(gameId));
+
+        assertThatThrownBy(() -> delivery.accept(withGame(message("timeline.events", "{}"), OPEN_GAME)))
+                .isInstanceOf(IllegalStateException.class);
+
+        assertThat(listeners.handled).hasSize(2);
+    }
+
+    @Test
+    void aRecordOfAnotherTopicIsNeverFilteredByGame() {
+        scope.set(gameId -> false);
+
         delivery.accept(message("game.commands", "{\"name\":\"reconnect\"}"));
 
         assertThat(listeners.handled).containsExactly("typed:reconnect");
@@ -146,6 +188,18 @@ class SimulationEventDeliveryTest {
         assertThatThrownBy(() -> delivery.accept(malformed))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("headers");
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Map<String, Object> withGame(Map<String, Object> message, String gameId) {
+        ((Map<String, String>) message.get("headers")).put("gameId", gameId);
+        return message;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Map<String, Object> withoutGame(Map<String, Object> message) {
+        ((Map<String, String>) message.get("headers")).remove("gameId");
+        return message;
     }
 
     private static Map<String, Object> message(String topic, String payload) {

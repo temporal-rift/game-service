@@ -67,10 +67,11 @@ repository secret to re-enable the step.
 | --- | --- | --- |
 | `/internal/simulation/v1/*` | not registered, `404 SIMULATION_CONTROL_UNAVAILABLE` for every caller, without reading credentials | requires the `simulation:control` scope; participant tokens receive `403` |
 | Random choices and gameplay identities | unpredictable | derived from the configured case seed and stable semantic coordinates, and stored durably |
+| Rules | read once from the deployment's `game.rules.*` configuration | read from the open execution context, which carries that game's effective rules |
 | Time | system clock, wall-clock timers | logical clock moved only by `PUT /internal/simulation/v1/clock`; due work runs when it advances |
 | Faction assignment | random draw | the seats configured for the case; the lobby must contain exactly those players |
 
-A lane hosts one case on its own database and topics. Configure it first with `PUT /internal/simulation/v1/execution`; until then gameplay routes return `409 EXECUTION_NOT_CONFIGURED`. After a restart the configured context, realized random choices and clock operations are read back from the database, so a repeated step makes the same choices and spends no extra draw. Poll `GET /internal/simulation/v1/checkpoint` until `drained` after each clock advance.
+A lane plays one game at a time on its own database and topics. Open the game's context with `PUT /internal/simulation/v1/execution`; until then gameplay routes return `409 EXECUTION_NOT_CONFIGURED`. The context carries the game's effective rules; the service validates every `game.rules.*` value it uses exactly as configuration binding does and answers `400 INVALID_EXECUTION_CONTEXT`, naming the key, when one is missing or invalid. After a restart the open context, realized random choices and clock operations are read back from the database, so a repeated step makes the same choices and spends no extra draw. Poll `GET /internal/simulation/v1/checkpoint` until `drained` after each clock advance. Close the context with `DELETE /internal/simulation/v1/execution?caseKey=`, in any state, to discard all of the game's state, work and pending timers and accept the next context without a restart; `timeline.events` records of any game other than the open context's are consumed without a handler, and still advance the consumer groups' positions.
 
 #### Running in a host JVM without PostgreSQL or Kafka
 

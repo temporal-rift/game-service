@@ -9,6 +9,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -36,11 +37,26 @@ import org.springframework.transaction.support.TransactionTemplate;
 import tools.jackson.databind.ObjectMapper;
 
 import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.EraResolutionCompletedPayload;
+import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.EraTerminalResolution;
 import io.github.temporalrift.game.scoring.domain.port.out.EraScoringContextRepository;
 import io.github.temporalrift.game.session.domain.port.out.GameRepository;
+import io.github.temporalrift.game.session.domain.port.out.SessionGameRulesPort;
 import io.github.temporalrift.game.shared.domain.port.out.ProcessedEventRepository;
+import io.github.temporalrift.game.shared.infrastructure.config.ExecutionRulesFixture;
+import io.github.temporalrift.game.simulation.application.port.in.AdvanceSimulationClockUseCase;
+import io.github.temporalrift.game.simulation.application.port.in.CloseSimulationExecutionUseCase;
 import io.github.temporalrift.game.simulation.application.port.in.ConfigureSimulationExecutionUseCase;
+import io.github.temporalrift.game.simulation.application.port.in.GetSimulationCheckpointUseCase;
+import io.github.temporalrift.game.simulation.domain.execution.ClockAdvance;
+import io.github.temporalrift.game.simulation.domain.execution.EffectiveRules;
+import io.github.temporalrift.game.simulation.domain.execution.EntropyVersion;
+import io.github.temporalrift.game.simulation.domain.execution.ExecutionContext;
+import io.github.temporalrift.game.simulation.domain.execution.ExecutionContextConflictException;
 import io.github.temporalrift.game.simulation.domain.execution.ExecutionContextTestData;
+import io.github.temporalrift.game.simulation.domain.execution.ExecutionNotConfiguredException;
+import io.github.temporalrift.game.simulation.domain.execution.ExecutionState;
+import io.github.temporalrift.game.simulation.domain.execution.InvalidExecutionContextException;
+import io.github.temporalrift.game.simulation.domain.execution.Seed;
 import io.github.temporalrift.game.simulation.domain.execution.SourceWatermark;
 import io.github.temporalrift.game.simulation.domain.port.out.SourceWatermarks;
 
@@ -187,11 +203,169 @@ class InMemoryRuntimeIT {
                 .allSatisfy(offset -> assertThat(offset).isEqualTo(1L));
     }
 
+    @Test
+    void threeConsecutiveGamesOnOneInstanceEachEndOrNotByTheirOwnRules() throws Exception {
+        var application = start(host(new CopyOnWriteArrayList<>()), "game.simulation.enabled=true");
+        var delivery = application.getBean("simulationEventDelivery", Consumer.class);
+        var checkpoints = application.getBean(GetSimulationCheckpointUseCase.class);
+        var states = new ArrayList<ExecutionState>();
+
+        for (var collapseAfter : List.of(1, 3, 1)) {
+            var context = contextWith(
+                    UUID.randomUUID(),
+                    ExecutionRulesFixture.rulesWith("game.rules.max-cascaded-paradoxes", collapseAfter));
+            application.getBean(ConfigureSimulationExecutionUseCase.class).handle(context);
+            assertThat(application.getBean(SessionGameRulesPort.class).maxCascadedParadoxes())
+                    .isEqualTo(collapseAfter);
+            var gameId = startGame(application);
+            await().atMost(Duration.ofSeconds(20))
+                    .until(() -> checkpoints.handle().drained());
+
+            deliver(delivery, cascadedEraResolution(application, gameId));
+            // The synthetic resolution leaves the scoring barrier open, so the lane never drains; it is closed as is.
+            await().atMost(Duration.ofSeconds(20))
+                    .until(() -> checkpoints.handle().outboxPending() == 0);
+
+            var checkpoint = checkpoints.handle();
+            assertThat(checkpoint.gameId()).isEqualTo(gameId);
+            assertThat(checkpoint.rulesDigest()).isEqualTo(context.rulesDigest());
+            states.add(checkpoint.state());
+            application.getBean(CloseSimulationExecutionUseCase.class).handle(context.caseKey());
+        }
+
+        assertThat(states).containsExactly(ExecutionState.TERMINAL, ExecutionState.ACTIVE, ExecutionState.TERMINAL);
+    }
+
+    @Test
+    void aClosedContextLeavesNothingBehindAndItsLateEventsRunNoHandler() throws Exception {
+        var sink = new CopyOnWriteArrayList<Map<String, Object>>();
+        var application = start(host(sink), "game.simulation.enabled=true");
+        var checkpoints = application.getBean(GetSimulationCheckpointUseCase.class);
+        var first = contextWith(UUID.randomUUID(), ExecutionRulesFixture.rules());
+        application.getBean(ConfigureSimulationExecutionUseCase.class).handle(first);
+        var closedGame = startGame(application);
+        await().atMost(Duration.ofSeconds(20)).until(() -> checkpoints.handle().drained());
+        assertThat(checkpoints.handle().nextDeadline())
+                .as("the game has a timer pending")
+                .isNotNull();
+        application.getBean(CloseSimulationExecutionUseCase.class).handle(first.caseKey());
+        var published = sink.size();
+        var second =
+                contextWith(UUID.randomUUID(), ExecutionRulesFixture.rulesWith("game.rules.win-score-threshold", 22));
+
+        var opened =
+                application.getBean(ConfigureSimulationExecutionUseCase.class).handle(second);
+        application
+                .getBean(AdvanceSimulationClockUseCase.class)
+                .handle(new ClockAdvance(UUID.randomUUID(), 0, ExecutionContextTestData.START.plusSeconds(600)));
+        var late = eraResolutionCompleted(application, closedGame, UUID.randomUUID());
+        var positionsBefore = timelinePositions(application);
+        deliver(application.getBean("simulationEventDelivery", Consumer.class), late);
+
+        assertThat(opened.state()).isEqualTo(ExecutionState.READY);
+        assertThat(opened.gameId()).isNull();
+        assertThat(opened.revision()).isZero();
+        assertThat(opened.rulesDigest()).isEqualTo(second.rulesDigest());
+        var checkpoint = checkpoints.handle();
+        assertThat(checkpoint.dueTimersPending()).isZero();
+        assertThat(checkpoint.outboxPending()).isZero();
+        assertThat(checkpoint.gameId()).isNull();
+        assertThat(sink).as("nothing of the closed game acted after the close").hasSize(published);
+        assertThat(application.getBean(SessionGameRulesPort.class).winScoreThreshold())
+                .isEqualTo(22);
+        assertThat(inTransaction(
+                        application,
+                        () -> application.getBean(GameRepository.class).findById(closedGame)))
+                .isEmpty();
+        var eventId = UUID.fromString(headers(late).get("eventId"));
+        assertThat(inTransaction(
+                        application,
+                        () -> application
+                                .getBean(ProcessedEventRepository.class)
+                                .tryMarkProcessed(eventId, "session.era-resolution-completed")))
+                .as("no consumer claimed the late event")
+                .isTrue();
+        assertThat(timelinePositions(application))
+                .containsExactlyElementsOf(
+                        positionsBefore.stream().map(offset -> offset + 1).toList());
+    }
+
+    @Test
+    void closeAndOpenFollowThePublishedConflictRules() {
+        var application = start(host(new CopyOnWriteArrayList<>()), "game.simulation.enabled=true");
+        var configure = application.getBean(ConfigureSimulationExecutionUseCase.class);
+        var close = application.getBean(CloseSimulationExecutionUseCase.class);
+        var first = contextWith(UUID.randomUUID(), ExecutionRulesFixture.rules());
+        var other = contextWith(UUID.randomUUID(), ExecutionRulesFixture.rules());
+        var unrelated = UUID.randomUUID();
+
+        assertThatThrownBy(() -> close.handle(first.caseKey())).isInstanceOf(ExecutionNotConfiguredException.class);
+        configure.handle(first);
+        configure.handle(first);
+        assertThatThrownBy(() -> configure.handle(other)).isInstanceOf(ExecutionContextConflictException.class);
+        assertThatThrownBy(() -> close.handle(unrelated)).isInstanceOf(ExecutionContextConflictException.class);
+
+        close.handle(first.caseKey());
+        close.handle(first.caseKey());
+        assertThatThrownBy(() -> close.handle(unrelated)).isInstanceOf(ExecutionContextConflictException.class);
+        assertThatThrownBy(() -> application
+                        .getBean(GetSimulationCheckpointUseCase.class)
+                        .handle())
+                .isInstanceOf(ExecutionNotConfiguredException.class);
+        configure.handle(other);
+        close.handle(first.caseKey());
+    }
+
+    @Test
+    void aContextWhoseRulesLackAUsedKeyOrBreakARuleIsRejectedByThatKey() {
+        var application = start(host(new CopyOnWriteArrayList<>()), "game.simulation.enabled=true");
+        var configure = application.getBean(ConfigureSimulationExecutionUseCase.class);
+        var missing = contextWith(UUID.randomUUID(), ExecutionRulesFixture.rulesWithout("game.rules.cards-per-hand"));
+        var dealTooSmall =
+                contextWith(UUID.randomUUID(), ExecutionRulesFixture.rulesWith("game.rules.cards-per-deal", 4));
+
+        assertThatThrownBy(() -> configure.handle(missing))
+                .isInstanceOf(InvalidExecutionContextException.class)
+                .hasMessageContaining("game.rules.cards-per-hand");
+        assertThatThrownBy(() -> configure.handle(dealTooSmall))
+                .isInstanceOf(InvalidExecutionContextException.class)
+                .hasMessageContaining("cards-per-deal");
+        assertThatThrownBy(() -> application
+                        .getBean(GetSimulationCheckpointUseCase.class)
+                        .handle())
+                .isInstanceOf(ExecutionNotConfiguredException.class);
+    }
+
     // ------------------------------------------------------------------------------------------------ helpers
+
+    private static ExecutionContext contextWith(UUID caseKey, Map<String, Object> rules) {
+        var effective = new EffectiveRules(rules);
+        return new ExecutionContext(
+                caseKey,
+                new Seed("42"),
+                EntropyVersion.SHA256_V1,
+                ExecutionContextTestData.MANIFEST_DIGEST,
+                effective,
+                effective.digest(),
+                ExecutionContextTestData.START,
+                ExecutionContextTestData.threeSeats());
+    }
+
+    private static Map<String, Object> cascadedEraResolution(ConfigurableApplicationContext application, UUID gameId) {
+        var message = new LinkedHashMap<>(eraResolutionCompleted(application, gameId, UUID.randomUUID()));
+        var mapper = application.getBean(ObjectMapper.class);
+        message.put(
+                "payload",
+                mapper.writeValueAsBytes(new EraResolutionCompletedPayload(
+                        gameId, 1, List.of(new EraTerminalResolution(UUID.randomUUID(), 0, "CASCADED", null)))));
+        return message;
+    }
 
     private ConfigurableApplicationContext startConfigured(List<Map<String, Object>> sink) {
         var application = start(host(sink), "game.simulation.enabled=true");
-        application.getBean(ConfigureSimulationExecutionUseCase.class).handle(ExecutionContextTestData.context("42"));
+        application
+                .getBean(ConfigureSimulationExecutionUseCase.class)
+                .handle(contextWith(ExecutionContextTestData.CASE_KEY, ExecutionRulesFixture.rules()));
         return application;
     }
 

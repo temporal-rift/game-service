@@ -63,7 +63,7 @@
         <session-api.version>3.0.0</session-api.version>
         <action-api.version>7.1.0</action-api.version>
         <scoring-api.version>2.0.1</scoring-api.version>
-        <simulation-control-api.version>1.1.1</simulation-control-api.version>
+        <simulation-control-api.version>2.0.0</simulation-control-api.version>
         <spring-retry.version>2.0.13</spring-retry.version>
         <archunit-junit5.version>1.5.1</archunit-junit5.version>
     </properties>
@@ -380,6 +380,11 @@
                             </apiPackage>
                             <modelPackage>io.github.temporalrift.game.simulation.infrastructure.adapter.in.rest.v1.model
                             </modelPackage>
+                            <!-- A rules value is a number, boolean, string or an array of those; the generator would
+                                 emit a deserialization-incapable marker interface for that union. -->
+                            <schemaMappings>
+                                <schemaMapping>EffectiveRules_properties_value=java.lang.Object</schemaMapping>
+                            </schemaMappings>
                             <!-- Every response field of this contract is required, including the nullable ones, so the
                                  service-wide non_null inclusion must not drop them. -->
                             <configOptions>

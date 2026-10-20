@@ -3,8 +3,10 @@ package io.github.temporalrift.game.contract;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -22,14 +24,17 @@ import io.github.temporalrift.game.session.domain.port.out.PlayerReconnectSagaRe
 import io.github.temporalrift.game.session.domain.saga.PlayerReconnectSagaState;
 import io.github.temporalrift.game.session.domain.saga.PlayerReconnectSagaStatus;
 import io.github.temporalrift.game.shared.domain.port.out.ExecutionProbe;
+import io.github.temporalrift.game.shared.domain.port.out.ProcessedEventRepository;
 import io.github.temporalrift.game.simulation.domain.execution.ClockAcknowledgement;
 import io.github.temporalrift.game.simulation.domain.execution.ClockAdvance;
 import io.github.temporalrift.game.simulation.domain.execution.ClockOperation;
+import io.github.temporalrift.game.simulation.domain.execution.EffectiveRules;
 import io.github.temporalrift.game.simulation.domain.execution.Execution;
 import io.github.temporalrift.game.simulation.domain.execution.ExecutionContextTestData;
 import io.github.temporalrift.game.simulation.domain.port.out.ClockOperationRepository;
 import io.github.temporalrift.game.simulation.domain.port.out.EntropyDecisionRepository;
 import io.github.temporalrift.game.simulation.domain.port.out.ExecutionRepository;
+import io.github.temporalrift.game.simulation.domain.port.out.GameplayDiscard;
 import io.github.temporalrift.game.simulation.domain.port.out.OutboxProbe;
 
 /** The simulation module's persisted driven ports and the modules' execution probes. */
@@ -67,6 +72,102 @@ public final class SimulationPortContracts {
 
             assertThat(repository.find()).contains(advanced);
             assertThat(repository.find().orElseThrow().context()).isEqualTo(configured.context());
+        }
+    }
+
+    public interface ExecutionCloseContract extends PortContract {
+
+        @Test
+        default void execution_roundTripKeepsEveryKindOfRule() {
+            var repository = port(ExecutionRepository.class);
+            var rules = new EffectiveRules(Map.of(
+                    "game.rules.threshold",
+                    18,
+                    "game.rules.ratio",
+                    new BigDecimal("0.125"),
+                    "game.rules.big",
+                    new BigDecimal("1e21"),
+                    "game.rules.flag",
+                    true,
+                    "game.rules.name",
+                    "quote \" and \\ and é",
+                    "game.rules.list",
+                    List.of("B", "A"),
+                    "game.rules.empty",
+                    List.of()));
+            var execution = Execution.configure(ExecutionContextTestData.context("42", rules));
+
+            repository.insertIfAbsent(execution);
+
+            assertThat(repository.find()).contains(execution);
+            assertThat(repository.find().orElseThrow().context().rulesDigest()).isEqualTo(rules.digest());
+        }
+
+        @Test
+        default void execution_closeRemovesTheExecutionAndRemembersItsCase() {
+            var repository = port(ExecutionRepository.class);
+            var first = Execution.configure(ExecutionContextTestData.context("42"));
+            var second = Execution.configure(ExecutionContextTestData.context(UUID.randomUUID(), "43"));
+            repository.insertIfAbsent(first);
+
+            assertThat(repository.lastClosedCaseKey()).isEmpty();
+            repository.close(first.context().caseKey());
+
+            assertThat(repository.find()).isEmpty();
+            assertThat(repository.findWithLock()).isEmpty();
+            assertThat(repository.lastClosedCaseKey()).contains(first.context().caseKey());
+            assertThat(repository.insertIfAbsent(second)).isTrue();
+            assertThat(repository.find()).contains(second);
+            assertThat(repository.lastClosedCaseKey()).contains(first.context().caseKey());
+        }
+
+        @Test
+        default void execution_closingAnotherCaseKeepsOnlyTheLatestClosedCase() {
+            var repository = port(ExecutionRepository.class);
+            var first = Execution.configure(ExecutionContextTestData.context("42"));
+            var second = Execution.configure(ExecutionContextTestData.context(UUID.randomUUID(), "43"));
+            repository.insertIfAbsent(first);
+            repository.close(first.context().caseKey());
+            repository.insertIfAbsent(second);
+
+            repository.close(second.context().caseKey());
+
+            assertThat(repository.lastClosedCaseKey()).contains(second.context().caseKey());
+        }
+
+        @Test
+        default void clearing_dropsRecordedClockOperationsAndRealizedDraws() {
+            var operations = port(ClockOperationRepository.class);
+            var decisions = port(EntropyDecisionRepository.class);
+            var operationId = UUID.randomUUID();
+            var at = Instant.parse("2026-03-01T10:00:00Z");
+            operations.save(new ClockOperation(
+                    new ClockAdvance(operationId, 0, at), new ClockAcknowledgement(operationId, 1, at)));
+            decisions.save("CARD_DEAL", "era=cleared", 0, 7L);
+
+            operations.clear();
+            decisions.clear();
+
+            assertThat(operations.find(operationId)).isEmpty();
+            assertThat(decisions.find("CARD_DEAL", "era=cleared", 0)).isEmpty();
+            decisions.save("CARD_DEAL", "era=cleared", 0, 9L);
+            assertThat(decisions.find("CARD_DEAL", "era=cleared", 0)).contains(9L);
+        }
+
+        @Test
+        default void discardingGameplayKeepsTheSimulationControlState() {
+            var executions = port(ExecutionRepository.class);
+            var claims = port(ProcessedEventRepository.class);
+            var execution = Execution.configure(ExecutionContextTestData.context("42"));
+            var eventId = UUID.randomUUID();
+            executions.insertIfAbsent(execution);
+            assertThat(claims.tryMarkProcessed(eventId, "consumer")).isTrue();
+            assertThat(claims.tryMarkProcessed(eventId, "consumer")).isFalse();
+
+            port(GameplayDiscard.class).discardAll();
+
+            assertThat(claims.tryMarkProcessed(eventId, "consumer")).isTrue();
+            assertThat(executions.find()).contains(execution);
         }
     }
 

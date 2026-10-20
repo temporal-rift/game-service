@@ -13,6 +13,7 @@ import io.github.temporalrift.game.shared.domain.port.out.ExecutionEntropy;
 import io.github.temporalrift.game.simulation.domain.execution.EntropyDerivation;
 import io.github.temporalrift.game.simulation.domain.execution.ExecutionContext;
 import io.github.temporalrift.game.simulation.domain.port.out.EntropyDecisionRepository;
+import io.github.temporalrift.game.simulation.infrastructure.adapter.out.context.PinnedExecutionContext;
 
 @Component
 @ConditionalOnProperty(name = "game.simulation.enabled", havingValue = "true")

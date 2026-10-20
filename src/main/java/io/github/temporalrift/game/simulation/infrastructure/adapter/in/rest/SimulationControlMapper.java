@@ -5,6 +5,7 @@ import java.time.ZoneOffset;
 import io.github.temporalrift.game.shared.domain.model.Faction;
 import io.github.temporalrift.game.simulation.domain.execution.ClockAcknowledgement;
 import io.github.temporalrift.game.simulation.domain.execution.ClockAdvance;
+import io.github.temporalrift.game.simulation.domain.execution.EffectiveRules;
 import io.github.temporalrift.game.simulation.domain.execution.EntropyVersion;
 import io.github.temporalrift.game.simulation.domain.execution.ExecutionCheckpoint;
 import io.github.temporalrift.game.simulation.domain.execution.Seed;
@@ -23,6 +24,8 @@ final class SimulationControlMapper {
                 new Seed(body.getSeed()),
                 EntropyVersion.valueOf(body.getEntropyVersion().getValue()),
                 body.getManifestDigest(),
+                new EffectiveRules(body.getRules().getProperties()),
+                body.getRulesDigest(),
                 body.getLogicalTime().toInstant(),
                 body.getSeats().stream()
                         .map(seat -> new SimulationSeat(
@@ -45,6 +48,7 @@ final class SimulationControlMapper {
         return new io.github.temporalrift.game.simulation.infrastructure.adapter.in.rest.v1.model.ExecutionCheckpoint(
                 checkpoint.caseKey(),
                 checkpoint.manifestDigest(),
+                checkpoint.rulesDigest(),
                 checkpoint.revision(),
                 checkpoint.logicalTime().atOffset(ZoneOffset.UTC),
                 checkpoint.gameId(),

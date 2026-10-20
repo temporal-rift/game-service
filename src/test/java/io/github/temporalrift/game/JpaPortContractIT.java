@@ -50,6 +50,7 @@ class JpaPortContractIT
                 ScoringPortContracts.ScoringReadPortContract,
                 ScoringPortContracts.TimelineOutcomeInboxPortContract,
                 SimulationPortContracts.ExecutionPortContract,
+                SimulationPortContracts.ExecutionCloseContract,
                 SimulationPortContracts.EntropyDecisionPortContract,
                 SimulationPortContracts.ClockOperationPortContract,
                 SimulationPortContracts.OutboxProbePortContract,

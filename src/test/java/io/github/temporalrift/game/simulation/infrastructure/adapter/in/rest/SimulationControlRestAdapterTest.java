@@ -1,13 +1,17 @@
 package io.github.temporalrift.game.simulation.infrastructure.adapter.in.rest;
 
+import static io.github.temporalrift.game.simulation.domain.execution.ExecutionContextTestData.RULES;
+import static io.github.temporalrift.game.simulation.domain.execution.ExecutionContextTestData.RULES_DIGEST;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.verify;
 
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import org.junit.jupiter.api.DisplayName;
@@ -19,6 +23,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.mock.web.MockHttpServletRequest;
 
 import io.github.temporalrift.game.simulation.application.port.in.AdvanceSimulationClockUseCase;
+import io.github.temporalrift.game.simulation.application.port.in.CloseSimulationExecutionUseCase;
 import io.github.temporalrift.game.simulation.application.port.in.ConfigureSimulationExecutionUseCase;
 import io.github.temporalrift.game.simulation.application.port.in.GetSimulationCheckpointUseCase;
 import io.github.temporalrift.game.simulation.domain.execution.ClockAcknowledgement;
@@ -33,6 +38,7 @@ import io.github.temporalrift.game.simulation.domain.execution.InvalidExecutionC
 import io.github.temporalrift.game.simulation.domain.execution.SourceWatermark;
 import io.github.temporalrift.game.simulation.domain.execution.StaleExecutionRevisionException;
 import io.github.temporalrift.game.simulation.infrastructure.adapter.in.rest.v1.model.ClockAdvance;
+import io.github.temporalrift.game.simulation.infrastructure.adapter.in.rest.v1.model.EffectiveRules;
 import io.github.temporalrift.game.simulation.infrastructure.adapter.in.rest.v1.model.ExecutionContext;
 import io.github.temporalrift.game.simulation.infrastructure.adapter.in.rest.v1.model.Faction;
 import io.github.temporalrift.game.simulation.infrastructure.adapter.in.rest.v1.model.SimulationSeat;
@@ -49,6 +55,9 @@ class SimulationControlRestAdapterTest {
     ConfigureSimulationExecutionUseCase configureExecution;
 
     @Mock
+    CloseSimulationExecutionUseCase closeExecution;
+
+    @Mock
     GetSimulationCheckpointUseCase getCheckpoint;
 
     @Mock
@@ -60,6 +69,7 @@ class SimulationControlRestAdapterTest {
         return new ExecutionCheckpoint(
                 CASE_KEY,
                 DIGEST,
+                RULES_DIGEST,
                 3,
                 START,
                 OPERATION,
@@ -79,6 +89,9 @@ class SimulationControlRestAdapterTest {
                 "42",
                 ExecutionContext.EntropyVersionEnum.SHA256_V1,
                 DIGEST,
+                new EffectiveRules(
+                        EffectiveRules.SchemaVersionEnum.NUMBER_1, Map.of("game.rules.win-score-threshold", 20)),
+                RULES_DIGEST,
                 OffsetDateTime.ofInstant(START, ZoneOffset.UTC),
                 List.of(
                         new SimulationSeat(0, UUID.randomUUID(), Faction.ERASERS),
@@ -94,6 +107,8 @@ class SimulationControlRestAdapterTest {
         assertThat(domain.caseKey()).isEqualTo(CASE_KEY);
         assertThat(domain.seed().decimal()).isEqualTo("42");
         assertThat(domain.manifestDigest()).isEqualTo(DIGEST);
+        assertThat(domain.rules()).isEqualTo(RULES);
+        assertThat(domain.rulesDigest()).isEqualTo(RULES_DIGEST);
         assertThat(domain.logicalTime()).isEqualTo(START);
         assertThat(domain.seats()).hasSize(3);
         assertThat(domain.seats().get(1).faction().name()).isEqualTo("PROPHETS");
@@ -122,6 +137,7 @@ class SimulationControlRestAdapterTest {
 
         assertThat(withDeadline.getNextDeadline().toInstant()).isEqualTo(START.plusSeconds(30));
         assertThat(withDeadline.getState().getValue()).isEqualTo("ACTIVE");
+        assertThat(withDeadline.getRulesDigest()).isEqualTo(RULES_DIGEST);
         assertThat(withDeadline.getSourceWatermarks().getFirst().getNextOffset())
                 .isEqualTo(9);
         assertThat(withoutDeadline.getNextDeadline()).isNull();
@@ -130,13 +146,17 @@ class SimulationControlRestAdapterTest {
     @Test
     @DisplayName("the controller delegates each operation to its use case")
     void controller_delegatesToUseCases() {
-        var controller = new SimulationControlController(configureExecution, getCheckpoint, advanceClock);
+        var controller =
+                new SimulationControlController(configureExecution, closeExecution, getCheckpoint, advanceClock);
         given(configureExecution.handle(any())).willReturn(checkpoint(null));
         given(getCheckpoint.handle()).willReturn(checkpoint(null));
         given(advanceClock.handle(any())).willReturn(new ClockAcknowledgement(OPERATION, 1, START));
 
         assertThat(controller.configureSimulationExecution(context()).getBody().getRevision())
                 .isEqualTo(3);
+        assertThat(controller.closeSimulationExecution(CASE_KEY).getStatusCode().value())
+                .isEqualTo(204);
+        verify(closeExecution).handle(CASE_KEY);
         assertThat(controller.getSimulationCheckpoint().getBody().getDrained()).isFalse();
         assertThat(controller
                         .advanceSimulationClock(

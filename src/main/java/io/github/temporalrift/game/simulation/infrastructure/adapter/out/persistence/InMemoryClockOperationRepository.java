@@ -40,4 +40,9 @@ class InMemoryClockOperationRepository implements ClockOperationRepository {
                     "Clock operation " + operation.request().operationId() + " is already recorded");
         }
     }
+
+    @Override
+    public void clear() {
+        store.deleteAll(operation -> true);
+    }
 }

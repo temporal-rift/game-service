@@ -2,6 +2,7 @@ package io.github.temporalrift.game.simulation.domain.execution;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import io.github.temporalrift.game.shared.domain.model.Faction;
@@ -10,6 +11,8 @@ public final class ExecutionContextTestData {
 
     public static final UUID CASE_KEY = UUID.fromString("c0ffee00-0000-4000-8000-000000000001");
     public static final String MANIFEST_DIGEST = "a".repeat(64);
+    public static final EffectiveRules RULES = new EffectiveRules(Map.of("game.rules.win-score-threshold", 20));
+    public static final String RULES_DIGEST = RULES.digest();
     public static final Instant START = Instant.parse("2026-03-01T10:00:00Z");
     public static final UUID PLAYER_0 = UUID.fromString("00000000-0000-4000-8000-000000000010");
     public static final UUID PLAYER_1 = UUID.fromString("00000000-0000-4000-8000-000000000011");
@@ -19,7 +22,38 @@ public final class ExecutionContextTestData {
 
     public static ExecutionContext context(String seed) {
         return new ExecutionContext(
-                CASE_KEY, new Seed(seed), EntropyVersion.SHA256_V1, MANIFEST_DIGEST, START, threeSeats());
+                CASE_KEY,
+                new Seed(seed),
+                EntropyVersion.SHA256_V1,
+                MANIFEST_DIGEST,
+                RULES,
+                RULES_DIGEST,
+                START,
+                threeSeats());
+    }
+
+    public static ExecutionContext context(UUID caseKey, String seed) {
+        return new ExecutionContext(
+                caseKey,
+                new Seed(seed),
+                EntropyVersion.SHA256_V1,
+                MANIFEST_DIGEST,
+                RULES,
+                RULES_DIGEST,
+                START,
+                threeSeats());
+    }
+
+    public static ExecutionContext context(String seed, EffectiveRules rules) {
+        return new ExecutionContext(
+                CASE_KEY,
+                new Seed(seed),
+                EntropyVersion.SHA256_V1,
+                MANIFEST_DIGEST,
+                rules,
+                rules.digest(),
+                START,
+                threeSeats());
     }
 
     public static List<SimulationSeat> threeSeats() {

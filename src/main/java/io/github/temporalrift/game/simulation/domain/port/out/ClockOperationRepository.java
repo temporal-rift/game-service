@@ -10,4 +10,6 @@ public interface ClockOperationRepository {
     Optional<ClockOperation> find(UUID operationId);
 
     void save(ClockOperation operation);
+
+    void clear();
 }

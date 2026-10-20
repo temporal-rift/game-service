@@ -9,12 +9,17 @@ import java.util.UUID;
 import java.util.regex.Pattern;
 import java.util.stream.IntStream;
 
-/** The immutable deterministic inputs of an isolated case; times are kept at microsecond precision. */
+/**
+ * The immutable deterministic inputs and effective rules of one isolated game; times are kept at microsecond
+ * precision.
+ */
 public record ExecutionContext(
         UUID caseKey,
         Seed seed,
         EntropyVersion entropyVersion,
         String manifestDigest,
+        EffectiveRules rules,
+        String rulesDigest,
         Instant logicalTime,
         List<SimulationSeat> seats) {
 
@@ -29,6 +34,13 @@ public record ExecutionContext(
         logicalTime = Objects.requireNonNull(logicalTime, "logicalTime").truncatedTo(ChronoUnit.MICROS);
         if (manifestDigest == null || !SHA256_HEX.matcher(manifestDigest).matches()) {
             throw new InvalidExecutionContextException("manifestDigest must be a lowercase SHA-256 hex digest");
+        }
+        Objects.requireNonNull(rules, "rules");
+        if (rulesDigest == null || !SHA256_HEX.matcher(rulesDigest).matches()) {
+            throw new InvalidExecutionContextException("rulesDigest must be a lowercase SHA-256 hex digest");
+        }
+        if (!rulesDigest.equals(rules.digest())) {
+            throw new InvalidExecutionContextException("rulesDigest does not match the digest of the rules");
         }
         seats = List.copyOf(Objects.requireNonNull(seats, "seats"));
         requireValidSeats(seats);
