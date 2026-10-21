@@ -266,9 +266,10 @@ class InMemoryRuntimeIT {
         assertThat(opened.gameId()).isNull();
         assertThat(opened.revision()).isZero();
         assertThat(opened.rulesDigest()).isEqualTo(second.rulesDigest());
+        // The close announcement itself is an outbox record until the module listeners have handled it.
+        await().atMost(Duration.ofSeconds(20)).until(() -> checkpoints.handle().outboxPending() == 0);
         var checkpoint = checkpoints.handle();
         assertThat(checkpoint.dueTimersPending()).isZero();
-        assertThat(checkpoint.outboxPending()).isZero();
         assertThat(checkpoint.gameId()).isNull();
         assertThat(sink).as("nothing of the closed game acted after the close").hasSize(published);
         assertThat(application.getBean(SessionGameRulesPort.class).winScoreThreshold())
