@@ -114,14 +114,16 @@ class CloseSimulationExecutionCommandHandlerTest {
     }
 
     @Test
-    @DisplayName("repeating the close of the last closed case with no context open is a no-op")
-    void handle_noContextOpen_lastClosedCase_isNoOp() {
+    @DisplayName("repeating the close with no context open discards nothing but repeats the in-process cleanup")
+    void handle_noContextOpen_lastClosedCase_repeatsTheCleanup() {
         given(executions.findWithLock()).willReturn(Optional.empty());
         given(executions.lastClosedCaseKey()).willReturn(Optional.of(EARLIER));
 
         handler.handle(EARLIER);
 
-        verifyNoInteractions(gameplay, operations, decisions, clock, events);
+        verifyNoInteractions(gameplay, operations, decisions);
+        then(clock).should().reset();
+        then(events).should().publishEvent(new ExecutionClosed(EARLIER));
     }
 
     @Test
