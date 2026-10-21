@@ -46,4 +46,9 @@ public class ScheduledTaskRegistry {
             future.cancel(false);
         }
     }
+
+    /** Cancels and forgets every tracked timer. */
+    public void cancelAll() {
+        scheduledTimers.keySet().forEach(this::cancel);
+    }
 }

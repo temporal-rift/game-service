@@ -23,15 +23,15 @@ class InMemoryExecutionRepository implements ExecutionRepository {
     private static final TableDefinition<Integer, Execution> EXECUTION =
             TableDefinition.of("simulation_execution", execution -> SINGLETON);
 
-    private static final TableDefinition<Integer, ClosedExecution> CLOSED =
-            TableDefinition.of("simulation_closed_execution", closed -> SINGLETON);
+    private static final TableDefinition<Integer, ClosedExecution> LAST_CLOSED =
+            TableDefinition.of("simulation_closed_execution", row -> SINGLETON);
 
     private final InMemoryTable<Integer, Execution> store;
-    private final InMemoryTable<Integer, ClosedExecution> closed;
+    private final InMemoryTable<Integer, ClosedExecution> lastClosed;
 
     InMemoryExecutionRepository(InMemoryDatabase database) {
         this.store = database.table(EXECUTION);
-        this.closed = database.table(CLOSED);
+        this.lastClosed = database.table(LAST_CLOSED);
     }
 
     @Override
@@ -61,12 +61,12 @@ class InMemoryExecutionRepository implements ExecutionRepository {
     @Override
     public void close(UUID caseKey) {
         store.delete(SINGLETON);
-        closed.save(new ClosedExecution(caseKey));
+        lastClosed.save(new ClosedExecution(caseKey));
     }
 
     @Override
     public Optional<UUID> lastClosedCaseKey() {
-        return closed.find(SINGLETON).map(ClosedExecution::caseKey);
+        return lastClosed.find(SINGLETON).map(ClosedExecution::caseKey);
     }
 
     private static Execution truncated(Execution execution) {

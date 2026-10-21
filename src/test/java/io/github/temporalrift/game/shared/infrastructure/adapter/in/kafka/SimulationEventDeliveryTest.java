@@ -123,8 +123,9 @@ class SimulationEventDeliveryTest {
     void aTimelineRecordOfTheGameInScopeIsHandled() {
         scope.set(gameId -> UUID.fromString(OPEN_GAME).equals(gameId));
 
-        assertThatThrownBy(() -> delivery.accept(withGame(message("timeline.events", "{}"), OPEN_GAME)))
-                .isInstanceOf(IllegalStateException.class);
+        var inScope = withGame(message("timeline.events", "{}"), OPEN_GAME);
+
+        assertThatThrownBy(() -> delivery.accept(inScope)).isInstanceOf(IllegalStateException.class);
 
         assertThat(listeners.handled).hasSize(2);
     }

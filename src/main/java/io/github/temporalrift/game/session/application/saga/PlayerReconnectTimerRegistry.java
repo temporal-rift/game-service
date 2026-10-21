@@ -3,9 +3,11 @@ package io.github.temporalrift.game.session.application.saga;
 import java.util.UUID;
 import java.util.concurrent.ScheduledFuture;
 
+import org.springframework.modulith.events.ApplicationModuleListener;
 import org.springframework.stereotype.Component;
 
 import io.github.temporalrift.game.shared.application.scheduling.ScheduledTaskRegistry;
+import io.github.temporalrift.game.shared.domain.event.ExecutionClosed;
 
 /**
  * Module-scoped instance of {@link ScheduledTaskRegistry}. A shared Spring bean would mix this
@@ -31,5 +33,11 @@ class PlayerReconnectTimerRegistry {
 
     void cancel(UUID sagaId) {
         delegate.cancel(sagaId);
+    }
+
+    /** The timers of a closed simulation context must not outlive it. */
+    @ApplicationModuleListener
+    void onExecutionClosed(ExecutionClosed closed) {
+        delegate.cancelAll();
     }
 }

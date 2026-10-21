@@ -1,12 +1,13 @@
 package io.github.temporalrift.game.simulation.infrastructure.adapter.out.context;
 
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
-import io.github.temporalrift.game.simulation.domain.event.ExecutionClosed;
+import io.github.temporalrift.game.shared.domain.event.ExecutionClosed;
 import io.github.temporalrift.game.simulation.domain.execution.Execution;
 import io.github.temporalrift.game.simulation.domain.execution.ExecutionContext;
 import io.github.temporalrift.game.simulation.domain.execution.ExecutionNotConfiguredException;
@@ -18,7 +19,7 @@ import io.github.temporalrift.game.simulation.domain.port.out.ExecutionRepositor
 public class PinnedExecutionContext {
 
     private final ExecutionRepository executions;
-    private volatile ExecutionContext context;
+    private final AtomicReference<ExecutionContext> context = new AtomicReference<>();
     private volatile long closures;
 
     public PinnedExecutionContext(ExecutionRepository executions) {
@@ -26,7 +27,7 @@ public class PinnedExecutionContext {
     }
 
     public Optional<ExecutionContext> current() {
-        var pinned = context;
+        var pinned = context.get();
         if (pinned != null) {
             return Optional.of(pinned);
         }
@@ -42,14 +43,14 @@ public class PinnedExecutionContext {
 
     @EventListener
     synchronized void onClosed(ExecutionClosed closed) {
-        context = null;
+        context.set(null);
         closures++;
     }
 
     // A context read before a close committed must not be pinned after it.
     private synchronized void pin(ExecutionContext open, long seen) {
         if (closures == seen) {
-            context = open;
+            context.set(open);
         }
     }
 }
