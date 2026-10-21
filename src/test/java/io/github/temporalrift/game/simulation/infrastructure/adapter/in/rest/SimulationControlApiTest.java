@@ -5,6 +5,7 @@ import static io.github.temporalrift.game.simulation.domain.execution.ExecutionC
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
@@ -342,7 +343,7 @@ class SimulationControlApiTest {
     @Test
     @DisplayName("closing an unrelated case or an unconfigured lane is a 409 with the published code")
     void close_rejected_returns409() throws Exception {
-        org.mockito.Mockito.doThrow(new ExecutionContextConflictException("unrelated"))
+        doThrow(new ExecutionContextConflictException("unrelated"))
                 .doThrow(new ExecutionNotConfiguredException())
                 .when(closeExecution)
                 .handle(any());

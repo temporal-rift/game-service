@@ -88,22 +88,28 @@ public record EffectiveRules(Map<String, Object> properties) {
         if (value instanceof Boolean || value instanceof String) {
             return value;
         }
-        if (value instanceof BigDecimal number) {
-            return number.stripTrailingZeros();
-        }
         if (value instanceof Number number) {
-            return finite(key, number.toString()).stripTrailingZeros();
+            return canonical(key, number instanceof BigDecimal exact ? exact : decimal(key, number.toString()));
         }
         throw new InvalidExecutionContextException(
                 "rules property '" + key + "' must be a number, boolean, string or a list of those");
     }
 
-    private static BigDecimal finite(String key, String number) {
+    private static BigDecimal decimal(String key, String number) {
         try {
             return new BigDecimal(number);
-        } catch (NumberFormatException e) {
+        } catch (NumberFormatException _) {
             throw new InvalidExecutionContextException("rules property '" + key + "' is not a finite number");
         }
+    }
+
+    /** The shortest decimal of the nearest double, the only precision the digest sees, so equality agrees with it. */
+    private static BigDecimal canonical(String key, BigDecimal number) {
+        var nearest = number.doubleValue();
+        if (Double.isInfinite(nearest)) {
+            throw new InvalidExecutionContextException("rules property '" + key + "' is out of range");
+        }
+        return nearest == 0 ? BigDecimal.ZERO : new BigDecimal(Double.toString(nearest)).stripTrailingZeros();
     }
 
     private static String text(Object value) {
@@ -126,12 +132,10 @@ public record EffectiveRules(Map<String, Object> properties) {
     }
 
     private static void scalar(StringBuilder json, Object value) {
-        if (value instanceof String text) {
-            string(json, text);
-        } else if (value instanceof BigDecimal number) {
-            json.append(number(number));
-        } else {
-            json.append(value);
+        switch (value) {
+            case String text -> string(json, text);
+            case BigDecimal number -> json.append(number(number));
+            default -> json.append(value);
         }
     }
 

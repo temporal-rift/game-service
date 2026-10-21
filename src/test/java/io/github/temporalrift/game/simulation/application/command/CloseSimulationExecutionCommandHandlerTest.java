@@ -12,6 +12,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Consumer;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -20,10 +21,11 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.support.TransactionCallback;
 import org.springframework.transaction.support.TransactionTemplate;
 
-import io.github.temporalrift.game.simulation.domain.event.ExecutionClosed;
+import io.github.temporalrift.game.shared.domain.event.ExecutionClosed;
 import io.github.temporalrift.game.simulation.domain.execution.Execution;
 import io.github.temporalrift.game.simulation.domain.execution.ExecutionContextConflictException;
 import io.github.temporalrift.game.simulation.domain.execution.ExecutionContextTestData;
@@ -72,6 +74,13 @@ class CloseSimulationExecutionCommandHandlerTest {
                 .when(transaction.execute(any()))
                 .thenAnswer(
                         invocation -> ((TransactionCallback<Object>) invocation.getArgument(0)).doInTransaction(null));
+        lenient()
+                .doAnswer(invocation -> {
+                    invocation.<Consumer<TransactionStatus>>getArgument(0).accept(null);
+                    return null;
+                })
+                .when(transaction)
+                .executeWithoutResult(any());
         handler = new CloseSimulationExecutionCommandHandler(
                 executions, operations, decisions, gameplay, clock, events, transaction);
     }

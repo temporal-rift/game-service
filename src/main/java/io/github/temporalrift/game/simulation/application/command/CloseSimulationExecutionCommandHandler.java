@@ -7,8 +7,8 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import io.github.temporalrift.game.shared.domain.event.ExecutionClosed;
 import io.github.temporalrift.game.simulation.application.port.in.CloseSimulationExecutionUseCase;
-import io.github.temporalrift.game.simulation.domain.event.ExecutionClosed;
 import io.github.temporalrift.game.simulation.domain.execution.Execution;
 import io.github.temporalrift.game.simulation.domain.execution.ExecutionContextConflictException;
 import io.github.temporalrift.game.simulation.domain.execution.ExecutionNotConfiguredException;
@@ -49,14 +49,15 @@ class CloseSimulationExecutionCommandHandler implements CloseSimulationExecution
 
     /**
      * The context's work is discarded in the transaction that closes it, so no handler can act on it afterwards; the
-     * in-process views of the context are dropped once that transaction committed.
+     * in-process views of the context are dropped once that transaction committed, and the announcement runs in a
+     * transaction of its own so module listeners receive it after commit.
      */
     @Override
     public void handle(UUID caseKey) {
         var closed = Boolean.TRUE.equals(transaction.execute(status -> close(caseKey)));
         if (closed) {
             clock.reset();
-            events.publishEvent(new ExecutionClosed(caseKey));
+            transaction.executeWithoutResult(status -> events.publishEvent(new ExecutionClosed(caseKey)));
         }
     }
 

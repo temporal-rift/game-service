@@ -123,4 +123,18 @@ class EffectiveRulesTest {
                 .isInstanceOf(InvalidExecutionContextException.class)
                 .hasMessageContaining("game.rules.d");
     }
+
+    @Test
+    @DisplayName("numbers are held at the precision the digest sees, so equal digests mean equal rules")
+    void numbers_beyondDoublePrecision_areTheSameRule() {
+        var precise = new EffectiveRules(Map.of("game.rules.a", new BigDecimal("0.1000000000000000001")));
+        var plain = new EffectiveRules(Map.of("game.rules.a", new BigDecimal("0.1")));
+        var large = new EffectiveRules(Map.of("game.rules.b", new BigDecimal("9007199254740993")));
+        var rounded = new EffectiveRules(Map.of("game.rules.b", new BigDecimal("9007199254740992")));
+
+        assertThat(precise).isEqualTo(plain);
+        assertThat(precise.digest()).isEqualTo(plain.digest());
+        assertThat(large).isEqualTo(rounded);
+        assertThat(large.bindable()).isEqualTo(rounded.bindable());
+    }
 }

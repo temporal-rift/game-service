@@ -117,4 +117,21 @@ class ScheduledTaskRegistryTest {
         // then
         then(future).should(never()).cancel(false);
     }
+
+    @Test
+    @DisplayName("cancelAll cancels and forgets every tracked timer")
+    void cancelAll_cancelsEveryTimer() {
+        // given
+        var registry = new ScheduledTaskRegistry();
+        registry.register(UUID.randomUUID(), future);
+        registry.register(UUID.randomUUID(), replacement);
+
+        // when
+        registry.cancelAll();
+        registry.cancelAll();
+
+        // then
+        then(future).should().cancel(false);
+        then(replacement).should().cancel(false);
+    }
 }

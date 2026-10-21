@@ -19,9 +19,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import io.github.temporalrift.game.shared.domain.event.ExecutionClosed;
 import io.github.temporalrift.game.shared.domain.port.out.ExecutionProbe;
 import io.github.temporalrift.game.shared.domain.port.out.ExecutionProbe.Observation;
-import io.github.temporalrift.game.simulation.domain.event.ExecutionClosed;
 import io.github.temporalrift.game.simulation.domain.execution.Execution;
 import io.github.temporalrift.game.simulation.domain.execution.ExecutionContextTestData;
 import io.github.temporalrift.game.simulation.domain.port.out.ExecutionRepository;

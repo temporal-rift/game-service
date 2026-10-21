@@ -308,9 +308,7 @@ class InMemoryRuntimeIT {
         close.handle(first.caseKey());
         close.handle(first.caseKey());
         assertThatThrownBy(() -> close.handle(unrelated)).isInstanceOf(ExecutionContextConflictException.class);
-        assertThatThrownBy(() -> application
-                        .getBean(GetSimulationCheckpointUseCase.class)
-                        .handle())
+        assertThatThrownBy(application.getBean(GetSimulationCheckpointUseCase.class)::handle)
                 .isInstanceOf(ExecutionNotConfiguredException.class);
         configure.handle(other);
         close.handle(first.caseKey());
@@ -330,9 +328,7 @@ class InMemoryRuntimeIT {
         assertThatThrownBy(() -> configure.handle(dealTooSmall))
                 .isInstanceOf(InvalidExecutionContextException.class)
                 .hasMessageContaining("cards-per-deal");
-        assertThatThrownBy(() -> application
-                        .getBean(GetSimulationCheckpointUseCase.class)
-                        .handle())
+        assertThatThrownBy(application.getBean(GetSimulationCheckpointUseCase.class)::handle)
                 .isInstanceOf(ExecutionNotConfiguredException.class);
     }
 

@@ -9,9 +9,9 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
+import io.github.temporalrift.game.shared.domain.event.ExecutionClosed;
 import io.github.temporalrift.game.shared.domain.port.out.ExecutionProbe;
 import io.github.temporalrift.game.shared.domain.port.out.GameScope;
-import io.github.temporalrift.game.simulation.domain.event.ExecutionClosed;
 
 /** Admits only the game the open context hosts; with no context open, no game. */
 @Component

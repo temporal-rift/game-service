@@ -1,4 +1,4 @@
-package io.github.temporalrift.game.simulation.domain.event;
+package io.github.temporalrift.game.shared.domain.event;
 
 import java.util.UUID;
 
