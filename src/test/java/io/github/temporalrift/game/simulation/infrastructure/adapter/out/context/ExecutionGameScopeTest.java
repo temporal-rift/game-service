@@ -108,7 +108,7 @@ class ExecutionGameScopeTest {
         assertThat(scope.admits(GAME)).isTrue();
         verify(sessionProbe, times(1)).observe(any(Instant.class));
 
-        scope.onClosed(new ExecutionClosed(ExecutionContextTestData.CASE_KEY));
+        scope.onClosed(new ExecutionClosed(ExecutionContextTestData.CASE_KEY, java.time.Instant.now()));
 
         assertThat(scope.admits(GAME)).isFalse();
         assertThat(scope.admits(OTHER_GAME)).isTrue();

@@ -2,6 +2,7 @@ package io.github.temporalrift.game.simulation.application.command;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.doThrow;
@@ -98,7 +99,9 @@ class CloseSimulationExecutionCommandHandlerTest {
         order.verify(decisions).clear();
         order.verify(executions).close(OPEN);
         order.verify(clock).reset();
-        order.verify(events).publishEvent(new ExecutionClosed(OPEN));
+        order.verify(events)
+                .publishEvent(
+                        argThat((ExecutionClosed closed) -> closed.caseKey().equals(OPEN)));
     }
 
     @Test
@@ -123,7 +126,10 @@ class CloseSimulationExecutionCommandHandlerTest {
 
         verifyNoInteractions(gameplay, operations, decisions);
         then(clock).should().reset();
-        then(events).should().publishEvent(new ExecutionClosed(EARLIER));
+        then(events)
+                .should()
+                .publishEvent(
+                        argThat((ExecutionClosed closed) -> closed.caseKey().equals(EARLIER)));
     }
 
     @Test

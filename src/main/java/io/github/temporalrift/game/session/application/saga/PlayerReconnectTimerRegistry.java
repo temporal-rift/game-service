@@ -35,9 +35,9 @@ class PlayerReconnectTimerRegistry {
         delegate.cancel(sagaId);
     }
 
-    /** The timers of a closed simulation context must not outlive it. */
+    /** The timers of a closed simulation context must not outlive it, nor touch the next context's. */
     @ApplicationModuleListener
     void onExecutionClosed(ExecutionClosed closed) {
-        delegate.cancelAll();
+        delegate.cancelRegisteredBefore(closed.closedAt());
     }
 }

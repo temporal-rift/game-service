@@ -1,5 +1,6 @@
 package io.github.temporalrift.game.shared.application.scheduling;
 
+import java.time.Instant;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -14,12 +15,14 @@ import java.util.concurrent.ScheduledFuture;
 public class ScheduledTaskRegistry {
 
     private final Map<UUID, ScheduledFuture<?>> scheduledTimers = new ConcurrentHashMap<>();
+    private final Map<UUID, Instant> registeredAt = new ConcurrentHashMap<>();
 
     public void register(UUID sagaId, ScheduledFuture<?> future) {
         if (future == null) {
             return;
         }
         // Replacing a still-armed timer must cancel it, or the orphan fires anyway.
+        registeredAt.put(sagaId, Instant.now());
         var previous = scheduledTimers.put(sagaId, future);
         if (previous != null) {
             previous.cancel(false);
@@ -28,6 +31,7 @@ public class ScheduledTaskRegistry {
 
     public void remove(UUID sagaId) {
         scheduledTimers.remove(sagaId);
+        registeredAt.remove(sagaId);
     }
 
     /**
@@ -37,18 +41,25 @@ public class ScheduledTaskRegistry {
      * than the stale future that actually fired, leaving the replacement armed but untracked.
      */
     public void removeIfCurrent(UUID sagaId, ScheduledFuture<?> expectedFuture) {
-        scheduledTimers.remove(sagaId, expectedFuture);
+        if (scheduledTimers.remove(sagaId, expectedFuture)) {
+            registeredAt.remove(sagaId);
+        }
     }
 
     public void cancel(UUID sagaId) {
+        registeredAt.remove(sagaId);
         var future = scheduledTimers.remove(sagaId);
         if (future != null) {
             future.cancel(false);
         }
     }
 
-    /** Cancels and forgets every tracked timer. */
-    public void cancelAll() {
-        scheduledTimers.keySet().forEach(this::cancel);
+    /** Cancels and forgets the timers registered before {@code cutoff}; later registrations are left armed. */
+    public void cancelRegisteredBefore(Instant cutoff) {
+        registeredAt.forEach((sagaId, at) -> {
+            if (at.isBefore(cutoff)) {
+                cancel(sagaId);
+            }
+        });
     }
 }

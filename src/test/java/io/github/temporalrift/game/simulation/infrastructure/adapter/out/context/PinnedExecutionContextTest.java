@@ -58,7 +58,7 @@ class PinnedExecutionContextTest {
         var pinned = new PinnedExecutionContext(executions);
         pinned.current();
 
-        pinned.onClosed(new ExecutionClosed(FIRST.context().caseKey()));
+        pinned.onClosed(new ExecutionClosed(FIRST.context().caseKey(), java.time.Instant.now()));
 
         assertThat(pinned.current()).contains(SECOND.context());
     }
@@ -69,7 +69,7 @@ class PinnedExecutionContextTest {
         var pinned = new PinnedExecutionContext(executions);
         given(executions.find())
                 .willAnswer(invocation -> {
-                    pinned.onClosed(new ExecutionClosed(FIRST.context().caseKey()));
+                    pinned.onClosed(new ExecutionClosed(FIRST.context().caseKey(), java.time.Instant.now()));
                     return Optional.of(FIRST);
                 })
                 .willReturn(Optional.of(SECOND));
