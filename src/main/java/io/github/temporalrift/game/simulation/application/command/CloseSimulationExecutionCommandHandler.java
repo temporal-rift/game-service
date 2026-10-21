@@ -68,7 +68,8 @@ class CloseSimulationExecutionCommandHandler implements CloseSimulationExecution
         }
         var lastClosed = executions.lastClosedCaseKey().orElseThrow(ExecutionNotConfiguredException::new);
         requireClosedEarlier(lastClosed, caseKey);
-        return false;
+        // With nothing open, a repeat completes the cleanup a failed announcement may have left undone.
+        return true;
     }
 
     private boolean closeOpen(Execution open, UUID caseKey) {
