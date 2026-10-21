@@ -299,20 +299,21 @@ class InMemoryRuntimeIT {
         var first = contextWith(UUID.randomUUID(), ExecutionRulesFixture.rules());
         var other = contextWith(UUID.randomUUID(), ExecutionRulesFixture.rules());
         var unrelated = UUID.randomUUID();
+        var firstKey = first.caseKey();
 
-        assertThatThrownBy(() -> close.handle(first.caseKey())).isInstanceOf(ExecutionNotConfiguredException.class);
+        assertThatThrownBy(() -> close.handle(firstKey)).isInstanceOf(ExecutionNotConfiguredException.class);
         configure.handle(first);
         configure.handle(first);
         assertThatThrownBy(() -> configure.handle(other)).isInstanceOf(ExecutionContextConflictException.class);
         assertThatThrownBy(() -> close.handle(unrelated)).isInstanceOf(ExecutionContextConflictException.class);
 
-        close.handle(first.caseKey());
-        close.handle(first.caseKey());
+        close.handle(firstKey);
+        close.handle(firstKey);
         assertThatThrownBy(() -> close.handle(unrelated)).isInstanceOf(ExecutionContextConflictException.class);
         assertThatThrownBy(application.getBean(GetSimulationCheckpointUseCase.class)::handle)
                 .isInstanceOf(ExecutionNotConfiguredException.class);
         configure.handle(other);
-        close.handle(first.caseKey());
+        close.handle(firstKey);
     }
 
     @Test

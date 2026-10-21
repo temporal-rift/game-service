@@ -3,9 +3,13 @@ package io.github.temporalrift.game.shared.application.scheduling;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.never;
 
+import java.time.Clock;
 import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.util.UUID;
 import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -121,13 +125,27 @@ class ScheduledTaskRegistryTest {
 
     @Test
     @DisplayName("cancelRegisteredBefore cancels earlier timers and leaves later ones armed")
-    void cancelRegisteredBefore_cancelsOnlyEarlierTimers() throws InterruptedException {
+    void cancelRegisteredBefore_cancelsOnlyEarlierTimers() {
         // given
-        var registry = new ScheduledTaskRegistry();
+        var now = new AtomicReference<>(Instant.parse("2026-03-01T10:00:00Z"));
+        var registry = new ScheduledTaskRegistry(new Clock() {
+            @Override
+            public ZoneId getZone() {
+                return ZoneOffset.UTC;
+            }
+
+            @Override
+            public Clock withZone(ZoneId zone) {
+                return this;
+            }
+
+            @Override
+            public Instant instant() {
+                return now.get();
+            }
+        });
         registry.register(UUID.randomUUID(), future);
-        Thread.sleep(5);
-        var cutoff = Instant.now();
-        Thread.sleep(5);
+        var cutoff = now.updateAndGet(instant -> instant.plusSeconds(1));
         registry.register(UUID.randomUUID(), replacement);
 
         // when
