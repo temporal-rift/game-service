@@ -3,6 +3,7 @@ package io.github.temporalrift.game.shared.application.scheduling;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.never;
 
+import java.time.Instant;
 import java.util.UUID;
 import java.util.concurrent.ScheduledFuture;
 
@@ -119,19 +120,21 @@ class ScheduledTaskRegistryTest {
     }
 
     @Test
-    @DisplayName("cancelAll cancels and forgets every tracked timer")
-    void cancelAll_cancelsEveryTimer() {
+    @DisplayName("cancelRegisteredBefore cancels earlier timers and leaves later ones armed")
+    void cancelRegisteredBefore_cancelsOnlyEarlierTimers() throws InterruptedException {
         // given
         var registry = new ScheduledTaskRegistry();
         registry.register(UUID.randomUUID(), future);
+        Thread.sleep(5);
+        var cutoff = Instant.now();
+        Thread.sleep(5);
         registry.register(UUID.randomUUID(), replacement);
 
         // when
-        registry.cancelAll();
-        registry.cancelAll();
+        registry.cancelRegisteredBefore(cutoff);
 
         // then
         then(future).should().cancel(false);
-        then(replacement).should().cancel(false);
+        then(replacement).should(never()).cancel(false);
     }
 }

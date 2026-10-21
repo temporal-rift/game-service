@@ -1,5 +1,6 @@
 package io.github.temporalrift.game.simulation.application.command;
 
+import java.time.Instant;
 import java.util.UUID;
 
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -57,7 +58,8 @@ class CloseSimulationExecutionCommandHandler implements CloseSimulationExecution
         var closed = Boolean.TRUE.equals(transaction.execute(status -> close(caseKey)));
         if (closed) {
             clock.reset();
-            transaction.executeWithoutResult(status -> events.publishEvent(new ExecutionClosed(caseKey)));
+            transaction.executeWithoutResult(
+                    status -> events.publishEvent(new ExecutionClosed(caseKey, Instant.now())));
         }
     }
 
