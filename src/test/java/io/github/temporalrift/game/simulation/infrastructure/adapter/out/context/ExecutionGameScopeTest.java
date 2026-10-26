@@ -113,4 +113,18 @@ class ExecutionGameScopeTest {
         assertThat(scope.admits(GAME)).isFalse();
         assertThat(scope.admits(OTHER_GAME)).isTrue();
     }
+
+    @Test
+    @DisplayName("a reopened case hosts the same game again after the earlier play closed")
+    void onClosed_thenReopened_admitsTheSameGameAgain() {
+        open();
+        given(actionProbe.observe(any(Instant.class))).willReturn(hosting(null));
+        given(sessionProbe.observe(any(Instant.class))).willReturn(hosting(GAME));
+        var scope = scope();
+        assertThat(scope.admits(GAME)).isTrue();
+
+        scope.onClosed(new ExecutionClosed(ExecutionContextTestData.CASE_KEY, java.time.Instant.now()));
+
+        assertThat(scope.admits(GAME)).isTrue();
+    }
 }
