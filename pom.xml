@@ -63,7 +63,7 @@
         <session-api.version>3.0.0</session-api.version>
         <action-api.version>7.1.0</action-api.version>
         <scoring-api.version>2.0.1</scoring-api.version>
-        <simulation-control-api.version>2.0.0</simulation-control-api.version>
+        <simulation-control-api.version>2.0.1</simulation-control-api.version>
         <spring-retry.version>2.0.13</spring-retry.version>
         <archunit-junit5.version>1.5.1</archunit-junit5.version>
     </properties>
