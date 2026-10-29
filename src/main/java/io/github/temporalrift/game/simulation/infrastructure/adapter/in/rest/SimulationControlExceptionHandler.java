@@ -14,6 +14,7 @@ import io.github.temporalrift.game.shared.infrastructure.adapter.in.rest.Problem
 import io.github.temporalrift.game.shared.infrastructure.adapter.in.rest.RestAdviceOrder;
 import io.github.temporalrift.game.simulation.domain.execution.ClockRegressionException;
 import io.github.temporalrift.game.simulation.domain.execution.ExecutionContextConflictException;
+import io.github.temporalrift.game.simulation.domain.execution.ExecutionStateNotCleanException;
 import io.github.temporalrift.game.simulation.domain.execution.IdempotencyConflictException;
 import io.github.temporalrift.game.simulation.domain.execution.InvalidClockAdvanceException;
 import io.github.temporalrift.game.simulation.domain.execution.InvalidExecutionContextException;
@@ -48,6 +49,11 @@ class SimulationControlExceptionHandler {
     @ExceptionHandler(ExecutionContextConflictException.class)
     ProblemDetail handleContextConflict(ExecutionContextConflictException ex) {
         return ProblemDetails.of(HttpStatus.CONFLICT, ex.getMessage(), "EXECUTION_CONTEXT_CONFLICT");
+    }
+
+    @ExceptionHandler(ExecutionStateNotCleanException.class)
+    ProblemDetail handleStateNotClean(ExecutionStateNotCleanException ex) {
+        return ProblemDetails.of(HttpStatus.CONFLICT, ex.getMessage(), "EXECUTION_STATE_NOT_CLEAN");
     }
 
     @ExceptionHandler(IdempotencyConflictException.class)

@@ -16,6 +16,7 @@ import io.github.temporalrift.game.simulation.domain.execution.Execution;
 import io.github.temporalrift.game.simulation.domain.execution.ExecutionCheckpoint;
 import io.github.temporalrift.game.simulation.domain.execution.ExecutionContext;
 import io.github.temporalrift.game.simulation.domain.execution.ExecutionContextConflictException;
+import io.github.temporalrift.game.simulation.domain.execution.ExecutionStateNotCleanException;
 import io.github.temporalrift.game.simulation.domain.execution.InvalidExecutionContextException;
 import io.github.temporalrift.game.simulation.domain.port.out.ExecutionRepository;
 import io.github.temporalrift.game.simulation.domain.port.out.LogicalClockControl;
@@ -69,7 +70,7 @@ class ConfigureSimulationExecutionCommandHandler implements ConfigureSimulationE
             return requireSameContext(existing.get(), context);
         }
         if (probes.stream().map(probe -> probe.observe(context.logicalTime())).anyMatch(this::hostsGameplay)) {
-            throw new ExecutionContextConflictException("The lane already hosts gameplay");
+            throw new ExecutionStateNotCleanException("The lane still hosts gameplay of an earlier context");
         }
         var created = Execution.configure(context);
         if (executions.insertIfAbsent(created)) {

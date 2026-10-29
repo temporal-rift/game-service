@@ -34,6 +34,7 @@ import io.github.temporalrift.game.simulation.domain.execution.ExecutionContext;
 import io.github.temporalrift.game.simulation.domain.execution.ExecutionContextConflictException;
 import io.github.temporalrift.game.simulation.domain.execution.ExecutionContextTestData;
 import io.github.temporalrift.game.simulation.domain.execution.ExecutionState;
+import io.github.temporalrift.game.simulation.domain.execution.ExecutionStateNotCleanException;
 import io.github.temporalrift.game.simulation.domain.execution.InvalidExecutionContextException;
 import io.github.temporalrift.game.simulation.domain.port.out.ExecutionRepository;
 import io.github.temporalrift.game.simulation.domain.port.out.LogicalClockControl;
@@ -124,12 +125,12 @@ class ConfigureSimulationExecutionCommandHandlerTest {
     }
 
     @Test
-    @DisplayName("a lane that already hosts a game rejects a first configuration")
-    void handle_laneWithGame_isConflict() {
+    @DisplayName("a lane that still hosts a game of an earlier context is not clean")
+    void handle_laneWithGame_isNotClean() {
         given(executions.findWithLock()).willReturn(Optional.empty());
         given(probe.observe(any(Instant.class))).willReturn(new Observation(UUID.randomUUID(), false, 0, 0, null));
 
-        assertThatThrownBy(() -> handler.handle(CONTEXT)).isInstanceOf(ExecutionContextConflictException.class);
+        assertThatThrownBy(() -> handler.handle(CONTEXT)).isInstanceOf(ExecutionStateNotCleanException.class);
 
         then(executions).should(never()).insertIfAbsent(any());
     }

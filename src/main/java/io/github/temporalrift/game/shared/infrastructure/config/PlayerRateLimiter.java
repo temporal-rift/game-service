@@ -6,14 +6,21 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
+
+import io.github.temporalrift.game.shared.domain.event.ExecutionClosed;
 
 /**
  * Per-player fixed-window request limiter. Scope is abuse throttling (join-code enumeration,
  * submission spam), not fair queuing — a fixed one-minute window is enough and keeps this
  * dependency-free. Counters are per instance; N instances allow at most N× the configured rate,
  * which is acceptable for an abuse bound.
+ *
+ * <p>In a simulation deployment the counters belong to the execution context they were counted in: every context
+ * seats the same players and starts its logical time at the same instant, so a window counted in one context would
+ * still be current in the next and carry its count over.
  */
 @Component
 public class PlayerRateLimiter {
@@ -39,6 +46,15 @@ public class PlayerRateLimiter {
                         ? new Window(now, new AtomicInteger())
                         : current);
         return window.count().incrementAndGet() <= requestsPerMinute;
+    }
+
+    /**
+     * Runs while the close is being announced, before the next context can be opened, so every window it drops was
+     * counted in the closed context.
+     */
+    @EventListener
+    void onExecutionClosed(ExecutionClosed closed) {
+        windows.clear();
     }
 
     @Scheduled(fixedDelayString = "${game.rate-limit.cleanup-interval}")
