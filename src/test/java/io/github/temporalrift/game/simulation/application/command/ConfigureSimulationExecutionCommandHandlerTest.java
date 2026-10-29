@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.BDDMockito.willThrow;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 
@@ -107,8 +108,10 @@ class ConfigureSimulationExecutionCommandHandlerTest {
 
         assertThat(result).isSameAs(checkpoint);
         then(executions).should().insertIfAbsent(CONFIGURED);
-        then(clock).should().advanceTo(CONTEXT.logicalTime());
-        then(events).should().publishEvent(new ExecutionOpened(CONTEXT.caseKey()));
+        var order = inOrder(executions, events, clock);
+        order.verify(executions).insertIfAbsent(CONFIGURED);
+        order.verify(events).publishEvent(new ExecutionOpened(CONTEXT.caseKey()));
+        order.verify(clock).advanceTo(CONTEXT.logicalTime());
     }
 
     @Test
@@ -150,6 +153,7 @@ class ConfigureSimulationExecutionCommandHandlerTest {
         given(executions.insertIfAbsent(any())).willReturn(false);
 
         assertThat(handler.handle(CONTEXT)).isSameAs(checkpoint);
+        then(events).shouldHaveNoInteractions();
     }
 
     @Test

@@ -35,9 +35,6 @@ class ConfigureSimulationExecutionCommandHandler implements ConfigureSimulationE
     private final TransactionTemplate transaction;
     private final ApplicationEventPublisher events;
 
-    /** The execution a configuration ended with, and whether this configuration opened it. */
-    private record Registration(Execution execution, boolean opened) {}
-
     ConfigureSimulationExecutionCommandHandler(
             ExecutionRepository executions,
             List<ExecutionProbe> probes,
@@ -58,12 +55,8 @@ class ConfigureSimulationExecutionCommandHandler implements ConfigureSimulationE
     @Override
     public ExecutionCheckpoint handle(ExecutionContext context) {
         requireUsableRules(context);
-        var registration = Objects.requireNonNull(transaction.execute(status -> register(context)));
-        var execution = registration.execution();
+        var execution = Objects.requireNonNull(transaction.execute(status -> register(context)));
         clock.advanceTo(execution.logicalTime());
-        if (registration.opened()) {
-            events.publishEvent(new ExecutionOpened(context.caseKey()));
-        }
         return assembler.assemble(execution);
     }
 
@@ -76,19 +69,22 @@ class ConfigureSimulationExecutionCommandHandler implements ConfigureSimulationE
         }
     }
 
-    private Registration register(ExecutionContext context) {
+    private Execution register(ExecutionContext context) {
         var existing = executions.findWithLock();
         if (existing.isPresent()) {
-            return new Registration(requireSameContext(existing.get(), context), false);
+            return requireSameContext(existing.get(), context);
         }
         if (probes.stream().map(probe -> probe.observe(context.logicalTime())).anyMatch(this::hostsGameplay)) {
             throw new ExecutionStateNotCleanException("The lane still hosts gameplay of an earlier context");
         }
         var created = Execution.configure(context);
         if (executions.insertIfAbsent(created)) {
-            return new Registration(created, true);
+            // Announced before the context commits, so whatever its synchronous listeners reset is reset before any
+            // request can see the context open.
+            events.publishEvent(new ExecutionOpened(context.caseKey()));
+            return created;
         }
-        return new Registration(requireSameContext(executions.findWithLock().orElseThrow(), context), false);
+        return requireSameContext(executions.findWithLock().orElseThrow(), context);
     }
 
     private boolean hostsGameplay(ExecutionProbe.Observation observation) {
