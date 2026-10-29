@@ -59,7 +59,10 @@ public class PlayerRateLimiter {
         windows.clear();
     }
 
-    /** Runs before configuring answers, so the opened context's first request finds no window. */
+    /**
+     * Runs while the context is being registered, before it commits, so no request that sees the context open can
+     * have been counted before this reset.
+     */
     @EventListener
     void onExecutionOpened(ExecutionOpened opened) {
         windows.clear();
