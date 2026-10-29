@@ -12,6 +12,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import io.github.temporalrift.game.shared.domain.event.ExecutionClosed;
+import io.github.temporalrift.game.shared.domain.event.ExecutionOpened;
 
 class PlayerRateLimiterTest {
 
@@ -75,6 +76,22 @@ class PlayerRateLimiterTest {
             assertThat(limiter.tryAcquire(playerId)).isTrue();
         }
         assertThat(limiter.tryAcquire(playerId)).isFalse();
+    }
+
+    @Test
+    @DisplayName("requests counted between two contexts do not reach the context that opens next")
+    void onExecutionOpened_dropsWhatWasCountedWithNoContextOpen() {
+        var playerId = UUID.randomUUID();
+        for (int i = 0; i <= LIMIT; i++) {
+            limiter.tryAcquire(playerId);
+        }
+        assertThat(limiter.tryAcquire(playerId)).isFalse();
+
+        limiter.onExecutionOpened(new ExecutionOpened(UUID.randomUUID()));
+
+        for (int i = 0; i < LIMIT; i++) {
+            assertThat(limiter.tryAcquire(playerId)).isTrue();
+        }
     }
 
     @Test

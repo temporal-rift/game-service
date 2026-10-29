@@ -20,9 +20,11 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.transaction.support.TransactionCallback;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import io.github.temporalrift.game.shared.domain.event.ExecutionOpened;
 import io.github.temporalrift.game.shared.domain.model.InvalidExecutionRulesException;
 import io.github.temporalrift.game.shared.domain.port.out.ExecutionProbe;
 import io.github.temporalrift.game.shared.domain.port.out.ExecutionProbe.Observation;
@@ -63,6 +65,9 @@ class ConfigureSimulationExecutionCommandHandlerTest {
     @Mock
     TransactionTemplate transaction;
 
+    @Mock
+    ApplicationEventPublisher events;
+
     private ConfigureSimulationExecutionCommandHandler handler;
     private final ExecutionCheckpoint checkpoint = new ExecutionCheckpoint(
             CONTEXT.caseKey(),
@@ -88,7 +93,7 @@ class ConfigureSimulationExecutionCommandHandlerTest {
                         invocation -> ((TransactionCallback<Object>) invocation.getArgument(0)).doInTransaction(null));
         lenient().when(assembler.assemble(any())).thenReturn(checkpoint);
         handler = new ConfigureSimulationExecutionCommandHandler(
-                executions, List.of(probe), List.of(rulesValidator), clock, assembler, transaction);
+                executions, List.of(probe), List.of(rulesValidator), clock, assembler, transaction, events);
     }
 
     @Test
@@ -103,6 +108,7 @@ class ConfigureSimulationExecutionCommandHandlerTest {
         assertThat(result).isSameAs(checkpoint);
         then(executions).should().insertIfAbsent(CONFIGURED);
         then(clock).should().advanceTo(CONTEXT.logicalTime());
+        then(events).should().publishEvent(new ExecutionOpened(CONTEXT.caseKey()));
     }
 
     @Test
@@ -113,6 +119,7 @@ class ConfigureSimulationExecutionCommandHandlerTest {
         handler.handle(CONTEXT);
 
         then(executions).should(never()).insertIfAbsent(any());
+        then(events).shouldHaveNoInteractions();
     }
 
     @Test

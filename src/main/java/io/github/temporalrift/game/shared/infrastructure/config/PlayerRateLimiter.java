@@ -11,6 +11,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import io.github.temporalrift.game.shared.domain.event.ExecutionClosed;
+import io.github.temporalrift.game.shared.domain.event.ExecutionOpened;
 
 /**
  * Per-player fixed-window request limiter. Scope is abuse throttling (join-code enumeration,
@@ -20,7 +21,8 @@ import io.github.temporalrift.game.shared.domain.event.ExecutionClosed;
  *
  * <p>In a simulation deployment the counters belong to the execution context they were counted in: every context
  * seats the same players and starts its logical time at the same instant, so a window counted in one context would
- * still be current in the next and carry its count over.
+ * still be current in the next and carry its count over. They are dropped when a context closes and again when the
+ * next one opens, which also drops what requests between two contexts counted at the logical clock's idle time.
  */
 @Component
 public class PlayerRateLimiter {
@@ -54,6 +56,12 @@ public class PlayerRateLimiter {
      */
     @EventListener
     void onExecutionClosed(ExecutionClosed closed) {
+        windows.clear();
+    }
+
+    /** Runs before configuring answers, so the opened context's first request finds no window. */
+    @EventListener
+    void onExecutionOpened(ExecutionOpened opened) {
         windows.clear();
     }
 
