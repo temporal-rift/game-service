@@ -292,6 +292,31 @@ class InMemoryRuntimeIT {
     }
 
     @Test
+    void aPlayersRequestCountStartsAgainInTheNextContext() throws Exception {
+        var application = start(host(new CopyOnWriteArrayList<>()), "game.simulation.enabled=true");
+        var configure = application.getBean(ConfigureSimulationExecutionUseCase.class);
+        var limit =
+                application.getEnvironment().getRequiredProperty("game.rate-limit.requests-per-minute", Integer.class);
+        var first = contextWith(UUID.randomUUID(), ExecutionRulesFixture.rules());
+        configure.handle(first);
+        for (var request = 0; request < limit; request++) {
+            assertThat(lobbyStatus(application, PLAYERS.get(0))).isNotEqualTo(429);
+        }
+        assertThat(lobbyStatus(application, PLAYERS.get(0)))
+                .as("the limit holds within a context")
+                .isEqualTo(429);
+
+        application.getBean(CloseSimulationExecutionUseCase.class).handle(first.caseKey());
+        configure.handle(contextWith(UUID.randomUUID(), ExecutionRulesFixture.rules()));
+
+        for (var request = 0; request < limit; request++) {
+            assertThat(lobbyStatus(application, PLAYERS.get(0)))
+                    .as("request %d of the next context, at the same logical time", request + 1)
+                    .isNotEqualTo(429);
+        }
+    }
+
+    @Test
     void closeAndOpenFollowThePublishedConflictRules() {
         var application = start(host(new CopyOnWriteArrayList<>()), "game.simulation.enabled=true");
         var configure = application.getBean(ConfigureSimulationExecutionUseCase.class);
@@ -376,6 +401,18 @@ class InMemoryRuntimeIT {
         post(application, PLAYERS.get(2), "/api/v1/lobbies/" + lobbyId + "/join", "{\"playerName\":\"Cleo\"}");
         var started = mapper.readTree(post(application, PLAYERS.get(0), "/api/v1/lobbies/" + lobbyId + "/start", ""));
         return UUID.fromString(started.get("gameId").asString());
+    }
+
+    /** The status of reading a lobby that does not exist; every such read counts against the player's limit. */
+    private int lobbyStatus(ConfigurableApplicationContext application, UUID player) throws Exception {
+        return http.send(
+                        HttpRequest.newBuilder(
+                                        URI.create(baseUrl(application) + "/api/v1/lobbies/" + UUID.randomUUID()))
+                                .header("Authorization", "Bearer " + player)
+                                .GET()
+                                .build(),
+                        HttpResponse.BodyHandlers.discarding())
+                .statusCode();
     }
 
     private String post(ConfigurableApplicationContext application, UUID player, String path, String body)

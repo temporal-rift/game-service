@@ -11,6 +11,8 @@ import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import io.github.temporalrift.game.shared.domain.event.ExecutionClosed;
+
 class PlayerRateLimiterTest {
 
     static final Instant NOW = Instant.parse("2099-01-01T00:00:00Z");
@@ -56,6 +58,23 @@ class PlayerRateLimiterTest {
         clock.advance(Duration.ofSeconds(61));
 
         assertThat(limiter.tryAcquire(playerId)).isTrue();
+    }
+
+    @Test
+    @DisplayName("closing an execution context starts every player's count again at the same logical time")
+    void onExecutionClosed_dropsTheClosedContextsCounts() {
+        var playerId = UUID.randomUUID();
+        for (int i = 0; i <= LIMIT; i++) {
+            limiter.tryAcquire(playerId);
+        }
+        assertThat(limiter.tryAcquire(playerId)).isFalse();
+
+        limiter.onExecutionClosed(new ExecutionClosed(UUID.randomUUID(), NOW));
+
+        for (int i = 0; i < LIMIT; i++) {
+            assertThat(limiter.tryAcquire(playerId)).isTrue();
+        }
+        assertThat(limiter.tryAcquire(playerId)).isFalse();
     }
 
     @Test

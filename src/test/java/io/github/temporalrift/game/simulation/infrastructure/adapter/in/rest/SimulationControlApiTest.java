@@ -48,6 +48,7 @@ import io.github.temporalrift.game.simulation.domain.execution.ExecutionContext;
 import io.github.temporalrift.game.simulation.domain.execution.ExecutionContextConflictException;
 import io.github.temporalrift.game.simulation.domain.execution.ExecutionNotConfiguredException;
 import io.github.temporalrift.game.simulation.domain.execution.ExecutionState;
+import io.github.temporalrift.game.simulation.domain.execution.ExecutionStateNotCleanException;
 import io.github.temporalrift.game.simulation.domain.execution.IdempotencyConflictException;
 import io.github.temporalrift.game.simulation.domain.execution.Seed;
 import io.github.temporalrift.game.simulation.domain.execution.SimulationSeat;
@@ -253,6 +254,19 @@ class SimulationControlApiTest {
                         .content(contextBody("42", "PROPHETS")))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("EXECUTION_CONTEXT_CONFLICT"));
+    }
+
+    @Test
+    @DisplayName("a lane that still holds an earlier context's gameplay answers 409 not clean")
+    void configure_leftoverGameplay_returns409NotClean() throws Exception {
+        given(configureExecution.handle(any())).willThrow(new ExecutionStateNotCleanException("leftover"));
+
+        mockMvc.perform(put(EXECUTION_PATH)
+                        .with(controlToken())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(contextBody("42", "PROPHETS")))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("EXECUTION_STATE_NOT_CLEAN"));
     }
 
     @Test
