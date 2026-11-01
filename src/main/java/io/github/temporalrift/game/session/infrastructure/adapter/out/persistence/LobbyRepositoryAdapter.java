@@ -83,21 +83,24 @@ class LobbyRepositoryAdapter implements LobbyRepository {
         entity.setMinPlayers(lobby.minPlayers());
         entity.setMaxPlayers(lobby.maxPlayers());
 
-        var players = lobby.currentPlayers().stream()
-                .map(p -> toPlayerEntity(p, entity))
-                .toList();
+        var currentPlayers = lobby.currentPlayers();
+        var players = new ArrayList<LobbyPlayerJpaEntity>(currentPlayers.size());
+        for (var index = 0; index < currentPlayers.size(); index++) {
+            players.add(toPlayerEntity(currentPlayers.get(index), entity, index));
+        }
         entity.setPlayers(players);
 
         return entity;
     }
 
-    private LobbyPlayerJpaEntity toPlayerEntity(LobbyPlayer player, LobbyJpaEntity lobbyEntity) {
+    private LobbyPlayerJpaEntity toPlayerEntity(LobbyPlayer player, LobbyJpaEntity lobbyEntity, int joinOrder) {
         var entity = new LobbyPlayerJpaEntity();
         entity.setId(new LobbyPlayerPk(lobbyEntity.getId(), player.playerId()));
         entity.setLobby(lobbyEntity);
         entity.setPlayerName(player.playerName());
         entity.setFaction(player.faction() != null ? player.faction().name() : null);
         entity.setJoinedAt(player.joinedAt());
+        entity.setJoinOrder(joinOrder);
         entity.setConnectionStatus(player.connection().name());
         return entity;
     }

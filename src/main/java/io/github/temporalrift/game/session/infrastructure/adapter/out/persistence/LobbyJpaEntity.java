@@ -10,7 +10,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
 import jakarta.persistence.OneToMany;
-import jakarta.persistence.OrderColumn;
+import jakarta.persistence.OrderBy;
 import jakarta.persistence.Table;
 
 @Entity
@@ -39,7 +39,7 @@ class LobbyJpaEntity {
     private int maxPlayers;
 
     @OneToMany(mappedBy = "lobby", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
-    @OrderColumn(name = "join_order")
+    @OrderBy("joinOrder ASC")
     private List<LobbyPlayerJpaEntity> players = new ArrayList<>();
 
     protected LobbyJpaEntity() {}

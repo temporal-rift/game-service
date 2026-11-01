@@ -32,6 +32,9 @@ class LobbyPlayerJpaEntity {
     @Column(name = "joined_at", nullable = false)
     private Instant joinedAt;
 
+    @Column(name = "join_order", nullable = false)
+    private int joinOrder;
+
     @Column(name = "connection_status", nullable = false, length = 20)
     private String connectionStatus;
 
@@ -75,6 +78,14 @@ class LobbyPlayerJpaEntity {
 
     void setJoinedAt(Instant joinedAt) {
         this.joinedAt = joinedAt;
+    }
+
+    int getJoinOrder() {
+        return joinOrder;
+    }
+
+    void setJoinOrder(int joinOrder) {
+        this.joinOrder = joinOrder;
     }
 
     String getConnectionStatus() {
