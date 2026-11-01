@@ -5,6 +5,10 @@ import java.util.UUID;
 
 import io.github.temporalrift.game.session.domain.lobby.Lobby;
 
+/**
+ * Persists lobbies. Every read returns the lobby's players in join order — ascending {@code joinedAt}, then
+ * {@code playerId} — because that order fixes the seats the game assigns when it starts.
+ */
 public interface LobbyRepository {
 
     Lobby save(Lobby lobby);
