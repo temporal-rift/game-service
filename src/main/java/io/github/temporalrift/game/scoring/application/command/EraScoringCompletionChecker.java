@@ -3,6 +3,7 @@ package io.github.temporalrift.game.scoring.application.command;
 import java.util.Objects;
 import java.util.UUID;
 
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,16 +26,19 @@ public class EraScoringCompletionChecker {
     private final TimelineOutcomeInboxRepository outcomeInboxRepository;
     private final ScoringEraCompletionRepository scoringEraCompletionRepository;
     private final UpdateScoresCommandHandler updateScoresCommandHandler;
+    private final ApplicationEventPublisher applicationEventPublisher;
 
     public EraScoringCompletionChecker(
             EraScoringContextRepository contextRepository,
             TimelineOutcomeInboxRepository outcomeInboxRepository,
             ScoringEraCompletionRepository scoringEraCompletionRepository,
-            UpdateScoresCommandHandler updateScoresCommandHandler) {
+            UpdateScoresCommandHandler updateScoresCommandHandler,
+            ApplicationEventPublisher applicationEventPublisher) {
         this.contextRepository = Objects.requireNonNull(contextRepository);
         this.outcomeInboxRepository = Objects.requireNonNull(outcomeInboxRepository);
         this.scoringEraCompletionRepository = Objects.requireNonNull(scoringEraCompletionRepository);
         this.updateScoresCommandHandler = Objects.requireNonNull(updateScoresCommandHandler);
+        this.applicationEventPublisher = Objects.requireNonNull(applicationEventPublisher);
     }
 
     // Callers that already run inside a transaction (Kafka listeners, @ApplicationModuleListener) simply
@@ -50,6 +54,7 @@ public class EraScoringCompletionChecker {
         if (!contextRepository.eraResolutionCompleted(gameId, eraNumber)) {
             return;
         }
+        resolveOutstanding(gameId, eraNumber);
         if (!contextRepository.activistDeclarationsResolved(gameId, eraNumber)) {
             return;
         }
@@ -65,5 +70,17 @@ public class EraScoringCompletionChecker {
             return;
         }
         updateScoresCommandHandler.handle(new UpdateEraScoresCommand(gameId, eraNumber, outcomes));
+    }
+
+    // The projection listener that records the era's Revisionist actions and Activist declarations and the Kafka
+    // consumer that stores its outcomes each resolve right after their own write, inside their own transaction. When
+    // the two overlap, each can miss the other's uncommitted write and nothing resolves the rows afterwards, so the
+    // era would never be scored. Resolving again here, where every trigger (including the sweep) decides readiness,
+    // repairs that. Both resolutions are idempotent and return or score only what they resolve in this call.
+    private void resolveOutstanding(UUID gameId, int eraNumber) {
+        contextRepository.resolveRevisionistActions(gameId, eraNumber);
+        contextRepository
+                .resolveActivistDeclarations(gameId, eraNumber)
+                .forEach(applicationEventPublisher::publishEvent);
     }
 }
