@@ -5,6 +5,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
 
 import java.util.List;
@@ -17,11 +18,13 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 
 import io.github.temporalrift.game.scoring.domain.event.OutcomeApplied;
 import io.github.temporalrift.game.scoring.domain.port.out.EraScoringContextRepository;
 import io.github.temporalrift.game.scoring.domain.port.out.ScoringEraCompletionRepository;
 import io.github.temporalrift.game.scoring.domain.port.out.TimelineOutcomeInboxRepository;
+import io.github.temporalrift.game.shared.domain.event.ActivistDeclarationResolved;
 
 @ExtendWith(MockitoExtension.class)
 class EraScoringCompletionCheckerTest {
@@ -40,6 +43,9 @@ class EraScoringCompletionCheckerTest {
 
     @Mock
     UpdateScoresCommandHandler updateScoresCommandHandler;
+
+    @Mock
+    ApplicationEventPublisher applicationEventPublisher;
 
     @InjectMocks
     EraScoringCompletionChecker checker;
@@ -64,6 +70,8 @@ class EraScoringCompletionCheckerTest {
 
         checker.tryComplete(GAME_ID, ERA_NUMBER);
 
+        then(contextRepository).should(never()).resolveRevisionistActions(any(), anyInt());
+        then(contextRepository).should(never()).resolveActivistDeclarations(any(), anyInt());
         then(contextRepository).should(never()).activistDeclarationsResolved(any(), anyInt());
         then(scoringEraCompletionRepository).should(never()).tryMarkScoringComplete(any(), anyInt());
     }
@@ -162,6 +170,79 @@ class EraScoringCompletionCheckerTest {
         checker.tryComplete(GAME_ID, ERA_NUMBER);
 
         then(updateScoresCommandHandler).should(never()).handle(any());
+    }
+
+    @Test
+    @DisplayName("overlapping resolutions missed the rows — the check resolves them first, then scoring completes")
+    void tryComplete_unresolvedRowsLeftByAnOverlap_resolvesThemAndTriggersScoring() {
+        var outcome = outcomeApplied();
+        given(contextRepository.actionFactsReady(GAME_ID, ERA_NUMBER)).willReturn(true);
+        given(contextRepository.eraResolutionCompleted(GAME_ID, ERA_NUMBER)).willReturn(true);
+        given(contextRepository.resolveActivistDeclarations(GAME_ID, ERA_NUMBER))
+                .willReturn(List.of(declarationResolved()));
+        given(contextRepository.activistDeclarationsResolved(GAME_ID, ERA_NUMBER))
+                .willReturn(true);
+        given(contextRepository.revisionistActionsResolved(GAME_ID, ERA_NUMBER)).willReturn(true);
+        given(contextRepository.requiredAppliedOutcomeCount(GAME_ID, ERA_NUMBER))
+                .willReturn(1);
+        given(outcomeInboxRepository.findByGameIdAndEraNumber(GAME_ID, ERA_NUMBER))
+                .willReturn(List.of(outcome));
+        given(scoringEraCompletionRepository.tryMarkScoringComplete(GAME_ID, ERA_NUMBER))
+                .willReturn(true);
+
+        checker.tryComplete(GAME_ID, ERA_NUMBER);
+
+        var order = inOrder(contextRepository, scoringEraCompletionRepository);
+        order.verify(contextRepository).resolveRevisionistActions(GAME_ID, ERA_NUMBER);
+        order.verify(contextRepository).resolveActivistDeclarations(GAME_ID, ERA_NUMBER);
+        order.verify(contextRepository).activistDeclarationsResolved(GAME_ID, ERA_NUMBER);
+        order.verify(contextRepository).revisionistActionsResolved(GAME_ID, ERA_NUMBER);
+        order.verify(scoringEraCompletionRepository).tryMarkScoringComplete(GAME_ID, ERA_NUMBER);
+        then(updateScoresCommandHandler).should().handle(any());
+    }
+
+    @Test
+    @DisplayName("a declaration resolved by the check is announced exactly once, however often the check repeats")
+    void tryComplete_declarationResolvedByTheCheck_publishedOnce() {
+        var resolved = declarationResolved();
+        given(contextRepository.actionFactsReady(GAME_ID, ERA_NUMBER)).willReturn(true);
+        given(contextRepository.eraResolutionCompleted(GAME_ID, ERA_NUMBER)).willReturn(true);
+        given(contextRepository.resolveActivistDeclarations(GAME_ID, ERA_NUMBER))
+                .willReturn(List.of(resolved), List.of());
+        given(contextRepository.activistDeclarationsResolved(GAME_ID, ERA_NUMBER))
+                .willReturn(false);
+
+        checker.tryComplete(GAME_ID, ERA_NUMBER);
+        checker.tryComplete(GAME_ID, ERA_NUMBER);
+
+        var captor = ArgumentCaptor.forClass(Object.class);
+        then(applicationEventPublisher).should().publishEvent(captor.capture());
+        assertThat(captor.getAllValues()).containsExactly(resolved);
+    }
+
+    @Test
+    @DisplayName("everything already resolved — the repeated check publishes no event and scores nothing twice")
+    void tryComplete_alreadyResolved_publishesNothing() {
+        given(contextRepository.actionFactsReady(GAME_ID, ERA_NUMBER)).willReturn(true);
+        given(contextRepository.eraResolutionCompleted(GAME_ID, ERA_NUMBER)).willReturn(true);
+        given(contextRepository.activistDeclarationsResolved(GAME_ID, ERA_NUMBER))
+                .willReturn(true);
+        given(contextRepository.revisionistActionsResolved(GAME_ID, ERA_NUMBER)).willReturn(true);
+        given(contextRepository.requiredAppliedOutcomeCount(GAME_ID, ERA_NUMBER))
+                .willReturn(1);
+        given(outcomeInboxRepository.findByGameIdAndEraNumber(GAME_ID, ERA_NUMBER))
+                .willReturn(List.of(outcomeApplied()));
+        given(scoringEraCompletionRepository.tryMarkScoringComplete(GAME_ID, ERA_NUMBER))
+                .willReturn(false);
+
+        checker.tryComplete(GAME_ID, ERA_NUMBER);
+
+        then(applicationEventPublisher).shouldHaveNoInteractions();
+        then(updateScoresCommandHandler).should(never()).handle(any());
+    }
+
+    private static ActivistDeclarationResolved declarationResolved() {
+        return new ActivistDeclarationResolved(GAME_ID, ERA_NUMBER, UUID.randomUUID(), true);
     }
 
     private static OutcomeApplied outcomeApplied() {
