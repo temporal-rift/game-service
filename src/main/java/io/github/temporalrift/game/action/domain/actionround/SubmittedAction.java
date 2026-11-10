@@ -379,6 +379,16 @@ public sealed interface SubmittedAction permits SubmittedAction.CardAction, Subm
             }
         }
 
+        /**
+         * Rejects an Annihilate submitted before the configured earliest round. Command handlers call this ahead of
+         * any budget claim so a rejected submission spends nothing.
+         */
+        public void validateEarliestRound(int eraNumber, int roundNumber, int annihilateEarliestRound) {
+            if (specialAction == SpecialAction.ANNIHILATE && roundNumber < annihilateEarliestRound) {
+                throw new SpecialActionNotEligibleForRoundException(specialAction, eraNumber, roundNumber);
+            }
+        }
+
         @Override
         public void validate(int eraNumber, int roundNumber) {
             if (sourceEventId != null || sourceOutcomeId != null) {

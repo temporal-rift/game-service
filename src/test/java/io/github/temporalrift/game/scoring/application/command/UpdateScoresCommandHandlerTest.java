@@ -513,6 +513,11 @@ class UpdateScoresCommandHandlerTest {
         }
 
         @Override
+        public int annihilateEarliestRound() {
+            throw new UnsupportedOperationException("not used by UpdateScoresCommandHandler");
+        }
+
+        @Override
         public Map<io.github.temporalrift.game.shared.domain.model.CardCategory, Integer> cardCategoryWeights() {
             throw new UnsupportedOperationException("not used by UpdateScoresCommandHandler");
         }

@@ -22,6 +22,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
@@ -552,6 +553,103 @@ class PlaySpecialActionCommandHandlerTest {
         then(specialActionEraUsageRepository).shouldHaveNoInteractions();
         then(round).should(never()).submit(any());
         then(actionRoundRepository).should(never()).save(any());
+    }
+
+    @Test
+    @DisplayName("handle — ANNIHILATE before the earliest round — rejected without spending the era budget")
+    void handleAnnihilateBeforeEarliestRoundRejectedWithoutSpending() {
+        // given
+        var command = new PlaySpecialActionUseCase.Command(
+                GAME_ID,
+                ERA,
+                1,
+                PLAYER_ID,
+                SpecialAction.ANNIHILATE,
+                null,
+                null,
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                null);
+        given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA, 1))
+                .willReturn(Optional.of(round));
+        given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(playerState));
+        given(playerState.faction()).willReturn(Faction.ERASERS);
+        given(playerState.isJammed()).willReturn(false);
+        given(gameRules.maxEras()).willReturn(5);
+        given(gameRules.annihilateEarliestRound()).willReturn(2);
+
+        // when / then
+        assertThatExceptionOfType(SpecialActionNotEligibleForRoundException.class)
+                .isThrownBy(() -> handler.handle(command));
+        then(specialActionEraUsageRepository).shouldHaveNoInteractions();
+        then(round).should(never()).submit(any());
+        then(actionRoundRepository).should(never()).save(any());
+        then(actionEventPublisher).shouldHaveNoInteractions();
+    }
+
+    @ParameterizedTest
+    @CsvSource({"1,1", "2,2", "2,3", "3,3"})
+    @DisplayName("handle — ANNIHILATE at or after the earliest round — accepted and claims the era budget")
+    void handleAnnihilateAtOrAfterEarliestRoundAccepted(int earliestRound, int roundNumber) {
+        // given
+        var command = new PlaySpecialActionUseCase.Command(
+                GAME_ID,
+                ERA,
+                roundNumber,
+                PLAYER_ID,
+                SpecialAction.ANNIHILATE,
+                null,
+                null,
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                null);
+        given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA, roundNumber))
+                .willReturn(Optional.of(round));
+        given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(playerState));
+        given(playerState.faction()).willReturn(Faction.ERASERS);
+        given(playerState.isJammed()).willReturn(false);
+        given(gameRules.maxEras()).willReturn(5);
+        given(gameRules.annihilateEarliestRound()).willReturn(earliestRound);
+        given(gameRules.onceEraBudgetedSpecials()).willReturn(EnumSet.of(SpecialAction.ANNIHILATE));
+        given(specialActionEraUsageRepository.findByGameIdAndEraNumberAndPlayerId(GAME_ID, ERA, PLAYER_ID))
+                .willReturn(Optional.empty());
+        given(round.submit(any())).willReturn(false);
+        given(round.id()).willReturn(UUID.randomUUID());
+        given(round.gameId()).willReturn(GAME_ID);
+        given(round.pullEvents()).willReturn(List.of(specialActionPlayedEvent()));
+
+        // when
+        handler.handle(command);
+
+        // then
+        then(specialActionEraUsageRepository).should().save(any(SpecialActionEraUsage.class));
+        then(round).should().submit(any());
+    }
+
+    @Test
+    @DisplayName("handle — a special other than ANNIHILATE before the earliest round — unaffected")
+    void handleOtherSpecialBeforeEarliestRoundAccepted() {
+        // given
+        var command = new PlaySpecialActionUseCase.Command(
+                GAME_ID, ERA, 1, PLAYER_ID, SpecialAction.CORRUPT, null, null, null, null, UUID.randomUUID());
+        given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA, 1))
+                .willReturn(Optional.of(round));
+        given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(playerState));
+        given(playerState.faction()).willReturn(Faction.ERASERS);
+        given(playerState.isJammed()).willReturn(false);
+        given(gameRules.maxEras()).willReturn(5);
+        given(gameRules.annihilateEarliestRound()).willReturn(2);
+        given(gameRules.onceEraBudgetedSpecials()).willReturn(Set.of());
+        given(round.submit(any())).willReturn(false);
+        given(round.id()).willReturn(UUID.randomUUID());
+        given(round.gameId()).willReturn(GAME_ID);
+        given(round.pullEvents()).willReturn(List.of(specialActionPlayedEvent()));
+
+        // when
+        handler.handle(command);
+
+        // then
+        then(round).should().submit(any());
     }
 
     @Test
