@@ -30,13 +30,19 @@ import io.github.temporalrift.game.action.domain.saga.ActionRoundSagaState;
 import io.github.temporalrift.game.action.domain.saga.ActionRoundSagaStatus;
 import io.github.temporalrift.game.session.domain.event.EraStarted;
 import io.github.temporalrift.game.session.domain.game.Game;
+import io.github.temporalrift.game.session.domain.lobby.ConnectionStatus;
+import io.github.temporalrift.game.session.domain.lobby.Lobby;
+import io.github.temporalrift.game.session.domain.lobby.LobbyConfig;
+import io.github.temporalrift.game.session.domain.lobby.LobbyPlayer;
 import io.github.temporalrift.game.session.domain.port.out.EraSagaRepository;
 import io.github.temporalrift.game.session.domain.port.out.FutureEventCatalogPort;
 import io.github.temporalrift.game.session.domain.port.out.GameRepository;
+import io.github.temporalrift.game.session.domain.port.out.LobbyRepository;
 import io.github.temporalrift.game.session.domain.port.out.SessionGameRulesPort;
 import io.github.temporalrift.game.session.domain.saga.EraSagaState;
 import io.github.temporalrift.game.session.domain.saga.EraSagaStatus;
 import io.github.temporalrift.game.shared.domain.event.HandSelected;
+import io.github.temporalrift.game.shared.domain.event.StartActionRoundRequested;
 import io.github.temporalrift.game.shared.domain.model.Faction;
 import io.github.temporalrift.game.shared.domain.port.out.GameRulesPort;
 
@@ -62,6 +68,9 @@ class EraStartedToRoundStartIT {
     GameRepository gameRepository;
 
     @Autowired
+    LobbyRepository lobbyRepository;
+
+    @Autowired
     GameRulesPort gameRules;
 
     @Autowired
@@ -80,6 +89,9 @@ class EraStartedToRoundStartIT {
     TransactionTemplate transactionTemplate;
 
     @Autowired
+    org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
+
+    @Autowired
     DeclineDeclarationUseCase declineDeclaration;
 
     @ParameterizedTest
@@ -93,7 +105,22 @@ class EraStartedToRoundStartIT {
         var playerIds = List.of(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID());
 
         transactionTemplate.executeWithoutResult(_ -> {
-            gameRepository.save(new Game(gameId, UUID.randomUUID(), futureEventCatalog.allEventIds()));
+            var lobbyId = UUID.randomUUID();
+            gameRepository.save(new Game(gameId, lobbyId, futureEventCatalog.allEventIds()));
+            // Opening a round resolves the participants who have not abandoned from the game's lobby.
+            var joinedAt = java.time.Instant.parse("2026-01-01T00:00:00Z");
+            lobbyRepository.save(new Lobby(
+                    lobbyId,
+                    gameId,
+                    playerIds.getFirst(),
+                    playerIds.stream()
+                            .map(id -> new LobbyPlayer(id, "Player", null, joinedAt, ConnectionStatus.CONNECTED))
+                            .toList(),
+                    new LobbyConfig(
+                            UUID.randomUUID().toString().substring(0, 8).toUpperCase(),
+                            1,
+                            5,
+                            java.time.Clock.fixed(joinedAt, java.time.ZoneOffset.UTC))));
             for (var playerId : playerIds) {
                 var player = new PlayerState(UUID.randomUUID(), gameId, playerId);
                 player.assignFaction(
@@ -151,6 +178,24 @@ class EraStartedToRoundStartIT {
         assertThat(sagaState.status()).isEqualTo(ActionRoundSagaStatus.WAITING);
         assertThat(sagaState.pendingPlayerIds()).containsExactlyInAnyOrderElementsOf(playerIds);
         assertThat(sagaState.timerExpiresAt()).isNotNull();
+
+        // One private availability fact per player, committed with the round open.
+        assertThat(availabilityFacts(gameId)).isEqualTo(playerIds.size());
+
+        // A repeated open of the same round is rejected as a whole and leaves each player with a single fact.
+        transactionTemplate.executeWithoutResult(_ -> applicationEventPublisher.publishEvent(
+                new StartActionRoundRequested(gameId, eraNumber, roundNumber, playerIds, playerIds)));
+        await().during(Duration.ofSeconds(2))
+                .atMost(Duration.ofSeconds(5))
+                .untilAsserted(() -> assertThat(availabilityFacts(gameId)).isEqualTo(playerIds.size()));
+    }
+
+    private Integer availabilityFacts(UUID gameId) {
+        return jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM event_publication WHERE serialized_event LIKE ? AND serialized_event LIKE ?",
+                Integer.class,
+                "%SpecialActionAvailabilityReported%",
+                "%" + gameId + "%");
     }
 
     /**

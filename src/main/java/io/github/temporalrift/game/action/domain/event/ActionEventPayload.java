@@ -24,4 +24,5 @@ public sealed interface ActionEventPayload
                 PlayerJammed,
                 PlayerSkipped,
                 RoundSummaryPublished,
+                SpecialActionAvailabilityReported,
                 SpecialActionPlayed {}

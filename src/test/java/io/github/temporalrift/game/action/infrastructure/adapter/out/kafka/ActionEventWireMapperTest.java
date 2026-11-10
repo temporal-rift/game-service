@@ -276,6 +276,41 @@ class ActionEventWireMapperTest {
     }
 
     @Test
+    void specialActionAvailabilityReported_mapsViewerAndLeavesReasonOnlyOnUnavailableSpecials() {
+        var domain = new io.github.temporalrift.game.action.domain.event.SpecialActionAvailabilityReported(
+                UUID.randomUUID(),
+                2,
+                1,
+                UUID.randomUUID(),
+                List.of(
+                        new io.github.temporalrift.game.action.domain.event.SpecialActionAvailabilityReported
+                                .SpecialAvailability(
+                                SpecialAction.ANNIHILATE,
+                                false,
+                                io.github.temporalrift.game.action.domain.actionround.SpecialActionUnavailableReason
+                                        .NOT_ELIGIBLE_THIS_ROUND),
+                        new io.github.temporalrift.game.action.domain.event.SpecialActionAvailabilityReported
+                                .SpecialAvailability(SpecialAction.CORRUPT, true, null)));
+
+        var wire = mapper.toWire(domain);
+
+        assertThat(wire.gameId()).isEqualTo(domain.gameId());
+        assertThat(wire.playerId()).isEqualTo(domain.playerId());
+        assertThat(wire.roundNumber()).isEqualTo(1);
+        assertThat(wire.specials()).hasSize(2);
+        assertThat(wire.specials().get(0).specialAction())
+                .isEqualTo(
+                        io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract.SpecialAction.ANNIHILATE);
+        assertThat(wire.specials().get(0).available()).isFalse();
+        assertThat(wire.specials().get(0).unavailableReason())
+                .isEqualTo(
+                        io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract
+                                .SpecialActionUnavailableReason.NOT_ELIGIBLE_THIS_ROUND);
+        assertThat(wire.specials().get(1).available()).isTrue();
+        assertThat(wire.specials().get(1).unavailableReason()).isNull();
+    }
+
+    @Test
     void handCardIntercepted_mapsViewerTargetAndRevealedCards() {
         var revealed = new HandCardIntercepted.RevealedCard(UUID.randomUUID(), CardType.SWING, CardGrade.III);
         var domain = new HandCardIntercepted(

@@ -3,7 +3,10 @@ package io.github.temporalrift.game.session.application.saga;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 
+import java.time.Clock;
 import java.time.Duration;
+import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.Executors;
@@ -19,7 +22,14 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import io.github.temporalrift.game.GameServiceIntegrationTest;
+import io.github.temporalrift.game.session.domain.game.Game;
+import io.github.temporalrift.game.session.domain.lobby.ConnectionStatus;
+import io.github.temporalrift.game.session.domain.lobby.Lobby;
+import io.github.temporalrift.game.session.domain.lobby.LobbyConfig;
+import io.github.temporalrift.game.session.domain.lobby.LobbyPlayer;
 import io.github.temporalrift.game.session.domain.port.out.EraSagaRepository;
+import io.github.temporalrift.game.session.domain.port.out.GameRepository;
+import io.github.temporalrift.game.session.domain.port.out.LobbyRepository;
 import io.github.temporalrift.game.session.domain.saga.EraSagaState;
 import io.github.temporalrift.game.session.domain.saga.EraSagaStatus;
 import io.github.temporalrift.game.shared.domain.event.ActionRoundClosed;
@@ -30,6 +40,12 @@ class EraSagaBandsIT {
 
     @Autowired
     EraSagaRepository repository;
+
+    @Autowired
+    GameRepository games;
+
+    @Autowired
+    LobbyRepository lobbies;
 
     @Autowired
     EraSagaAdvancer advancer;
@@ -101,8 +117,24 @@ class EraSagaBandsIT {
 
     private UUID createSaga() {
         var gameId = UUID.randomUUID();
-        transactions.executeWithoutResult(_ -> repository.save(
-                new EraSagaState(gameId, 2, EraSagaStatus.WAITING_ROUND_2, List.of(UUID.randomUUID()))));
+        var lobbyId = UUID.randomUUID();
+        var playerId = UUID.randomUUID();
+        var joinedAt = Instant.parse("2026-01-01T00:00:00Z");
+        transactions.executeWithoutResult(_ -> {
+            // Opening a round resolves the participants who have not abandoned from the game's lobby.
+            games.save(new Game(gameId, lobbyId, List.of(UUID.randomUUID())));
+            lobbies.save(new Lobby(
+                    lobbyId,
+                    gameId,
+                    playerId,
+                    List.of(new LobbyPlayer(playerId, "Player", null, joinedAt, ConnectionStatus.CONNECTED)),
+                    new LobbyConfig(
+                            UUID.randomUUID().toString().substring(0, 8).toUpperCase(),
+                            1,
+                            5,
+                            Clock.fixed(joinedAt, ZoneOffset.UTC))));
+            repository.save(new EraSagaState(gameId, 2, EraSagaStatus.WAITING_ROUND_2, List.of(playerId)));
+        });
         return gameId;
     }
 

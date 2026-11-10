@@ -24,7 +24,9 @@ import io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract.Par
 import io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract.ParadoxResolutionPassedPayload;
 import io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract.PlayerJammedPayload;
 import io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract.PlayerSkippedPayload;
+import io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract.ReportedSpecialAvailability;
 import io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract.RoundSummaryPublishedPayload;
+import io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract.SpecialActionAvailabilityReportedPayload;
 import io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract.SpecialActionPlayedPayload;
 import io.github.temporalrift.game.action.domain.event.ActionRoundPassed;
 import io.github.temporalrift.game.action.domain.event.ActionRoundStarted;
@@ -43,6 +45,7 @@ import io.github.temporalrift.game.action.domain.event.ParadoxResolutionPassed;
 import io.github.temporalrift.game.action.domain.event.PlayerJammed;
 import io.github.temporalrift.game.action.domain.event.PlayerSkipped;
 import io.github.temporalrift.game.action.domain.event.RoundSummaryPublished;
+import io.github.temporalrift.game.action.domain.event.SpecialActionAvailabilityReported;
 import io.github.temporalrift.game.action.domain.event.SpecialActionPlayed;
 import io.github.temporalrift.game.shared.domain.event.ActionRoundClosed;
 
@@ -84,6 +87,10 @@ interface ActionEventWireMapper {
     ActionRoundPassedPayload toWire(ActionRoundPassed event);
 
     SpecialActionPlayedPayload toWire(SpecialActionPlayed event);
+
+    SpecialActionAvailabilityReportedPayload toWire(SpecialActionAvailabilityReported event);
+
+    ReportedSpecialAvailability toWire(SpecialActionAvailabilityReported.SpecialAvailability availability);
 
     ActionRoundTimerExpiredPayload toWire(ActionRoundTimerExpired event);
 

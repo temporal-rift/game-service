@@ -30,6 +30,9 @@ class DeclarationPhaseClosedListenerTest {
     @Mock
     ApplicationEventPublisher applicationEventPublisher;
 
+    @Mock
+    ActionRoundRequests actionRoundRequests;
+
     @InjectMocks
     DeclarationPhaseClosedListener listener;
 
@@ -39,13 +42,15 @@ class DeclarationPhaseClosedListenerTest {
         var players = List.of(UUID.randomUUID(), UUID.randomUUID());
         given(eraSagaRepository.findByGameIdWithLock(gameId))
                 .willReturn(Optional.of(new EraSagaState(gameId, 1, EraSagaStatus.WAITING_DECLARATION, players)));
+        var opened = new StartActionRoundRequested(gameId, 1, 1, players, List.of(players.get(0)));
+        given(actionRoundRequests.open(gameId, 1, 1, players)).willReturn(opened);
 
         listener.onDeclarationPhaseClosed(new DeclarationPhaseClosed(gameId, 1));
 
         var captor = ArgumentCaptor.forClass(EraSagaState.class);
         then(eraSagaRepository).should().save(captor.capture());
         org.assertj.core.api.Assertions.assertThat(captor.getValue().status()).isEqualTo(EraSagaStatus.WAITING_ROUND_1);
-        then(applicationEventPublisher).should().publishEvent(new StartActionRoundRequested(gameId, 1, 1, players));
+        then(applicationEventPublisher).should().publishEvent(opened);
     }
 
     @Test

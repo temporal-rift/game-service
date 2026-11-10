@@ -110,6 +110,9 @@ class EraSagaAdvancerTest {
     @Mock
     PlayerReconnectTimerRegistry reconnectTimers;
 
+    @Mock
+    ActionRoundRequests actionRoundRequests;
+
     @Spy
     Clock clock = Clock.fixed(Instant.parse("2026-01-01T00:00:00Z"), java.time.ZoneOffset.UTC);
 
@@ -130,7 +133,16 @@ class EraSagaAdvancerTest {
                         reconnectStates, lobbyRepository, reconnectTimers, eventPublisher, clock),
                 gameRules,
                 factionObjectives,
+                actionRoundRequests,
                 clock);
+        lenient()
+                .when(actionRoundRequests.open(any(), anyInt(), anyInt(), any()))
+                .thenAnswer(inv -> new StartActionRoundRequested(
+                        inv.getArgument(0),
+                        inv.getArgument(1),
+                        inv.getArgument(2),
+                        inv.getArgument(3),
+                        inv.getArgument(3)));
         lenient().when(lobbyRepository.findByIdWithLock(LOBBY_ID)).thenReturn(Optional.of(lobby()));
     }
 
@@ -179,7 +191,9 @@ class EraSagaAdvancerTest {
         advancer.handleBandsPublished(GAME_ID, 1);
         advancer.handleBandsPublished(GAME_ID, 1);
         advancer.handleRoundClosed(GAME_ID, closure);
-        then(applicationEventPublisher).should().publishEvent(new StartActionRoundRequested(GAME_ID, 1, 3, PLAYER_IDS));
+        then(applicationEventPublisher)
+                .should()
+                .publishEvent(new StartActionRoundRequested(GAME_ID, 1, 3, PLAYER_IDS, PLAYER_IDS));
         then(applicationEventPublisher).shouldHaveNoMoreInteractions();
     }
 
@@ -189,7 +203,9 @@ class EraSagaAdvancerTest {
         advancer.handleBandsPublished(GAME_ID, 1);
         then(applicationEventPublisher).shouldHaveNoInteractions();
         advancer.handleRoundClosed(GAME_ID, new ActionRoundClosed(GAME_ID, 1, 2, "ALL_SUBMITTED", 2));
-        then(applicationEventPublisher).should().publishEvent(new StartActionRoundRequested(GAME_ID, 1, 3, PLAYER_IDS));
+        then(applicationEventPublisher)
+                .should()
+                .publishEvent(new StartActionRoundRequested(GAME_ID, 1, 3, PLAYER_IDS, PLAYER_IDS));
         then(applicationEventPublisher).shouldHaveNoMoreInteractions();
     }
 

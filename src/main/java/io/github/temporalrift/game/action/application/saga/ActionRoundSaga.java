@@ -12,7 +12,11 @@ import java.util.UUID;
  */
 interface ActionRoundSaga {
 
-    StartResult start(UUID gameId, int eraNumber, int roundNumber, List<UUID> playerIds);
+    /**
+     * Opens the round for {@code playerIds}; {@code activePlayerIds} (those who have not abandoned) are the
+     * players told which of their specials are available in it.
+     */
+    StartResult start(UUID gameId, int eraNumber, int roundNumber, List<UUID> playerIds, List<UUID> activePlayerIds);
 
     void handlePlayerSubmitted(UUID gameId, int eraNumber, int roundNumber, UUID playerId);
 
