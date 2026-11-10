@@ -99,8 +99,8 @@ class SpecialActionAvailabilityPolicyTest {
 
         var result = SpecialActionAvailabilityPolicy.evaluate(Faction.PROPHETS, rules(2, 2), spent);
 
-        assertThat(reasons(result).get(SpecialAction.SEAL))
-                .isEqualTo(SpecialActionUnavailableReason.GAME_BUDGET_EXHAUSTED);
+        assertThat(reasons(result))
+                .containsEntry(SpecialAction.SEAL, SpecialActionUnavailableReason.GAME_BUDGET_EXHAUSTED);
     }
 
     @Test
@@ -166,7 +166,7 @@ class SpecialActionAvailabilityPolicyTest {
                 return false;
             }
             return true;
-        } catch (RuntimeException rejected) {
+        } catch (RuntimeException _) {
             return false;
         }
     }
@@ -174,7 +174,10 @@ class SpecialActionAvailabilityPolicyTest {
     @Test
     @DisplayName("rules reject being asked about an unmodelled null faction")
     void nullFactionRejected() {
-        assertThatThrownBy(() -> SpecialActionAvailabilityPolicy.evaluate(null, rules(1, 1), fresh()))
+        var rules = rules(1, 1);
+        var usage = fresh();
+
+        assertThatThrownBy(() -> SpecialActionAvailabilityPolicy.evaluate(null, rules, usage))
                 .isInstanceOf(NullPointerException.class);
     }
 }
