@@ -14,6 +14,8 @@ import java.util.concurrent.atomic.AtomicReference;
 import jakarta.validation.Validation;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import io.github.temporalrift.game.scoring.domain.playerscore.ScoreReason;
 import io.github.temporalrift.game.scoring.infrastructure.adapter.out.config.ScoreRulesProperties;
@@ -85,6 +87,28 @@ class ExecutionRulesBindingTest {
                 .isInstanceOf(InvalidExecutionRulesException.class)
                 .extracting(failure -> ((InvalidExecutionRulesException) failure).key())
                 .isEqualTo("game.rules.win-score-threshold");
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {1, 2, 3})
+    @DisplayName("an annihilate-earliest-round within 1 to 3 binds to the value the context carries")
+    void bind_annihilateEarliestRoundInRange_yieldsTheValue(int round) {
+        var rules =
+                session.bind(bindable(ExecutionRulesFixture.rulesWith("game.rules.annihilate-earliest-round", round)));
+
+        assertThat(rules.annihilateEarliestRound()).isEqualTo(round);
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {0, 4})
+    @DisplayName("an annihilate-earliest-round outside 1 to 3 is rejected by its key")
+    void bind_annihilateEarliestRoundOutOfRange_namesTheKey(int round) {
+        var properties = bindable(ExecutionRulesFixture.rulesWith("game.rules.annihilate-earliest-round", round));
+
+        assertThatThrownBy(() -> session.bind(properties))
+                .isInstanceOf(InvalidExecutionRulesException.class)
+                .extracting(failure -> ((InvalidExecutionRulesException) failure).key())
+                .isEqualTo("game.rules.annihilate-earliest-round");
     }
 
     @Test

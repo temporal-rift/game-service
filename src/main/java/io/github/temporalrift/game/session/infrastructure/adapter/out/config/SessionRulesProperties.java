@@ -5,6 +5,7 @@ import java.util.Objects;
 import java.util.Set;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
@@ -40,6 +41,7 @@ public record SessionRulesProperties(
         @DefaultValue @Valid Stabilization stabilization,
         @NotEmpty Set<SpecialAction> onceEraBudgetedSpecials,
         @DefaultValue("2") @Min(1) int sealMaxUsesPerGame,
+        @DefaultValue("2") @Min(1) @Max(3) int annihilateEarliestRound,
         Set<CardType> handDealForcedTypes,
         @NotNull ProbabilityBounds probability)
         implements SessionGameRulesPort {

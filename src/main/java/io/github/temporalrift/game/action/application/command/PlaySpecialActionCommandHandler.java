@@ -133,6 +133,7 @@ class PlaySpecialActionCommandHandler implements PlaySpecialActionUseCase {
                 command.targetOutcomeId(),
                 command.targetPlayerId());
         action.validateFinalEra(command.eraNumber(), command.roundNumber(), gameRules.maxEras());
+        action.validateEarliestRound(command.eraNumber(), command.roundNumber(), gameRules.annihilateEarliestRound());
         SpecialActionEraUsage usage = null;
         if (gameRules.onceEraBudgetedSpecials().contains(command.specialAction())) {
             usage = specialActionEraUsageRepository

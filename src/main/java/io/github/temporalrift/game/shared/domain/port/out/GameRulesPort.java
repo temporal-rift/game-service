@@ -19,6 +19,9 @@ public interface GameRulesPort {
     /** Maximum accepted Seal uses per player per game. */
     int sealMaxUsesPerGame();
 
+    /** First action round (1 to 3) of every era in which a submitted Annihilate is accepted. */
+    int annihilateEarliestRound();
+
     /** Final era number; Stall promises a next era that does not exist at or beyond this era. */
     int maxEras();
 
