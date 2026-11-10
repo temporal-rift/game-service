@@ -179,6 +179,11 @@ class EraStartedToRoundStartIT {
         assertThat(sagaState.pendingPlayerIds()).containsExactlyInAnyOrderElementsOf(playerIds);
         assertThat(sagaState.timerExpiresAt()).isNotNull();
 
+        assertAvailabilityReportedOncePerPlayer(gameId, eraNumber, roundNumber, playerIds);
+    }
+
+    private void assertAvailabilityReportedOncePerPlayer(
+            UUID gameId, int eraNumber, int roundNumber, List<UUID> playerIds) {
         // One private availability fact per player, committed with the round open.
         assertThat(availabilityFacts(gameId)).isEqualTo(playerIds.size());
 
