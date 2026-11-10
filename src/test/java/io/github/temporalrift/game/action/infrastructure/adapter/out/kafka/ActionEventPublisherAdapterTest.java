@@ -349,6 +349,23 @@ class ActionEventPublisherAdapterTest {
     }
 
     @Test
+    void publishSpecialActionAvailabilityReported_usesStableMessageType() {
+        var adapter = new ActionEventPublisherAdapter(applicationEventPublisher, mapper, outboundEvents);
+        var gameId = UUID.randomUUID();
+        var reported = new io.github.temporalrift.game.action.domain.event.SpecialActionAvailabilityReported(
+                gameId, 1, 2, UUID.randomUUID(), List.of());
+        var wire = mock(
+                io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract
+                        .SpecialActionAvailabilityReportedPayload.class);
+        var event = envelope(gameId, reported);
+        given(mapper.toWire(reported)).willReturn(wire);
+
+        adapter.publish(event);
+
+        then(outboundEvents).should().publish(eq("SpecialActionAvailabilityReported"), same(wire), same(event));
+    }
+
+    @Test
     void publishInternally_delegatesPayload() {
         var adapter = new ActionEventPublisherAdapter(applicationEventPublisher, mapper, outboundEvents);
         var payload = new ActionRoundClosed(UUID.randomUUID(), 1, 2, "ALL_SUBMITTED", 3);

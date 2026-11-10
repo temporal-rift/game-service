@@ -374,7 +374,7 @@ public sealed interface SubmittedAction permits SubmittedAction.CardAction, Subm
         @Override
         public void validateFinalEra(int eraNumber, int roundNumber, int maxEras) {
             // Cascade only erases again when its event carries into a next era, which the final era never has.
-            if (specialAction == SpecialAction.CASCADE && eraNumber >= maxEras) {
+            if (SpecialActionRoundRules.ineligibleThisEra(specialAction, eraNumber, maxEras)) {
                 throw new SpecialActionNotEligibleForEraException(specialAction, eraNumber);
             }
         }
@@ -384,7 +384,8 @@ public sealed interface SubmittedAction permits SubmittedAction.CardAction, Subm
          * any budget claim so a rejected submission spends nothing.
          */
         public void validateEarliestRound(int eraNumber, int roundNumber, int annihilateEarliestRound) {
-            if (specialAction == SpecialAction.ANNIHILATE && roundNumber < annihilateEarliestRound) {
+            if (SpecialActionRoundRules.annihilateBeforeEarliestRound(
+                    specialAction, roundNumber, annihilateEarliestRound)) {
                 throw new SpecialActionNotEligibleForRoundException(specialAction, eraNumber, roundNumber);
             }
         }
@@ -395,7 +396,7 @@ public sealed interface SubmittedAction permits SubmittedAction.CardAction, Subm
                 throw InvalidActionTargetException.specialActionCannotHaveSource(specialAction);
             }
             // Obscure covers the following round of the same era, which Round 3 does not have.
-            if (specialAction == SpecialAction.OBSCURE && roundNumber == 3) {
+            if (SpecialActionRoundRules.obscureInFinalRound(specialAction, roundNumber)) {
                 throw new SpecialActionNotEligibleForRoundException(specialAction, eraNumber, roundNumber);
             }
             switch (specialAction) {

@@ -39,7 +39,6 @@ import io.github.temporalrift.game.session.domain.saga.EraSagaStatus;
 import io.github.temporalrift.game.shared.application.SagaHandoffPublisher;
 import io.github.temporalrift.game.shared.domain.event.ActionRoundClosed;
 import io.github.temporalrift.game.shared.domain.event.ScoresUpdated;
-import io.github.temporalrift.game.shared.domain.event.StartActionRoundRequested;
 import io.github.temporalrift.game.shared.domain.messaging.DomainEventEnvelope;
 import io.github.temporalrift.game.shared.domain.model.Faction;
 
@@ -61,6 +60,7 @@ class EraSagaAdvancer {
     private final PlayerAbandonmentProcessor abandonmentProcessor;
     private final SessionGameRulesPort gameRules;
     private final SessionFactionObjectivePort factionObjectives;
+    private final ActionRoundRequests actionRoundRequests;
     private final Clock clock;
 
     EraSagaAdvancer(
@@ -75,6 +75,7 @@ class EraSagaAdvancer {
             PlayerAbandonmentProcessor abandonmentProcessor,
             SessionGameRulesPort gameRules,
             SessionFactionObjectivePort factionObjectives,
+            ActionRoundRequests actionRoundRequests,
             Clock clock) {
         this.eraSagaRepository = eraSagaRepository;
         this.scoresUpdatedInbox = scoresUpdatedInbox;
@@ -88,6 +89,7 @@ class EraSagaAdvancer {
         this.abandonmentProcessor = abandonmentProcessor;
         this.gameRules = gameRules;
         this.factionObjectives = factionObjectives;
+        this.actionRoundRequests = actionRoundRequests;
         this.clock = clock;
     }
 
@@ -171,7 +173,7 @@ class EraSagaAdvancer {
             var nextStatus = EraSagaStatus.WAITING_ROUND_2;
             eraSagaRepository.save(state.withStatus(nextStatus));
             applicationEventPublisher.publishEvent(
-                    new StartActionRoundRequested(state.gameId(), state.eraNumber(), nextRound, state.playerIds()));
+                    actionRoundRequests.open(state.gameId(), state.eraNumber(), nextRound, state.playerIds()));
         }
     }
 
@@ -195,7 +197,7 @@ class EraSagaAdvancer {
         }
         eraSagaRepository.save(state.withStatus(EraSagaStatus.WAITING_ROUND_3));
         applicationEventPublisher.publishEvent(
-                new StartActionRoundRequested(state.gameId(), state.eraNumber(), FINAL_ROUND, state.playerIds()));
+                actionRoundRequests.open(state.gameId(), state.eraNumber(), FINAL_ROUND, state.playerIds()));
     }
 
     private void processScoresUpdated(UUID gameId, EraSagaState state, ScoresUpdated su) {

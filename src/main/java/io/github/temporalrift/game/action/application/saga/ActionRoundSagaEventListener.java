@@ -31,7 +31,8 @@ class ActionRoundSagaEventListener {
 
     @ApplicationModuleListener
     void onStartActionRound(StartActionRoundRequested event) {
-        var startResult = saga.start(event.gameId(), event.eraNumber(), event.roundNumber(), event.playerIds());
+        var startResult = saga.start(
+                event.gameId(), event.eraNumber(), event.roundNumber(), event.playerIds(), event.activePlayerIds());
         timerScheduler.scheduleAfterCommit(startResult);
     }
 

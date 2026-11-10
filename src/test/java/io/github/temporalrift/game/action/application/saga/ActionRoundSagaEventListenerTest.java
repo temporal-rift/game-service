@@ -41,15 +41,17 @@ class ActionRoundSagaEventListenerTest {
         // given
         var listener = new ActionRoundSagaEventListener(saga, timerScheduler);
         var playerIds = List.of(PLAYER_ID, UUID.randomUUID());
-        var event = new StartActionRoundRequested(GAME_ID, ERA_NUMBER, ROUND_NUMBER, playerIds);
+        var activePlayerIds = List.of(PLAYER_ID);
+        var event = new StartActionRoundRequested(GAME_ID, ERA_NUMBER, ROUND_NUMBER, playerIds, activePlayerIds);
         var result = new ActionRoundSaga.StartResult(UUID.randomUUID(), Instant.parse("2099-01-01T00:00:30Z"));
-        given(saga.start(GAME_ID, ERA_NUMBER, ROUND_NUMBER, playerIds)).willReturn(result);
+        given(saga.start(GAME_ID, ERA_NUMBER, ROUND_NUMBER, playerIds, activePlayerIds))
+                .willReturn(result);
 
         // when
         listener.onStartActionRound(event);
 
         // then
-        then(saga).should().start(GAME_ID, ERA_NUMBER, ROUND_NUMBER, playerIds);
+        then(saga).should().start(GAME_ID, ERA_NUMBER, ROUND_NUMBER, playerIds, activePlayerIds);
         then(timerScheduler).should().scheduleAfterCommit(result);
     }
 

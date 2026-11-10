@@ -9,7 +9,6 @@ import org.springframework.transaction.annotation.Transactional;
 import io.github.temporalrift.game.session.domain.port.out.EraSagaRepository;
 import io.github.temporalrift.game.session.domain.saga.EraSagaStatus;
 import io.github.temporalrift.game.shared.domain.event.DeclarationPhaseClosed;
-import io.github.temporalrift.game.shared.domain.event.StartActionRoundRequested;
 
 /** Advances the era to Action Round 1 once the declaration window completes or expires. */
 @Component
@@ -17,12 +16,15 @@ class DeclarationPhaseClosedListener {
 
     private final EraSagaRepository eraSagaRepository;
     private final org.springframework.context.ApplicationEventPublisher applicationEventPublisher;
+    private final ActionRoundRequests actionRoundRequests;
 
     DeclarationPhaseClosedListener(
             EraSagaRepository eraSagaRepository,
-            org.springframework.context.ApplicationEventPublisher applicationEventPublisher) {
+            org.springframework.context.ApplicationEventPublisher applicationEventPublisher,
+            ActionRoundRequests actionRoundRequests) {
         this.eraSagaRepository = eraSagaRepository;
         this.applicationEventPublisher = applicationEventPublisher;
+        this.actionRoundRequests = actionRoundRequests;
     }
 
     @ApplicationModuleListener
@@ -36,7 +38,7 @@ class DeclarationPhaseClosedListener {
                 .ifPresent(advanced -> {
                     eraSagaRepository.save(advanced);
                     applicationEventPublisher.publishEvent(
-                            new StartActionRoundRequested(event.gameId(), event.eraNumber(), 1, advanced.playerIds()));
+                            actionRoundRequests.open(event.gameId(), event.eraNumber(), 1, advanced.playerIds()));
                 });
     }
 }

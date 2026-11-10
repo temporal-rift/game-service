@@ -18,6 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import io.github.temporalrift.game.action.application.ActionRoundEventPublication;
+import io.github.temporalrift.game.action.application.SpecialActionAvailabilityReporter;
 import io.github.temporalrift.game.action.domain.actionround.ActionRound;
 import io.github.temporalrift.game.action.domain.actionround.ActionRoundConfig;
 import io.github.temporalrift.game.action.domain.actionround.ActionRoundParticipants;
@@ -76,6 +77,7 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
     private final TraceResolver traceResolver;
     private final ActionRoundTimerRegistry timerRegistry;
     private final ExecutionEntropy entropy;
+    private final SpecialActionAvailabilityReporter availabilityReporter;
     private final Clock clock;
 
     ActionRoundSagaImpl(
@@ -88,6 +90,7 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
             FutureEventDefinitionPort futureEventDefinitionPort,
             ActionRoundTimerRegistry timerRegistry,
             ExecutionEntropy entropy,
+            SpecialActionAvailabilityReporter availabilityReporter,
             Clock clock) {
         this.actionRoundRepository = actionRoundRepository;
         this.activistEraStateRepository = activistEraStateRepository;
@@ -98,12 +101,14 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
         this.traceResolver = new TraceResolver(actionRoundRepository, futureEventDefinitionPort);
         this.timerRegistry = timerRegistry;
         this.entropy = entropy;
+        this.availabilityReporter = availabilityReporter;
         this.clock = clock;
     }
 
     @Override
     @Transactional(propagation = REQUIRES_NEW)
-    public StartResult start(UUID gameId, int eraNumber, int roundNumber, List<UUID> playerIds) {
+    public StartResult start(
+            UUID gameId, int eraNumber, int roundNumber, List<UUID> playerIds, List<UUID> activePlayerIds) {
         // Declaration handlers lock one player row before checking the Round-1 boundary. Locking
         // every player row here prevents a declaration from being accepted after we read it but
         // before the round is created: either this transaction sees it, or the handler sees Round 1.
@@ -136,6 +141,9 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
                 new ActionRoundParticipants(playerIds, declaredActions));
         actionRoundRepository.save(round);
         ActionRoundEventPublication.publish(round, actionEventPublisher, clock);
+        // Before any close below: a round whose players all declared closes inside this call, and the
+        // report must already be in this transaction by then.
+        availabilityReporter.report(gameId, eraNumber, roundNumber, activePlayerIds);
         if (pendingPlayerIds.isEmpty()) {
             tryClose(sagaId, gameId, eraNumber, roundNumber, CLOSE_REASON_ALL_SUBMITTED);
         }

@@ -35,6 +35,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import io.github.temporalrift.game.action.application.SpecialActionAvailabilityReporter;
 import io.github.temporalrift.game.action.domain.actionround.ActionFamily;
 import io.github.temporalrift.game.action.domain.actionround.ActionRound;
 import io.github.temporalrift.game.action.domain.actionround.ActionRoundConfig;
@@ -111,6 +112,9 @@ class ActionRoundSagaImplTest {
     @Mock
     ActionRoundTimerRegistry timerRegistry;
 
+    @Mock
+    SpecialActionAvailabilityReporter availabilityReporter;
+
     ActionRoundSagaImpl saga;
 
     @BeforeEach
@@ -125,6 +129,7 @@ class ActionRoundSagaImplTest {
                 futureEventDefinitionPort,
                 timerRegistry,
                 StubExecutionEntropy.unpredictable(),
+                availabilityReporter,
                 CLOCK);
     }
 
@@ -168,7 +173,7 @@ class ActionRoundSagaImplTest {
             given(gameRules.actionRoundTimerSeconds(PLAYER_IDS.size())).willReturn(TIMER_SECONDS);
 
             // when
-            var result = saga.start(GAME_ID, ERA_NUMBER, ROUND_NUMBER, PLAYER_IDS);
+            var result = saga.start(GAME_ID, ERA_NUMBER, ROUND_NUMBER, PLAYER_IDS, PLAYER_IDS);
 
             // then
             var captor = ArgumentCaptor.<UUID>captor();
@@ -189,13 +194,26 @@ class ActionRoundSagaImplTest {
         }
 
         @Test
+        @DisplayName("reports availability only to the active players, after the round is saved")
+        void start_reportsAvailabilityToActivePlayersAfterSavingTheRound() {
+            given(gameRules.actionRoundTimerSeconds(PLAYER_IDS.size())).willReturn(TIMER_SECONDS);
+            var active = List.of(PLAYER_1, PLAYER_2);
+
+            saga.start(GAME_ID, ERA_NUMBER, ROUND_NUMBER, PLAYER_IDS, active);
+
+            var order = inOrder(actionRoundRepository, availabilityReporter);
+            order.verify(actionRoundRepository).save(any(ActionRound.class));
+            order.verify(availabilityReporter).report(GAME_ID, ERA_NUMBER, ROUND_NUMBER, active);
+        }
+
+        @Test
         @DisplayName("computes timer duration from GameRulesPort")
         void start_usesGameRulesForTimerDuration() {
             // given
             given(gameRules.actionRoundTimerSeconds(PLAYER_IDS.size())).willReturn(TIMER_SECONDS);
 
             // when
-            saga.start(GAME_ID, ERA_NUMBER, ROUND_NUMBER, PLAYER_IDS);
+            saga.start(GAME_ID, ERA_NUMBER, ROUND_NUMBER, PLAYER_IDS, PLAYER_IDS);
 
             // then
             then(gameRules).should(times(1)).actionRoundTimerSeconds(PLAYER_IDS.size());
@@ -217,10 +235,13 @@ class ActionRoundSagaImplTest {
                             GAME_ID, ERA_NUMBER, ROUND_NUMBER))
                     .willReturn(Optional.of(closedRound));
 
-            saga.start(GAME_ID, ERA_NUMBER, ROUND_NUMBER, List.of(PLAYER_1));
+            saga.start(GAME_ID, ERA_NUMBER, ROUND_NUMBER, List.of(PLAYER_1), List.of(PLAYER_1));
 
             then(stateManager).should().complete(GAME_ID, ERA_NUMBER, ROUND_NUMBER);
             then(timerRegistry).should().cancel(any(UUID.class));
+            var order = inOrder(availabilityReporter, stateManager);
+            order.verify(availabilityReporter).report(GAME_ID, ERA_NUMBER, ROUND_NUMBER, List.of(PLAYER_1));
+            order.verify(stateManager).complete(GAME_ID, ERA_NUMBER, ROUND_NUMBER);
         }
     }
 

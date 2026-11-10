@@ -17,6 +17,7 @@ import io.github.temporalrift.game.action.domain.actionround.FactionRequiredExce
 import io.github.temporalrift.game.action.domain.actionround.InvalidSpecialActionException;
 import io.github.temporalrift.game.action.domain.actionround.JammedPlayerException;
 import io.github.temporalrift.game.action.domain.actionround.RoundNotFoundException;
+import io.github.temporalrift.game.action.domain.actionround.SpecialActionRoundRules;
 import io.github.temporalrift.game.action.domain.actionround.SubmittedAction;
 import io.github.temporalrift.game.action.domain.activisterastate.ActivistEraState;
 import io.github.temporalrift.game.action.domain.activisterastate.ExposeTargetNotEligibleException;
@@ -172,7 +173,7 @@ class PlaySpecialActionCommandHandler implements PlaySpecialActionUseCase {
     }
 
     private void recordExpose(Command command) {
-        if (command.roundNumber() != 2) {
+        if (SpecialActionRoundRules.exposeOutsideItsRound(command.specialAction(), command.roundNumber())) {
             throw new ExposeUnavailableException();
         }
         var targetPlayerId = command.targetPlayerId();

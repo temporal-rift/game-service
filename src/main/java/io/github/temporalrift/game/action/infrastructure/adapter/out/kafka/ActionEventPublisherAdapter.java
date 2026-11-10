@@ -24,6 +24,7 @@ import io.github.temporalrift.game.action.domain.event.ParadoxResolutionPassed;
 import io.github.temporalrift.game.action.domain.event.PlayerJammed;
 import io.github.temporalrift.game.action.domain.event.PlayerSkipped;
 import io.github.temporalrift.game.action.domain.event.RoundSummaryPublished;
+import io.github.temporalrift.game.action.domain.event.SpecialActionAvailabilityReported;
 import io.github.temporalrift.game.action.domain.event.SpecialActionPlayed;
 import io.github.temporalrift.game.action.domain.port.out.ActionEventPublisher;
 import io.github.temporalrift.game.shared.domain.event.ActionRoundClosed;
@@ -86,6 +87,8 @@ class ActionEventPublisherAdapter implements ActionEventPublisher {
             case ParadoxResolutionPassed payload ->
                 outboundEvents.publish("ParadoxResolutionPassed", mapper.toWire(payload), event);
             case PlayerJammed payload -> outboundEvents.publish("PlayerJammed", mapper.toWire(payload), event);
+            case SpecialActionAvailabilityReported payload ->
+                outboundEvents.publish("SpecialActionAvailabilityReported", mapper.toWire(payload), event);
             case SpecialActionPlayed payload ->
                 outboundEvents.publish("SpecialActionPlayed", mapper.toWire(payload), event);
             case ActionRoundTimerExpired payload ->
