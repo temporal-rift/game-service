@@ -490,6 +490,7 @@ class ActionRoundTest {
         assertThat(events.get(0)).isInstanceOfSatisfying(ForesightDeclared.class, declared -> {
             assertThat(declared.gameId()).isEqualTo(GAME_ID);
             assertThat(declared.eraNumber()).isEqualTo(ERA);
+            assertThat(declared.roundNumber()).isEqualTo(ROUND);
             assertThat(declared.eventId()).isEqualTo(eventId);
             assertThat(declared.outcomeId()).isEqualTo(outcomeId);
             assertThat(declared.playerId()).isEqualTo(PLAYER_A);

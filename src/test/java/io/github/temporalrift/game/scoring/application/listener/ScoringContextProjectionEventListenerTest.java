@@ -99,9 +99,9 @@ class ScoringContextProjectionEventListenerTest {
         var outcomeId = UUID.randomUUID();
         var playerId = UUID.randomUUID();
 
-        listener.onForesightDeclared(new ForesightDeclared(gameId, 2, eventId, outcomeId, playerId));
+        listener.onForesightDeclared(new ForesightDeclared(gameId, 2, 3, eventId, outcomeId, playerId));
 
-        then(contextRepository).should().upsertWrittenOutcome(gameId, 2, eventId, outcomeId, playerId);
+        then(contextRepository).should().upsertWrittenOutcome(gameId, 2, 3, eventId, outcomeId, playerId);
     }
 
     @Test
@@ -120,7 +120,7 @@ class ScoringContextProjectionEventListenerTest {
                 gameId,
                 2,
                 List.of(new EraActionFactsFinalized.ForesightFact(
-                        foresightEventId, foresightOutcomeId, foresightPlayerId)),
+                        1, foresightEventId, foresightOutcomeId, foresightPlayerId)),
                 List.of(new EraActionFactsFinalized.ExposeFact(activistPlayerId, UUID.randomUUID())),
                 List.of(new EraActionFactsFinalized.ActivistDeclarationFact(
                         activistPlayerId, SpecialAction.RALLY, activistEventId, activistOutcomeId)),
@@ -131,7 +131,7 @@ class ScoringContextProjectionEventListenerTest {
 
         then(contextRepository)
                 .should()
-                .upsertWrittenOutcome(gameId, 2, foresightEventId, foresightOutcomeId, foresightPlayerId);
+                .upsertWrittenOutcome(gameId, 2, 1, foresightEventId, foresightOutcomeId, foresightPlayerId);
         then(contextRepository)
                 .should()
                 .recordActionFact(
@@ -202,7 +202,7 @@ class ScoringContextProjectionEventListenerTest {
 
         listener.onEraActionFactsFinalized(new EraActionFactsFinalized(gameId, 2, List.of(), List.of()));
 
-        then(contextRepository).should(never()).upsertWrittenOutcome(any(), anyInt(), any(), any(), any());
+        then(contextRepository).should(never()).upsertWrittenOutcome(any(), anyInt(), anyInt(), any(), any(), any());
         then(contextRepository).should(never()).upsertActivistDeclaration(any());
         then(contextRepository).should(never()).recordRevisionistAction(any(), anyInt(), any(), any(), any(), any());
         then(contextRepository).should().markActionFactsReady(gameId, 2);

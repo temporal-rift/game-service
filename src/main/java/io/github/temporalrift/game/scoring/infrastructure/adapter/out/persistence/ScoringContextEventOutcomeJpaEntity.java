@@ -21,7 +21,18 @@ class ScoringContextEventOutcomeJpaEntity extends GameEraScopedJpaEntity {
     @Column(name = "written_by_player_id")
     private UUID writtenByPlayerId;
 
+    @Column(name = "written_round_number")
+    private Integer writtenRoundNumber;
+
     protected ScoringContextEventOutcomeJpaEntity() {}
+
+    Integer getWrittenRoundNumber() {
+        return writtenRoundNumber;
+    }
+
+    void setWrittenRoundNumber(Integer writtenRoundNumber) {
+        this.writtenRoundNumber = writtenRoundNumber;
+    }
 
     UUID getEventId() {
         return eventId;

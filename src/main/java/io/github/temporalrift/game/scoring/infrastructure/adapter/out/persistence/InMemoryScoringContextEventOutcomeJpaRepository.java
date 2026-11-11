@@ -31,8 +31,8 @@ class InMemoryScoringContextEventOutcomeJpaRepository
     }
 
     @Override
-    public void insertWrittenOutcomeIfFirst(
-            UUID id, UUID gameId, int eraNumber, UUID eventId, UUID outcomeId, UUID playerId) {
+    public void insertWrittenOutcomeIfEarliest(
+            UUID id, UUID gameId, int eraNumber, int roundNumber, UUID eventId, UUID outcomeId, UUID playerId) {
         lockForUpsert(key("scoring_context_event_outcome", gameId, eraNumber, eventId));
         var outcome = findFirst(row -> row.getGameId().equals(gameId)
                         && row.getEraNumber() == eraNumber
@@ -45,11 +45,11 @@ class InMemoryScoringContextEventOutcomeJpaRepository
                     created.setEventId(eventId);
                     return created;
                 });
-        if (outcome.getWrittenOutcomeId() == null) {
+        boolean earlier = outcome.getWrittenRoundNumber() != null && roundNumber < outcome.getWrittenRoundNumber();
+        if (outcome.getWrittenOutcomeId() == null || earlier) {
             outcome.setWrittenOutcomeId(outcomeId);
-        }
-        if (outcome.getWrittenByPlayerId() == null) {
             outcome.setWrittenByPlayerId(playerId);
+            outcome.setWrittenRoundNumber(roundNumber);
         }
         save(outcome);
     }

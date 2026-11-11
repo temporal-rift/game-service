@@ -27,7 +27,18 @@ class ScoringContextAnnihilatedOutcomeJpaEntity extends GameEraScopedJpaEntity {
     @Column(name = "was_leading", nullable = false)
     private boolean wasLeading;
 
+    @Column(name = "round_number")
+    private Integer roundNumber;
+
     protected ScoringContextAnnihilatedOutcomeJpaEntity() {}
+
+    Integer getRoundNumber() {
+        return roundNumber;
+    }
+
+    void setRoundNumber(Integer roundNumber) {
+        this.roundNumber = roundNumber;
+    }
 
     UUID getEventId() {
         return eventId;

@@ -327,6 +327,7 @@ class EraScoringContextRepositoryAdapterTest {
         baselineWithFact.setEraNumber(2);
         baselineWithFact.setEventId(eventIdWithFact);
         baselineWithFact.setWrittenOutcomeId(writtenOutcomeId);
+        baselineWithFact.setWrittenRoundNumber(2);
         var baselineWithoutFacts = new ScoringContextEventOutcomeJpaEntity();
         baselineWithoutFacts.setId(UUID.randomUUID());
         baselineWithoutFacts.setGameId(gameId);
@@ -346,8 +347,8 @@ class EraScoringContextRepositoryAdapterTest {
 
         assertThat(context.eventOutcomes())
                 .containsExactlyInAnyOrder(
-                        new EventOutcomeFact(eventIdWithFact, winningOutcomeId, writtenOutcomeId),
-                        new EventOutcomeFact(eventIdWithoutFacts, null, null));
+                        new EventOutcomeFact(eventIdWithFact, winningOutcomeId, writtenOutcomeId, 2),
+                        new EventOutcomeFact(eventIdWithoutFacts, null, null, null));
     }
 
     @Test
@@ -391,6 +392,7 @@ class EraScoringContextRepositoryAdapterTest {
         activeAnnihilation.setEventId(activeEventId);
         activeAnnihilation.setOutcomeId(UUID.randomUUID());
         activeAnnihilation.setPlayerId(eraser);
+        activeAnnihilation.setRoundNumber(3);
         given(annihilatedOutcomeJpaRepository.findAllByGameIdAndEraNumber(gameId, 2))
                 .willReturn(List.of(stalledAnnihilation, activeAnnihilation));
 
@@ -411,27 +413,27 @@ class EraScoringContextRepositoryAdapterTest {
         var context = adapter.getRequired(gameId, 2);
 
         assertThat(context.annihilationFacts())
-                .extracting(fact -> fact.eventId())
-                .containsExactly(activeEventId);
+                .extracting(fact -> fact.eventId(), fact -> fact.roundNumber())
+                .containsExactly(org.assertj.core.groups.Tuple.tuple(activeEventId, 3));
         assertThat(context.eventOutcomes())
                 .containsExactlyInAnyOrder(
-                        new EventOutcomeFact(stalledEventId, null, null),
-                        new EventOutcomeFact(activeEventId, null, null));
+                        new EventOutcomeFact(stalledEventId, null, null, null),
+                        new EventOutcomeFact(activeEventId, null, null, null));
     }
 
     @Test
-    void upsertWrittenOutcome_delegatesToFirstWinsUpsert() {
+    void upsertWrittenOutcome_delegatesToEarliestRoundUpsert() {
         var gameId = UUID.randomUUID();
         var eventId = UUID.randomUUID();
         var outcomeId = UUID.randomUUID();
         var playerId = UUID.randomUUID();
 
-        adapter.upsertWrittenOutcome(gameId, 2, eventId, outcomeId, playerId);
+        adapter.upsertWrittenOutcome(gameId, 2, 1, eventId, outcomeId, playerId);
 
         then(eventOutcomeJpaRepository)
                 .should()
-                .insertWrittenOutcomeIfFirst(
-                        any(UUID.class), eq(gameId), eq(2), eq(eventId), eq(outcomeId), eq(playerId));
+                .insertWrittenOutcomeIfEarliest(
+                        any(UUID.class), eq(gameId), eq(2), eq(1), eq(eventId), eq(outcomeId), eq(playerId));
     }
 
     @Test
@@ -1142,7 +1144,7 @@ class EraScoringContextRepositoryAdapterTest {
 
         assertThat(context.annihilationFacts())
                 .containsExactly(new io.github.temporalrift.game.scoring.domain.context.AnnihilationFact(
-                        eventId, outcomeId, playerId, true, false));
+                        eventId, outcomeId, playerId, null, true, false));
         assertThat(context.fulfillmentDeclarations())
                 .containsExactly(new io.github.temporalrift.game.scoring.domain.context.FulfillmentDeclarationFact(
                         playerId, eventId));

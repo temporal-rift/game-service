@@ -70,7 +70,7 @@ class UpdateScoresCommandHandlerTest {
         var handler = new UpdateScoresCommandHandler(
                 repo,
                 ctxRepo,
-                new EraScoreEvaluator(),
+                new EraScoreEvaluator(io.github.temporalrift.game.scoring.ScoreRulesTestValues.rules()),
                 exposures,
                 gameRules,
                 scoreRules(),
@@ -109,7 +109,7 @@ class UpdateScoresCommandHandlerTest {
                 GAME_ID,
                 ERA,
                 List.of(new PlayerFaction(weaverId, Faction.WEAVERS), new PlayerFaction(eraserId, Faction.ERASERS)),
-                List.of(new EventOutcomeFact(UUID.randomUUID(), UUID.randomUUID(), null)),
+                List.of(new EventOutcomeFact(UUID.randomUUID(), UUID.randomUUID(), null, null)),
                 List.of(),
                 List.of(new ChainScoringFact(weaverId, chainId, ScoreReason.CHAIN_COMPLETED, ERA)),
                 List.of(),
@@ -233,7 +233,7 @@ class UpdateScoresCommandHandlerTest {
         var handler = new UpdateScoresCommandHandler(
                 repo,
                 ctxRepo,
-                new EraScoreEvaluator(),
+                new EraScoreEvaluator(io.github.temporalrift.game.scoring.ScoreRulesTestValues.rules()),
                 exposures,
                 gameRules,
                 scoreRules(),
@@ -266,8 +266,18 @@ class UpdateScoresCommandHandlerTest {
                 Set.of());
 
         var savedScores = new ArrayList<PlayerScore>();
-        var handler =
-                handler(context, List.of(), reason -> reason == ScoreReason.CHAIN_COMPLETED ? 12 : 0, savedScores);
+        var scoreRules = new ScoreRulesPort() {
+            @Override
+            public int pointsDelta(ScoreReason reason) {
+                return reason == ScoreReason.CHAIN_COMPLETED ? 12 : 0;
+            }
+
+            @Override
+            public boolean writtenOutcomeShieldsAnnihilation() {
+                return true;
+            }
+        };
+        var handler = handler(context, List.of(), scoreRules, savedScores);
 
         handler.handle(new UpdateEraScoresCommand(GAME_ID, ERA, List.of()));
 
@@ -307,7 +317,7 @@ class UpdateScoresCommandHandlerTest {
         var handler = new UpdateScoresCommandHandler(
                 repo,
                 ctxRepo,
-                new EraScoreEvaluator(),
+                new EraScoreEvaluator(io.github.temporalrift.game.scoring.ScoreRulesTestValues.rules()),
                 exposures,
                 gameRules,
                 scoreRules(),
@@ -433,7 +443,7 @@ class UpdateScoresCommandHandlerTest {
                 GAME_ID,
                 ERA,
                 List.of(new PlayerFaction(playerId, Faction.ERASERS)),
-                List.of(new EventOutcomeFact(UUID.randomUUID(), UUID.randomUUID(), null)),
+                List.of(new EventOutcomeFact(UUID.randomUUID(), UUID.randomUUID(), null, null)),
                 List.of(),
                 List.of(),
                 List.of(),
@@ -457,7 +467,7 @@ class UpdateScoresCommandHandlerTest {
         return new UpdateScoresCommandHandler(
                 repo,
                 ctxRepo,
-                new EraScoreEvaluator(),
+                new EraScoreEvaluator(io.github.temporalrift.game.scoring.ScoreRulesTestValues.rules()),
                 exposures,
                 gameRules,
                 scoreRules,
@@ -467,7 +477,7 @@ class UpdateScoresCommandHandlerTest {
     }
 
     private ScoreRulesPort scoreRules() {
-        return io.github.temporalrift.game.scoring.ScoreRulesTestValues::pointsDelta;
+        return io.github.temporalrift.game.scoring.ScoreRulesTestValues.rules();
     }
 
     static class FakeRevisionistExposureRepository implements RevisionistExposureRepository {
@@ -595,7 +605,8 @@ class UpdateScoresCommandHandlerTest {
         }
 
         @Override
-        public void upsertWrittenOutcome(UUID gameId, int eraNumber, UUID eventId, UUID outcomeId, UUID playerId) {
+        public void upsertWrittenOutcome(
+                UUID gameId, int eraNumber, int roundNumber, UUID eventId, UUID outcomeId, UUID playerId) {
             throw new UnsupportedOperationException("not used by UpdateScoresCommandHandler");
         }
 

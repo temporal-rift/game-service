@@ -144,6 +144,30 @@ class ExecutionRulesBindingTest {
     }
 
     @Test
+    @DisplayName("a context without the written-outcome shield rule gets its default, on")
+    void bind_shieldRuleOmitted_defaultsToOn() {
+        var properties =
+                bindable(ExecutionRulesFixture.rulesWithout("game.rules.scoring.written-outcome-shields-annihilation"));
+
+        var score = new ExecutionRulesBinding<>(ScoreRulesProperties.class, "game.rules.scoring", validator)
+                .bind(properties);
+
+        assertThat(score.writtenOutcomeShieldsAnnihilation()).isTrue();
+    }
+
+    @Test
+    @DisplayName("a context may switch the written-outcome shield rule off")
+    void bind_shieldRuleFalse_switchesItOff() {
+        var properties = bindable(
+                ExecutionRulesFixture.rulesWith("game.rules.scoring.written-outcome-shields-annihilation", false));
+
+        var score = new ExecutionRulesBinding<>(ScoreRulesProperties.class, "game.rules.scoring", validator)
+                .bind(properties);
+
+        assertThat(score.writtenOutcomeShieldsAnnihilation()).isFalse();
+    }
+
+    @Test
     @DisplayName("a missing score delta is rejected by its key")
     void bind_missingScoreDelta_namesTheKey() {
         var properties =

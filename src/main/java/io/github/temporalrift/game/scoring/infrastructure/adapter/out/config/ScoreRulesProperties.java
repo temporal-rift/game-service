@@ -7,6 +7,7 @@ import java.util.Objects;
 
 import jakarta.validation.constraints.NotNull;
 import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.boot.context.properties.bind.DefaultValue;
 import org.springframework.validation.annotation.Validated;
 
 import io.github.temporalrift.game.scoring.domain.playerscore.ScoreReason;
@@ -14,7 +15,9 @@ import io.github.temporalrift.game.scoring.domain.port.out.ScoreRulesPort;
 
 @ConfigurationProperties("game.rules.scoring")
 @Validated
-public record ScoreRulesProperties(@NotNull Map<ScoreReason, Integer> scoreDeltas) implements ScoreRulesPort {
+public record ScoreRulesProperties(
+        @NotNull Map<ScoreReason, Integer> scoreDeltas,
+        @DefaultValue("true") boolean writtenOutcomeShieldsAnnihilation) implements ScoreRulesPort {
 
     public ScoreRulesProperties {
         Objects.requireNonNull(scoreDeltas, "game.rules.scoring.score-deltas must not be null");

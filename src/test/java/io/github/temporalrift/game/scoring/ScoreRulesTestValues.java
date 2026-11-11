@@ -1,10 +1,30 @@
 package io.github.temporalrift.game.scoring;
 
 import io.github.temporalrift.game.scoring.domain.playerscore.ScoreReason;
+import io.github.temporalrift.game.scoring.domain.port.out.ScoreRulesPort;
 
 public final class ScoreRulesTestValues {
 
     private ScoreRulesTestValues() {}
+
+    /** The test score deltas with the written-outcome shield on, its default. */
+    public static ScoreRulesPort rules() {
+        return rules(true);
+    }
+
+    public static ScoreRulesPort rules(boolean writtenOutcomeShieldsAnnihilation) {
+        return new ScoreRulesPort() {
+            @Override
+            public int pointsDelta(ScoreReason reason) {
+                return ScoreRulesTestValues.pointsDelta(reason);
+            }
+
+            @Override
+            public boolean writtenOutcomeShieldsAnnihilation() {
+                return writtenOutcomeShieldsAnnihilation;
+            }
+        };
+    }
 
     public static int pointsDelta(ScoreReason reason) {
         return switch (reason) {

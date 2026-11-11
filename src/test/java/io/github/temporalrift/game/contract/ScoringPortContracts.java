@@ -204,15 +204,55 @@ public final class ScoringPortContracts {
             var firstOutcome = UUID.randomUUID();
             repository.upsertPlayerFaction(gameId, UUID.randomUUID(), Faction.PROPHETS);
 
-            repository.upsertWrittenOutcome(gameId, 1, event, firstOutcome, UUID.randomUUID());
-            repository.upsertWrittenOutcome(gameId, 1, event, UUID.randomUUID(), UUID.randomUUID());
+            repository.upsertWrittenOutcome(gameId, 1, 1, event, firstOutcome, UUID.randomUUID());
+            repository.upsertWrittenOutcome(gameId, 1, 2, event, UUID.randomUUID(), UUID.randomUUID());
+            repository.upsertWrittenOutcome(gameId, 1, 1, event, UUID.randomUUID(), UUID.randomUUID());
 
             assertThat(repository.getRequired(gameId, 1).eventOutcomes())
                     .singleElement()
                     .satisfies(fact -> {
                         assertThat(fact.eventId()).isEqualTo(event);
                         assertThat(fact.writtenOutcomeId()).isEqualTo(firstOutcome);
+                        assertThat(fact.writtenRoundNumber()).isEqualTo(1);
                     });
+        }
+
+        @Test
+        default void eraScoringContext_anEarlierRoundWritingArrivingLateReplacesTheLaterOne() {
+            var repository = port(EraScoringContextRepository.class);
+            var gameId = UUID.randomUUID();
+            var event = UUID.randomUUID();
+            var earlierOutcome = UUID.randomUUID();
+            var prophet = UUID.randomUUID();
+            repository.upsertPlayerFaction(gameId, prophet, Faction.PROPHETS);
+
+            repository.upsertWrittenOutcome(gameId, 1, 2, event, UUID.randomUUID(), prophet);
+            repository.upsertWrittenOutcome(gameId, 1, 1, event, earlierOutcome, prophet);
+            repository.upsertWrittenOutcome(gameId, 1, 1, event, earlierOutcome, prophet);
+
+            assertThat(repository.getRequired(gameId, 1).eventOutcomes())
+                    .singleElement()
+                    .satisfies(fact -> {
+                        assertThat(fact.writtenOutcomeId()).isEqualTo(earlierOutcome);
+                        assertThat(fact.writtenRoundNumber()).isEqualTo(1);
+                    });
+        }
+
+        @Test
+        default void eraScoringContext_anAnnihilationKeepsItsRoundAndRedeliveryIsANoOp() {
+            var repository = port(EraScoringContextRepository.class);
+            var gameId = UUID.randomUUID();
+            var eraser = UUID.randomUUID();
+            repository.upsertPlayerFaction(gameId, eraser, Faction.ERASERS);
+            var resolution =
+                    new AnnihilationResolved(gameId, 1, 2, eraser, UUID.randomUUID(), UUID.randomUUID(), true, true);
+
+            repository.recordAnnihilation(resolution);
+            repository.recordAnnihilation(resolution);
+
+            assertThat(repository.getRequired(gameId, 1).annihilationFacts())
+                    .singleElement()
+                    .satisfies(fact -> assertThat(fact.roundNumber()).isEqualTo(2));
         }
 
         @Test

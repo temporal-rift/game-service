@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+            https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.29.xsd">
+
+    <!--
+        The action round of an event's written outcome and of each confirmed Annihilate, so scoring can tell
+        whether an erasure of the written outcome happened at or after its writing. Nullable: rows recorded
+        before these columns existed have no known round and are never treated as shielded.
+    -->
+    <changeSet id="scoring-019-add-scoring-context-write-and-annihilation-rounds" author="game-service">
+        <addColumn tableName="scoring_context_event_outcome">
+            <column name="written_round_number" type="INT"/>
+        </addColumn>
+        <addColumn tableName="scoring_context_annihilated_outcome">
+            <column name="round_number" type="INT"/>
+        </addColumn>
+    </changeSet>
+</databaseChangeLog>

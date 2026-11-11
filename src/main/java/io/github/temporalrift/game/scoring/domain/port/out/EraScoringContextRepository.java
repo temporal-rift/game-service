@@ -29,7 +29,11 @@ public interface EraScoringContextRepository {
     void recordParadoxCascadeFact(
             UUID gameId, int eraNumber, UUID paradoxId, UUID affectedEventId, List<UUID> detonatedByPlayerIds);
 
-    void upsertWrittenOutcome(UUID gameId, int eraNumber, UUID eventId, UUID outcomeId, UUID playerId);
+    /**
+     * Records a Foresight writing played in {@code roundNumber}. The writing from the earliest round stands for the
+     * era; a later-round, same-round or redelivered writing leaves it unchanged, whatever the delivery order.
+     */
+    void upsertWrittenOutcome(UUID gameId, int eraNumber, int roundNumber, UUID eventId, UUID outcomeId, UUID playerId);
 
     /** Records a timeline-confirmed Annihilate once per game, era, target, and acting player. */
     void recordAnnihilation(AnnihilationResolved resolution);
