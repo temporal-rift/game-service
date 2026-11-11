@@ -158,14 +158,8 @@ class SpecialActionAvailabilityPolicyTest {
         var submission = new SubmittedAction.SpecialActionSubmission(
                 UUID.randomUUID(), Faction.ERASERS, special, null, null, UUID.randomUUID(), UUID.randomUUID(), null);
         try {
-            submission.validateFinalEra(era, round, MAX_ERAS);
-            submission.validateEarliestRound(era, round, ANNIHILATE_EARLIEST);
-            if (SpecialActionRoundRules.declarationWindowOnly(special)
-                    || SpecialActionRoundRules.obscureInFinalRound(special, round)
-                    || SpecialActionRoundRules.exposeOutsideItsRound(special, round)) {
-                return false;
-            }
-            return true;
+            submission.validateEligibility(era, round, MAX_ERAS, ANNIHILATE_EARLIEST);
+            return !SpecialActionRoundRules.exposeOutsideItsRound(special, round);
         } catch (RuntimeException _) {
             return false;
         }

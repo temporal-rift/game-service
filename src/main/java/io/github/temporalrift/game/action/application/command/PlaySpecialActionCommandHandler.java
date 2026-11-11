@@ -133,15 +133,13 @@ class PlaySpecialActionCommandHandler implements PlaySpecialActionUseCase {
                 command.targetEventId(),
                 command.targetOutcomeId(),
                 command.targetPlayerId());
-        action.validateFinalEra(command.eraNumber(), command.roundNumber(), gameRules.maxEras());
-        action.validateEarliestRound(command.eraNumber(), command.roundNumber(), gameRules.annihilateEarliestRound());
-        SpecialActionEraUsage usage = null;
-        if (gameRules.onceEraBudgetedSpecials().contains(command.specialAction())) {
-            usage = specialActionEraUsageRepository
-                    .findByGameIdAndEraNumberAndPlayerId(command.gameId(), command.eraNumber(), command.playerId())
-                    .orElseGet(() -> new SpecialActionEraUsage(
-                            java.util.UUID.randomUUID(), command.gameId(), command.eraNumber(), command.playerId()));
-            usage.claim(command.specialAction());
+        // The target-independent rules reject in the order the round-open availability report names them:
+        // declaration window, era, round, then the game budget and finally the era budget. A client told a
+        // special is unavailable for a reason therefore gets that same reason from a submission.
+        action.validateEligibility(
+                command.eraNumber(), command.roundNumber(), gameRules.maxEras(), gameRules.annihilateEarliestRound());
+        if (SpecialActionRoundRules.exposeOutsideItsRound(command.specialAction(), command.roundNumber())) {
+            throw new ExposeUnavailableException();
         }
         if (command.specialAction() == SpecialAction.SEAL) {
             // Game-wide Seal accounting is derived from the durable era-usage rows rather than a second
@@ -150,6 +148,14 @@ class PlaySpecialActionCommandHandler implements PlaySpecialActionUseCase {
             var acceptedSeals = sealGameUsageRepository.countAcceptedSeals(command.gameId(), command.playerId());
             SealGameUsage.reconstitute(java.util.UUID.randomUUID(), command.gameId(), command.playerId(), acceptedSeals)
                     .claim(gameRules.sealMaxUsesPerGame());
+        }
+        SpecialActionEraUsage usage = null;
+        if (gameRules.onceEraBudgetedSpecials().contains(command.specialAction())) {
+            usage = specialActionEraUsageRepository
+                    .findByGameIdAndEraNumberAndPlayerId(command.gameId(), command.eraNumber(), command.playerId())
+                    .orElseGet(() -> new SpecialActionEraUsage(
+                            java.util.UUID.randomUUID(), command.gameId(), command.eraNumber(), command.playerId()));
+            usage.claim(command.specialAction());
         }
         // Structural shape (target fields, self-targeting) must be confirmed before any target-specific
         // processing below reads those fields — recordExpose() in particular does a real round-1 lookup and
@@ -173,9 +179,6 @@ class PlaySpecialActionCommandHandler implements PlaySpecialActionUseCase {
     }
 
     private void recordExpose(Command command) {
-        if (SpecialActionRoundRules.exposeOutsideItsRound(command.specialAction(), command.roundNumber())) {
-            throw new ExposeUnavailableException();
-        }
         var targetPlayerId = command.targetPlayerId();
         var targetAction = actionRoundRepository
                 .findByGameIdAndEraNumberAndRoundNumber(command.gameId(), command.eraNumber(), 1)
