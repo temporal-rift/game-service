@@ -664,14 +664,11 @@ class PlaySpecialActionCommandHandlerTest {
         given(playerState.faction()).willReturn(Faction.REVISIONISTS);
         given(playerState.isJammed()).willReturn(false);
         given(gameRules.maxEras()).willReturn(5);
-        given(gameRules.onceEraBudgetedSpecials()).willReturn(EnumSet.of(SpecialAction.OBSCURE));
-        given(specialActionEraUsageRepository.findByGameIdAndEraNumberAndPlayerId(GAME_ID, ERA, PLAYER_ID))
-                .willReturn(Optional.empty());
 
         // when / then
         assertThatExceptionOfType(SpecialActionNotEligibleForRoundException.class)
                 .isThrownBy(() -> handler.handle(command));
-        then(specialActionEraUsageRepository).should(never()).save(any());
+        then(specialActionEraUsageRepository).shouldHaveNoInteractions();
         then(round).should(never()).submit(any());
         then(actionRoundRepository).should(never()).save(any());
     }
@@ -879,11 +876,11 @@ class PlaySpecialActionCommandHandlerTest {
         given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(playerState));
         given(playerState.faction()).willReturn(Faction.ACTIVISTS);
         given(playerState.isJammed()).willReturn(false);
-        given(gameRules.onceEraBudgetedSpecials()).willReturn(Set.of());
 
         assertThatExceptionOfType(ExposeUnavailableException.class).isThrownBy(() -> handler.handle(command));
 
         then(round).should(never()).submit(any());
+        then(specialActionEraUsageRepository).shouldHaveNoInteractions();
         then(activistEraStateRepository).shouldHaveNoInteractions();
     }
 
@@ -1274,9 +1271,6 @@ class PlaySpecialActionCommandHandlerTest {
         given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(playerState));
         given(playerState.faction()).willReturn(Faction.PROPHETS);
         given(playerState.isJammed()).willReturn(false);
-        given(gameRules.onceEraBudgetedSpecials()).willReturn(EnumSet.of(SpecialAction.SEAL));
-        given(specialActionEraUsageRepository.findByGameIdAndEraNumberAndPlayerId(GAME_ID, ERA, PLAYER_ID))
-                .willReturn(Optional.empty());
         given(gameRules.sealMaxUsesPerGame()).willReturn(2);
         given(sealGameUsageRepository.countAcceptedSeals(GAME_ID, PLAYER_ID)).willReturn(2);
 
@@ -1285,7 +1279,7 @@ class PlaySpecialActionCommandHandlerTest {
                         io.github.temporalrift.game.action.domain.specialactionerausage.SealGameBudgetExhaustedException
                                 .class)
                 .isThrownBy(() -> handler.handle(command));
-        then(specialActionEraUsageRepository).should(never()).save(any());
+        then(specialActionEraUsageRepository).shouldHaveNoInteractions();
         then(round).should(never()).submit(any());
     }
 
