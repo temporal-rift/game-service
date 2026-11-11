@@ -96,8 +96,23 @@ public record EraActionFactsFinalized(
         this(gameId, eraNumber, foresightFacts, exposeFacts, activistDeclarationFacts, revisionistFacts, List.of());
     }
 
-    /** A live Foresight writing, with the action round it was played in. */
-    public record ForesightFact(int roundNumber, UUID eventId, UUID outcomeId, UUID playerId) {}
+    /** A live Foresight writing, with the action round it was played in (at least 1). */
+    public record ForesightFact(int roundNumber, UUID eventId, UUID outcomeId, UUID playerId) {
+
+        public ForesightFact {
+            requireRound(roundNumber);
+        }
+    }
+
+    /**
+     * A write round decides whether an erasure is shielded, so a missing round (read back as 0 from a publication
+     * stored before rounds were carried) must fail instead of counting as earlier than every Annihilate.
+     */
+    static void requireRound(int roundNumber) {
+        if (roundNumber < 1) {
+            throw new IllegalArgumentException("Foresight roundNumber must be at least 1 but was " + roundNumber);
+        }
+    }
 
     public record ExposeFact(UUID activistPlayerId, UUID targetPlayerId) {}
 
