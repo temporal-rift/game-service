@@ -62,7 +62,12 @@ class ScoringContextProjectionEventListener {
     @ApplicationModuleListener
     void onForesightDeclared(ForesightDeclared event) {
         contextRepository.upsertWrittenOutcome(
-                event.gameId(), event.eraNumber(), event.eventId(), event.outcomeId(), event.playerId());
+                event.gameId(),
+                event.eraNumber(),
+                event.roundNumber(),
+                event.eventId(),
+                event.outcomeId(),
+                event.playerId());
     }
 
     @ApplicationModuleListener
@@ -73,7 +78,12 @@ class ScoringContextProjectionEventListener {
         // than raced against independently-dispatched per-submission listeners.
         event.foresightFacts()
                 .forEach(fact -> contextRepository.upsertWrittenOutcome(
-                        event.gameId(), event.eraNumber(), fact.eventId(), fact.outcomeId(), fact.playerId()));
+                        event.gameId(),
+                        event.eraNumber(),
+                        fact.roundNumber(),
+                        fact.eventId(),
+                        fact.outcomeId(),
+                        fact.playerId()));
         event.exposeFacts()
                 .forEach(fact -> contextRepository.recordActionFact(
                         event.gameId(),

@@ -96,7 +96,8 @@ public record EraActionFactsFinalized(
         this(gameId, eraNumber, foresightFacts, exposeFacts, activistDeclarationFacts, revisionistFacts, List.of());
     }
 
-    public record ForesightFact(UUID eventId, UUID outcomeId, UUID playerId) {}
+    /** A live Foresight writing, with the action round it was played in. */
+    public record ForesightFact(int roundNumber, UUID eventId, UUID outcomeId, UUID playerId) {}
 
     public record ExposeFact(UUID activistPlayerId, UUID targetPlayerId) {}
 

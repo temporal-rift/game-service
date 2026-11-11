@@ -47,6 +47,7 @@ class InMemoryScoringContextAnnihilatedOutcomeJpaRepository
         outcome.setPlayerId(resolution.annihilatingPlayerId());
         outcome.setErased(resolution.erased());
         outcome.setWasLeading(resolution.wasLeading());
+        outcome.setRoundNumber(resolution.roundNumber());
         insertRowIfAbsent(outcome);
     }
 }

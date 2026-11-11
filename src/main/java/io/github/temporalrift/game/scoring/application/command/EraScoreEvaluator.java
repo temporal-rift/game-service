@@ -16,21 +16,30 @@ import io.github.temporalrift.game.scoring.domain.context.EraScoringContext;
 import io.github.temporalrift.game.scoring.domain.context.EventOutcomeFact;
 import io.github.temporalrift.game.scoring.domain.event.OutcomeApplied;
 import io.github.temporalrift.game.scoring.domain.playerscore.ScoreReason;
+import io.github.temporalrift.game.scoring.domain.port.out.ScoreRulesPort;
 import io.github.temporalrift.game.shared.domain.model.Faction;
 
 @Component
 class EraScoreEvaluator {
+
+    private final ScoreRulesPort scoreRules;
+
+    EraScoreEvaluator(ScoreRulesPort scoreRules) {
+        this.scoreRules = Objects.requireNonNull(scoreRules, "scoreRules must not be null");
+    }
 
     List<PlayerScoreDecision> evaluate(EraScoringContext context, List<OutcomeApplied> outcomes) {
         Objects.requireNonNull(context, "context must not be null");
         Objects.requireNonNull(outcomes, "outcomes must not be null");
 
         var decisions = new ArrayList<PlayerScoreDecision>();
+        boolean writingShields = scoreRules.writtenOutcomeShieldsAnnihilation();
 
         for (var player : context.players()) {
             switch (player.faction()) {
-                case PROPHETS -> decisions.addAll(prophetDecisions(player.playerId(), context, outcomes));
-                case ERASERS -> decisions.addAll(eraserDecisions(player.playerId(), context));
+                case PROPHETS ->
+                    decisions.addAll(prophetDecisions(player.playerId(), context, outcomes, writingShields));
+                case ERASERS -> decisions.addAll(eraserDecisions(player.playerId(), context, writingShields));
                 case WEAVERS -> decisions.addAll(weaverDecisions(player.playerId(), context));
                 case ACTIVISTS, REVISIONISTS -> decisions.addAll(actionDecisions(player.playerId(), context));
             }
@@ -79,11 +88,13 @@ class EraScoreEvaluator {
     }
 
     private List<PlayerScoreDecision> prophetDecisions(
-            UUID playerId, EraScoringContext context, List<OutcomeApplied> outcomes) {
+            UUID playerId, EraScoringContext context, List<OutcomeApplied> outcomes, boolean writingShields) {
         var decisions = new ArrayList<PlayerScoreDecision>();
         for (var outcome : outcomes) {
             findEventFact(context, outcome.eventId())
                     .filter(fact -> fact.writtenOutcomeId() != null)
+                    // A shielded erasure expires the writing and any Fulfillment on it, as a Stall does.
+                    .filter(fact -> !(writingShields && context.isWritingShielded(fact.eventId())))
                     .ifPresent(fact -> {
                         boolean resolvedAsWritten = fact.writtenOutcomeId().equals(outcome.winningOutcomeId());
                         boolean declaredFulfillment = context.fulfillmentDeclarations().stream()
@@ -103,12 +114,14 @@ class EraScoreEvaluator {
         return declaredFulfillment ? ScoreReason.FULFILLMENT_SUCCEEDED : ScoreReason.EVENT_RESOLVED_AS_WRITTEN;
     }
 
-    private List<PlayerScoreDecision> eraserDecisions(UUID playerId, EraScoringContext context) {
+    private List<PlayerScoreDecision> eraserDecisions(
+            UUID playerId, EraScoringContext context, boolean writingShields) {
         var decisions = new ArrayList<PlayerScoreDecision>();
 
         context.annihilationFacts().stream()
                 .filter(fact -> fact.playerId().equals(playerId))
                 .filter(AnnihilationFact::creditable)
+                .filter(fact -> !(writingShields && context.isShielded(fact)))
                 .forEach(fact -> decisions.add(
                         new PlayerScoreDecision(playerId, ScoreReason.ANNIHILATED_OUTCOME, context.eraNumber())));
 

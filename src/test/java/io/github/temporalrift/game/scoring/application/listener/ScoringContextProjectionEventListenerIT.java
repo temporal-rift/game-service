@@ -119,7 +119,7 @@ class ScoringContextProjectionEventListenerIT {
             applicationEventPublisher.publishEvent(event);
         });
         transactionTemplate.executeWithoutResult(_ -> applicationEventPublisher.publishEvent(
-                new ForesightDeclared(gameId, eraNumber, eventId, outcomeId, playerId)));
+                new ForesightDeclared(gameId, eraNumber, 1, eventId, outcomeId, playerId)));
 
         await().atMost(Duration.ofSeconds(10))
                 .ignoreException(EraScoringContextNotFoundException.class)
@@ -164,7 +164,7 @@ class ScoringContextProjectionEventListenerIT {
                 _ -> applicationEventPublisher.publishEvent(new EraActionFactsFinalized(
                         gameId,
                         eraNumber,
-                        List.of(new EraActionFactsFinalized.ForesightFact(eventId, outcomeId, playerId)),
+                        List.of(new EraActionFactsFinalized.ForesightFact(3, eventId, outcomeId, playerId)),
                         List.of())));
 
         await().atMost(Duration.ofSeconds(10))

@@ -63,7 +63,7 @@ public sealed interface SubmittedAction permits SubmittedAction.CardAction, Subm
      * A private, scoring-internal fact this submission produces, if any. Never published to Kafka —
      * see {@code ActionRoundEventPublication}.
      */
-    Optional<Object> scoringFact(UUID gameId, int eraNumber);
+    Optional<Object> scoringFact(UUID gameId, int eraNumber, int roundNumber);
 
     /** The family every other player sees for this submission in the public round summary. */
     ActionFamily family();
@@ -339,7 +339,7 @@ public sealed interface SubmittedAction permits SubmittedAction.CardAction, Subm
         }
 
         @Override
-        public Optional<Object> scoringFact(UUID gameId, int eraNumber) {
+        public Optional<Object> scoringFact(UUID gameId, int eraNumber, int roundNumber) {
             return Optional.empty();
         }
 
@@ -483,10 +483,11 @@ public sealed interface SubmittedAction permits SubmittedAction.CardAction, Subm
         }
 
         @Override
-        public Optional<Object> scoringFact(UUID gameId, int eraNumber) {
+        public Optional<Object> scoringFact(UUID gameId, int eraNumber, int roundNumber) {
             return switch (specialAction) {
                 case FORESIGHT ->
-                    Optional.of(new ForesightDeclared(gameId, eraNumber, targetEventId, targetOutcomeId, playerId));
+                    Optional.of(new ForesightDeclared(
+                            gameId, eraNumber, roundNumber, targetEventId, targetOutcomeId, playerId));
                 default -> Optional.empty();
             };
         }

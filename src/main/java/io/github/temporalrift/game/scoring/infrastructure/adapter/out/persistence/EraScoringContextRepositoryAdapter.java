@@ -134,6 +134,7 @@ class EraScoringContextRepositoryAdapter implements EraScoringContextRepository 
                         entity.getEventId(),
                         entity.getOutcomeId(),
                         entity.getPlayerId(),
+                        entity.getRoundNumber(),
                         entity.isErased(),
                         entity.isWasLeading()))
                 .toList();
@@ -213,7 +214,8 @@ class EraScoringContextRepositoryAdapter implements EraScoringContextRepository 
                 .map(written -> new EventOutcomeFact(
                         written.getEventId(),
                         winningOutcomesByEvent.get(written.getEventId()),
-                        written.getWrittenOutcomeId()))
+                        written.getWrittenOutcomeId(),
+                        written.getWrittenRoundNumber()))
                 .toList();
     }
 
@@ -272,9 +274,10 @@ class EraScoringContextRepositoryAdapter implements EraScoringContextRepository 
     // tryComplete() throws — e.g. a transient EraScoringContextNotFoundException while EventsDrawn's
     // own listener is still landing — that must not roll back a fact this method already wrote.
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void upsertWrittenOutcome(UUID gameId, int eraNumber, UUID eventId, UUID outcomeId, UUID playerId) {
-        eventOutcomeJpaRepository.insertWrittenOutcomeIfFirst(
-                UUID.randomUUID(), gameId, eraNumber, eventId, outcomeId, playerId);
+    public void upsertWrittenOutcome(
+            UUID gameId, int eraNumber, int roundNumber, UUID eventId, UUID outcomeId, UUID playerId) {
+        eventOutcomeJpaRepository.insertWrittenOutcomeIfEarliest(
+                UUID.randomUUID(), gameId, eraNumber, roundNumber, eventId, outcomeId, playerId);
     }
 
     @Override

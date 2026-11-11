@@ -7,5 +7,8 @@ import java.util.UUID;
  * "written" outcome; the scoring module projects it into {@code EraScoringContext.eventOutcomes()}.
  * In-process only — unlike {@code SpecialActionPlayed} it never crosses to Kafka, since no other
  * service needs it. Lives in {@code game.shared} for the same reason as {@link EventsDrawn}.
+ *
+ * @param roundNumber the action round the Foresight was played in — the event's write round
  */
-public record ForesightDeclared(UUID gameId, int eraNumber, UUID eventId, UUID outcomeId, UUID playerId) {}
+public record ForesightDeclared(
+        UUID gameId, int eraNumber, int roundNumber, UUID eventId, UUID outcomeId, UUID playerId) {}

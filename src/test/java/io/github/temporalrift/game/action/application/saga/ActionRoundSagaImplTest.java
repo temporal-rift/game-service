@@ -607,7 +607,63 @@ class ActionRoundSagaImplTest {
             assertThat(event.eraNumber()).isEqualTo(ERA_NUMBER);
             assertThat(event.foresightFacts())
                     .containsExactly(
-                            new EraActionFactsFinalized.ForesightFact(targetEventId, targetOutcomeId, PLAYER_1));
+                            new EraActionFactsFinalized.ForesightFact(3, targetEventId, targetOutcomeId, PLAYER_1));
+        }
+
+        @Test
+        @DisplayName("Foresights from different rounds — each ForesightFact carries its own write round")
+        void tryClose_foresightsAcrossRounds_bundleEachWithItsRound() {
+            // given
+            var firstEventId = UUID.randomUUID();
+            var firstOutcomeId = UUID.randomUUID();
+            var secondEventId = UUID.randomUUID();
+            var secondOutcomeId = UUID.randomUUID();
+            var round1 = new ActionRound(
+                    UUID.randomUUID(), new ActionRoundConfig(GAME_ID, ERA_NUMBER, 1, TIMER_SECONDS), List.of(PLAYER_1));
+            round1.submit(new SubmittedAction.SpecialActionSubmission(
+                    PLAYER_1,
+                    Faction.PROPHETS,
+                    SpecialAction.FORESIGHT,
+                    null,
+                    null,
+                    firstEventId,
+                    firstOutcomeId,
+                    null));
+            var round3 = new ActionRound(
+                    UUID.randomUUID(), new ActionRoundConfig(GAME_ID, ERA_NUMBER, 3, TIMER_SECONDS), List.of(PLAYER_1));
+            round3.submit(new SubmittedAction.SpecialActionSubmission(
+                    PLAYER_1,
+                    Faction.PROPHETS,
+                    SpecialAction.FORESIGHT,
+                    null,
+                    null,
+                    secondEventId,
+                    secondOutcomeId,
+                    null));
+            given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA_NUMBER, 3))
+                    .willReturn(Optional.of(round3));
+            given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumber(GAME_ID, ERA_NUMBER, 1))
+                    .willReturn(Optional.of(round1));
+            var updatedState = new ActionRoundSagaState(
+                    UUID.randomUUID(),
+                    GAME_ID,
+                    ERA_NUMBER,
+                    3,
+                    ActionRoundSagaStatus.WAITING,
+                    List.of(),
+                    TIMER_EXPIRES_AT);
+            given(stateManager.markSubmitted(GAME_ID, ERA_NUMBER, 3, PLAYER_1)).willReturn(Optional.of(updatedState));
+
+            // when
+            saga.handlePlayerSubmitted(GAME_ID, ERA_NUMBER, 3, PLAYER_1);
+
+            // then
+            var captor = ArgumentCaptor.<EraActionFactsFinalized>captor();
+            then(actionEventPublisher).should().publishInternally(captor.capture());
+            assertThat(captor.getValue().foresightFacts())
+                    .containsExactly(
+                            new EraActionFactsFinalized.ForesightFact(1, firstEventId, firstOutcomeId, PLAYER_1),
+                            new EraActionFactsFinalized.ForesightFact(3, secondEventId, secondOutcomeId, PLAYER_1));
         }
 
         @Test

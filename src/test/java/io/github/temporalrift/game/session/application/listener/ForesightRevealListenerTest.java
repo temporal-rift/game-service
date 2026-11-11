@@ -83,7 +83,7 @@ class ForesightRevealListenerTest {
         given(reveals.saveIfAbsent(any())).willReturn(true);
         given(catalog.findByEventIds(deck.subList(0, 3))).willReturn(definitions(deck.subList(0, 3)));
 
-        listener.onForesightDeclared(new ForesightDeclared(gameId, 2, UUID.randomUUID(), UUID.randomUUID(), viewer));
+        listener.onForesightDeclared(new ForesightDeclared(gameId, 2, 1, UUID.randomUUID(), UUID.randomUUID(), viewer));
 
         var reveal = ArgumentCaptor.forClass(ForesightReveal.class);
         then(reveals).should().saveIfAbsent(reveal.capture());
@@ -120,7 +120,7 @@ class ForesightRevealListenerTest {
         given(reveals.findByGameIdAndEraNumberAndPlayerId(gameId, 5, viewer)).willReturn(Optional.empty());
         given(reveals.saveIfAbsent(any())).willReturn(true);
 
-        listener.onForesightDeclared(new ForesightDeclared(gameId, 5, UUID.randomUUID(), UUID.randomUUID(), viewer));
+        listener.onForesightDeclared(new ForesightDeclared(gameId, 5, 1, UUID.randomUUID(), UUID.randomUUID(), viewer));
 
         var reveal = ArgumentCaptor.forClass(ForesightReveal.class);
         then(reveals).should().saveIfAbsent(reveal.capture());
@@ -142,7 +142,7 @@ class ForesightRevealListenerTest {
         var stored = new ForesightReveal(gameId, 2, viewer, 3, List.of(UUID.randomUUID()), null);
         given(reveals.findByGameIdAndEraNumberAndPlayerId(gameId, 2, viewer)).willReturn(Optional.of(stored));
 
-        listener.onForesightDeclared(new ForesightDeclared(gameId, 2, UUID.randomUUID(), UUID.randomUUID(), viewer));
+        listener.onForesightDeclared(new ForesightDeclared(gameId, 2, 1, UUID.randomUUID(), UUID.randomUUID(), viewer));
 
         then(reveals).should(never()).saveIfAbsent(any());
         then(eventPublisher).should(never()).publish(any());
@@ -155,7 +155,7 @@ class ForesightRevealListenerTest {
         given(gameRepository.findById(gameId)).willReturn(Optional.empty());
 
         listener.onForesightDeclared(
-                new ForesightDeclared(gameId, 2, UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID()));
+                new ForesightDeclared(gameId, 2, 1, UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID()));
 
         then(reveals).should(never()).saveIfAbsent(any());
         then(eventPublisher).should(never()).publish(any());
@@ -174,7 +174,7 @@ class ForesightRevealListenerTest {
         given(reveals.saveIfAbsent(any())).willReturn(true);
         given(catalog.findByEventIds(deck.subList(0, 3))).willReturn(definitions(deck.subList(0, 3)));
 
-        listener.onForesightDeclared(new ForesightDeclared(gameId, 2, UUID.randomUUID(), UUID.randomUUID(), viewer));
+        listener.onForesightDeclared(new ForesightDeclared(gameId, 2, 1, UUID.randomUUID(), UUID.randomUUID(), viewer));
 
         var reveal = ArgumentCaptor.forClass(ForesightReveal.class);
         then(reveals).should().saveIfAbsent(reveal.capture());
@@ -189,7 +189,7 @@ class ForesightRevealListenerTest {
         var game = gameAtEra(gameId, deck(6), 3);
         given(gameRepository.findById(gameId)).willReturn(Optional.of(game));
 
-        listener.onForesightDeclared(new ForesightDeclared(gameId, 2, UUID.randomUUID(), UUID.randomUUID(), viewer));
+        listener.onForesightDeclared(new ForesightDeclared(gameId, 2, 1, UUID.randomUUID(), UUID.randomUUID(), viewer));
 
         then(reveals).should(never()).saveIfAbsent(any());
         then(eventPublisher).should(never()).publish(any());
@@ -208,7 +208,7 @@ class ForesightRevealListenerTest {
         given(reveals.saveIfAbsent(any())).willReturn(true);
         given(catalog.findByEventIds(deck.subList(0, 3))).willReturn(definitions(deck.subList(0, 3)));
 
-        listener.onForesightDeclared(new ForesightDeclared(gameId, 2, UUID.randomUUID(), UUID.randomUUID(), viewer));
+        listener.onForesightDeclared(new ForesightDeclared(gameId, 2, 1, UUID.randomUUID(), UUID.randomUUID(), viewer));
 
         var reveal = ArgumentCaptor.forClass(ForesightReveal.class);
         then(reveals).should().saveIfAbsent(reveal.capture());

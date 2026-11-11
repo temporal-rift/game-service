@@ -158,7 +158,7 @@ public class ActionRound extends AggregateRoot {
         var cancelledPlayerIds = RoundCancellation.cancelledPlayerIds(submittedActions);
         submittedActions.stream()
                 .filter(action -> !cancelledPlayerIds.contains(action.playerId()))
-                .map(action -> action.scoringFact(gameId, eraNumber))
+                .map(action -> action.scoringFact(gameId, eraNumber, roundNumber))
                 .flatMap(java.util.Optional::stream)
                 .forEach(this::registerEvent);
         registerEvent(

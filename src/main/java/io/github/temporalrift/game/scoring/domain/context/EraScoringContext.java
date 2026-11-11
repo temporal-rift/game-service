@@ -39,4 +39,18 @@ public record EraScoringContext(
         paradoxCascadeFacts = List.copyOf(paradoxCascadeFacts);
         priorCascadePenaltyEventIds = Set.copyOf(priorCascadePenaltyEventIds);
     }
+
+    /** Whether {@code annihilation} erased its event's written outcome at or after the writing. */
+    public boolean isShielded(AnnihilationFact annihilation) {
+        Objects.requireNonNull(annihilation, "annihilation must not be null");
+        return eventOutcomes.stream().anyMatch(event -> event.shields(annihilation));
+    }
+
+    /** Whether {@code eventId}'s writing expired this era because a shielded erasure removed its written outcome. */
+    public boolean isWritingShielded(UUID eventId) {
+        Objects.requireNonNull(eventId, "eventId must not be null");
+        return eventOutcomes.stream()
+                .filter(event -> event.eventId().equals(eventId))
+                .anyMatch(event -> annihilationFacts.stream().anyMatch(event::shields));
+    }
 }

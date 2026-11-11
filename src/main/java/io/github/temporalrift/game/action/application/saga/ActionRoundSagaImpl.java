@@ -8,6 +8,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
@@ -545,36 +546,16 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
         var corruptCorrelationFacts = eraRounds.stream()
                 .flatMap(actionRound -> correlateCorruptCardsForRound(actionRound).stream())
                 .toList();
-        for (var action : eraRounds.stream()
-                .flatMap(ActionRoundSagaImpl::uncancelledActions)
-                .toList()) {
-            if (action instanceof SubmittedAction.SpecialActionSubmission special) {
-                switch (special.specialAction()) {
-                    case FORESIGHT ->
-                        foresightFacts.add(new EraActionFactsFinalized.ForesightFact(
-                                special.targetEventId(), special.targetOutcomeId(), special.playerId()));
-                    // The latest Rewrite is the player's single era declaration; it replaces any earlier one.
-                    case REWRITE ->
-                        latestRewriteFacts.put(
-                                special.playerId(),
-                                new EraActionFactsFinalized.RevisionistFact(
-                                        special.playerId(),
-                                        special.specialAction(),
-                                        special.targetEventId(),
-                                        special.targetOutcomeId()));
-                    case MIMIC ->
-                        mimicFacts.add(new EraActionFactsFinalized.RevisionistFact(
-                                special.playerId(),
-                                special.specialAction(),
-                                special.targetEventId(),
-                                special.targetOutcomeId()));
-                    case FULFILLMENT ->
-                        fulfillmentFacts.add(new EraActionFactsFinalized.FulfillmentFact(
-                                special.playerId(), special.targetEventId()));
-                    default -> {
-                        // Every other special action has no scoring-context fact to bundle.
-                    }
-                }
+        // Walked round by round so each Foresight keeps the round it was written in.
+        for (var eraRound : eraRounds) {
+            for (var action : uncancelledActions(eraRound).toList()) {
+                bundleSpecialActionFact(
+                        action,
+                        eraRound.roundNumber(),
+                        foresightFacts,
+                        latestRewriteFacts,
+                        mimicFacts,
+                        fulfillmentFacts);
             }
         }
         actionEventPublisher.publishInternally(new EraActionFactsFinalized(
@@ -588,6 +569,44 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
                 List.copyOf(fulfillmentFacts),
                 corruptCorrelationFacts,
                 tracedMimicPlayerIds(eraRounds)));
+    }
+
+    private static void bundleSpecialActionFact(
+            SubmittedAction action,
+            int roundNumber,
+            List<EraActionFactsFinalized.ForesightFact> foresightFacts,
+            Map<UUID, EraActionFactsFinalized.RevisionistFact> latestRewriteFacts,
+            List<EraActionFactsFinalized.RevisionistFact> mimicFacts,
+            Set<EraActionFactsFinalized.FulfillmentFact> fulfillmentFacts) {
+        if (!(action instanceof SubmittedAction.SpecialActionSubmission special)) {
+            return;
+        }
+        switch (special.specialAction()) {
+            case FORESIGHT ->
+                foresightFacts.add(new EraActionFactsFinalized.ForesightFact(
+                        roundNumber, special.targetEventId(), special.targetOutcomeId(), special.playerId()));
+            // The latest Rewrite is the player's single era declaration; it replaces any earlier one.
+            case REWRITE ->
+                latestRewriteFacts.put(
+                        special.playerId(),
+                        new EraActionFactsFinalized.RevisionistFact(
+                                special.playerId(),
+                                special.specialAction(),
+                                special.targetEventId(),
+                                special.targetOutcomeId()));
+            case MIMIC ->
+                mimicFacts.add(new EraActionFactsFinalized.RevisionistFact(
+                        special.playerId(),
+                        special.specialAction(),
+                        special.targetEventId(),
+                        special.targetOutcomeId()));
+            case FULFILLMENT ->
+                fulfillmentFacts.add(
+                        new EraActionFactsFinalized.FulfillmentFact(special.playerId(), special.targetEventId()));
+            default -> {
+                // Every other special action has no scoring-context fact to bundle.
+            }
+        }
     }
 
     // Revisionists another player's Trace reported as a Mimic influencer at any of this era's round closes.

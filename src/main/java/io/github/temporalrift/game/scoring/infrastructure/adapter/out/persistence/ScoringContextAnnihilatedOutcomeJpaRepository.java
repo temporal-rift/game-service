@@ -19,11 +19,12 @@ interface ScoringContextAnnihilatedOutcomeJpaRepository
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query(value = """
                     INSERT INTO scoring_context_annihilated_outcome
-                        (id, game_id, era_number, event_id, outcome_id, player_id, erased, was_leading)
+                        (id, game_id, era_number, event_id, outcome_id, player_id, erased, was_leading,
+                         round_number)
                     VALUES (:id, :#{#resolution.gameId}, :#{#resolution.eraNumber},
                             :#{#resolution.targetEventId}, :#{#resolution.targetOutcomeId},
                             :#{#resolution.annihilatingPlayerId}, :#{#resolution.erased},
-                            :#{#resolution.wasLeading})
+                            :#{#resolution.wasLeading}, :#{#resolution.roundNumber})
                     ON CONFLICT (game_id, era_number, event_id, outcome_id, player_id) DO NOTHING
                     """, nativeQuery = true)
     void insertIfAbsent(@Param("id") UUID id, @Param("resolution") AnnihilationResolved resolution);
