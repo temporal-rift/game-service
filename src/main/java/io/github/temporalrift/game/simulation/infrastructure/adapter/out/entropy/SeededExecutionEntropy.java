@@ -4,7 +4,6 @@ import java.util.UUID;
 import java.util.random.RandomGenerator;
 
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Component;
 
 import io.github.temporalrift.game.shared.domain.model.EntropyCoordinate;
@@ -17,7 +16,6 @@ import io.github.temporalrift.game.simulation.domain.port.out.EntropyDecisionRep
 import io.github.temporalrift.game.simulation.infrastructure.adapter.out.context.PinnedExecutionContext;
 
 @Component
-@Primary
 @ConditionalOnProperty(name = "game.simulation.enabled", havingValue = "true")
 class SeededExecutionEntropy implements ExecutionEntropy {
 
