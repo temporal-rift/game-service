@@ -80,6 +80,9 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
     private final SpecialActionAvailabilityReporter availabilityReporter;
     private final Clock clock;
 
+    // Exactly one ExecutionEntropy bean is registered at runtime: the secure and the seeded implementations are
+    // switched by mutually exclusive values of game.simulation.enabled, a condition static analysis cannot evaluate.
+    @SuppressWarnings("java:S9352")
     ActionRoundSagaImpl(
             ActionRoundRepository actionRoundRepository,
             ActivistEraStateRepository activistEraStateRepository,
