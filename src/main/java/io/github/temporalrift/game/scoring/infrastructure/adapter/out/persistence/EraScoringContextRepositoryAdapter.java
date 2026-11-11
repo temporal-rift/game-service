@@ -360,12 +360,12 @@ class EraScoringContextRepositoryAdapter implements EraScoringContextRepository 
                         .filter(resolution -> resolution.eventId().equals(declaration.getTargetEventId()))
                         .findFirst()
                         .flatMap(resolution ->
-                                resolution.terminalState() != EraResolutionCompleted.TerminalState.OUTCOME_APPLIED
-                                        ? java.util.Optional.of(resolveDeclaration(declaration, null))
-                                        : outcomeInboxJpaRepository
+                                resolution.terminalState() == EraResolutionCompleted.TerminalState.OUTCOME_APPLIED
+                                        ? outcomeInboxJpaRepository
                                                 .findByGameIdAndEraNumberAndEventId(
                                                         gameId, eraNumber, declaration.getTargetEventId())
-                                                .map(outcome -> resolveDeclaration(declaration, outcome))))
+                                                .map(outcome -> resolveDeclaration(declaration, outcome))
+                                        : java.util.Optional.of(resolveDeclaration(declaration, null))))
                 .flatMap(java.util.Optional::stream)
                 .toList();
     }
