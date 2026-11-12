@@ -2,6 +2,7 @@ package io.github.temporalrift.game.scoring.infrastructure.adapter.out.persisten
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -453,20 +454,23 @@ class EraScoringContextRepositoryAdapter implements EraScoringContextRepository 
                 .ifPresent(outcome -> {
                     action.setResolved(true);
                     var won = action.getTargetOutcomeId().equals(outcome.getWinningOutcomeId());
-                    var rewrite = SpecialAction.REWRITE.name().equals(action.getAction());
-                    // A locked Rewrite that loses is a miss; a Mimic that does not win scores nothing.
-                    var reason = rewrite
-                            ? (won ? ScoreReason.SECRET_OUTCOME_WON : ScoreReason.SECRET_OUTCOME_MISSED)
-                            : (won ? ScoreReason.MIMIC_CONTRIBUTED_TO_WIN : null);
-                    if (reason != null) {
-                        insertActionFact(
-                                action.getGameId(),
-                                action.getEraNumber(),
-                                action.getPlayerId(),
-                                Faction.REVISIONISTS,
-                                reason);
-                    }
+                    revisionistReason(action, won)
+                            .ifPresent(reason -> insertActionFact(
+                                    action.getGameId(),
+                                    action.getEraNumber(),
+                                    action.getPlayerId(),
+                                    Faction.REVISIONISTS,
+                                    reason));
                 });
+    }
+
+    // A locked Rewrite that loses is a miss; a Mimic that does not win scores nothing.
+    private static Optional<ScoreReason> revisionistReason(
+            ScoringContextRevisionistActionJpaEntity action, boolean won) {
+        if (SpecialAction.REWRITE.name().equals(action.getAction())) {
+            return Optional.of(won ? ScoreReason.SECRET_OUTCOME_WON : ScoreReason.SECRET_OUTCOME_MISSED);
+        }
+        return won ? Optional.of(ScoreReason.MIMIC_CONTRIBUTED_TO_WIN) : Optional.empty();
     }
 
     @Override
