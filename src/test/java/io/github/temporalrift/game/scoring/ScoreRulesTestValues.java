@@ -7,12 +7,17 @@ public final class ScoreRulesTestValues {
 
     private ScoreRulesTestValues() {}
 
-    /** The test score deltas with the written-outcome shield on, its default. */
+    /** The test score deltas with the written-outcome shield and annihilation consequence rules on, their defaults. */
     public static ScoreRulesPort rules() {
         return rules(true);
     }
 
     public static ScoreRulesPort rules(boolean writtenOutcomeShieldsAnnihilation) {
+        return rules(writtenOutcomeShieldsAnnihilation, true);
+    }
+
+    public static ScoreRulesPort rules(
+            boolean writtenOutcomeShieldsAnnihilation, boolean annihilationRequiresConsequence) {
         return new ScoreRulesPort() {
             @Override
             public int pointsDelta(ScoreReason reason) {
@@ -27,6 +32,11 @@ public final class ScoreRulesTestValues {
             @Override
             public boolean exposeRequiresDeclaredEvent() {
                 return true;
+            }
+
+            @Override
+            public boolean annihilationRequiresConsequence() {
+                return annihilationRequiresConsequence;
             }
         };
     }

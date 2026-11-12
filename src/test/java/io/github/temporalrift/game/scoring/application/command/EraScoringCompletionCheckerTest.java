@@ -246,6 +246,6 @@ class EraScoringCompletionCheckerTest {
     }
 
     private static OutcomeApplied outcomeApplied() {
-        return new OutcomeApplied(GAME_ID, ERA_NUMBER, UUID.randomUUID(), UUID.randomUUID(), List.of());
+        return new OutcomeApplied(GAME_ID, ERA_NUMBER, UUID.randomUUID(), UUID.randomUUID(), List.of(), List.of());
     }
 }

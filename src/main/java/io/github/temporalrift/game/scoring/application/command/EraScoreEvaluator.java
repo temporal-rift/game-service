@@ -39,7 +39,7 @@ class EraScoreEvaluator {
             switch (player.faction()) {
                 case PROPHETS ->
                     decisions.addAll(prophetDecisions(player.playerId(), context, outcomes, writingShields));
-                case ERASERS -> decisions.addAll(eraserDecisions(player.playerId(), context, writingShields));
+                case ERASERS -> decisions.addAll(eraserDecisions(player.playerId(), context, outcomes, writingShields));
                 case WEAVERS -> decisions.addAll(weaverDecisions(player.playerId(), context));
                 case ACTIVISTS, REVISIONISTS -> decisions.addAll(actionDecisions(player.playerId(), context));
             }
@@ -115,13 +115,15 @@ class EraScoreEvaluator {
     }
 
     private List<PlayerScoreDecision> eraserDecisions(
-            UUID playerId, EraScoringContext context, boolean writingShields) {
+            UUID playerId, EraScoringContext context, List<OutcomeApplied> outcomes, boolean writingShields) {
         var decisions = new ArrayList<PlayerScoreDecision>();
+        boolean requiresConsequence = scoreRules.annihilationRequiresConsequence();
 
         context.annihilationFacts().stream()
                 .filter(fact -> fact.playerId().equals(playerId))
                 .filter(AnnihilationFact::creditable)
                 .filter(fact -> !(writingShields && context.isShielded(fact)))
+                .filter(fact -> !requiresConsequence || changedItsWinner(fact, outcomes))
                 .forEach(fact -> decisions.add(
                         new PlayerScoreDecision(playerId, ScoreReason.ANNIHILATED_OUTCOME, context.eraNumber())));
 
@@ -134,6 +136,13 @@ class EraScoreEvaluator {
                         new PlayerScoreDecision(playerId, ScoreReason.CORRUPTED_OPPONENT_CARD, context.eraNumber())));
 
         return decisions;
+    }
+
+    // An event with no applied outcome this era stalled or cascaded, so no erasure on it changed a winner.
+    private static boolean changedItsWinner(AnnihilationFact fact, List<OutcomeApplied> outcomes) {
+        return outcomes.stream()
+                .filter(outcome -> outcome.eventId().equals(fact.eventId()))
+                .anyMatch(outcome -> outcome.creditsErasureOf(fact.outcomeId()));
     }
 
     private List<PlayerScoreDecision> weaverDecisions(UUID playerId, EraScoringContext context) {

@@ -281,6 +281,11 @@ class UpdateScoresCommandHandlerTest {
             public boolean exposeRequiresDeclaredEvent() {
                 return true;
             }
+
+            @Override
+            public boolean annihilationRequiresConsequence() {
+                return true;
+            }
         };
         var handler = handler(context, List.of(), scoreRules, savedScores);
 

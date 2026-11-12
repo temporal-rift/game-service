@@ -197,9 +197,49 @@ class TimelineScoringKafkaConsumerTest {
         then(outcomeInboxRepository)
                 .should()
                 .save(new OutcomeApplied(
-                        GAME_ID, ERA_NUMBER, payload.eventId(), payload.winningOutcomeId(), List.of()));
+                        GAME_ID, ERA_NUMBER, payload.eventId(), payload.winningOutcomeId(), List.of(), List.of()));
         then(contextRepository).should().resolveRevisionistActions(GAME_ID, ERA_NUMBER);
         then(completionChecker).should().tryComplete(GAME_ID, ERA_NUMBER);
+    }
+
+    @Test
+    @DisplayName("OutcomeApplied listing a consequential erasure — stored with that list")
+    void handle_outcomeAppliedWithConsequentialErasure_storesTheList() {
+        var erasedOutcomeId = UUID.randomUUID();
+        var payload = new OutcomeAppliedPayload(
+                GAME_ID, ERA_NUMBER, UUID.randomUUID(), UUID.randomUUID(), List.of(), List.of(erasedOutcomeId));
+        var message = message("OutcomeApplied", json(payload));
+        givenClaim(message, true);
+
+        consumer.handle(message);
+
+        then(outcomeInboxRepository)
+                .should()
+                .save(new OutcomeApplied(
+                        GAME_ID,
+                        ERA_NUMBER,
+                        payload.eventId(),
+                        payload.winningOutcomeId(),
+                        List.of(),
+                        List.of(erasedOutcomeId)));
+    }
+
+    @Test
+    @DisplayName("OutcomeApplied from a producer that predates the list — stored with the list absent, not empty")
+    void handle_outcomeAppliedWithoutConsequentialErasures_storesItAbsent() {
+        var eventId = UUID.randomUUID();
+        var winningOutcomeId = UUID.randomUUID();
+        var body = """
+                {"gameId":"%s","eraNumber":%d,"eventId":"%s","winningOutcomeId":"%s","finalProbabilities":[]}
+                """.formatted(GAME_ID, ERA_NUMBER, eventId, winningOutcomeId);
+        var message = message("OutcomeApplied", body);
+        givenClaim(message, true);
+
+        consumer.handle(message);
+
+        then(outcomeInboxRepository)
+                .should()
+                .save(new OutcomeApplied(GAME_ID, ERA_NUMBER, eventId, winningOutcomeId, List.of(), null));
     }
 
     @Test

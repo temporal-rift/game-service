@@ -57,7 +57,7 @@ class EraScoreEvaluatorTest {
                 List.of(),
                 Set.of());
 
-        var outcome = new OutcomeApplied(GAME_ID, ERA, eventId, writtenOutcomeId, List.of());
+        var outcome = new OutcomeApplied(GAME_ID, ERA, eventId, writtenOutcomeId, List.of(), List.of());
 
         var decisions = evaluator.evaluate(context, List.of(outcome));
 
@@ -88,7 +88,7 @@ class EraScoreEvaluatorTest {
                 List.of(),
                 Set.of());
 
-        var outcome = new OutcomeApplied(GAME_ID, ERA, eventId, otherOutcomeId, List.of());
+        var outcome = new OutcomeApplied(GAME_ID, ERA, eventId, otherOutcomeId, List.of(), List.of());
 
         var decisions = evaluator.evaluate(context, List.of(outcome));
 
@@ -116,7 +116,7 @@ class EraScoreEvaluatorTest {
                 List.of(),
                 Set.of());
 
-        var outcome = new OutcomeApplied(GAME_ID, ERA, eventId, winningOutcomeId, List.of());
+        var outcome = new OutcomeApplied(GAME_ID, ERA, eventId, winningOutcomeId, List.of(), List.of());
 
         var decisions = evaluator.evaluate(context, List.of(outcome));
 
@@ -372,7 +372,7 @@ class EraScoreEvaluatorTest {
                 List.of(),
                 Set.of());
 
-        var outcome = new OutcomeApplied(GAME_ID, ERA, eventId, writtenOutcomeId, List.of());
+        var outcome = new OutcomeApplied(GAME_ID, ERA, eventId, writtenOutcomeId, List.of(), List.of());
 
         var decisions = evaluator.evaluate(context, List.of(outcome));
 
@@ -403,7 +403,7 @@ class EraScoreEvaluatorTest {
                 List.of(),
                 Set.of());
 
-        var outcome = new OutcomeApplied(GAME_ID, ERA, eventId, otherOutcomeId, List.of());
+        var outcome = new OutcomeApplied(GAME_ID, ERA, eventId, otherOutcomeId, List.of(), List.of());
 
         var decisions = evaluator.evaluate(context, List.of(outcome));
 
@@ -431,7 +431,7 @@ class EraScoreEvaluatorTest {
                 List.of(),
                 Set.of());
 
-        var outcome = new OutcomeApplied(GAME_ID, ERA, eventId, winningOutcomeId, List.of());
+        var outcome = new OutcomeApplied(GAME_ID, ERA, eventId, winningOutcomeId, List.of(), List.of());
 
         var decisions = evaluator.evaluate(context, List.of(outcome));
 
@@ -510,7 +510,8 @@ class EraScoreEvaluatorTest {
         assertThat(evaluator.evaluate(firstEra, List.of())).isEmpty();
         assertThat(evaluator.evaluate(secondEra, List.of())).isEmpty();
         assertThat(evaluator.evaluate(
-                        resolvingEra, List.of(new OutcomeApplied(GAME_ID, 4, eventId, laterWrittenOutcome, List.of()))))
+                        resolvingEra,
+                        List.of(new OutcomeApplied(GAME_ID, 4, eventId, laterWrittenOutcome, List.of(), List.of()))))
                 .singleElement()
                 .satisfies(decision -> {
                     assertThat(decision.reason()).isEqualTo(ScoreReason.EVENT_RESOLVED_AS_WRITTEN);
@@ -566,8 +567,8 @@ class EraScoreEvaluatorTest {
                 Set.of());
 
         var outcomes = List.of(
-                new OutcomeApplied(GAME_ID, ERA, eventId1, outcomeId1, List.of()),
-                new OutcomeApplied(GAME_ID, ERA, eventId2, outcomeId2, List.of()));
+                new OutcomeApplied(GAME_ID, ERA, eventId1, outcomeId1, List.of(), List.of()),
+                new OutcomeApplied(GAME_ID, ERA, eventId2, outcomeId2, List.of(), List.of()));
 
         var decisions = evaluator.evaluate(context, outcomes);
 
@@ -599,7 +600,7 @@ class EraScoreEvaluatorTest {
                 List.of(),
                 Set.of());
 
-        var outcome = new OutcomeApplied(GAME_ID, ERA, eventId, writtenOutcomeId, List.of());
+        var outcome = new OutcomeApplied(GAME_ID, ERA, eventId, writtenOutcomeId, List.of(), List.of());
 
         var decisions = evaluator.evaluate(context, List.of(outcome));
 
@@ -630,7 +631,7 @@ class EraScoreEvaluatorTest {
                 List.of(),
                 Set.of());
 
-        var outcome = new OutcomeApplied(GAME_ID, ERA, eventId, writtenOutcomeId, List.of());
+        var outcome = new OutcomeApplied(GAME_ID, ERA, eventId, writtenOutcomeId, List.of(), List.of());
 
         var decisions = evaluator.evaluate(context, List.of(outcome));
 
@@ -658,7 +659,7 @@ class EraScoreEvaluatorTest {
                 List.of(),
                 Set.of());
 
-        var decisions = evaluator.evaluate(context, List.of());
+        var decisions = evaluator.evaluate(context, List.of(outcomeListing(eventId, outcomeId)));
 
         assertThat(decisions).singleElement().satisfies(d -> {
             assertThat(d.reason()).isEqualTo(ScoreReason.ANNIHILATED_OUTCOME);
@@ -672,6 +673,8 @@ class EraScoreEvaluatorTest {
         var eraserId = UUID.randomUUID();
         var eventId1 = UUID.randomUUID();
         var eventId2 = UUID.randomUUID();
+        var erased1 = UUID.randomUUID();
+        var erased2 = UUID.randomUUID();
 
         var context = new EraScoringContext(
                 GAME_ID,
@@ -683,14 +686,15 @@ class EraScoreEvaluatorTest {
                 List.of(),
                 List.of(),
                 List.of(
-                        new AnnihilationFact(eventId1, UUID.randomUUID(), eraserId, 2, true, true),
-                        new AnnihilationFact(eventId2, UUID.randomUUID(), eraserId, 2, true, true)),
+                        new AnnihilationFact(eventId1, erased1, eraserId, 2, true, true),
+                        new AnnihilationFact(eventId2, erased2, eraserId, 2, true, true)),
                 List.of(),
                 List.of(),
                 List.of(),
                 Set.of());
 
-        var decisions = evaluator.evaluate(context, List.of());
+        var decisions = evaluator.evaluate(
+                context, List.of(outcomeListing(eventId1, erased1), outcomeListing(eventId2, erased2)));
 
         assertThat(decisions.stream()
                         .filter(d -> d.reason() == ScoreReason.ANNIHILATED_OUTCOME)
@@ -703,24 +707,30 @@ class EraScoreEvaluatorTest {
     void twoErasersEachAnnihilate() {
         var eraserId1 = UUID.randomUUID();
         var eraserId2 = UUID.randomUUID();
-        var eventId = UUID.randomUUID();
+        var eventId1 = UUID.randomUUID();
+        var eventId2 = UUID.randomUUID();
+        var erased1 = UUID.randomUUID();
+        var erased2 = UUID.randomUUID();
 
         var context = new EraScoringContext(
                 GAME_ID,
                 ERA,
                 List.of(new PlayerFaction(eraserId1, Faction.ERASERS), new PlayerFaction(eraserId2, Faction.ERASERS)),
-                List.of(new EventOutcomeFact(eventId, UUID.randomUUID(), null, null)),
+                List.of(
+                        new EventOutcomeFact(eventId1, UUID.randomUUID(), null, null),
+                        new EventOutcomeFact(eventId2, UUID.randomUUID(), null, null)),
                 List.of(),
                 List.of(),
                 List.of(
-                        new AnnihilationFact(eventId, UUID.randomUUID(), eraserId1, 2, true, true),
-                        new AnnihilationFact(eventId, UUID.randomUUID(), eraserId2, 2, true, true)),
+                        new AnnihilationFact(eventId1, erased1, eraserId1, 2, true, true),
+                        new AnnihilationFact(eventId2, erased2, eraserId2, 2, true, true)),
                 List.of(),
                 List.of(),
                 List.of(),
                 Set.of());
 
-        var decisions = evaluator.evaluate(context, List.of());
+        var decisions = evaluator.evaluate(
+                context, List.of(outcomeListing(eventId1, erased1), outcomeListing(eventId2, erased2)));
 
         assertThat(decisions.stream()
                         .filter(d -> d.reason() == ScoreReason.ANNIHILATED_OUTCOME)
@@ -1231,8 +1241,8 @@ class EraScoreEvaluatorTest {
             var decisions = evaluator.evaluate(
                     context,
                     List.of(
-                            new OutcomeApplied(GAME_ID, ERA, eventId, o2, List.of()),
-                            new OutcomeApplied(GAME_ID, ERA, otherEventId, otherOutcome, List.of())));
+                            new OutcomeApplied(GAME_ID, ERA, eventId, o2, List.of(), List.of(o1)),
+                            new OutcomeApplied(GAME_ID, ERA, otherEventId, otherOutcome, List.of(), List.of())));
 
             assertThat(decisions)
                     .extracting(PlayerScoreDecision::playerId, PlayerScoreDecision::reason)
@@ -1264,8 +1274,150 @@ class EraScoreEvaluatorTest {
             return new AnnihilationFact(eventId, outcomeId, eraserId, roundNumber, true, wasLeading);
         }
 
+        // Every erasure in these cases changed the winner, so only the shield decides the Eraser's credit.
         private List<OutcomeApplied> won(UUID winningOutcomeId) {
-            return List.of(new OutcomeApplied(GAME_ID, ERA, eventId, winningOutcomeId, List.of()));
+            return List.of(new OutcomeApplied(GAME_ID, ERA, eventId, winningOutcomeId, List.of(), List.of(o1, o3)));
         }
+    }
+
+    @Nested
+    @DisplayName("an Annihilate credits only an erasure that changed the winner")
+    class AnnihilationConsequence {
+
+        final UUID eraserId = UUID.randomUUID();
+        final UUID eventId = UUID.randomUUID();
+        final UUID first = UUID.randomUUID();
+        final UUID third = UUID.randomUUID();
+
+        @Test
+        @DisplayName("the outcome lists the erased leader — one ANNIHILATED_OUTCOME")
+        void listedErasureScores() {
+            var context = context(annihilation(eventId, third));
+
+            assertThat(evaluator.evaluate(context, List.of(outcome(eventId, List.of(third)))))
+                    .extracting(PlayerScoreDecision::playerId, PlayerScoreDecision::reason)
+                    .containsExactly(tuple(eraserId, ScoreReason.ANNIHILATED_OUTCOME));
+        }
+
+        @Test
+        @DisplayName("the outcome lists no erasure — nothing")
+        void emptyListScoresNothing() {
+            var context = context(annihilation(eventId, third));
+
+            assertThat(evaluator.evaluate(context, List.of(outcome(eventId, List.of()))))
+                    .isEmpty();
+        }
+
+        @Test
+        @DisplayName("the outcome lists another outcome's erasure — nothing")
+        void otherListedErasureScoresNothing() {
+            var context = context(annihilation(eventId, third));
+
+            assertThat(evaluator.evaluate(context, List.of(outcome(eventId, List.of(UUID.randomUUID())))))
+                    .isEmpty();
+        }
+
+        @Test
+        @DisplayName("an older producer sent no list — the earlier rule applies")
+        void absentListKeepsTheEarlierRule() {
+            var context = context(annihilation(eventId, third));
+
+            assertThat(evaluator.evaluate(context, List.of(outcome(eventId, null))))
+                    .extracting(PlayerScoreDecision::reason)
+                    .containsExactly(ScoreReason.ANNIHILATED_OUTCOME);
+        }
+
+        @Test
+        @DisplayName("rule switched off — an empty list still scores, as before")
+        void ruleOffScoresAsBefore() {
+            var withoutConsequence = new EraScoreEvaluator(ScoreRulesTestValues.rules(true, false));
+            var context = context(annihilation(eventId, third));
+
+            assertThat(withoutConsequence.evaluate(context, List.of(outcome(eventId, List.of()))))
+                    .extracting(PlayerScoreDecision::reason)
+                    .containsExactly(ScoreReason.ANNIHILATED_OUTCOME);
+        }
+
+        @Test
+        @DisplayName("rule switched off — an erasure on an event without an applied outcome still scores, as before")
+        void ruleOffIgnoresMissingOutcome() {
+            var withoutConsequence = new EraScoreEvaluator(ScoreRulesTestValues.rules(true, false));
+            var context = context(annihilation(eventId, third));
+
+            assertThat(withoutConsequence.evaluate(context, List.of()))
+                    .extracting(PlayerScoreDecision::reason)
+                    .containsExactly(ScoreReason.ANNIHILATED_OUTCOME);
+        }
+
+        @Test
+        @DisplayName("two erasures on different events, only one listed — exactly one credit")
+        void onlyTheListedOfTwoErasuresScores() {
+            var otherEventId = UUID.randomUUID();
+            var otherErased = UUID.randomUUID();
+            var context = context(annihilation(eventId, third), annihilation(otherEventId, otherErased));
+
+            var decisions = evaluator.evaluate(
+                    context, List.of(outcome(eventId, List.of(third)), outcome(otherEventId, List.of())));
+
+            assertThat(decisions)
+                    .extracting(PlayerScoreDecision::reason)
+                    .containsExactly(ScoreReason.ANNIHILATED_OUTCOME);
+        }
+
+        @Test
+        @DisplayName("an erasure is matched against its own event's outcome, not another event's list")
+        void listOfAnotherEventDoesNotCredit() {
+            var otherEventId = UUID.randomUUID();
+            var context = context(annihilation(eventId, third));
+
+            var decisions = evaluator.evaluate(
+                    context, List.of(outcome(eventId, List.of()), outcome(otherEventId, List.of(third))));
+
+            assertThat(decisions).isEmpty();
+        }
+
+        @Test
+        @DisplayName("the event has no applied outcome (cascaded) — nothing")
+        void eventWithoutOutcomeScoresNothing() {
+            var context = context(annihilation(eventId, third));
+
+            assertThat(evaluator.evaluate(context, List.of())).isEmpty();
+        }
+
+        @Test
+        @DisplayName("a non-leading erasure scores nothing even when listed")
+        void listedNonLeaderScoresNothing() {
+            var context = context(new AnnihilationFact(eventId, first, eraserId, 2, true, false));
+
+            assertThat(evaluator.evaluate(context, List.of(outcome(eventId, List.of(first)))))
+                    .isEmpty();
+        }
+
+        private EraScoringContext context(AnnihilationFact... annihilations) {
+            return new EraScoringContext(
+                    GAME_ID,
+                    ERA,
+                    List.of(new PlayerFaction(eraserId, Faction.ERASERS)),
+                    List.of(new EventOutcomeFact(eventId, first, null, null)),
+                    List.of(),
+                    List.of(),
+                    List.of(annihilations),
+                    List.of(),
+                    List.of(),
+                    List.of(),
+                    Set.of());
+        }
+
+        private AnnihilationFact annihilation(UUID onEventId, UUID erasedOutcomeId) {
+            return new AnnihilationFact(onEventId, erasedOutcomeId, eraserId, 2, true, true);
+        }
+
+        private OutcomeApplied outcome(UUID ofEventId, List<UUID> consequentialErasures) {
+            return new OutcomeApplied(GAME_ID, ERA, ofEventId, first, List.of(), consequentialErasures);
+        }
+    }
+
+    private static OutcomeApplied outcomeListing(UUID eventId, UUID erasedOutcomeId) {
+        return new OutcomeApplied(GAME_ID, ERA, eventId, UUID.randomUUID(), List.of(), List.of(erasedOutcomeId));
     }
 }

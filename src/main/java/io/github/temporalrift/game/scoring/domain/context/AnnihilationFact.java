@@ -12,7 +12,10 @@ import java.util.UUID;
 public record AnnihilationFact(
         UUID eventId, UUID outcomeId, UUID playerId, Integer roundNumber, boolean erased, boolean wasLeading) {
 
-    /** Only erasing an outcome that led its event earns {@code ANNIHILATED_OUTCOME}, unless a writing shields it. */
+    /**
+     * Only erasing an outcome that led its event can earn {@code ANNIHILATED_OUTCOME}; a writing may still shield it,
+     * and its event's outcome must report that the erasure changed the winner while that rule is on.
+     */
     public boolean creditable() {
         return erased && wasLeading;
     }

@@ -61,6 +61,6 @@ class TimelineOutcomeInboxRepositoryAdapterTest {
     }
 
     private static OutcomeApplied outcomeApplied() {
-        return new OutcomeApplied(UUID.randomUUID(), 1, UUID.randomUUID(), UUID.randomUUID(), List.of());
+        return new OutcomeApplied(UUID.randomUUID(), 1, UUID.randomUUID(), UUID.randomUUID(), List.of(), List.of());
     }
 }

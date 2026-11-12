@@ -252,16 +252,20 @@ class TimelineScoringKafkaConsumerIT {
         var eraNumber = 1;
         var eventId = UUID.randomUUID();
         var winningOutcomeId = UUID.randomUUID();
+        var leaderOutcomeId = UUID.randomUUID();
+        var trailingOutcomeId = UUID.randomUUID();
         contextRepository.upsertPlayerFaction(gameId, leaderEraser, Faction.ERASERS);
         contextRepository.upsertPlayerFaction(gameId, trailingEraser, Faction.ERASERS);
         contextRepository.upsertExpectedOutcomeCount(gameId, eraNumber, 1);
         contextRepository.markActionFactsReady(gameId, eraNumber);
 
-        var leaderErased = annihilationEnvelope(gameId, eraNumber, leaderEraser, eventId, true, true);
+        var leaderErased = annihilationEnvelope(gameId, eraNumber, leaderEraser, eventId, leaderOutcomeId, true, true);
         consumer.handle(leaderErased);
         consumer.handle(leaderErased);
-        consumer.handle(annihilationEnvelope(gameId, eraNumber, trailingEraser, eventId, true, false));
-        consumer.handle(outcomeEnvelope(gameId, eraNumber, eventId, winningOutcomeId));
+        consumer.handle(
+                annihilationEnvelope(gameId, eraNumber, trailingEraser, eventId, trailingOutcomeId, true, false));
+        consumer.handle(outcomeEnvelope(
+                gameId, eraNumber, eventId, winningOutcomeId, List.of(leaderOutcomeId, trailingOutcomeId)));
         consumer.handle(terminalBarrierEnvelope(gameId, eraNumber, eventId, winningOutcomeId));
 
         assertThat(playerScoreRepository.findAllByGameId(gameId))
@@ -307,10 +311,11 @@ class TimelineScoringKafkaConsumerIT {
         var eraNumber = 1;
         var eventId = UUID.randomUUID();
         var winningOutcomeId = UUID.randomUUID();
+        var erasedOutcomeId = UUID.randomUUID();
         prepareEraserScoring(gameId, eraNumber, acceptedEraser);
         contextRepository.upsertPlayerFaction(gameId, rejectedEraser, Faction.ERASERS);
 
-        consumer.handle(annihilationEnvelope(gameId, eraNumber, acceptedEraser, eventId, true, true));
+        consumer.handle(annihilationEnvelope(gameId, eraNumber, acceptedEraser, eventId, erasedOutcomeId, true, true));
         consumer.handle(rejectedSpecialEnvelope(
                 gameId,
                 eraNumber,
@@ -319,7 +324,7 @@ class TimelineScoringKafkaConsumerIT {
                 UUID.randomUUID(),
                 GeneratedChannelContract.SpecialAction.ANNIHILATE,
                 "ERASURE_OUT_OF_BOUNDS"));
-        consumer.handle(outcomeEnvelope(gameId, eraNumber, eventId, winningOutcomeId));
+        consumer.handle(outcomeEnvelope(gameId, eraNumber, eventId, winningOutcomeId, List.of(erasedOutcomeId)));
         consumer.handle(terminalBarrierEnvelope(gameId, eraNumber, eventId, winningOutcomeId));
 
         assertThat(playerScoreRepository.findAllByGameId(gameId)).hasSize(2);
@@ -368,10 +373,11 @@ class TimelineScoringKafkaConsumerIT {
         for (var eraNumber = 1; eraNumber <= 3; eraNumber++) {
             var eventId = UUID.randomUUID();
             var winningOutcomeId = UUID.randomUUID();
+            var erasedOutcomeId = UUID.randomUUID();
             contextRepository.upsertExpectedOutcomeCount(gameId, eraNumber, 1);
             contextRepository.markActionFactsReady(gameId, eraNumber);
-            consumer.handle(annihilationEnvelope(gameId, eraNumber, eraser, eventId, true, true));
-            consumer.handle(outcomeEnvelope(gameId, eraNumber, eventId, winningOutcomeId));
+            consumer.handle(annihilationEnvelope(gameId, eraNumber, eraser, eventId, erasedOutcomeId, true, true));
+            consumer.handle(outcomeEnvelope(gameId, eraNumber, eventId, winningOutcomeId, List.of(erasedOutcomeId)));
             consumer.handle(terminalBarrierEnvelope(gameId, eraNumber, eventId, winningOutcomeId));
         }
 
@@ -385,10 +391,71 @@ class TimelineScoringKafkaConsumerIT {
                 });
     }
 
+    @Test
+    void handle_erasureThatChangedTheWinner_creditsThreeAndOneObjectiveStepOnce() {
+        var gameId = UUID.randomUUID();
+        var eraser = UUID.randomUUID();
+        var eraNumber = 1;
+        var eventId = UUID.randomUUID();
+        var winningOutcomeId = UUID.randomUUID();
+        var erasedOutcomeId = UUID.randomUUID();
+        prepareEraserScoring(gameId, eraNumber, eraser);
+
+        var outcome = outcomeEnvelope(gameId, eraNumber, eventId, winningOutcomeId, List.of(erasedOutcomeId));
+        var barrier = terminalBarrierEnvelope(gameId, eraNumber, eventId, winningOutcomeId);
+        consumer.handle(annihilationEnvelope(gameId, eraNumber, eraser, eventId, erasedOutcomeId, true, true));
+        consumer.handle(outcome);
+        consumer.handle(outcome);
+        consumer.handle(barrier);
+        consumer.handle(barrier);
+
+        assertEraserScoreAndProgress(gameId, eraNumber, eraser, 3, 1);
+    }
+
+    @Test
+    void handle_erasureThatDidNotChangeTheWinner_scoresNothingAndDoesNotAdvanceObjective() {
+        var gameId = UUID.randomUUID();
+        var eraser = UUID.randomUUID();
+        var eraNumber = 1;
+        var eventId = UUID.randomUUID();
+        var winningOutcomeId = UUID.randomUUID();
+        var erasedOutcomeId = UUID.randomUUID();
+        prepareEraserScoring(gameId, eraNumber, eraser);
+
+        consumer.handle(annihilationEnvelope(gameId, eraNumber, eraser, eventId, erasedOutcomeId, true, true));
+        consumer.handle(outcomeEnvelope(gameId, eraNumber, eventId, winningOutcomeId, List.of()));
+        consumer.handle(terminalBarrierEnvelope(gameId, eraNumber, eventId, winningOutcomeId));
+
+        assertEraserScoreAndProgress(gameId, eraNumber, eraser, 0, 0);
+    }
+
+    @Test
+    void handle_outcomeFromAnOlderProducer_keepsTheEarlierAnnihilationCredit() {
+        var gameId = UUID.randomUUID();
+        var eraser = UUID.randomUUID();
+        var eraNumber = 1;
+        var eventId = UUID.randomUUID();
+        var winningOutcomeId = UUID.randomUUID();
+        var erasedOutcomeId = UUID.randomUUID();
+        prepareEraserScoring(gameId, eraNumber, eraser);
+
+        consumer.handle(annihilationEnvelope(gameId, eraNumber, eraser, eventId, erasedOutcomeId, true, true));
+        consumer.handle(outcomeEnvelope(gameId, eraNumber, eventId, winningOutcomeId, null));
+        consumer.handle(terminalBarrierEnvelope(gameId, eraNumber, eventId, winningOutcomeId));
+
+        assertEraserScoreAndProgress(gameId, eraNumber, eraser, 3, 1);
+    }
+
     private static Message<Object> annihilationEnvelope(
-            UUID gameId, int eraNumber, UUID playerId, UUID eventId, boolean erased, boolean wasLeading) {
+            UUID gameId,
+            int eraNumber,
+            UUID playerId,
+            UUID eventId,
+            UUID erasedOutcomeId,
+            boolean erased,
+            boolean wasLeading) {
         var resolution = new AnnihilationResolvedPayload(
-                gameId, eraNumber, 1, playerId, eventId, UUID.randomUUID(), erased, wasLeading);
+                gameId, eraNumber, 1, playerId, eventId, erasedOutcomeId, erased, wasLeading);
         return message("AnnihilationResolved", gameId, "FutureEvent", resolution);
     }
 
@@ -453,7 +520,13 @@ class TimelineScoringKafkaConsumerIT {
     }
 
     private static Message<Object> outcomeEnvelope(UUID gameId, int eraNumber, UUID eventId, UUID winningOutcomeId) {
-        var outcome = new OutcomeAppliedPayload(gameId, eraNumber, eventId, winningOutcomeId, List.of(), List.of());
+        return outcomeEnvelope(gameId, eraNumber, eventId, winningOutcomeId, List.of());
+    }
+
+    private static Message<Object> outcomeEnvelope(
+            UUID gameId, int eraNumber, UUID eventId, UUID winningOutcomeId, List<UUID> consequentialErasures) {
+        var outcome = new OutcomeAppliedPayload(
+                gameId, eraNumber, eventId, winningOutcomeId, List.of(), consequentialErasures);
         return message("OutcomeApplied", gameId, "FutureEvent", outcome);
     }
 

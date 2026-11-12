@@ -337,7 +337,7 @@ class EraScoringContextRepositoryAdapterTest {
                 .willReturn(List.of(baselineWithFact, baselineWithoutFacts));
 
         var inboxEntity = ScoringTimelineOutcomeInboxJpaEntity.fromDomain(
-                new OutcomeApplied(gameId, 2, eventIdWithFact, winningOutcomeId, List.of()));
+                new OutcomeApplied(gameId, 2, eventIdWithFact, winningOutcomeId, List.of(), List.of()));
         given(outcomeInboxJpaRepository.findAllByGameIdAndEraNumberOrderByEventIdAsc(gameId, 2))
                 .willReturn(List.of(inboxEntity));
         given(paradoxCascadeFactJpaRepository.findDistinctConsumedAffectedEventIds(gameId))
@@ -558,7 +558,7 @@ class EraScoringContextRepositoryAdapterTest {
                 .willReturn(Optional.of(ScoringTimelineResolutionBarrierJpaEntity.fromDomain(resolved)));
         given(outcomeInboxJpaRepository.findByGameIdAndEraNumberAndEventId(gameId, 3, eventId))
                 .willReturn(Optional.of(ScoringTimelineOutcomeInboxJpaEntity.fromDomain(
-                        new OutcomeApplied(gameId, 3, eventId, winningOutcomeId, List.of()))));
+                        new OutcomeApplied(gameId, 3, eventId, winningOutcomeId, List.of(), List.of()))));
 
         assertThat(adapter.resolveActivistDeclarations(gameId, 2))
                 .containsExactly(new io.github.temporalrift.game.shared.domain.event.ActivistDeclarationResolved(
@@ -606,7 +606,7 @@ class EraScoringContextRepositoryAdapterTest {
                 .willReturn(Optional.of(ScoringTimelineResolutionBarrierJpaEntity.fromDomain(barrier)));
         given(outcomeInboxJpaRepository.findByGameIdAndEraNumberAndEventId(gameId, 2, eventId))
                 .willReturn(Optional.of(ScoringTimelineOutcomeInboxJpaEntity.fromDomain(
-                        new OutcomeApplied(gameId, 2, eventId, winningOutcomeId, List.of()))));
+                        new OutcomeApplied(gameId, 2, eventId, winningOutcomeId, List.of(), List.of()))));
 
         assertThat(adapter.resolveActivistDeclarations(gameId, 2))
                 .containsExactly(new io.github.temporalrift.game.shared.domain.event.ActivistDeclarationResolved(
@@ -710,7 +710,7 @@ class EraScoringContextRepositoryAdapterTest {
                 .willReturn(Optional.of(resolutionBarrier(gameId, eventId, outcomeId)));
         given(outcomeInboxJpaRepository.findByGameIdAndEraNumberAndEventId(gameId, 2, eventId))
                 .willReturn(Optional.of(ScoringTimelineOutcomeInboxJpaEntity.fromDomain(
-                        new OutcomeApplied(gameId, 2, eventId, outcomeId, List.of()))));
+                        new OutcomeApplied(gameId, 2, eventId, outcomeId, List.of(), List.of()))));
 
         adapter.resolveRevisionistActions(gameId, 2);
 
@@ -739,7 +739,7 @@ class EraScoringContextRepositoryAdapterTest {
                 .willReturn(Optional.of(resolutionBarrier(gameId, eventId, outcomeId)));
         given(outcomeInboxJpaRepository.findByGameIdAndEraNumberAndEventId(gameId, 2, eventId))
                 .willReturn(Optional.of(ScoringTimelineOutcomeInboxJpaEntity.fromDomain(
-                        new OutcomeApplied(gameId, 2, eventId, outcomeId, List.of()))));
+                        new OutcomeApplied(gameId, 2, eventId, outcomeId, List.of(), List.of()))));
 
         adapter.resolveRevisionistActions(gameId, 2);
 
@@ -769,7 +769,7 @@ class EraScoringContextRepositoryAdapterTest {
                 .willReturn(Optional.of(resolutionBarrier(gameId, eventId, winningOutcomeId)));
         given(outcomeInboxJpaRepository.findByGameIdAndEraNumberAndEventId(gameId, 2, eventId))
                 .willReturn(Optional.of(ScoringTimelineOutcomeInboxJpaEntity.fromDomain(
-                        new OutcomeApplied(gameId, 2, eventId, winningOutcomeId, List.of()))));
+                        new OutcomeApplied(gameId, 2, eventId, winningOutcomeId, List.of(), List.of()))));
 
         adapter.resolveRevisionistActions(gameId, 2);
 
@@ -814,7 +814,7 @@ class EraScoringContextRepositoryAdapterTest {
                 .willReturn(Optional.of(resolutionBarrier(gameId, eventId, winningOutcomeId)));
         given(outcomeInboxJpaRepository.findByGameIdAndEraNumberAndEventId(gameId, 2, eventId))
                 .willReturn(Optional.of(ScoringTimelineOutcomeInboxJpaEntity.fromDomain(
-                        new OutcomeApplied(gameId, 2, eventId, winningOutcomeId, List.of()))));
+                        new OutcomeApplied(gameId, 2, eventId, winningOutcomeId, List.of(), List.of()))));
 
         adapter.resolveRevisionistActions(gameId, 2);
 

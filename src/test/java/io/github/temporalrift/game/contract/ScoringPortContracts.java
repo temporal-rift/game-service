@@ -302,7 +302,7 @@ public final class ScoringPortContracts {
                     1,
                     List.of(new EraResolutionCompleted.TerminalResolution(
                             event, 0, EraResolutionCompleted.TerminalState.OUTCOME_APPLIED, outcome))));
-            inbox.save(new OutcomeApplied(gameId, 1, event, outcome, List.of()));
+            inbox.save(new OutcomeApplied(gameId, 1, event, outcome, List.of(), List.of()));
 
             assertThat(repository.activistDeclarationsResolved(gameId, 1)).isFalse();
             var resolved = repository.resolveActivistDeclarations(gameId, 1);
@@ -545,9 +545,10 @@ public final class ScoringPortContracts {
         @Test
         default void outcomeInbox_duplicateSavesStoreOnceAndDoNotPoisonLaterWrites() {
             var repository = port(TimelineOutcomeInboxRepository.class);
-            var outcome = new OutcomeApplied(UUID.randomUUID(), 1, UUID.randomUUID(), UUID.randomUUID(), List.of());
+            var outcome = new OutcomeApplied(
+                    UUID.randomUUID(), 1, UUID.randomUUID(), UUID.randomUUID(), List.of(), List.of());
             var other = new OutcomeApplied(
-                    outcome.gameId(), outcome.eraNumber(), UUID.randomUUID(), UUID.randomUUID(), List.of());
+                    outcome.gameId(), outcome.eraNumber(), UUID.randomUUID(), UUID.randomUUID(), List.of(), List.of());
 
             transactionTemplate().executeWithoutResult(status -> {
                 repository.save(outcome);

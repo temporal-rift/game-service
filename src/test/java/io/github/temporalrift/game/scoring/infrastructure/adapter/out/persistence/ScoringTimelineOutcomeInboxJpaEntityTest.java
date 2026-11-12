@@ -18,7 +18,8 @@ class ScoringTimelineOutcomeInboxJpaEntityTest {
                 2,
                 UUID.randomUUID(),
                 UUID.randomUUID(),
-                List.of(new OutcomeApplied.ProbabilityState(UUID.randomUUID(), 70)));
+                List.of(new OutcomeApplied.ProbabilityState(UUID.randomUUID(), 70)),
+                List.of(UUID.randomUUID()));
 
         var entity = ScoringTimelineOutcomeInboxJpaEntity.fromDomain(outcome);
 
@@ -32,7 +33,8 @@ class ScoringTimelineOutcomeInboxJpaEntityTest {
 
     @Test
     void toDomain_returnsStoredPayload() {
-        var outcome = new OutcomeApplied(UUID.randomUUID(), 1, UUID.randomUUID(), UUID.randomUUID(), List.of());
+        var outcome =
+                new OutcomeApplied(UUID.randomUUID(), 1, UUID.randomUUID(), UUID.randomUUID(), List.of(), List.of());
         var entity = ScoringTimelineOutcomeInboxJpaEntity.fromDomain(outcome);
 
         assertThat(entity.toDomain()).isEqualTo(outcome);
