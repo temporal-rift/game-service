@@ -23,6 +23,11 @@ public final class ScoreRulesTestValues {
             public boolean writtenOutcomeShieldsAnnihilation() {
                 return writtenOutcomeShieldsAnnihilation;
             }
+
+            @Override
+            public boolean exposeRequiresDeclaredEvent() {
+                return true;
+            }
         };
     }
 

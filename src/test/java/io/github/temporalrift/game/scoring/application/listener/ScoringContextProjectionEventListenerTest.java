@@ -2,13 +2,16 @@ package io.github.temporalrift.game.scoring.application.listener;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 
 import java.util.List;
 import java.util.UUID;
 
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -17,8 +20,10 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 
 import io.github.temporalrift.game.scoring.application.command.EraScoringCompletionChecker;
+import io.github.temporalrift.game.scoring.domain.playerscore.ScoreReason;
 import io.github.temporalrift.game.scoring.domain.port.out.EraScoringContextRepository;
 import io.github.temporalrift.game.scoring.domain.port.out.RevisionistExposureRepository;
+import io.github.temporalrift.game.scoring.domain.port.out.ScoreRulesPort;
 import io.github.temporalrift.game.shared.domain.event.ActivistDeclarationRecorded;
 import io.github.temporalrift.game.shared.domain.event.EraActionFactsFinalized;
 import io.github.temporalrift.game.shared.domain.event.EventsDrawn;
@@ -42,6 +47,9 @@ class ScoringContextProjectionEventListenerTest {
 
     @Mock
     RevisionistExposureRepository revisionistExposureRepository;
+
+    @Mock
+    ScoreRulesPort scoreRules;
 
     @InjectMocks
     ScoringContextProjectionEventListener listener;
@@ -116,12 +124,13 @@ class ScoringContextProjectionEventListenerTest {
         var revisionistPlayerId = UUID.randomUUID();
         var revisionistEventId = UUID.randomUUID();
         var revisionistOutcomeId = UUID.randomUUID();
+        given(scoreRules.exposeRequiresDeclaredEvent()).willReturn(true);
         var event = new EraActionFactsFinalized(
                 gameId,
                 2,
                 List.of(new EraActionFactsFinalized.ForesightFact(
                         1, foresightEventId, foresightOutcomeId, foresightPlayerId)),
-                List.of(new EraActionFactsFinalized.ExposeFact(activistPlayerId, UUID.randomUUID())),
+                List.of(new EraActionFactsFinalized.ExposeFact(activistPlayerId, UUID.randomUUID(), activistEventId)),
                 List.of(new EraActionFactsFinalized.ActivistDeclarationFact(
                         activistPlayerId, SpecialAction.RALLY, activistEventId, activistOutcomeId)),
                 List.of(new EraActionFactsFinalized.RevisionistFact(
@@ -156,6 +165,100 @@ class ScoringContextProjectionEventListenerTest {
         then(contextRepository).should().resolveRevisionistActions(gameId, 2);
         then(contextRepository).should().markActionFactsReady(gameId, 2);
         then(completionChecker).should().tryComplete(gameId, 2);
+    }
+
+    @Nested
+    class ExposeResult {
+
+        private final UUID gameId = UUID.randomUUID();
+        private final UUID activistId = UUID.randomUUID();
+        private final UUID declaredEventId = UUID.randomUUID();
+
+        private EraActionFactsFinalized facts(
+                UUID revealedEventId, List<EraActionFactsFinalized.ActivistDeclarationFact> declarations) {
+            return new EraActionFactsFinalized(
+                    gameId,
+                    2,
+                    List.of(),
+                    List.of(new EraActionFactsFinalized.ExposeFact(activistId, UUID.randomUUID(), revealedEventId)),
+                    declarations);
+        }
+
+        private List<EraActionFactsFinalized.ActivistDeclarationFact> declaration(SpecialAction mode) {
+            return List.of(new EraActionFactsFinalized.ActivistDeclarationFact(
+                    activistId, mode, declaredEventId, UUID.randomUUID()));
+        }
+
+        private void verifyExposeRecorded(int times) {
+            then(contextRepository)
+                    .should(times(times))
+                    .recordActionFact(gameId, 2, activistId, Faction.ACTIVISTS, ScoreReason.EXPOSE_SIGNATURE_REVEALED);
+        }
+
+        @Test
+        void rallyOnTheRevealedEvent_recordsTheResult() {
+            given(scoreRules.exposeRequiresDeclaredEvent()).willReturn(true);
+
+            listener.onEraActionFactsFinalized(facts(declaredEventId, declaration(SpecialAction.RALLY)));
+
+            verifyExposeRecorded(1);
+        }
+
+        @Test
+        void momentumOnTheRevealedEvent_recordsTheResult() {
+            given(scoreRules.exposeRequiresDeclaredEvent()).willReturn(true);
+
+            listener.onEraActionFactsFinalized(facts(declaredEventId, declaration(SpecialAction.MOMENTUM)));
+
+            verifyExposeRecorded(1);
+        }
+
+        @Test
+        void revealOnAnotherEvent_recordsNothing() {
+            given(scoreRules.exposeRequiresDeclaredEvent()).willReturn(true);
+
+            listener.onEraActionFactsFinalized(facts(UUID.randomUUID(), declaration(SpecialAction.RALLY)));
+
+            verifyExposeRecorded(0);
+        }
+
+        @Test
+        void noRecordedDeclaration_recordsNothing() {
+            given(scoreRules.exposeRequiresDeclaredEvent()).willReturn(true);
+
+            listener.onEraActionFactsFinalized(facts(declaredEventId, List.of()));
+
+            verifyExposeRecorded(0);
+        }
+
+        @Test
+        void declarationOfAnotherActivist_recordsNothing() {
+            given(scoreRules.exposeRequiresDeclaredEvent()).willReturn(true);
+            var other = List.of(new EraActionFactsFinalized.ActivistDeclarationFact(
+                    UUID.randomUUID(), SpecialAction.RALLY, declaredEventId, UUID.randomUUID()));
+
+            listener.onEraActionFactsFinalized(facts(declaredEventId, other));
+
+            verifyExposeRecorded(0);
+        }
+
+        @Test
+        void factWithoutAnEvent_recordsNothing() {
+            given(scoreRules.exposeRequiresDeclaredEvent()).willReturn(true);
+
+            listener.onEraActionFactsFinalized(facts(null, declaration(SpecialAction.RALLY)));
+
+            verifyExposeRecorded(0);
+        }
+
+        @Test
+        void ruleOff_recordsEveryReveal() {
+            given(scoreRules.exposeRequiresDeclaredEvent()).willReturn(false);
+
+            listener.onEraActionFactsFinalized(facts(UUID.randomUUID(), List.of()));
+
+            verifyExposeRecorded(1);
+        }
     }
 
     @Test

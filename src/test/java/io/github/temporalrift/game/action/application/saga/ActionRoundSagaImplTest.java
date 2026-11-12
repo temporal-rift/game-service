@@ -1208,7 +1208,7 @@ class ActionRoundSagaImplTest {
                     .isEqualTo(new io.github.temporalrift.game.action.domain.event.ExposeBehaviorChanged(
                             GAME_ID, ERA_NUMBER, 3, PLAYER_1, PLAYER_2));
             assertThat(publishedExposeFacts())
-                    .containsExactly(new EraActionFactsFinalized.ExposeFact(PLAYER_1, PLAYER_2));
+                    .containsExactly(new EraActionFactsFinalized.ExposeFact(PLAYER_1, PLAYER_2, targetEventId));
 
             then(activistEraStateRepository).should().save(activistState);
         }
@@ -1252,15 +1252,15 @@ class ActionRoundSagaImplTest {
                     .publish(envelopeWithPayload(
                             io.github.temporalrift.game.action.domain.event.ExposeBehaviorChanged.class));
             assertThat(publishedExposeFacts())
-                    .containsExactly(new EraActionFactsFinalized.ExposeFact(PLAYER_1, PLAYER_2));
+                    .containsExactly(new EraActionFactsFinalized.ExposeFact(PLAYER_1, PLAYER_2, targetEventId));
         }
 
         @Test
         void tryClose_round3NonShiftStillScoresTheEarlierReveal() {
+            var targetEventId = UUID.randomUUID();
             var activistState = new ActivistEraState(UUID.randomUUID(), GAME_ID, ERA_NUMBER, PLAYER_1, false);
             activistState.expose(
-                    PLAYER_2,
-                    new ProbabilityInfluenceSignature(CardType.PUSH, UUID.randomUUID(), null, UUID.randomUUID()));
+                    PLAYER_2, new ProbabilityInfluenceSignature(CardType.PUSH, targetEventId, null, UUID.randomUUID()));
             given(activistEraStateRepository.findExposedByGameIdAndEraNumber(GAME_ID, ERA_NUMBER))
                     .willReturn(List.of(activistState));
             var round = new ActionRound(
@@ -1286,15 +1286,15 @@ class ActionRoundSagaImplTest {
                     .publish(envelopeWithPayload(
                             io.github.temporalrift.game.action.domain.event.ExposeBehaviorChanged.class));
             assertThat(publishedExposeFacts())
-                    .containsExactly(new EraActionFactsFinalized.ExposeFact(PLAYER_1, PLAYER_2));
+                    .containsExactly(new EraActionFactsFinalized.ExposeFact(PLAYER_1, PLAYER_2, targetEventId));
         }
 
         @Test
         void tryClose_round3SkipStillScoresTheEarlierReveal() {
+            var targetEventId = UUID.randomUUID();
             var activistState = new ActivistEraState(UUID.randomUUID(), GAME_ID, ERA_NUMBER, PLAYER_1, false);
             activistState.expose(
-                    PLAYER_2,
-                    new ProbabilityInfluenceSignature(CardType.PUSH, UUID.randomUUID(), null, UUID.randomUUID()));
+                    PLAYER_2, new ProbabilityInfluenceSignature(CardType.PUSH, targetEventId, null, UUID.randomUUID()));
             given(activistEraStateRepository.findExposedByGameIdAndEraNumber(GAME_ID, ERA_NUMBER))
                     .willReturn(List.of(activistState));
             var round = new ActionRound(
@@ -1319,7 +1319,7 @@ class ActionRoundSagaImplTest {
                     .publish(envelopeWithPayload(
                             io.github.temporalrift.game.action.domain.event.ExposeBehaviorChanged.class));
             assertThat(publishedExposeFacts())
-                    .containsExactly(new EraActionFactsFinalized.ExposeFact(PLAYER_1, PLAYER_2));
+                    .containsExactly(new EraActionFactsFinalized.ExposeFact(PLAYER_1, PLAYER_2, targetEventId));
         }
 
         @Test

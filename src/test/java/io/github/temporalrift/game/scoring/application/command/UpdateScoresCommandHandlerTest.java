@@ -276,6 +276,11 @@ class UpdateScoresCommandHandlerTest {
             public boolean writtenOutcomeShieldsAnnihilation() {
                 return true;
             }
+
+            @Override
+            public boolean exposeRequiresDeclaredEvent() {
+                return true;
+            }
         };
         var handler = handler(context, List.of(), scoreRules, savedScores);
 

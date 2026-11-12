@@ -114,7 +114,11 @@ public record EraActionFactsFinalized(
         }
     }
 
-    public record ExposeFact(UUID activistPlayerId, UUID targetPlayerId) {}
+    /**
+     * A live Expose that revealed a signature at Round-2 close; {@code targetEventId} is the event of that signature
+     * (null only for a fact recorded before the event was carried).
+     */
+    public record ExposeFact(UUID activistPlayerId, UUID targetPlayerId, UUID targetEventId) {}
 
     public record ActivistDeclarationFact(
             UUID playerId, SpecialAction mode, UUID targetEventId, UUID targetOutcomeId) {}
