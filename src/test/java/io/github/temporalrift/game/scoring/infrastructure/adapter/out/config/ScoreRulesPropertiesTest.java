@@ -70,7 +70,7 @@ class ScoreRulesPropertiesTest {
         var scoreDeltas = completeScoreDeltas();
         scoreDeltas.remove(ScoreReason.SECRET_OUTCOME_MISSED);
 
-        var properties = new ScoreRulesProperties(scoreDeltas, true);
+        var properties = new ScoreRulesProperties(scoreDeltas, true, true);
 
         assertThat(properties.pointsDelta(ScoreReason.SECRET_OUTCOME_MISSED)).isEqualTo(-1);
     }
@@ -80,7 +80,7 @@ class ScoreRulesPropertiesTest {
         var scoreDeltas = completeScoreDeltas();
         scoreDeltas.put(ScoreReason.SECRET_OUTCOME_MISSED, 0);
 
-        assertThat(new ScoreRulesProperties(scoreDeltas, true).pointsDelta(ScoreReason.SECRET_OUTCOME_MISSED))
+        assertThat(new ScoreRulesProperties(scoreDeltas, true, true).pointsDelta(ScoreReason.SECRET_OUTCOME_MISSED))
                 .isZero();
     }
 
