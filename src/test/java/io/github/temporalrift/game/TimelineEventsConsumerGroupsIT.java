@@ -75,7 +75,8 @@ class TimelineEventsConsumerGroupsIT {
                 gameId,
                 "OutcomeApplied",
                 "FutureEvent",
-                new OutcomeAppliedPayload(gameId, ERA_NUMBER, UUID.randomUUID(), UUID.randomUUID(), List.of()));
+                new OutcomeAppliedPayload(
+                        gameId, ERA_NUMBER, UUID.randomUUID(), UUID.randomUUID(), List.of(), List.of()));
         var phaseStarted = event(
                 gameId,
                 "ParadoxResolutionPhaseStarted",

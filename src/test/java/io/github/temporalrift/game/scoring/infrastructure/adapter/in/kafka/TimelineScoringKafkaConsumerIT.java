@@ -416,7 +416,7 @@ class TimelineScoringKafkaConsumerIT {
     }
 
     private static Message<Object> outcomeEnvelope(UUID gameId, int eraNumber, UUID eventId, UUID winningOutcomeId) {
-        var outcome = new OutcomeAppliedPayload(gameId, eraNumber, eventId, winningOutcomeId, List.of());
+        var outcome = new OutcomeAppliedPayload(gameId, eraNumber, eventId, winningOutcomeId, List.of(), List.of());
         return message("OutcomeApplied", gameId, "FutureEvent", outcome);
     }
 
