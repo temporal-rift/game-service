@@ -17,14 +17,14 @@ class ScoreRulesPropertiesTest {
         var scoreDeltas = completeScoreDeltas();
         scoreDeltas.put(ScoreReason.CHAIN_COMPLETED, 12);
 
-        var properties = new ScoreRulesProperties(scoreDeltas, true, true);
+        var properties = new ScoreRulesProperties(scoreDeltas, true, true, true);
 
         assertThat(properties.pointsDelta(ScoreReason.CHAIN_COMPLETED)).isEqualTo(12);
     }
 
     @Test
     void defaultScoreTableMatchesCurrentValues() {
-        var properties = new ScoreRulesProperties(completeScoreDeltas(), true, true);
+        var properties = new ScoreRulesProperties(completeScoreDeltas(), true, true, true);
 
         for (var reason : ScoreReason.values()) {
             assertThat(properties.pointsDelta(reason)).isEqualTo(ScoreRulesTestValues.pointsDelta(reason));
@@ -33,9 +33,19 @@ class ScoreRulesPropertiesTest {
 
     @Test
     void exposesTheWrittenOutcomeShieldRule() {
-        assertThat(new ScoreRulesProperties(completeScoreDeltas(), true, true).writtenOutcomeShieldsAnnihilation())
+        assertThat(new ScoreRulesProperties(completeScoreDeltas(), true, true, true)
+                        .writtenOutcomeShieldsAnnihilation())
                 .isTrue();
-        assertThat(new ScoreRulesProperties(completeScoreDeltas(), false, true).writtenOutcomeShieldsAnnihilation())
+        assertThat(new ScoreRulesProperties(completeScoreDeltas(), false, true, true)
+                        .writtenOutcomeShieldsAnnihilation())
+                .isFalse();
+    }
+
+    @Test
+    void exposesTheAnnihilationConsequenceRule() {
+        assertThat(new ScoreRulesProperties(completeScoreDeltas(), true, true, true).annihilationRequiresConsequence())
+                .isTrue();
+        assertThat(new ScoreRulesProperties(completeScoreDeltas(), true, true, false).annihilationRequiresConsequence())
                 .isFalse();
     }
 
@@ -44,7 +54,7 @@ class ScoreRulesPropertiesTest {
         var scoreDeltas = completeScoreDeltas();
         scoreDeltas.remove(ScoreReason.EXPOSE_SIGNATURE_REVEALED);
 
-        var properties = new ScoreRulesProperties(scoreDeltas, true, true);
+        var properties = new ScoreRulesProperties(scoreDeltas, true, true, true);
 
         assertThat(properties.pointsDelta(ScoreReason.EXPOSE_SIGNATURE_REVEALED))
                 .isEqualTo(2);
@@ -57,7 +67,7 @@ class ScoreRulesPropertiesTest {
         var scoreDeltas = completeScoreDeltas();
         scoreDeltas.remove(ScoreReason.EXPOSE_CHANGED_PLAYER_BEHAVIOR);
 
-        var properties = new ScoreRulesProperties(scoreDeltas, true, true);
+        var properties = new ScoreRulesProperties(scoreDeltas, true, true, true);
 
         assertThat(properties.pointsDelta(ScoreReason.EXPOSE_SIGNATURE_REVEALED))
                 .isEqualTo(2);
@@ -70,7 +80,7 @@ class ScoreRulesPropertiesTest {
         var scoreDeltas = completeScoreDeltas();
         scoreDeltas.remove(ScoreReason.SECRET_OUTCOME_MISSED);
 
-        var properties = new ScoreRulesProperties(scoreDeltas, true, true);
+        var properties = new ScoreRulesProperties(scoreDeltas, true, true, true);
 
         assertThat(properties.pointsDelta(ScoreReason.SECRET_OUTCOME_MISSED)).isEqualTo(-1);
     }
@@ -80,7 +90,8 @@ class ScoreRulesPropertiesTest {
         var scoreDeltas = completeScoreDeltas();
         scoreDeltas.put(ScoreReason.SECRET_OUTCOME_MISSED, 0);
 
-        assertThat(new ScoreRulesProperties(scoreDeltas, true, true).pointsDelta(ScoreReason.SECRET_OUTCOME_MISSED))
+        assertThat(new ScoreRulesProperties(scoreDeltas, true, true, true)
+                        .pointsDelta(ScoreReason.SECRET_OUTCOME_MISSED))
                 .isZero();
     }
 
@@ -90,7 +101,7 @@ class ScoreRulesPropertiesTest {
         scoreDeltas.remove(ScoreReason.CHAIN_COMPLETED);
 
         assertThatIllegalArgumentException()
-                .isThrownBy(() -> new ScoreRulesProperties(scoreDeltas, true, true))
+                .isThrownBy(() -> new ScoreRulesProperties(scoreDeltas, true, true, true))
                 .withMessageContaining("CHAIN_COMPLETED");
     }
 
@@ -101,7 +112,7 @@ class ScoreRulesPropertiesTest {
         scoreDeltas.remove(ScoreReason.EXPOSE_SIGNATURE_REVEALED);
 
         assertThatIllegalArgumentException()
-                .isThrownBy(() -> new ScoreRulesProperties(scoreDeltas, true, true))
+                .isThrownBy(() -> new ScoreRulesProperties(scoreDeltas, true, true, true))
                 .withMessageContaining("EXPOSE_SIGNATURE_REVEALED");
     }
 
@@ -111,7 +122,7 @@ class ScoreRulesPropertiesTest {
         scoreDeltas.put(ScoreReason.CHAIN_COMPLETED, null);
 
         assertThatIllegalArgumentException()
-                .isThrownBy(() -> new ScoreRulesProperties(scoreDeltas, true, true))
+                .isThrownBy(() -> new ScoreRulesProperties(scoreDeltas, true, true, true))
                 .withMessageContaining("CHAIN_COMPLETED");
     }
 

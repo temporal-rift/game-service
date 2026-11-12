@@ -237,6 +237,30 @@ class ExecutionRulesBindingTest {
     }
 
     @Test
+    @DisplayName("a context without the annihilation consequence rule gets its default, on")
+    void bind_annihilationConsequenceRuleOmitted_defaultsToOn() {
+        var properties =
+                bindable(ExecutionRulesFixture.rulesWithout("game.rules.scoring.annihilation-requires-consequence"));
+
+        var score = new ExecutionRulesBinding<>(ScoreRulesProperties.class, "game.rules.scoring", validator)
+                .bind(properties);
+
+        assertThat(score.annihilationRequiresConsequence()).isTrue();
+    }
+
+    @Test
+    @DisplayName("a context may switch the annihilation consequence rule off")
+    void bind_annihilationConsequenceRuleFalse_switchesItOff() {
+        var properties = bindable(
+                ExecutionRulesFixture.rulesWith("game.rules.scoring.annihilation-requires-consequence", false));
+
+        var score = new ExecutionRulesBinding<>(ScoreRulesProperties.class, "game.rules.scoring", validator)
+                .bind(properties);
+
+        assertThat(score.annihilationRequiresConsequence()).isFalse();
+    }
+
+    @Test
     @DisplayName("a missing score delta is rejected by its key")
     void bind_missingScoreDelta_namesTheKey() {
         var properties =

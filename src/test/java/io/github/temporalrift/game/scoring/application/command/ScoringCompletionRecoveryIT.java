@@ -53,7 +53,8 @@ class ScoringCompletionRecoveryIT {
                     gameId, eraNumber, 1, activistId, SpecialAction.RALLY, eventId, outcomeId));
             contextRepository.recordRevisionistAction(
                     gameId, eraNumber, revisionistId, SpecialAction.REWRITE, eventId, outcomeId);
-            outcomeInboxRepository.save(new OutcomeApplied(gameId, eraNumber, eventId, outcomeId, List.of()));
+            outcomeInboxRepository.save(
+                    new OutcomeApplied(gameId, eraNumber, eventId, outcomeId, List.of(), List.of()));
             contextRepository.saveEraResolutionCompleted(new EraResolutionCompleted(
                     gameId,
                     eraNumber,

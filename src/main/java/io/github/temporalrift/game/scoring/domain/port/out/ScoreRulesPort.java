@@ -17,4 +17,10 @@ public interface ScoreRulesPort {
      * recorded declaration of the era.
      */
     boolean exposeRequiresDeclaredEvent();
+
+    /**
+     * Whether an Annihilate earns {@code ANNIHILATED_OUTCOME}, and its objective step, only when its event's outcome
+     * reports that the erasure changed the winner.
+     */
+    boolean annihilationRequiresConsequence();
 }
