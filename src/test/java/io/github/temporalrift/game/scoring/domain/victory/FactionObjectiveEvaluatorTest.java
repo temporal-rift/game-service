@@ -156,6 +156,19 @@ class FactionObjectiveEvaluatorTest {
     }
 
     @Test
+    @DisplayName("revisionist missed Rewrite makes no objective progress")
+    void revisionist_missedRewrite_noProgress() {
+        var score = score(Faction.REVISIONISTS);
+        score.apply(1, ScoreReason.SECRET_OUTCOME_WON, 4);
+        score.apply(2, ScoreReason.SECRET_OUTCOME_MISSED, -1);
+
+        var progress = FactionObjectiveEvaluator.evaluate(score, 2, RULES);
+
+        assertThat(progress.progressCount()).isEqualTo(1);
+        assertThat(progress.objectiveMet()).isFalse();
+    }
+
+    @Test
     @DisplayName("weaver with a completed chain meets the objective at full length")
     void weaver_chainCompleted_objectiveMet() {
         var score = score(Faction.WEAVERS);

@@ -21,12 +21,17 @@ import io.github.temporalrift.game.shared.domain.model.SpecialAction;
 class SpecialActionAvailabilityPolicyTest {
 
     private static final int MAX_ERAS = 5;
-    private static final int ANNIHILATE_EARLIEST = 2;
+    private static final SpecialActionRoundWindows WINDOWS = new SpecialActionRoundWindows(2, 2);
     private static final int SEAL_MAX = 2;
-    private static final Set<SpecialAction> ERA_BUDGETED = Set.of(SpecialAction.ANNIHILATE, SpecialAction.SEAL);
+    private static final Set<SpecialAction> ERA_BUDGETED =
+            Set.of(SpecialAction.ANNIHILATE, SpecialAction.SEAL, SpecialAction.REWRITE);
 
     private static RoundRules rules(int era, int round) {
-        return new RoundRules(era, round, MAX_ERAS, ANNIHILATE_EARLIEST, ERA_BUDGETED, SEAL_MAX);
+        return rules(era, round, WINDOWS);
+    }
+
+    private static RoundRules rules(int era, int round, SpecialActionRoundWindows windows) {
+        return new RoundRules(era, round, MAX_ERAS, windows, ERA_BUDGETED, SEAL_MAX);
     }
 
     private static PlayerUsage fresh() {
@@ -131,10 +136,51 @@ class SpecialActionAvailabilityPolicyTest {
     @Test
     @DisplayName("Obscure is unavailable in Round 3")
     void obscureInRoundThree() {
-        var result = SpecialActionAvailabilityPolicy.evaluate(Faction.REVISIONISTS, rules(1, 3), fresh());
+        var result = SpecialActionAvailabilityPolicy.evaluate(
+                Faction.REVISIONISTS, rules(1, 3, new SpecialActionRoundWindows(2, 3)), fresh());
 
         assertThat(reasons(result))
                 .containsOnly(Map.entry(SpecialAction.OBSCURE, SpecialActionUnavailableReason.NOT_ELIGIBLE_THIS_ROUND));
+    }
+
+    @Test
+    @DisplayName("a Revisionist cannot Rewrite after the latest round")
+    void rewriteAfterLatestRound() {
+        assertThat(reasons(SpecialActionAvailabilityPolicy.evaluate(Faction.REVISIONISTS, rules(1, 2), fresh())))
+                .isEmpty();
+        assertThat(reasons(SpecialActionAvailabilityPolicy.evaluate(Faction.REVISIONISTS, rules(1, 3), fresh())))
+                .containsOnly(
+                        Map.entry(SpecialAction.REWRITE, SpecialActionUnavailableReason.NOT_ELIGIBLE_THIS_ROUND),
+                        Map.entry(SpecialAction.OBSCURE, SpecialActionUnavailableReason.NOT_ELIGIBLE_THIS_ROUND));
+    }
+
+    @Test
+    @DisplayName("a latest Rewrite round of 3 keeps Rewrite available in Round 3")
+    void rewriteInRoundThreeWhenLatestRoundIsThree() {
+        var result = SpecialActionAvailabilityPolicy.evaluate(
+                Faction.REVISIONISTS, rules(1, 3, new SpecialActionRoundWindows(2, 3)), fresh());
+
+        assertThat(reasons(result)).doesNotContainKey(SpecialAction.REWRITE);
+    }
+
+    @Test
+    @DisplayName("an accepted Rewrite exhausts the era budget, which returns next era")
+    void rewriteEraBudget() {
+        var spent = new PlayerUsage(false, Set.of(SpecialAction.REWRITE), 0);
+
+        assertThat(reasons(SpecialActionAvailabilityPolicy.evaluate(Faction.REVISIONISTS, rules(1, 2), spent)))
+                .containsOnly(Map.entry(SpecialAction.REWRITE, SpecialActionUnavailableReason.ERA_BUDGET_EXHAUSTED));
+        assertThat(reasons(SpecialActionAvailabilityPolicy.evaluate(Faction.REVISIONISTS, rules(2, 1), fresh())))
+                .isEmpty();
+    }
+
+    @Test
+    @DisplayName("Rewrite after the latest round outranks an exhausted era budget")
+    void roundIneligibilityOutranksBudget() {
+        var spent = new PlayerUsage(false, Set.of(SpecialAction.REWRITE), 0);
+
+        assertThat(reasons(SpecialActionAvailabilityPolicy.evaluate(Faction.REVISIONISTS, rules(1, 3), spent)))
+                .containsEntry(SpecialAction.REWRITE, SpecialActionUnavailableReason.NOT_ELIGIBLE_THIS_ROUND);
     }
 
     @Test
@@ -158,7 +204,7 @@ class SpecialActionAvailabilityPolicyTest {
         var submission = new SubmittedAction.SpecialActionSubmission(
                 UUID.randomUUID(), Faction.ERASERS, special, null, null, UUID.randomUUID(), UUID.randomUUID(), null);
         try {
-            submission.validateEligibility(era, round, MAX_ERAS, ANNIHILATE_EARLIEST);
+            submission.validateEligibility(era, round, MAX_ERAS, WINDOWS);
             return !SpecialActionRoundRules.exposeOutsideItsRound(special, round);
         } catch (RuntimeException _) {
             return false;

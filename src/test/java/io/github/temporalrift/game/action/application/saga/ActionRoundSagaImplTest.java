@@ -701,7 +701,7 @@ class ActionRoundSagaImplTest {
         }
 
         @Test
-        @DisplayName("Round 3 — retains the latest Rewrite and every Mimic from the era")
+        @DisplayName("Round 3 — locks the first Rewrite, ignores a later one, and retains every Mimic from the era")
         void tryClose_round3_collectsRevisionistFactsAcrossTheEra() {
             var firstRewriteEventId = UUID.randomUUID();
             var firstRewriteOutcomeId = UUID.randomUUID();
@@ -765,9 +765,66 @@ class ActionRoundSagaImplTest {
             assertThat(captor.getValue().revisionistFacts())
                     .containsExactly(
                             new EraActionFactsFinalized.RevisionistFact(
-                                    PLAYER_1, SpecialAction.REWRITE, latestRewriteEventId, latestRewriteOutcomeId),
+                                    PLAYER_1, SpecialAction.REWRITE, firstRewriteEventId, firstRewriteOutcomeId),
                             new EraActionFactsFinalized.RevisionistFact(
                                     PLAYER_1, SpecialAction.MIMIC, mimicEventId, mimicOutcomeId));
+        }
+
+        @Test
+        @DisplayName("Round 3 — a Rewrite cancelled by Nullify leaves no preference and a later Rewrite is ignored")
+        void tryClose_round3_cancelledFirstRewriteLeavesNoPreference() {
+            var nullifierId = UUID.randomUUID();
+            var cancelledEventId = UUID.randomUUID();
+            var keptEventId = UUID.randomUUID();
+            var keptOutcomeId = UUID.randomUUID();
+            var round1 = new ActionRound(
+                    UUID.randomUUID(),
+                    new ActionRoundConfig(GAME_ID, ERA_NUMBER, 1, TIMER_SECONDS),
+                    List.of(PLAYER_1, nullifierId));
+            round1.submit(new SubmittedAction.SpecialActionSubmission(
+                    PLAYER_1,
+                    Faction.REVISIONISTS,
+                    SpecialAction.REWRITE,
+                    null,
+                    null,
+                    cancelledEventId,
+                    UUID.randomUUID(),
+                    null));
+            round1.submit(nullify(nullifierId, PLAYER_1));
+            var round2 = new ActionRound(
+                    UUID.randomUUID(), new ActionRoundConfig(GAME_ID, ERA_NUMBER, 2, TIMER_SECONDS), List.of(PLAYER_1));
+            round2.submit(new SubmittedAction.SpecialActionSubmission(
+                    PLAYER_1,
+                    Faction.REVISIONISTS,
+                    SpecialAction.REWRITE,
+                    null,
+                    null,
+                    keptEventId,
+                    keptOutcomeId,
+                    null));
+            var round3 = new ActionRound(
+                    UUID.randomUUID(), new ActionRoundConfig(GAME_ID, ERA_NUMBER, 3, TIMER_SECONDS), List.of(PLAYER_1));
+            given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA_NUMBER, 3))
+                    .willReturn(Optional.of(round3));
+            given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumber(GAME_ID, ERA_NUMBER, 1))
+                    .willReturn(Optional.of(round1));
+            given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumber(GAME_ID, ERA_NUMBER, 2))
+                    .willReturn(Optional.of(round2));
+            given(stateManager.markSubmitted(GAME_ID, ERA_NUMBER, 3, PLAYER_1))
+                    .willReturn(Optional.of(new ActionRoundSagaState(
+                            UUID.randomUUID(),
+                            GAME_ID,
+                            ERA_NUMBER,
+                            3,
+                            ActionRoundSagaStatus.WAITING,
+                            List.of(),
+                            TIMER_EXPIRES_AT)));
+
+            saga.handlePlayerSubmitted(GAME_ID, ERA_NUMBER, 3, PLAYER_1);
+
+            var captor = ArgumentCaptor.<EraActionFactsFinalized>captor();
+            then(actionEventPublisher).should().publishInternally(captor.capture());
+            assertThat(captor.getValue().revisionistFacts()).isEmpty();
         }
 
         @Test

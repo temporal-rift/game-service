@@ -53,6 +53,7 @@ game:
       - REWEAVE
     seal-max-uses-per-game: 2
     annihilate-earliest-round: 2
+    rewrite-latest-round: 2
     hand-deal-forced-types: []
     probability:
       floor: 0
@@ -71,6 +72,7 @@ game:
         FULFILLMENT_SUCCEEDED: 8
         EVENT_RESOLVED_DIFFERENTLY_THAN_WRITTEN: -2
         SECRET_OUTCOME_WON: 4
+        SECRET_OUTCOME_MISSED: -1
         MIMIC_NEVER_TRACED: 6
         MIMIC_CONTRIBUTED_TO_WIN: 2
         CHAIN_LINK_ADDED: 2

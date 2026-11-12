@@ -30,6 +30,7 @@ class PlayerScoreTest {
                 Arguments.of(Faction.PROPHETS, ScoreReason.FULFILLMENT_SUCCEEDED, 8),
                 Arguments.of(Faction.PROPHETS, ScoreReason.EVENT_RESOLVED_DIFFERENTLY_THAN_WRITTEN, -2),
                 Arguments.of(Faction.REVISIONISTS, ScoreReason.SECRET_OUTCOME_WON, 4),
+                Arguments.of(Faction.REVISIONISTS, ScoreReason.SECRET_OUTCOME_MISSED, -1),
                 Arguments.of(Faction.REVISIONISTS, ScoreReason.MIMIC_NEVER_TRACED, 6),
                 Arguments.of(Faction.REVISIONISTS, ScoreReason.MIMIC_CONTRIBUTED_TO_WIN, 2),
                 Arguments.of(Faction.WEAVERS, ScoreReason.CHAIN_LINK_ADDED, 2),

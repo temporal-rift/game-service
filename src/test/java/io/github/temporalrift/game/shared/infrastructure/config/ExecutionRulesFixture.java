@@ -14,6 +14,7 @@ public final class ExecutionRulesFixture {
             Map.entry("FULFILLMENT_SUCCEEDED", 8),
             Map.entry("EVENT_RESOLVED_DIFFERENTLY_THAN_WRITTEN", -2),
             Map.entry("SECRET_OUTCOME_WON", 4),
+            Map.entry("SECRET_OUTCOME_MISSED", -1),
             Map.entry("MIMIC_NEVER_TRACED", 6),
             Map.entry("MIMIC_CONTRIBUTED_TO_WIN", 2),
             Map.entry("CHAIN_LINK_ADDED", 2),
@@ -57,6 +58,7 @@ public final class ExecutionRulesFixture {
                 "game.rules.once-era-budgeted-specials", List.of("ANNIHILATE", "SEAL", "CORRUPT", "MIMIC", "REWEAVE"));
         rules.put("game.rules.seal-max-uses-per-game", 2);
         rules.put("game.rules.annihilate-earliest-round", 2);
+        rules.put("game.rules.rewrite-latest-round", 2);
         rules.put("game.rules.hand-deal-forced-types", List.of());
         rules.put("game.rules.probability.floor", 0);
         rules.put("game.rules.probability.ceiling", 90);

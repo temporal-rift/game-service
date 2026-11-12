@@ -69,6 +69,7 @@ class SpecialActionAvailabilityReporterTest {
                 Clock.fixed(Instant.parse("2026-01-01T00:00:00Z"), ZoneOffset.UTC));
         org.mockito.Mockito.lenient().when(gameRules.maxEras()).thenReturn(5);
         org.mockito.Mockito.lenient().when(gameRules.annihilateEarliestRound()).thenReturn(2);
+        org.mockito.Mockito.lenient().when(gameRules.rewriteLatestRound()).thenReturn(2);
         org.mockito.Mockito.lenient().when(gameRules.sealMaxUsesPerGame()).thenReturn(2);
         org.mockito.Mockito.lenient()
                 .when(gameRules.onceEraBudgetedSpecials())

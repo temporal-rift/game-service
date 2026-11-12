@@ -55,6 +55,7 @@ class SessionRulesPropertiesTest {
                 Set.of(SpecialAction.ANNIHILATE, SpecialAction.SEAL, SpecialAction.CORRUPT, SpecialAction.MIMIC),
                 2,
                 2,
+                2,
                 Set.of(),
                 PROBABILITY);
     }
@@ -110,6 +111,7 @@ class SessionRulesPropertiesTest {
                         Set.of(SpecialAction.ANNIHILATE),
                         2,
                         2,
+                        2,
                         Set.of(),
                         PROBABILITY))
                 .withMessage("cards-per-deal must be greater than or equal to cards-per-hand");
@@ -135,6 +137,7 @@ class SessionRulesPropertiesTest {
                         Map.of(CardGrade.I, 1),
                         new SessionRulesProperties.Stabilization(3, 2),
                         Set.of(SpecialAction.ANNIHILATE),
+                        2,
                         2,
                         2,
                         Set.of(
@@ -170,6 +173,7 @@ class SessionRulesPropertiesTest {
                                 Map.of(CardGrade.I, 1),
                                 new SessionRulesProperties.Stabilization(3, 2),
                                 Set.of(SpecialAction.ANNIHILATE),
+                                2,
                                 2,
                                 2,
                                 Set.of(),
@@ -212,6 +216,30 @@ class SessionRulesPropertiesTest {
     @DisplayName("binding without annihilate-earliest-round — defaults to round two")
     void bindingWithoutAnnihilateEarliestRound_defaultsToTwo() {
         assertThat(bindValidated(minimalRules()).annihilateEarliestRound()).isEqualTo(2);
+    }
+
+    @Test
+    @DisplayName("binding without rewrite-latest-round — defaults to round two")
+    void bindingWithoutRewriteLatestRound_defaultsToTwo() {
+        assertThat(bindValidated(minimalRules()).rewriteLatestRound()).isEqualTo(2);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"0", "4", "-1"})
+    @DisplayName("a rewrite-latest-round outside 1 to 3 fails binding")
+    void rewriteLatestRoundOutOfRange_failsBinding(String round) {
+        var source = minimalRules().withProperty("game.rules.rewrite-latest-round", round);
+
+        assertThatExceptionOfType(BindException.class).isThrownBy(() -> bindValidated(source));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"1", "3"})
+    @DisplayName("a rewrite-latest-round within 1 to 3 binds")
+    void rewriteLatestRoundInRange_binds(String round) {
+        var source = minimalRules().withProperty("game.rules.rewrite-latest-round", round);
+
+        assertThat(bindValidated(source).rewriteLatestRound()).isEqualTo(Integer.parseInt(round));
     }
 
     @ParameterizedTest
@@ -340,6 +368,7 @@ class SessionRulesPropertiesTest {
                         Map.of(CardGrade.I, 1),
                         new SessionRulesProperties.Stabilization(3, 2),
                         Set.of(SpecialAction.ANNIHILATE),
+                        2,
                         2,
                         2,
                         Set.of(),
