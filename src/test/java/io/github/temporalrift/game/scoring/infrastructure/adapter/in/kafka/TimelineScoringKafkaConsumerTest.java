@@ -446,7 +446,8 @@ class TimelineScoringKafkaConsumerTest {
     }
 
     private static OutcomeAppliedPayload outcomeApplied() {
-        return new OutcomeAppliedPayload(GAME_ID, ERA_NUMBER, UUID.randomUUID(), UUID.randomUUID(), List.of());
+        return new OutcomeAppliedPayload(
+                GAME_ID, ERA_NUMBER, UUID.randomUUID(), UUID.randomUUID(), List.of(), List.of());
     }
 
     private static ParadoxCascadedPayload paradoxCascaded(List<UUID> detonatedByPlayerIds) {
