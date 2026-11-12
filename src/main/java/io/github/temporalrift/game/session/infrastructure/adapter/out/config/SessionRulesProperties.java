@@ -42,6 +42,7 @@ public record SessionRulesProperties(
         @NotEmpty Set<SpecialAction> onceEraBudgetedSpecials,
         @DefaultValue("2") @Min(1) int sealMaxUsesPerGame,
         @DefaultValue("2") @Min(1) @Max(3) int annihilateEarliestRound,
+        @DefaultValue("2") @Min(1) @Max(3) int rewriteLatestRound,
         Set<CardType> handDealForcedTypes,
         @NotNull ProbabilityBounds probability)
         implements SessionGameRulesPort {

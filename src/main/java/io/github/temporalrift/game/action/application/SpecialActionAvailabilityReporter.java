@@ -10,6 +10,7 @@ import org.springframework.stereotype.Component;
 import io.github.temporalrift.game.action.domain.actionround.SpecialActionAvailabilityPolicy;
 import io.github.temporalrift.game.action.domain.actionround.SpecialActionAvailabilityPolicy.PlayerUsage;
 import io.github.temporalrift.game.action.domain.actionround.SpecialActionAvailabilityPolicy.RoundRules;
+import io.github.temporalrift.game.action.domain.actionround.SpecialActionRoundWindows;
 import io.github.temporalrift.game.action.domain.event.SpecialActionAvailabilityReported;
 import io.github.temporalrift.game.action.domain.event.SpecialActionAvailabilityReported.SpecialAvailability;
 import io.github.temporalrift.game.action.domain.playerstate.PlayerState;
@@ -59,7 +60,7 @@ public class SpecialActionAvailabilityReporter {
                 eraNumber,
                 roundNumber,
                 gameRules.maxEras(),
-                gameRules.annihilateEarliestRound(),
+                new SpecialActionRoundWindows(gameRules.annihilateEarliestRound(), gameRules.rewriteLatestRound()),
                 gameRules.onceEraBudgetedSpecials(),
                 gameRules.sealMaxUsesPerGame());
         for (var playerState : playerStateRepository.findAllByGameId(gameId)) {

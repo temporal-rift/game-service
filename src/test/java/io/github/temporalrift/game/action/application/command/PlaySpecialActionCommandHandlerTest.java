@@ -510,6 +510,7 @@ class PlaySpecialActionCommandHandlerTest {
             given(playerState.isJammed()).willReturn(false);
             given(gameRules.onceEraBudgetedSpecials()).willReturn(Set.of());
             given(gameRules.maxEras()).willReturn(5);
+            given(gameRules.rewriteLatestRound()).willReturn(2);
             given(round.submit(any())).willReturn(false);
             given(round.id()).willReturn(UUID.randomUUID());
             given(round.gameId()).willReturn(GAME_ID);
@@ -650,6 +651,113 @@ class PlaySpecialActionCommandHandlerTest {
 
         // then
         then(round).should().submit(any());
+    }
+
+    @ParameterizedTest
+    @CsvSource({"1,2", "2,3", "1,3"})
+    @DisplayName("handle — REWRITE after the latest round — rejected without claiming the era budget or submitting")
+    void handleRewriteAfterLatestRoundRejectedWithoutSpending(int latestRound, int roundNumber) {
+        // given
+        var command = new PlaySpecialActionUseCase.Command(
+                GAME_ID,
+                ERA,
+                roundNumber,
+                PLAYER_ID,
+                SpecialAction.REWRITE,
+                null,
+                null,
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                null);
+        given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA, roundNumber))
+                .willReturn(Optional.of(round));
+        given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(playerState));
+        given(playerState.faction()).willReturn(Faction.REVISIONISTS);
+        given(playerState.isJammed()).willReturn(false);
+        given(gameRules.maxEras()).willReturn(5);
+        given(gameRules.rewriteLatestRound()).willReturn(latestRound);
+
+        // when / then
+        assertThatExceptionOfType(SpecialActionNotEligibleForRoundException.class)
+                .isThrownBy(() -> handler.handle(command));
+        then(specialActionEraUsageRepository).shouldHaveNoInteractions();
+        then(round).should(never()).submit(any());
+        then(actionRoundRepository).should(never()).save(any());
+        then(actionEventPublisher).shouldHaveNoInteractions();
+    }
+
+    @ParameterizedTest
+    @CsvSource({"1,1", "2,1", "2,2", "3,3"})
+    @DisplayName("handle — REWRITE up to the latest round — accepted and claims the era budget")
+    void handleRewriteUpToLatestRoundAccepted(int latestRound, int roundNumber) {
+        // given
+        var command = new PlaySpecialActionUseCase.Command(
+                GAME_ID,
+                ERA,
+                roundNumber,
+                PLAYER_ID,
+                SpecialAction.REWRITE,
+                null,
+                null,
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                null);
+        given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA, roundNumber))
+                .willReturn(Optional.of(round));
+        given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(playerState));
+        given(playerState.faction()).willReturn(Faction.REVISIONISTS);
+        given(playerState.isJammed()).willReturn(false);
+        given(gameRules.maxEras()).willReturn(5);
+        given(gameRules.rewriteLatestRound()).willReturn(latestRound);
+        given(gameRules.onceEraBudgetedSpecials()).willReturn(EnumSet.of(SpecialAction.REWRITE));
+        given(specialActionEraUsageRepository.findByGameIdAndEraNumberAndPlayerId(GAME_ID, ERA, PLAYER_ID))
+                .willReturn(Optional.empty());
+        given(round.submit(any())).willReturn(false);
+        given(round.id()).willReturn(UUID.randomUUID());
+        given(round.gameId()).willReturn(GAME_ID);
+        given(round.pullEvents()).willReturn(List.of(specialActionPlayedEvent()));
+
+        // when
+        handler.handle(command);
+
+        // then
+        then(specialActionEraUsageRepository).should().save(any(SpecialActionEraUsage.class));
+        then(round).should().submit(any());
+    }
+
+    @Test
+    @DisplayName("handle — a second REWRITE in the era — rejected by the era budget and the round is untouched")
+    void handleSecondRewriteInEraRejectedByEraBudget() {
+        // given
+        var command = new PlaySpecialActionUseCase.Command(
+                GAME_ID,
+                ERA,
+                2,
+                PLAYER_ID,
+                SpecialAction.REWRITE,
+                null,
+                null,
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                null);
+        given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA, 2))
+                .willReturn(Optional.of(round));
+        given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(playerState));
+        given(playerState.faction()).willReturn(Faction.REVISIONISTS);
+        given(playerState.isJammed()).willReturn(false);
+        given(gameRules.maxEras()).willReturn(5);
+        given(gameRules.rewriteLatestRound()).willReturn(2);
+        given(gameRules.onceEraBudgetedSpecials()).willReturn(EnumSet.of(SpecialAction.REWRITE));
+        given(specialActionEraUsageRepository.findByGameIdAndEraNumberAndPlayerId(GAME_ID, ERA, PLAYER_ID))
+                .willReturn(Optional.of(SpecialActionEraUsage.reconstitute(
+                        UUID.randomUUID(), GAME_ID, ERA, PLAYER_ID, Set.of(SpecialAction.REWRITE))));
+
+        // when / then
+        assertThatExceptionOfType(SpecialActionEraBudgetExhaustedException.class)
+                .isThrownBy(() -> handler.handle(command));
+        then(specialActionEraUsageRepository).should(never()).save(any());
+        then(round).should(never()).submit(any());
+        then(actionRoundRepository).should(never()).save(any());
     }
 
     @Test

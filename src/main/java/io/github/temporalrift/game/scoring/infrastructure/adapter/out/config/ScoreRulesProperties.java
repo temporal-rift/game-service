@@ -21,6 +21,9 @@ public record ScoreRulesProperties(
         @DefaultValue("true") boolean exposeRequiresDeclaredEvent)
         implements ScoreRulesPort {
 
+    /** Applied when served rules predate {@code SECRET_OUTCOME_MISSED}, so such a deployment still starts. */
+    static final int DEFAULT_SECRET_OUTCOME_MISSED_DELTA = -1;
+
     public ScoreRulesProperties {
         Objects.requireNonNull(scoreDeltas, "game.rules.scoring.score-deltas must not be null");
         var normalized = new EnumMap<ScoreReason, Integer>(ScoreReason.class);
@@ -35,6 +38,7 @@ public record ScoreRulesProperties(
             normalized.put(
                     ScoreReason.EXPOSE_CHANGED_PLAYER_BEHAVIOR, normalized.get(ScoreReason.EXPOSE_SIGNATURE_REVEALED));
         }
+        normalized.putIfAbsent(ScoreReason.SECRET_OUTCOME_MISSED, DEFAULT_SECRET_OUTCOME_MISSED_DELTA);
         requireAllReasons(normalized);
         scoreDeltas = Map.copyOf(normalized);
     }

@@ -18,6 +18,7 @@ import io.github.temporalrift.game.action.domain.actionround.InvalidSpecialActio
 import io.github.temporalrift.game.action.domain.actionround.JammedPlayerException;
 import io.github.temporalrift.game.action.domain.actionround.RoundNotFoundException;
 import io.github.temporalrift.game.action.domain.actionround.SpecialActionRoundRules;
+import io.github.temporalrift.game.action.domain.actionround.SpecialActionRoundWindows;
 import io.github.temporalrift.game.action.domain.actionround.SubmittedAction;
 import io.github.temporalrift.game.action.domain.activisterastate.ActivistEraState;
 import io.github.temporalrift.game.action.domain.activisterastate.ExposeTargetNotEligibleException;
@@ -137,7 +138,10 @@ class PlaySpecialActionCommandHandler implements PlaySpecialActionUseCase {
         // declaration window, era, round, then the game budget and finally the era budget. A client told a
         // special is unavailable for a reason therefore gets that same reason from a submission.
         action.validateEligibility(
-                command.eraNumber(), command.roundNumber(), gameRules.maxEras(), gameRules.annihilateEarliestRound());
+                command.eraNumber(),
+                command.roundNumber(),
+                gameRules.maxEras(),
+                new SpecialActionRoundWindows(gameRules.annihilateEarliestRound(), gameRules.rewriteLatestRound()));
         if (SpecialActionRoundRules.exposeOutsideItsRound(command.specialAction(), command.roundNumber())) {
             throw new ExposeUnavailableException();
         }

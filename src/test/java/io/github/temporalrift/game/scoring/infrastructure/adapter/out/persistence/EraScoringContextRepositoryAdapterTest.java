@@ -756,7 +756,7 @@ class EraScoringContextRepositoryAdapterTest {
     }
 
     @Test
-    void resolveRevisionistActions_appliedNonWinningRewriteResolvesWithoutScoringFact() {
+    void resolveRevisionistActions_appliedNonWinningRewriteRecordsSecretOutcomeMissedFact() {
         var gameId = UUID.randomUUID();
         var playerId = UUID.randomUUID();
         var eventId = UUID.randomUUID();
@@ -774,7 +774,16 @@ class EraScoringContextRepositoryAdapterTest {
         adapter.resolveRevisionistActions(gameId, 2);
 
         assertThat(action.getResolved()).isTrue();
-        then(actionFactJpaRepository).shouldHaveNoInteractions();
+        then(actionFactJpaRepository)
+                .should()
+                .insertIfAbsent(
+                        any(UUID.class),
+                        eq(gameId),
+                        eq(2),
+                        eq(playerId),
+                        eq(Faction.REVISIONISTS.name()),
+                        eq(ScoreReason.SECRET_OUTCOME_MISSED.name()));
+        then(actionFactJpaRepository).shouldHaveNoMoreInteractions();
     }
 
     @Test
@@ -816,8 +825,8 @@ class EraScoringContextRepositoryAdapterTest {
     @Test
     void resolveRevisionistActions_cascadedTargetResolvesFalseWithoutWaitingForOutcome() {
         var gameId = UUID.randomUUID();
-        var action =
-                revisionistAction(gameId, UUID.randomUUID(), SpecialAction.MIMIC, UUID.randomUUID(), UUID.randomUUID());
+        var action = revisionistAction(
+                gameId, UUID.randomUUID(), SpecialAction.REWRITE, UUID.randomUUID(), UUID.randomUUID());
         given(revisionistActionJpaRepository.findAllUnresolvedWithLock(gameId, 2))
                 .willReturn(List.of(action));
         var barrier = new EraResolutionCompleted(
@@ -838,8 +847,8 @@ class EraScoringContextRepositoryAdapterTest {
     @Test
     void resolveRevisionistActions_stalledTargetResolvesFalseWithoutWaitingForOutcome() {
         var gameId = UUID.randomUUID();
-        var action =
-                revisionistAction(gameId, UUID.randomUUID(), SpecialAction.MIMIC, UUID.randomUUID(), UUID.randomUUID());
+        var action = revisionistAction(
+                gameId, UUID.randomUUID(), SpecialAction.REWRITE, UUID.randomUUID(), UUID.randomUUID());
         given(revisionistActionJpaRepository.findAllUnresolvedWithLock(gameId, 2))
                 .willReturn(List.of(action));
         var barrier = new EraResolutionCompleted(

@@ -381,27 +381,31 @@ public sealed interface SubmittedAction permits SubmittedAction.CardAction, Subm
 
         /**
          * Rejects, in the order the availability report names them, a special that is unplayable whatever its
-         * target: Rally and Momentum outside the declaration window, Cascade in the final era, then Annihilate
-         * and Obscure outside their rounds. Command handlers call this ahead of any budget claim.
+         * target: Rally and Momentum outside the declaration window, Cascade in the final era, then Annihilate,
+         * Rewrite and Obscure outside their rounds. Command handlers call this ahead of any budget claim.
          */
-        public void validateEligibility(int eraNumber, int roundNumber, int maxEras, int annihilateEarliestRound) {
+        public void validateEligibility(
+                int eraNumber, int roundNumber, int maxEras, SpecialActionRoundWindows roundWindows) {
             if (SpecialActionRoundRules.declarationWindowOnly(specialAction)) {
                 throw new DeclarationSpecialActionRequiredException(specialAction);
             }
             validateFinalEra(eraNumber, roundNumber, maxEras);
-            validateEarliestRound(eraNumber, roundNumber, annihilateEarliestRound);
+            validateRoundWindow(eraNumber, roundNumber, roundWindows);
             if (SpecialActionRoundRules.obscureInFinalRound(specialAction, roundNumber)) {
                 throw new SpecialActionNotEligibleForRoundException(specialAction, eraNumber, roundNumber);
             }
         }
 
         /**
-         * Rejects an Annihilate submitted before the configured earliest round. Command handlers call this ahead of
-         * any budget claim so a rejected submission spends nothing.
+         * Rejects an Annihilate submitted before its configured earliest round or a Rewrite submitted after its
+         * configured latest round. Command handlers call this ahead of any budget claim so a rejected submission
+         * spends nothing.
          */
-        public void validateEarliestRound(int eraNumber, int roundNumber, int annihilateEarliestRound) {
+        public void validateRoundWindow(int eraNumber, int roundNumber, SpecialActionRoundWindows roundWindows) {
             if (SpecialActionRoundRules.annihilateBeforeEarliestRound(
-                    specialAction, roundNumber, annihilateEarliestRound)) {
+                            specialAction, roundNumber, roundWindows.annihilateEarliestRound())
+                    || SpecialActionRoundRules.rewriteAfterLatestRound(
+                            specialAction, roundNumber, roundWindows.rewriteLatestRound())) {
                 throw new SpecialActionNotEligibleForRoundException(specialAction, eraNumber, roundNumber);
             }
         }

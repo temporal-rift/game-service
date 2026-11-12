@@ -111,6 +111,27 @@ class ExecutionRulesBindingTest {
                 .isEqualTo("game.rules.annihilate-earliest-round");
     }
 
+    @ParameterizedTest
+    @ValueSource(ints = {1, 2, 3})
+    @DisplayName("a rewrite-latest-round within 1 to 3 binds to the value the context carries")
+    void bind_rewriteLatestRoundInRange_yieldsTheValue(int round) {
+        var rules = session.bind(bindable(ExecutionRulesFixture.rulesWith("game.rules.rewrite-latest-round", round)));
+
+        assertThat(rules.rewriteLatestRound()).isEqualTo(round);
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {0, 4})
+    @DisplayName("a rewrite-latest-round outside 1 to 3 is rejected by its key")
+    void bind_rewriteLatestRoundOutOfRange_namesTheKey(int round) {
+        var properties = bindable(ExecutionRulesFixture.rulesWith("game.rules.rewrite-latest-round", round));
+
+        assertThatThrownBy(() -> session.bind(properties))
+                .isInstanceOf(InvalidExecutionRulesException.class)
+                .extracting(failure -> ((InvalidExecutionRulesException) failure).key())
+                .isEqualTo("game.rules.rewrite-latest-round");
+    }
+
     @Test
     @DisplayName("a deal smaller than the hand is rejected")
     void bind_dealSmallerThanHand_isRejected() {
@@ -141,6 +162,30 @@ class ExecutionRulesBindingTest {
 
         assertThat(score.pointsDelta(ScoreReason.CHAIN_COMPLETED)).isEqualTo(10);
         assertThat(victory.eraserAnnihilations()).isEqualTo(4);
+    }
+
+    @Test
+    @DisplayName("a context without the secret-outcome miss delta gets its default of -1")
+    void bind_missDeltaOmitted_defaultsToMinusOne() {
+        var properties =
+                bindable(ExecutionRulesFixture.rulesWithout("game.rules.scoring.score-deltas.SECRET_OUTCOME_MISSED"));
+
+        var score = new ExecutionRulesBinding<>(ScoreRulesProperties.class, "game.rules.scoring", validator)
+                .bind(properties);
+
+        assertThat(score.pointsDelta(ScoreReason.SECRET_OUTCOME_MISSED)).isEqualTo(-1);
+    }
+
+    @Test
+    @DisplayName("a context carrying a secret-outcome miss delta is honoured, including zero")
+    void bind_missDeltaCarried_isHonoured() {
+        var properties =
+                bindable(ExecutionRulesFixture.rulesWith("game.rules.scoring.score-deltas.SECRET_OUTCOME_MISSED", 0));
+
+        var score = new ExecutionRulesBinding<>(ScoreRulesProperties.class, "game.rules.scoring", validator)
+                .bind(properties);
+
+        assertThat(score.pointsDelta(ScoreReason.SECRET_OUTCOME_MISSED)).isZero();
     }
 
     @Test
