@@ -66,6 +66,25 @@ class ScoreRulesPropertiesTest {
     }
 
     @Test
+    void defaultsAMissingSecretOutcomeMissedToMinusOne() {
+        var scoreDeltas = completeScoreDeltas();
+        scoreDeltas.remove(ScoreReason.SECRET_OUTCOME_MISSED);
+
+        var properties = new ScoreRulesProperties(scoreDeltas, true);
+
+        assertThat(properties.pointsDelta(ScoreReason.SECRET_OUTCOME_MISSED)).isEqualTo(-1);
+    }
+
+    @Test
+    void keepsAConfiguredSecretOutcomeMissedIncludingZero() {
+        var scoreDeltas = completeScoreDeltas();
+        scoreDeltas.put(ScoreReason.SECRET_OUTCOME_MISSED, 0);
+
+        assertThat(new ScoreRulesProperties(scoreDeltas, true).pointsDelta(ScoreReason.SECRET_OUTCOME_MISSED))
+                .isZero();
+    }
+
+    @Test
     void rejectsMissingScoreReason() {
         var scoreDeltas = completeScoreDeltas();
         scoreDeltas.remove(ScoreReason.CHAIN_COMPLETED);

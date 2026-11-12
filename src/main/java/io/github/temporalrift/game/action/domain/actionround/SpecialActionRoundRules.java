@@ -40,11 +40,17 @@ public final class SpecialActionRoundRules {
         return specialAction == SpecialAction.ANNIHILATE && roundNumber < annihilateEarliestRound;
     }
 
-    /** Whether the special's round rules (Obscure, Expose, Annihilate) make it unplayable in this round. */
+    public static boolean rewriteAfterLatestRound(
+            SpecialAction specialAction, int roundNumber, int rewriteLatestRound) {
+        return specialAction == SpecialAction.REWRITE && roundNumber > rewriteLatestRound;
+    }
+
+    /** Whether the special's round rules (Obscure, Expose, Annihilate, Rewrite) make it unplayable in this round. */
     public static boolean ineligibleThisRound(
-            SpecialAction specialAction, int roundNumber, int annihilateEarliestRound) {
+            SpecialAction specialAction, int roundNumber, SpecialActionRoundWindows windows) {
         return obscureInFinalRound(specialAction, roundNumber)
                 || exposeOutsideItsRound(specialAction, roundNumber)
-                || annihilateBeforeEarliestRound(specialAction, roundNumber, annihilateEarliestRound);
+                || annihilateBeforeEarliestRound(specialAction, roundNumber, windows.annihilateEarliestRound())
+                || rewriteAfterLatestRound(specialAction, roundNumber, windows.rewriteLatestRound());
     }
 }

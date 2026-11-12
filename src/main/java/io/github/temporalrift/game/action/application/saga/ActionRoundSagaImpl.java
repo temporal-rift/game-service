@@ -51,6 +51,7 @@ import io.github.temporalrift.game.shared.domain.model.CardType;
 import io.github.temporalrift.game.shared.domain.model.EntropyCoordinate;
 import io.github.temporalrift.game.shared.domain.model.EntropyPurpose;
 import io.github.temporalrift.game.shared.domain.model.IdentityKind;
+import io.github.temporalrift.game.shared.domain.model.SpecialAction;
 import io.github.temporalrift.game.shared.domain.port.out.ExecutionEntropy;
 import io.github.temporalrift.game.shared.domain.port.out.GameRulesPort;
 
@@ -527,7 +528,7 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
         var cancelledRoundTwoPlayerIds = cancellationForRound(eraRounds, SIGNATURE_REVEAL_ROUND_NUMBER);
         var foresightFacts = new ArrayList<EraActionFactsFinalized.ForesightFact>();
         var mimicFacts = new ArrayList<EraActionFactsFinalized.RevisionistFact>();
-        var latestRewriteFacts = new LinkedHashMap<UUID, EraActionFactsFinalized.RevisionistFact>();
+        var lockedRewriteFacts = new LinkedHashMap<UUID, EraActionFactsFinalized.RevisionistFact>();
         var fulfillmentFacts = new java.util.LinkedHashSet<EraActionFactsFinalized.FulfillmentFact>();
         var exposeFacts = activistEraStateRepository.findExposedByGameIdAndEraNumber(gameId, eraNumber).stream()
                 .filter(state -> !cancelledRoundTwoPlayerIds.contains(state.activistPlayerId()))
@@ -546,6 +547,7 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
         var corruptCorrelationFacts = eraRounds.stream()
                 .flatMap(actionRound -> correlateCorruptCardsForRound(actionRound).stream())
                 .toList();
+        var firstRewrites = firstAcceptedRewrites(eraRounds);
         // Walked round by round so each Foresight keeps the round it was written in.
         for (var eraRound : eraRounds) {
             for (var action : uncancelledActions(eraRound).toList()) {
@@ -553,7 +555,8 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
                         action,
                         eraRound.roundNumber(),
                         foresightFacts,
-                        latestRewriteFacts,
+                        firstRewrites,
+                        lockedRewriteFacts,
                         mimicFacts,
                         fulfillmentFacts);
             }
@@ -564,18 +567,33 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
                 foresightFacts,
                 exposeFacts,
                 activistDeclarationFacts,
-                java.util.stream.Stream.concat(latestRewriteFacts.values().stream(), mimicFacts.stream())
+                java.util.stream.Stream.concat(lockedRewriteFacts.values().stream(), mimicFacts.stream())
                         .toList(),
                 List.copyOf(fulfillmentFacts),
                 corruptCorrelationFacts,
                 tracedMimicPlayerIds(eraRounds)));
     }
 
+    // The first accepted Rewrite of each player, in round order, whether or not Nullify later cancelled it.
+    private static Map<UUID, SubmittedAction> firstAcceptedRewrites(List<ActionRound> eraRounds) {
+        var first = new LinkedHashMap<UUID, SubmittedAction>();
+        for (var eraRound : eraRounds) {
+            for (var action : eraRound.submittedActions()) {
+                if (action instanceof SubmittedAction.SpecialActionSubmission special
+                        && special.specialAction() == SpecialAction.REWRITE) {
+                    first.putIfAbsent(special.playerId(), action);
+                }
+            }
+        }
+        return first;
+    }
+
     private static void bundleSpecialActionFact(
             SubmittedAction action,
             int roundNumber,
             List<EraActionFactsFinalized.ForesightFact> foresightFacts,
-            Map<UUID, EraActionFactsFinalized.RevisionistFact> latestRewriteFacts,
+            Map<UUID, SubmittedAction> firstRewrites,
+            Map<UUID, EraActionFactsFinalized.RevisionistFact> lockedRewriteFacts,
             List<EraActionFactsFinalized.RevisionistFact> mimicFacts,
             Set<EraActionFactsFinalized.FulfillmentFact> fulfillmentFacts) {
         if (!(action instanceof SubmittedAction.SpecialActionSubmission special)) {
@@ -585,15 +603,20 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
             case FORESIGHT ->
                 foresightFacts.add(new EraActionFactsFinalized.ForesightFact(
                         roundNumber, special.targetEventId(), special.targetOutcomeId(), special.playerId()));
-            // The latest Rewrite is the player's single era declaration; it replaces any earlier one.
-            case REWRITE ->
-                latestRewriteFacts.put(
-                        special.playerId(),
-                        new EraActionFactsFinalized.RevisionistFact(
-                                special.playerId(),
-                                special.specialAction(),
-                                special.targetEventId(),
-                                special.targetOutcomeId()));
+            // The first accepted Rewrite is the player's single era declaration and stays locked. If Nullify
+            // cancelled it there is no preference, and a later Rewrite (possible only where the era budget does
+            // not cover Rewrite) is ignored rather than taking its place.
+            case REWRITE -> {
+                if (action.equals(firstRewrites.get(special.playerId()))) {
+                    lockedRewriteFacts.put(
+                            special.playerId(),
+                            new EraActionFactsFinalized.RevisionistFact(
+                                    special.playerId(),
+                                    special.specialAction(),
+                                    special.targetEventId(),
+                                    special.targetOutcomeId()));
+                }
+            }
             case MIMIC ->
                 mimicFacts.add(new EraActionFactsFinalized.RevisionistFact(
                         special.playerId(),

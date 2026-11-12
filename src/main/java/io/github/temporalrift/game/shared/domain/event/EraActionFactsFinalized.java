@@ -122,9 +122,9 @@ public record EraActionFactsFinalized(
     /**
      * Private action-to-scoring attribution; it is intentionally never sent through Kafka.
      *
-     * <p>A player starts the era with no preference. The latest {@code REWRITE} in the era is that
-     * player's single declaration and replaces any earlier one; with no {@code REWRITE} there is no
-     * eligible preference to score.
+     * <p>A player starts the era with no preference. The first uncancelled {@code REWRITE} in the era is
+     * that player's single declaration and stays locked; with no {@code REWRITE} there is no eligible
+     * preference to win or miss.
      */
     public record RevisionistFact(UUID playerId, SpecialAction action, UUID targetEventId, UUID targetOutcomeId) {}
 

@@ -23,7 +23,7 @@ public final class SpecialActionAvailabilityPolicy {
             int eraNumber,
             int roundNumber,
             int maxEras,
-            int annihilateEarliestRound,
+            SpecialActionRoundWindows roundWindows,
             Set<SpecialAction> onceEraBudgetedSpecials,
             int sealMaxUsesPerGame) {
 
@@ -72,8 +72,7 @@ public final class SpecialActionAvailabilityPolicy {
             case NOT_ELIGIBLE_THIS_ERA ->
                 SpecialActionRoundRules.ineligibleThisEra(special, rules.eraNumber(), rules.maxEras());
             case NOT_ELIGIBLE_THIS_ROUND ->
-                SpecialActionRoundRules.ineligibleThisRound(
-                        special, rules.roundNumber(), rules.annihilateEarliestRound());
+                SpecialActionRoundRules.ineligibleThisRound(special, rules.roundNumber(), rules.roundWindows());
             case GAME_BUDGET_EXHAUSTED ->
                 special == SpecialAction.SEAL && usage.acceptedSeals() >= rules.sealMaxUsesPerGame();
             case ERA_BUDGET_EXHAUSTED ->

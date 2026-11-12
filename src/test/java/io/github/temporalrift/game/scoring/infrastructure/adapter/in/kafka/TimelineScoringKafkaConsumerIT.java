@@ -208,6 +208,43 @@ class TimelineScoringKafkaConsumerIT {
     }
 
     @Test
+    void handle_lockedRewriteForTheLosingOutcome_scoresTheMissOnceWithTheConfiguredDelta() {
+        var gameId = UUID.randomUUID();
+        var playerId = UUID.randomUUID();
+        var eraNumber = 1;
+        var eventId = UUID.randomUUID();
+        var winningOutcomeId = UUID.randomUUID();
+        var preferredOutcomeId = UUID.randomUUID();
+        contextRepository.upsertPlayerFaction(gameId, playerId, Faction.REVISIONISTS);
+        contextRepository.upsertExpectedOutcomeCount(gameId, eraNumber, 1);
+
+        consumer.handle(outcomeEnvelope(gameId, eraNumber, eventId, winningOutcomeId));
+        consumer.handle(terminalBarrierEnvelope(gameId, eraNumber, eventId, winningOutcomeId));
+
+        var finalization = new EraActionFactsFinalized(
+                gameId,
+                eraNumber,
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(new EraActionFactsFinalized.RevisionistFact(
+                        playerId, SpecialAction.REWRITE, eventId, preferredOutcomeId)));
+        transactionTemplate.executeWithoutResult(_ -> applicationEventPublisher.publishEvent(finalization));
+        transactionTemplate.executeWithoutResult(_ -> applicationEventPublisher.publishEvent(finalization));
+
+        await().atMost(Duration.ofSeconds(30))
+                .untilAsserted(() -> assertThat(playerScoreRepository.findAllByGameId(gameId))
+                        .singleElement()
+                        .satisfies(score -> {
+                            assertThat(score.totalScore()).isEqualTo(-1);
+                            assertThat(score.history()).singleElement().satisfies(entry -> {
+                                assertThat(entry.reason()).isEqualTo(ScoreReason.SECRET_OUTCOME_MISSED);
+                                assertThat(entry.pointsDelta()).isEqualTo(-1);
+                            });
+                        }));
+    }
+
+    @Test
     void handle_annihilationsBeforeBarrier_creditOnlyTheErasedLeaderOnce() {
         var gameId = UUID.randomUUID();
         var leaderEraser = UUID.randomUUID();
