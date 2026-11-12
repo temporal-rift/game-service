@@ -590,6 +590,23 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
         return first;
     }
 
+    private static void lockRewrite(
+            SubmittedAction.SpecialActionSubmission rewrite,
+            int roundNumber,
+            Map<UUID, Integer> firstRewriteRounds,
+            Map<UUID, EraActionFactsFinalized.RevisionistFact> lockedRewriteFacts) {
+        if (!Integer.valueOf(roundNumber).equals(firstRewriteRounds.get(rewrite.playerId()))) {
+            return;
+        }
+        lockedRewriteFacts.put(
+                rewrite.playerId(),
+                new EraActionFactsFinalized.RevisionistFact(
+                        rewrite.playerId(),
+                        rewrite.specialAction(),
+                        rewrite.targetEventId(),
+                        rewrite.targetOutcomeId()));
+    }
+
     private static void bundleSpecialActionFact(
             SubmittedAction action,
             int roundNumber,
@@ -608,17 +625,7 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
             // The first accepted Rewrite is the player's single era declaration and stays locked. If Nullify
             // cancelled it there is no preference, and a later Rewrite (possible only where the era budget does
             // not cover Rewrite) is ignored rather than taking its place.
-            case REWRITE -> {
-                if (Integer.valueOf(roundNumber).equals(firstRewriteRounds.get(special.playerId()))) {
-                    lockedRewriteFacts.put(
-                            special.playerId(),
-                            new EraActionFactsFinalized.RevisionistFact(
-                                    special.playerId(),
-                                    special.specialAction(),
-                                    special.targetEventId(),
-                                    special.targetOutcomeId()));
-                }
-            }
+            case REWRITE -> lockRewrite(special, roundNumber, firstRewriteRounds, lockedRewriteFacts);
             case MIMIC ->
                 mimicFacts.add(new EraActionFactsFinalized.RevisionistFact(
                         special.playerId(),
