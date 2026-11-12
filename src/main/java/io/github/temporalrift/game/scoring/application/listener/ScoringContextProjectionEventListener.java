@@ -1,5 +1,6 @@
 package io.github.temporalrift.game.scoring.application.listener;
 
+import java.util.List;
 import java.util.UUID;
 
 import org.slf4j.Logger;
@@ -11,6 +12,7 @@ import org.springframework.stereotype.Component;
 import io.github.temporalrift.game.scoring.application.command.EraScoringCompletionChecker;
 import io.github.temporalrift.game.scoring.domain.port.out.EraScoringContextRepository;
 import io.github.temporalrift.game.scoring.domain.port.out.RevisionistExposureRepository;
+import io.github.temporalrift.game.scoring.domain.port.out.ScoreRulesPort;
 import io.github.temporalrift.game.shared.domain.event.ActivistDeclarationRecorded;
 import io.github.temporalrift.game.shared.domain.event.EraActionFactsFinalized;
 import io.github.temporalrift.game.shared.domain.event.EventsDrawn;
@@ -27,12 +29,15 @@ class ScoringContextProjectionEventListener {
     private final EraScoringCompletionChecker completionChecker;
     private final ApplicationEventPublisher applicationEventPublisher;
     private final RevisionistExposureRepository revisionistExposureRepository;
+    private final ScoreRulesPort scoreRules;
 
     ScoringContextProjectionEventListener(
             EraScoringContextRepository contextRepository,
             EraScoringCompletionChecker completionChecker,
             ApplicationEventPublisher applicationEventPublisher,
-            RevisionistExposureRepository revisionistExposureRepository) {
+            RevisionistExposureRepository revisionistExposureRepository,
+            ScoreRulesPort scoreRules) {
+        this.scoreRules = scoreRules;
         this.contextRepository = contextRepository;
         this.completionChecker = completionChecker;
         this.applicationEventPublisher = applicationEventPublisher;
@@ -84,7 +89,8 @@ class ScoringContextProjectionEventListener {
                         fact.eventId(),
                         fact.outcomeId(),
                         fact.playerId()));
-        event.exposeFacts()
+        event.exposeFacts().stream()
+                .filter(fact -> exposeEarnsResult(fact, event.activistDeclarationFacts()))
                 .forEach(fact -> contextRepository.recordActionFact(
                         event.gameId(),
                         event.eraNumber(),
@@ -120,6 +126,22 @@ class ScoringContextProjectionEventListener {
         contextRepository.markActionFactsReady(event.gameId(), event.eraNumber());
         publishResolutions(event.gameId(), event.eraNumber());
         completionChecker.tryComplete(event.gameId(), event.eraNumber());
+    }
+
+    /**
+     * Decided once, when the era's facts are finalized: the declaration facts are already without any cancelled by a
+     * Round 1 Nullify, so an Activist absent from them has no recorded declaration.
+     */
+    private boolean exposeEarnsResult(
+            EraActionFactsFinalized.ExposeFact expose,
+            List<EraActionFactsFinalized.ActivistDeclarationFact> declarations) {
+        if (!scoreRules.exposeRequiresDeclaredEvent()) {
+            return true;
+        }
+        return expose.targetEventId() != null
+                && declarations.stream()
+                        .anyMatch(declaration -> declaration.playerId().equals(expose.activistPlayerId())
+                                && expose.targetEventId().equals(declaration.targetEventId()));
     }
 
     private void publishResolutions(UUID gameId, int eraNumber) {

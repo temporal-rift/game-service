@@ -532,7 +532,10 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
         var exposeFacts = activistEraStateRepository.findExposedByGameIdAndEraNumber(gameId, eraNumber).stream()
                 .filter(state -> !cancelledRoundTwoPlayerIds.contains(state.activistPlayerId()))
                 .filter(state -> state.exposedSignature() != null)
-                .map(state -> new EraActionFactsFinalized.ExposeFact(state.activistPlayerId(), state.exposedPlayerId()))
+                .map(state -> new EraActionFactsFinalized.ExposeFact(
+                        state.activistPlayerId(),
+                        state.exposedPlayerId(),
+                        state.exposedSignature().targetEventId()))
                 .toList();
         var activistDeclarationFacts =
                 activistEraStateRepository.findDeclaredByGameIdAndEraNumber(gameId, eraNumber).stream()

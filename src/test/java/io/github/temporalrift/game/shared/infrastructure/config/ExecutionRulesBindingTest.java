@@ -156,6 +156,30 @@ class ExecutionRulesBindingTest {
     }
 
     @Test
+    @DisplayName("a context without the Expose declared-event rule gets its default, on")
+    void bind_exposeRuleOmitted_defaultsToOn() {
+        var properties =
+                bindable(ExecutionRulesFixture.rulesWithout("game.rules.scoring.expose-requires-declared-event"));
+
+        var score = new ExecutionRulesBinding<>(ScoreRulesProperties.class, "game.rules.scoring", validator)
+                .bind(properties);
+
+        assertThat(score.exposeRequiresDeclaredEvent()).isTrue();
+    }
+
+    @Test
+    @DisplayName("a context may switch the Expose declared-event rule off")
+    void bind_exposeRuleFalse_switchesItOff() {
+        var properties =
+                bindable(ExecutionRulesFixture.rulesWith("game.rules.scoring.expose-requires-declared-event", false));
+
+        var score = new ExecutionRulesBinding<>(ScoreRulesProperties.class, "game.rules.scoring", validator)
+                .bind(properties);
+
+        assertThat(score.exposeRequiresDeclaredEvent()).isFalse();
+    }
+
+    @Test
     @DisplayName("a context may switch the written-outcome shield rule off")
     void bind_shieldRuleFalse_switchesItOff() {
         var properties = bindable(

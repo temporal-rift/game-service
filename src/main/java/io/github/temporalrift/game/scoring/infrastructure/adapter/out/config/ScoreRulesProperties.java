@@ -17,7 +17,9 @@ import io.github.temporalrift.game.scoring.domain.port.out.ScoreRulesPort;
 @Validated
 public record ScoreRulesProperties(
         @NotNull Map<ScoreReason, Integer> scoreDeltas,
-        @DefaultValue("true") boolean writtenOutcomeShieldsAnnihilation) implements ScoreRulesPort {
+        @DefaultValue("true") boolean writtenOutcomeShieldsAnnihilation,
+        @DefaultValue("true") boolean exposeRequiresDeclaredEvent)
+        implements ScoreRulesPort {
 
     public ScoreRulesProperties {
         Objects.requireNonNull(scoreDeltas, "game.rules.scoring.score-deltas must not be null");
