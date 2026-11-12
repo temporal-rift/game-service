@@ -8,7 +8,9 @@ import java.util.UUID;
  * One event's terminal outcome as published by timeline.
  *
  * @param consequentialErasures the erased outcome ids of this event whose erasure changed the winner; empty when none
- *     did, and null when the producer predates the field, so the earlier annihilation rule still applies
+ *     did, and null when the producer predates the field, so the earlier annihilation rule still applies to this
+ *     event's erasures. The fallback needs an outcome: a stalled or cascaded event publishes none, so its erasures
+ *     earn no credit while the consequence rule is on, whichever producer published the era.
  */
 public record OutcomeApplied(
         UUID gameId,
@@ -23,8 +25,9 @@ public record OutcomeApplied(
     }
 
     /**
-     * Whether this outcome credits the erasure of {@code erasedOutcomeId}: it does when the erasure changed the winner,
-     * and also when the producer predates the list, so an older timeline keeps the earlier rule.
+     * Whether this outcome credits the erasure of {@code erasedOutcomeId} on this event: it does when the erasure
+     * changed the winner, and also when the producer predates the list, so an older timeline keeps the earlier rule for
+     * events that resolved with a winner.
      */
     public boolean creditsErasureOf(UUID erasedOutcomeId) {
         Objects.requireNonNull(erasedOutcomeId, "erasedOutcomeId must not be null");
