@@ -55,7 +55,8 @@ public final class ExecutionRulesFixture {
         rules.put("game.rules.stabilization.prophet-written-resolutions", 3);
         rules.put("game.rules.stabilization.weaver-active-chain-links", 2);
         rules.put(
-                "game.rules.once-era-budgeted-specials", List.of("ANNIHILATE", "SEAL", "CORRUPT", "MIMIC", "REWEAVE"));
+                "game.rules.once-era-budgeted-specials",
+                List.of("ANNIHILATE", "SEAL", "CORRUPT", "MIMIC", "REWEAVE", "REWRITE"));
         rules.put("game.rules.seal-max-uses-per-game", 2);
         rules.put("game.rules.annihilate-earliest-round", 2);
         rules.put("game.rules.rewrite-latest-round", 2);

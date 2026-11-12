@@ -774,9 +774,9 @@ class ActionRoundSagaImplTest {
         @DisplayName("Round 3 — a Rewrite cancelled by Nullify leaves no preference and a later Rewrite is ignored")
         void tryClose_round3_cancelledFirstRewriteLeavesNoPreference() {
             var nullifierId = UUID.randomUUID();
-            var cancelledEventId = UUID.randomUUID();
-            var keptEventId = UUID.randomUUID();
-            var keptOutcomeId = UUID.randomUUID();
+            // Both Rewrites name the same target, so they are equal by value and only their round tells them apart.
+            var sameEventId = UUID.randomUUID();
+            var sameOutcomeId = UUID.randomUUID();
             var round1 = new ActionRound(
                     UUID.randomUUID(),
                     new ActionRoundConfig(GAME_ID, ERA_NUMBER, 1, TIMER_SECONDS),
@@ -787,8 +787,8 @@ class ActionRoundSagaImplTest {
                     SpecialAction.REWRITE,
                     null,
                     null,
-                    cancelledEventId,
-                    UUID.randomUUID(),
+                    sameEventId,
+                    sameOutcomeId,
                     null));
             round1.submit(nullify(nullifierId, PLAYER_1));
             var round2 = new ActionRound(
@@ -799,8 +799,8 @@ class ActionRoundSagaImplTest {
                     SpecialAction.REWRITE,
                     null,
                     null,
-                    keptEventId,
-                    keptOutcomeId,
+                    sameEventId,
+                    sameOutcomeId,
                     null));
             var round3 = new ActionRound(
                     UUID.randomUUID(), new ActionRoundConfig(GAME_ID, ERA_NUMBER, 3, TIMER_SECONDS), List.of(PLAYER_1));
