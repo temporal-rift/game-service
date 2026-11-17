@@ -15,7 +15,11 @@ import io.github.temporalrift.game.shared.domain.model.Faction;
 
 class SpecialEndingPolicyTest {
 
-    private static final StabilizationThresholds THRESHOLDS = new StabilizationThresholds(3, 2);
+    /** The optional claim rule switched on, so these tests pin the Prophet and Weaver claims themselves. */
+    private static final StabilizationThresholds THRESHOLDS = new StabilizationThresholds(3, 2, true);
+
+    /** The default rule: no faction claims stabilization. */
+    private static final StabilizationThresholds NO_CLAIMS = new StabilizationThresholds(3, 2, false);
 
     private static Standing standing(Faction faction, int score, int objectiveProgress) {
         return new Standing(UUID.randomUUID(), faction, score, objectiveProgress, false);
@@ -27,6 +31,42 @@ class SpecialEndingPolicyTest {
 
     @Nested
     class Stabilization {
+
+        @Test
+        @DisplayName("default rule: a Prophet with enough written resolutions loses to a higher score")
+        void defaultRule_prophetLosesToHigherScore() {
+            var prophet = standing(Faction.PROPHETS, 8, 3);
+            var activist = standing(Faction.ACTIVISTS, 12, 2);
+
+            var winners = SpecialEndingPolicy.stabilizationWinners(List.of(prophet, activist), NO_CLAIMS);
+
+            assertThat(winners).containsExactly(activist.playerId());
+            assertThat(SpecialEndingPolicy.qualifiesForStabilization(prophet, NO_CLAIMS))
+                    .isFalse();
+        }
+
+        @Test
+        @DisplayName("default rule: a Weaver with an intact chain loses to a higher score")
+        void defaultRule_weaverLosesToHigherScore() {
+            var weaver = standing(Faction.WEAVERS, 9, 3);
+            var eraser = standing(Faction.ERASERS, 11, 2);
+
+            var winners = SpecialEndingPolicy.stabilizationWinners(List.of(weaver, eraser), NO_CLAIMS);
+
+            assertThat(winners).containsExactly(eraser.playerId());
+        }
+
+        @Test
+        @DisplayName("default rule: tied highest scores share stabilization")
+        void defaultRule_tiedHighestScoresShare() {
+            var prophet = standing(Faction.PROPHETS, 12, 3);
+            var activist = standing(Faction.ACTIVISTS, 12, 2);
+            var eraser = standing(Faction.ERASERS, 7, 1);
+
+            var winners = SpecialEndingPolicy.stabilizationWinners(List.of(prophet, activist, eraser), NO_CLAIMS);
+
+            assertThat(winners).containsExactlyInAnyOrder(prophet.playerId(), activist.playerId());
+        }
 
         @Test
         @DisplayName("3 players: Prophet with enough written resolutions wins over a higher score")
@@ -213,7 +253,7 @@ class SpecialEndingPolicyTest {
     @Test
     @DisplayName("non-positive stabilization thresholds are rejected")
     void thresholds_mustBePositive() {
-        assertThatThrownBy(() -> new StabilizationThresholds(0, 2)).isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> new StabilizationThresholds(3, 0)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> new StabilizationThresholds(0, 2, true)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> new StabilizationThresholds(3, 0, true)).isInstanceOf(IllegalArgumentException.class);
     }
 }

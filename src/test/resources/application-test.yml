@@ -45,6 +45,7 @@ game:
     stabilization:
       prophet-written-resolutions: 3
       weaver-active-chain-links: 2
+      faction-claims: false
     once-era-budgeted-specials:
       - ANNIHILATE
       - SEAL

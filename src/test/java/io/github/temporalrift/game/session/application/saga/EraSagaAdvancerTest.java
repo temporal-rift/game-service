@@ -75,7 +75,7 @@ class EraSagaAdvancerTest {
     static final List<UUID> PLAYER_IDS = List.of(PLAYER_1, PLAYER_2);
     static final int MAX_ERAS = 5;
     static final int WIN_THRESHOLD = 20;
-    static final StabilizationThresholds THRESHOLDS = new StabilizationThresholds(3, 2);
+    static final StabilizationThresholds THRESHOLDS = new StabilizationThresholds(3, 2, true);
 
     @Mock
     EraSagaRepository eraSagaRepository;

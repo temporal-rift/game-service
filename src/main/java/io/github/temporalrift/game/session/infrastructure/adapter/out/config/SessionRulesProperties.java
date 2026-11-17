@@ -50,9 +50,14 @@ public record SessionRulesProperties(
     private static final int DEFAULT_ACTION_ROUND_TIMER_SECONDS = 180;
     private static final int DEFAULT_DECLARATION_TIMER_SECONDS = 120;
 
+    /**
+     * {@code factionClaims} defaults to {@code false}: stabilization goes to the highest score unless the Prophet and
+     * Weaver claims are switched back on, in which case the two thresholds apply.
+     */
     public record Stabilization(
             @DefaultValue("3") @Min(1) int prophetWrittenResolutions,
-            @DefaultValue("2") @Min(1) int weaverActiveChainLinks) {}
+            @DefaultValue("2") @Min(1) int weaverActiveChainLinks,
+            @DefaultValue("false") boolean factionClaims) {}
 
     public SessionRulesProperties {
         if (cardsPerDeal < cardsPerHand) {
@@ -78,7 +83,9 @@ public record SessionRulesProperties(
     @Override
     public StabilizationThresholds stabilizationThresholds() {
         return new StabilizationThresholds(
-                stabilization.prophetWrittenResolutions(), stabilization.weaverActiveChainLinks());
+                stabilization.prophetWrittenResolutions(),
+                stabilization.weaverActiveChainLinks(),
+                stabilization.factionClaims());
     }
 
     @Override
