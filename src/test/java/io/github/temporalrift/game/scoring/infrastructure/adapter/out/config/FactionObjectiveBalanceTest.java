@@ -42,7 +42,8 @@ class FactionObjectiveBalanceTest {
     @DisplayName("configured objective thresholds and declaration scores match the balanced defaults")
     void configuredValues() {
         assertThat(winThreshold).isEqualTo(20);
-        assertThat(victory.prophetWrittenResolutions()).isEqualTo(4);
+        assertThat(victory.prophetWrittenResolutions()).isEqualTo(3);
+        assertThat(victory.weaverChainLength()).isEqualTo(4);
         assertThat(scores.pointsDelta(ScoreReason.DECLARED_OUTCOME_WON_WITH_RALLY))
                 .isEqualTo(6);
         assertThat(scores.pointsDelta(ScoreReason.DECLARED_OUTCOME_WON)).isEqualTo(5);
@@ -63,14 +64,14 @@ class FactionObjectiveBalanceTest {
     }
 
     @Test
-    @DisplayName("prophet Fulfillment bets reach the threshold before the objective")
+    @DisplayName("three prophet writings, two of them Fulfillment, meet the threshold and the objective together")
     void prophetFulfillment() {
         int writtenWins = 3;
         int oneOrdinaryTwoFulfillments =
                 points(ScoreReason.EVENT_RESOLVED_AS_WRITTEN) + 2 * points(ScoreReason.FULFILLMENT_SUCCEEDED);
 
         assertThat(oneOrdinaryTwoFulfillments).isGreaterThanOrEqualTo(winThreshold);
-        assertThat(writtenWins).isLessThan(victory.prophetWrittenResolutions());
+        assertThat(writtenWins).isGreaterThanOrEqualTo(victory.prophetWrittenResolutions());
     }
 
     @Test

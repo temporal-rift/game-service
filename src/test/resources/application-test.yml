@@ -61,9 +61,9 @@ game:
       ceiling: 90
     victory:
       eraser-annihilations: 4
-      prophet-written-resolutions: 4
+      prophet-written-resolutions: 3
       revisionist-successful-eras: 3
-      weaver-chain-length: 3
+      weaver-chain-length: 4
       activist-consecutive-declarations: 3
     scoring:
       score-deltas:

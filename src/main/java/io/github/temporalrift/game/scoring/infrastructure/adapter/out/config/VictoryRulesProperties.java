@@ -11,8 +11,10 @@ import io.github.temporalrift.game.scoring.domain.port.out.VictoryRulesPort;
 @Validated
 public record VictoryRulesProperties(
         @DefaultValue("4") @Min(1) int eraserAnnihilations,
-        @DefaultValue("4") @Min(1) int prophetWrittenResolutions,
+        @DefaultValue("3") @Min(1) int prophetWrittenResolutions,
         @DefaultValue("3") @Min(1) int revisionistSuccessfulEras,
-        @DefaultValue("3") @Min(1) int weaverChainLength,
+        // No built-in default: timeline-service completes the chain at this same shared value, so a missing key must
+        // fail at startup rather than let the two services disagree.
+        @Min(2) int weaverChainLength,
         @DefaultValue("3") @Min(1) int activistConsecutiveDeclarations)
         implements VictoryRulesPort {}
