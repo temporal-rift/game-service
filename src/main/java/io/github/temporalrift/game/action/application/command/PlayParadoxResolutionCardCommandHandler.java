@@ -3,6 +3,7 @@ package io.github.temporalrift.game.action.application.command;
 import java.time.Clock;
 
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,6 +20,7 @@ import io.github.temporalrift.game.action.domain.port.out.ParadoxResolutionPhase
 import io.github.temporalrift.game.action.domain.port.out.PlayerStateRepository;
 import io.github.temporalrift.game.action.domain.port.out.ReactiveOfferRepository;
 import io.github.temporalrift.game.action.domain.reactiveoffer.ReactiveOffer;
+import io.github.temporalrift.game.shared.domain.event.StabilizePlayed;
 import io.github.temporalrift.game.shared.domain.messaging.DomainEventEnvelope;
 import io.github.temporalrift.game.shared.domain.model.CardGrade;
 import io.github.temporalrift.game.shared.domain.model.CardType;
@@ -32,6 +34,7 @@ class PlayParadoxResolutionCardCommandHandler implements PlayParadoxResolutionCa
     private final ReactiveOfferRepository reactiveOfferRepository;
     private final ActionEventPublisher actionEventPublisher;
     private final ActionTargetValidator actionTargetValidator;
+    private final ApplicationEventPublisher applicationEvents;
     private final Clock clock;
 
     PlayParadoxResolutionCardCommandHandler(
@@ -40,12 +43,14 @@ class PlayParadoxResolutionCardCommandHandler implements PlayParadoxResolutionCa
             ReactiveOfferRepository reactiveOfferRepository,
             ActionEventPublisher actionEventPublisher,
             ActionTargetValidator actionTargetValidator,
+            ApplicationEventPublisher applicationEvents,
             Clock clock) {
         this.phaseRepository = phaseRepository;
         this.playerStateRepository = playerStateRepository;
         this.reactiveOfferRepository = reactiveOfferRepository;
         this.actionEventPublisher = actionEventPublisher;
         this.actionTargetValidator = actionTargetValidator;
+        this.applicationEvents = applicationEvents;
         this.clock = clock;
     }
 
@@ -80,6 +85,11 @@ class PlayParadoxResolutionCardCommandHandler implements PlayParadoxResolutionCa
         phaseRepository.save(phase);
         playerStateRepository.save(playerState);
         publish(command, phase, resolved.cardType(), resolved.grade());
+        if (resolved.cardType() == CardType.STABILIZE) {
+            // Scoring charges the Stabilize's cost once it knows whether its event cascaded.
+            applicationEvents.publishEvent(new StabilizePlayed(
+                    command.gameId(), command.eraNumber(), command.playerId(), command.targetEventId()));
+        }
         return new Result(command.gameId(), command.eraNumber(), command.playerId());
     }
 

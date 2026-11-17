@@ -16,7 +16,36 @@ public record EraScoringContext(
         List<FulfillmentDeclarationFact> fulfillmentDeclarations,
         List<CorruptCorrelationFact> corruptCorrelations,
         List<ParadoxCascadeScoringFact> paradoxCascadeFacts,
-        Set<UUID> priorCascadePenaltyEventIds) {
+        Set<UUID> priorCascadePenaltyEventIds,
+        List<StabilizeFact> stabilizeFacts) {
+
+    /** A context in which nobody played Stabilize this era. */
+    public EraScoringContext(
+            UUID gameId,
+            int eraNumber,
+            List<PlayerFaction> players,
+            List<EventOutcomeFact> eventOutcomes,
+            List<ActionScoringFact> actionFacts,
+            List<ChainScoringFact> chainFacts,
+            List<AnnihilationFact> annihilationFacts,
+            List<FulfillmentDeclarationFact> fulfillmentDeclarations,
+            List<CorruptCorrelationFact> corruptCorrelations,
+            List<ParadoxCascadeScoringFact> paradoxCascadeFacts,
+            Set<UUID> priorCascadePenaltyEventIds) {
+        this(
+                gameId,
+                eraNumber,
+                players,
+                eventOutcomes,
+                actionFacts,
+                chainFacts,
+                annihilationFacts,
+                fulfillmentDeclarations,
+                corruptCorrelations,
+                paradoxCascadeFacts,
+                priorCascadePenaltyEventIds,
+                List.of());
+    }
 
     public EraScoringContext {
         Objects.requireNonNull(gameId, "gameId must not be null");
@@ -29,6 +58,7 @@ public record EraScoringContext(
         Objects.requireNonNull(corruptCorrelations, "corruptCorrelations must not be null");
         Objects.requireNonNull(paradoxCascadeFacts, "paradoxCascadeFacts must not be null");
         Objects.requireNonNull(priorCascadePenaltyEventIds, "priorCascadePenaltyEventIds must not be null");
+        Objects.requireNonNull(stabilizeFacts, "stabilizeFacts must not be null");
         players = List.copyOf(players);
         eventOutcomes = List.copyOf(eventOutcomes);
         actionFacts = List.copyOf(actionFacts);
@@ -38,6 +68,7 @@ public record EraScoringContext(
         corruptCorrelations = List.copyOf(corruptCorrelations);
         paradoxCascadeFacts = List.copyOf(paradoxCascadeFacts);
         priorCascadePenaltyEventIds = Set.copyOf(priorCascadePenaltyEventIds);
+        stabilizeFacts = List.copyOf(stabilizeFacts);
     }
 
     /** Whether {@code annihilation} erased its event's written outcome at or after the writing. */

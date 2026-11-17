@@ -709,6 +709,11 @@ class UpdateScoresCommandHandlerTest {
         }
 
         @Override
+        public void recordStabilize(UUID gameId, int eraNumber, UUID playerId, UUID targetEventId) {
+            throw new UnsupportedOperationException("not used by UpdateScoresCommandHandler");
+        }
+
+        @Override
         public void recordCorruptCorrelation(
                 UUID gameId, int eraNumber, EraActionFactsFinalized.CorruptCorrelationFact correlation) {
             throw new UnsupportedOperationException("not used by UpdateScoresCommandHandler");

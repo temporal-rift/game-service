@@ -21,6 +21,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 
 import io.github.temporalrift.game.action.application.ActionTargetValidator;
 import io.github.temporalrift.game.action.application.port.in.PlayParadoxResolutionCardUseCase;
@@ -36,6 +37,7 @@ import io.github.temporalrift.game.action.domain.port.out.ActionEventPublisher;
 import io.github.temporalrift.game.action.domain.port.out.ParadoxResolutionPhaseRepository;
 import io.github.temporalrift.game.action.domain.port.out.PlayerStateRepository;
 import io.github.temporalrift.game.action.domain.port.out.ReactiveOfferRepository;
+import io.github.temporalrift.game.shared.domain.event.StabilizePlayed;
 import io.github.temporalrift.game.shared.domain.messaging.DomainEventEnvelope;
 import io.github.temporalrift.game.shared.domain.model.CardType;
 
@@ -65,6 +67,9 @@ class PlayParadoxResolutionCardCommandHandlerTest {
     @Mock
     ActionTargetValidator actionTargetValidator;
 
+    @Mock
+    ApplicationEventPublisher applicationEvents;
+
     Clock clock = Clock.fixed(NOW, ZoneOffset.UTC);
     PlayParadoxResolutionCardCommandHandler handler;
 
@@ -76,7 +81,34 @@ class PlayParadoxResolutionCardCommandHandlerTest {
                 reactiveOfferRepository,
                 actionEventPublisher,
                 actionTargetValidator,
+                applicationEvents,
                 clock);
+    }
+
+    @Test
+    void stabilizeIsAnnouncedToScoring() {
+        var phase = openPhase();
+        var playerState = playerStateWithCard(CardType.STABILIZE);
+        given(phaseRepository.findByGameIdAndEraNumberWithLock(GAME_ID, ERA)).willReturn(Optional.of(phase));
+        given(playerStateRepository.findByGameIdAndPlayerIdWithLock(GAME_ID, PLAYER_ID))
+                .willReturn(Optional.of(playerState));
+
+        handler.handle(command());
+
+        then(applicationEvents).should().publishEvent(new StabilizePlayed(GAME_ID, ERA, PLAYER_ID, TARGET_EVENT_ID));
+    }
+
+    @Test
+    void otherResolutionCardsAreNotAnnouncedToScoring() {
+        var phase = openPhase();
+        var playerState = playerStateWithCard(CardType.DETONATE);
+        given(phaseRepository.findByGameIdAndEraNumberWithLock(GAME_ID, ERA)).willReturn(Optional.of(phase));
+        given(playerStateRepository.findByGameIdAndPlayerIdWithLock(GAME_ID, PLAYER_ID))
+                .willReturn(Optional.of(playerState));
+
+        handler.handle(command());
+
+        then(applicationEvents).shouldHaveNoInteractions();
     }
 
     @Test
