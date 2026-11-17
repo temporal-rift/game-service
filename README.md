@@ -106,6 +106,9 @@ mvn test -Dtest="*ArchitectureTest"
 # Integration test (Testcontainers PostgreSQL + Kafka + Modulith verify)
 mvn test -Dtest="GameServiceApplicationIT"
 
+# Mutation testing over the domain/application unit suite (on demand, not CI)
+mvn test-compile pitest:mutationCoverage
+
 # Check and fix formatting
 mvn spotless:apply
 
