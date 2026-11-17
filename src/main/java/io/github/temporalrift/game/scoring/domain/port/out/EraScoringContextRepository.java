@@ -67,6 +67,9 @@ public interface EraScoringContextRepository {
 
     void recordFulfillmentDeclaration(UUID gameId, int eraNumber, UUID playerId, UUID targetEventId);
 
+    /** Records a player's Stabilize on an event this era, once per player and event. */
+    void recordStabilize(UUID gameId, int eraNumber, UUID playerId, UUID targetEventId);
+
     /**
      * Persists a candidate Corrupt fact with {@code tookEffect} unset — see
      * {@code scoring_context_corrupt_correlation}'s migration and {@code EraScoreEvaluator.eraserDecisions}.
