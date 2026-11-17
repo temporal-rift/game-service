@@ -35,6 +35,7 @@ import io.github.temporalrift.game.scoring.domain.event.AnnihilationResolved;
 import io.github.temporalrift.game.scoring.domain.event.EraResolutionCompleted;
 import io.github.temporalrift.game.scoring.domain.event.OutcomeApplied;
 import io.github.temporalrift.game.scoring.domain.playerscore.ScoreReason;
+import io.github.temporalrift.game.scoring.domain.port.out.ForesightRulesPort;
 import io.github.temporalrift.game.shared.domain.event.ActivistDeclarationRecorded;
 import io.github.temporalrift.game.shared.domain.event.EraActionFactsFinalized;
 import io.github.temporalrift.game.shared.domain.model.Faction;
@@ -92,10 +93,57 @@ class EraScoringContextRepositoryAdapterTest {
     ScoringContextStabilizeJpaRepository stabilizeJpaRepository;
 
     @Mock
+    ForesightRulesPort foresightRules;
+
+    @Mock
     ObjectMapper objectMapper;
 
     @InjectMocks
     EraScoringContextRepositoryAdapter adapter;
+
+    @org.junit.jupiter.api.BeforeEach
+    void allowEveryWritingUnlessATestCapsThem() {
+        org.mockito.Mockito.lenient().when(foresightRules.writingsPerEra()).thenReturn(3);
+    }
+
+    @Test
+    void getRequired_keepsOnlyTheEarliestWritingsUpToTheCap() {
+        var gameId = UUID.randomUUID();
+        var playerEntity = new ScoringContextPlayerJpaEntity();
+        playerEntity.setId(UUID.randomUUID());
+        playerEntity.setGameId(gameId);
+        playerEntity.setPlayerId(UUID.randomUUID());
+        playerEntity.setFaction(Faction.PROPHETS.name());
+        given(playerJpaRepository.findAllByGameId(gameId)).willReturn(List.of(playerEntity));
+        given(foresightRules.writingsPerEra()).willReturn(1);
+        var first = written(gameId, UUID.randomUUID(), UUID.randomUUID(), 1);
+        var second = written(gameId, UUID.randomUUID(), UUID.randomUUID(), 2);
+        // Delivered out of order: the round, not arrival, decides which writing counts.
+        given(eventOutcomeJpaRepository.findAllByGameIdAndEraNumber(gameId, 2)).willReturn(List.of(second, first));
+        given(outcomeInboxJpaRepository.findAllByGameIdAndEraNumberOrderByEventIdAsc(gameId, 2))
+                .willReturn(List.of());
+        given(paradoxCascadeFactJpaRepository.findDistinctConsumedAffectedEventIds(gameId))
+                .willReturn(List.of());
+
+        var context = adapter.getRequired(gameId, 2);
+
+        assertThat(context.eventOutcomes())
+                .containsExactlyInAnyOrder(
+                        new EventOutcomeFact(first.getEventId(), null, first.getWrittenOutcomeId(), 1),
+                        new EventOutcomeFact(second.getEventId(), null, null, null));
+    }
+
+    private static ScoringContextEventOutcomeJpaEntity written(
+            UUID gameId, UUID eventId, UUID outcomeId, int roundNumber) {
+        var entity = new ScoringContextEventOutcomeJpaEntity();
+        entity.setId(UUID.randomUUID());
+        entity.setGameId(gameId);
+        entity.setEraNumber(2);
+        entity.setEventId(eventId);
+        entity.setWrittenOutcomeId(outcomeId);
+        entity.setWrittenRoundNumber(roundNumber);
+        return entity;
+    }
 
     @Test
     void getRequired_keepsOnlyStabilizesOnEventsThatResolved() {

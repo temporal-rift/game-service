@@ -1,5 +1,6 @@
 package io.github.temporalrift.game.scoring.infrastructure.adapter.out.persistence;
 
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -30,6 +31,7 @@ import io.github.temporalrift.game.scoring.domain.event.AnnihilationResolved;
 import io.github.temporalrift.game.scoring.domain.event.EraResolutionCompleted;
 import io.github.temporalrift.game.scoring.domain.playerscore.ScoreReason;
 import io.github.temporalrift.game.scoring.domain.port.out.EraScoringContextRepository;
+import io.github.temporalrift.game.scoring.domain.port.out.ForesightRulesPort;
 import io.github.temporalrift.game.shared.domain.event.ActivistDeclarationRecorded;
 import io.github.temporalrift.game.shared.domain.event.ActivistDeclarationResolved;
 import io.github.temporalrift.game.shared.domain.event.EraActionFactsFinalized;
@@ -54,6 +56,7 @@ class EraScoringContextRepositoryAdapter implements EraScoringContextRepository 
     private final ScoringTimelineResolutionBarrierJpaRepository resolutionBarrierJpaRepository;
     private final ScoringContextFulfillmentDeclarationJpaRepository fulfillmentDeclarationJpaRepository;
     private final ScoringContextStabilizeJpaRepository stabilizeJpaRepository;
+    private final ForesightRulesPort foresightRules;
     private final ScoringContextCorruptCorrelationJpaRepository corruptCorrelationJpaRepository;
     private final ScoringContextCorruptPendingConfirmationJpaRepository corruptPendingConfirmationJpaRepository;
     private final ScoringContextParadoxCascadeFactJpaRepository paradoxCascadeFactJpaRepository;
@@ -76,6 +79,7 @@ class EraScoringContextRepositoryAdapter implements EraScoringContextRepository 
             ScoringContextCorruptPendingConfirmationJpaRepository corruptPendingConfirmationJpaRepository,
             ScoringContextParadoxCascadeFactJpaRepository paradoxCascadeFactJpaRepository,
             ScoringContextStabilizeJpaRepository stabilizeJpaRepository,
+            ForesightRulesPort foresightRules,
             ObjectMapper objectMapper) {
         this.playerJpaRepository = playerJpaRepository;
         this.eraOutcomeExpectationJpaRepository = eraOutcomeExpectationJpaRepository;
@@ -93,6 +97,7 @@ class EraScoringContextRepositoryAdapter implements EraScoringContextRepository 
         this.corruptPendingConfirmationJpaRepository = corruptPendingConfirmationJpaRepository;
         this.paradoxCascadeFactJpaRepository = paradoxCascadeFactJpaRepository;
         this.stabilizeJpaRepository = stabilizeJpaRepository;
+        this.foresightRules = foresightRules;
         this.objectMapper = objectMapper;
     }
 
@@ -229,13 +234,33 @@ class EraScoringContextRepositoryAdapter implements EraScoringContextRepository 
                                 ScoringTimelineOutcomeInboxJpaEntity::getEventId,
                                 ScoringTimelineOutcomeInboxJpaEntity::getWinningOutcomeId));
 
+        var keptWritings = keptWritingEventIds(writtenEvents);
         return writtenEvents.stream()
-                .map(written -> new EventOutcomeFact(
-                        written.getEventId(),
-                        winningOutcomesByEvent.get(written.getEventId()),
-                        written.getWrittenOutcomeId(),
-                        written.getWrittenRoundNumber()))
+                .map(written -> keptWritings.contains(written.getEventId())
+                        ? new EventOutcomeFact(
+                                written.getEventId(),
+                                winningOutcomesByEvent.get(written.getEventId()),
+                                written.getWrittenOutcomeId(),
+                                written.getWrittenRoundNumber())
+                        : new EventOutcomeFact(
+                                written.getEventId(), winningOutcomesByEvent.get(written.getEventId()), null, null))
                 .toList();
+    }
+
+    /**
+     * Only the Prophet's earliest writings of the era, up to the shared cap, are writings at all; timeline-service
+     * applies the same cap. Applied here, by write round, so the result does not depend on the order the facts
+     * arrived in. A writing whose round is unknown sorts last.
+     */
+    private Set<UUID> keptWritingEventIds(List<ScoringContextEventOutcomeJpaEntity> events) {
+        return events.stream()
+                .filter(event -> event.getWrittenOutcomeId() != null)
+                .sorted(Comparator.comparing(
+                        ScoringContextEventOutcomeJpaEntity::getWrittenRoundNumber,
+                        Comparator.nullsLast(Comparator.naturalOrder())))
+                .limit(foresightRules.writingsPerEra())
+                .map(ScoringContextEventOutcomeJpaEntity::getEventId)
+                .collect(Collectors.toUnmodifiableSet());
     }
 
     @Override

@@ -6,6 +6,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
 
+import io.github.temporalrift.game.scoring.domain.port.out.ForesightRulesPort;
 import io.github.temporalrift.game.scoring.domain.port.out.ScoreRulesPort;
 import io.github.temporalrift.game.scoring.domain.port.out.VictoryRulesPort;
 import io.github.temporalrift.game.shared.domain.port.out.ExecutionRules;
@@ -31,6 +32,19 @@ class ScoringExecutionRulesConfiguration {
     }
 
     @Bean
+    @Primary
+    ForesightRulesPort executionForesightRules(
+            ExecutionRules active, ForesightRulesProperties deployment, Validator validator) {
+        return ExecutionRulesBinding.servedFrom(
+                ForesightRulesPort.class, active, foresightBinding(validator), deployment);
+    }
+
+    @Bean
+    ExecutionRulesValidator foresightExecutionRulesValidator(Validator validator) {
+        return foresightBinding(validator).validator();
+    }
+
+    @Bean
     ExecutionRulesValidator scoreExecutionRulesValidator(Validator validator) {
         return scoreBinding(validator).validator();
     }
@@ -42,6 +56,10 @@ class ScoringExecutionRulesConfiguration {
 
     private static ExecutionRulesBinding<ScoreRulesProperties> scoreBinding(Validator validator) {
         return new ExecutionRulesBinding<>(ScoreRulesProperties.class, "game.rules.scoring", validator);
+    }
+
+    private static ExecutionRulesBinding<ForesightRulesProperties> foresightBinding(Validator validator) {
+        return new ExecutionRulesBinding<>(ForesightRulesProperties.class, "game.rules.foresight", validator);
     }
 
     private static ExecutionRulesBinding<VictoryRulesProperties> victoryBinding(Validator validator) {
