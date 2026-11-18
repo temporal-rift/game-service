@@ -49,6 +49,8 @@ class ActionController implements ActionApi {
 
     private final SelectHandUseCase selectHandUseCase;
 
+    // One use case per operation of the generated ActionApi, which this controller must implement in full.
+    @SuppressWarnings("java:S107")
     ActionController(
             PlayCardUseCase playCardUseCase,
             PlaySpecialActionUseCase playSpecialActionUseCase,
