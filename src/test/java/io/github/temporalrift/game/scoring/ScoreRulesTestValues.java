@@ -67,6 +67,7 @@ public final class ScoreRulesTestValues {
     public static int pointsDelta(ScoreReason reason) {
         return switch (reason) {
             case ANNIHILATED_OUTCOME -> 3;
+            case ANNIHILATION_WASTED -> -1;
             case CORRUPTED_OPPONENT_CARD,
                     CHAIN_LINK_ADDED,
                     MIMIC_CONTRIBUTED_TO_WIN,

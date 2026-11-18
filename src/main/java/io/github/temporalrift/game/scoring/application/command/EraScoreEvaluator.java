@@ -141,9 +141,11 @@ class EraScoreEvaluator {
                 .filter(fact -> fact.playerId().equals(playerId))
                 .filter(AnnihilationFact::creditable)
                 .filter(fact -> !(writingShields && context.isShielded(fact)))
-                .filter(fact -> !requiresConsequence || changedItsWinner(fact, outcomes))
-                .forEach(fact -> decisions.add(
-                        new PlayerScoreDecision(playerId, ScoreReason.ANNIHILATED_OUTCOME, context.eraNumber())));
+                .map(fact -> !requiresConsequence || changedItsWinner(fact, outcomes)
+                        ? ScoreReason.ANNIHILATED_OUTCOME
+                        // Without a consequence the erasure is a lost bet, like the other factions' misses.
+                        : ScoreReason.ANNIHILATION_WASTED)
+                .forEach(reason -> decisions.add(new PlayerScoreDecision(playerId, reason, context.eraNumber())));
 
         // tookEffect is null until a resolution-time confirmation arrives that the correlated card's
         // inversion actually applied rather than being voided by a Seal — see CorruptCorrelationFact.

@@ -88,6 +88,7 @@ game:
         DECLARED_OUTCOME_MISSED: -1
         PARADOX_STABILIZED: -1
         PARADOX_DETONATED: -1
+        ANNIHILATION_WASTED: 0
 
 spring:
   application:
