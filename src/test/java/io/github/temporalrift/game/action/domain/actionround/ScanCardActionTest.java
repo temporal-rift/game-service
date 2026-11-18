@@ -97,6 +97,24 @@ class ScanCardActionTest {
     }
 
     @Test
+    void gradeThreeCoversAFiveEventEra() {
+        var fourth = UUID.randomUUID();
+        var fifth = UUID.randomUUID();
+        var fiveEventEra = Set.of(EVENT_1, EVENT_2, EVENT_3, fourth, fifth);
+        var allFive = actionWithEvents(EVENT_1, EVENT_2, EVENT_3, fourth, fifth);
+        var fourOfFive = actionWithEvents(EVENT_1, EVENT_2, EVENT_3, fourth);
+
+        assertThatCode(() -> {
+                    allFive.validate(1, 1);
+                    allFive.validateCurrentEraTargets(fiveEventEra);
+                })
+                .doesNotThrowAnyException();
+        assertThatExceptionOfType(InvalidActionTargetException.class)
+                .isThrownBy(() -> fourOfFive.validateCurrentEraTargets(fiveEventEra))
+                .withMessageContaining("complete current-era event set");
+    }
+
+    @Test
     void selectionIsDefensivelyCopiedAndPublishedWithoutScalarEventTarget() {
         var submittedTargets = new ArrayList<>(List.of(EVENT_1, EVENT_2));
         var action = scan(CardGrade.II, submittedTargets);

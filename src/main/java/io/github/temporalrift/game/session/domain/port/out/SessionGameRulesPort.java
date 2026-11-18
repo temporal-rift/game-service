@@ -17,7 +17,8 @@ public interface SessionGameRulesPort extends GameRulesPort {
 
     int maxCascadedParadoxes();
 
-    int eventsPerEra();
+    /** How many events every era of a game with {@code playerCount} players holds, carried events included. */
+    int eventsPerEra(int playerCount);
 
     int cardsPerHand();
 

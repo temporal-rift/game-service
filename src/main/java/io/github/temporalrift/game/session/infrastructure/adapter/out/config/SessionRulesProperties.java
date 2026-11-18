@@ -28,7 +28,7 @@ public record SessionRulesProperties(
         @Min(2) int maxPlayers,
         @Min(1) int maxEras,
         @Min(1) int maxCascadedParadoxes,
-        @Min(1) int eventsPerEra,
+        @NotEmpty Map<Integer, Integer> eventsPerEra,
         @Min(1) int cardsPerHand,
         @Min(1) int cardsPerDeal,
         @Min(1) int winScoreThreshold,
@@ -63,6 +63,14 @@ public record SessionRulesProperties(
         if (cardsPerDeal < cardsPerHand) {
             throw new IllegalArgumentException("cards-per-deal must be greater than or equal to cards-per-hand");
         }
+        eventsPerEra = Map.copyOf(Objects.requireNonNull(eventsPerEra, "game.rules.events-per-era is required"));
+        validatePositiveValues(eventsPerEra, "events-per-era");
+        for (int playerCount = minPlayers; playerCount <= maxPlayers; playerCount++) {
+            if (!eventsPerEra.containsKey(playerCount)) {
+                throw new IllegalArgumentException(
+                        "game.rules.events-per-era has no entry for " + playerCount + " players");
+            }
+        }
         actionRoundTimerSeconds = Map.copyOf(
                 Objects.requireNonNull(actionRoundTimerSeconds, "game.rules.action-round-timer-seconds is required"));
         declarationTimerSeconds = declarationTimerSeconds == null ? Map.of() : Map.copyOf(declarationTimerSeconds);
@@ -86,6 +94,16 @@ public record SessionRulesProperties(
                 stabilization.prophetWrittenResolutions(),
                 stabilization.weaverActiveChainLinks(),
                 stabilization.factionClaims());
+    }
+
+    @Override
+    public int eventsPerEra(int playerCount) {
+        var count = eventsPerEra.get(playerCount);
+        if (count == null) {
+            throw new IllegalArgumentException(
+                    "game.rules.events-per-era has no entry for " + playerCount + " players");
+        }
+        return count;
     }
 
     @Override

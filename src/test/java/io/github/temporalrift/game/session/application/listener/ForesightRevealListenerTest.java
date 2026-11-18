@@ -4,12 +4,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -26,9 +28,12 @@ import io.github.temporalrift.game.session.domain.foresight.ForesightReveal;
 import io.github.temporalrift.game.session.domain.futureevent.FutureEventDefinition;
 import io.github.temporalrift.game.session.domain.game.Game;
 import io.github.temporalrift.game.session.domain.game.GameStatus;
+import io.github.temporalrift.game.session.domain.lobby.Lobby;
+import io.github.temporalrift.game.session.domain.lobby.LobbyPlayer;
 import io.github.temporalrift.game.session.domain.port.out.ForesightRevealRepository;
 import io.github.temporalrift.game.session.domain.port.out.FutureEventCatalogPort;
 import io.github.temporalrift.game.session.domain.port.out.GameRepository;
+import io.github.temporalrift.game.session.domain.port.out.LobbyRepository;
 import io.github.temporalrift.game.session.domain.port.out.SessionEventPublisher;
 import io.github.temporalrift.game.session.domain.port.out.SessionGameRulesPort;
 import io.github.temporalrift.game.shared.domain.event.ForesightDeclared;
@@ -57,9 +62,13 @@ class ForesightRevealListenerTest {
 
     ForesightRevealListener listener;
 
+    @Mock
+    LobbyRepository lobbyRepository;
+
     @BeforeEach
     void setUp() {
-        listener = new ForesightRevealListener(gameRepository, catalog, reveals, eventPublisher, gameRules, clock);
+        listener = new ForesightRevealListener(
+                gameRepository, lobbyRepository, catalog, reveals, eventPublisher, gameRules, clock);
     }
 
     private void givenStandardRules() {
@@ -67,7 +76,35 @@ class ForesightRevealListenerTest {
     }
 
     private void givenDealRules() {
-        given(gameRules.eventsPerEra()).willReturn(3);
+        givenTableOf(3);
+    }
+
+    /** A table of {@code playerCount} players whose eras each hold as many events as players. */
+    private void givenTableOf(int playerCount) {
+        var lobby = mock(Lobby.class);
+        given(lobby.currentPlayers()).willReturn(Collections.nCopies(playerCount, mock(LobbyPlayer.class)));
+        given(lobbyRepository.findById(any())).willReturn(Optional.of(lobby));
+        given(gameRules.eventsPerEra(playerCount)).willReturn(playerCount);
+    }
+
+    @Test
+    void onForesightDeclared_previewsAsManyEventsAsTheTableDraws() {
+        givenStandardRules();
+        givenTableOf(5);
+        var gameId = UUID.randomUUID();
+        var viewer = UUID.randomUUID();
+        var deck = deck(8);
+        var game = gameAtEra(gameId, deck, 2);
+        given(gameRepository.findById(gameId)).willReturn(Optional.of(game));
+        given(reveals.findByGameIdAndEraNumberAndPlayerId(gameId, 2, viewer)).willReturn(Optional.empty());
+        given(reveals.saveIfAbsent(any())).willReturn(true);
+        given(catalog.findByEventIds(deck.subList(0, 5))).willReturn(definitions(deck.subList(0, 5)));
+
+        listener.onForesightDeclared(new ForesightDeclared(gameId, 2, 1, UUID.randomUUID(), UUID.randomUUID(), viewer));
+
+        var reveal = ArgumentCaptor.forClass(ForesightReveal.class);
+        then(reveals).should().saveIfAbsent(reveal.capture());
+        assertThat(reveal.getValue().catalogEventIds()).containsExactlyElementsOf(deck.subList(0, 5));
     }
 
     @Test

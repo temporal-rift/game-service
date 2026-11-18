@@ -19,7 +19,10 @@ game:
     max-players: 5
     max-eras: 5
     max-cascaded-paradoxes: 3
-    events-per-era: 3
+    events-per-era:
+      3: 3
+      4: 4
+      5: 5
     cards-per-hand: 5
     cards-per-deal: 7
     win-score-threshold: 20

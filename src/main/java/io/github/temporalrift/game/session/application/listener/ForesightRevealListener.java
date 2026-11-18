@@ -14,9 +14,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 import io.github.temporalrift.game.session.domain.foresight.ForesightReveal;
 import io.github.temporalrift.game.session.domain.game.Game;
+import io.github.temporalrift.game.session.domain.lobby.LobbyNotFoundException;
 import io.github.temporalrift.game.session.domain.port.out.ForesightRevealRepository;
 import io.github.temporalrift.game.session.domain.port.out.FutureEventCatalogPort;
 import io.github.temporalrift.game.session.domain.port.out.GameRepository;
+import io.github.temporalrift.game.session.domain.port.out.LobbyRepository;
 import io.github.temporalrift.game.session.domain.port.out.SessionEventPublisher;
 import io.github.temporalrift.game.session.domain.port.out.SessionGameRulesPort;
 import io.github.temporalrift.game.shared.domain.event.ForesightDeclared;
@@ -29,6 +31,7 @@ class ForesightRevealListener {
     private static final Logger log = LoggerFactory.getLogger(ForesightRevealListener.class);
 
     private final GameRepository gameRepository;
+    private final LobbyRepository lobbyRepository;
     private final FutureEventCatalogPort catalog;
     private final ForesightRevealRepository reveals;
     private final SessionEventPublisher eventPublisher;
@@ -37,12 +40,14 @@ class ForesightRevealListener {
 
     ForesightRevealListener(
             GameRepository gameRepository,
+            LobbyRepository lobbyRepository,
             FutureEventCatalogPort catalog,
             ForesightRevealRepository reveals,
             SessionEventPublisher eventPublisher,
             SessionGameRulesPort gameRules,
             Clock clock) {
         this.gameRepository = gameRepository;
+        this.lobbyRepository = lobbyRepository;
         this.catalog = catalog;
         this.reveals = reveals;
         this.eventPublisher = eventPublisher;
@@ -96,8 +101,14 @@ class ForesightRevealListener {
         if (eraNumber >= gameRules.maxEras()) {
             return List.of();
         }
+        // The table's size is fixed at start, so the lobby's players give the count every era of this game draws.
+        int playerCount = lobbyRepository
+                .findById(game.lobbyId())
+                .orElseThrow(() -> new LobbyNotFoundException(game.lobbyId()))
+                .currentPlayers()
+                .size();
         var deck = game.eventDeck();
-        return List.copyOf(deck.subList(0, Math.min(gameRules.eventsPerEra(), deck.size())));
+        return List.copyOf(deck.subList(0, Math.min(gameRules.eventsPerEra(playerCount), deck.size())));
     }
 
     private String emptyReason(int eraNumber) {

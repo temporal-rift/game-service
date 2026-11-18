@@ -286,11 +286,12 @@ public sealed interface SubmittedAction permits SubmittedAction.CardAction, Subm
             if (Set.copyOf(targetEventIds).size() != targetEventIds.size()) {
                 throw InvalidActionTargetException.scanRequiresDistinctTargets();
             }
-            var requiredCount = switch (grade) {
-                case I -> 1;
-                case II -> 2;
-                case III -> 3;
-            };
+            // Grade III names the era's complete event set, whose size follows the player count; it is checked
+            // against the current era in validateCurrentEraTargets.
+            if (grade == CardGrade.III) {
+                return;
+            }
+            var requiredCount = grade == CardGrade.I ? 1 : 2;
             if (targetEventIds.size() != requiredCount) {
                 throw InvalidActionTargetException.scanRequiresTargetCount(grade, requiredCount);
             }
