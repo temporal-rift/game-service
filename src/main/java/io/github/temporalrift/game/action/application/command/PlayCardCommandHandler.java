@@ -10,7 +10,8 @@ import io.github.temporalrift.game.action.application.ActionRoundEventPublicatio
 import io.github.temporalrift.game.action.application.ActionTargetValidator;
 import io.github.temporalrift.game.action.application.GameParticipantValidator;
 import io.github.temporalrift.game.action.application.StalledEventTargetLock;
-import io.github.temporalrift.game.action.application.port.in.PlayCardUseCase;
+import io.github.temporalrift.game.action.application.port.in.SubmitRoundActionUseCase.PlayCard;
+import io.github.temporalrift.game.action.application.port.in.SubmitRoundActionUseCase.Result;
 import io.github.temporalrift.game.action.domain.CardNotInHandException;
 import io.github.temporalrift.game.action.domain.actionround.RoundNotFoundException;
 import io.github.temporalrift.game.action.domain.actionround.SubmittedAction;
@@ -23,7 +24,7 @@ import io.github.temporalrift.game.shared.domain.port.out.GameRulesPort;
 
 @Service
 @ConditionalOnBean({ActionRoundRepository.class, PlayerStateRepository.class})
-class PlayCardCommandHandler implements PlayCardUseCase {
+class PlayCardCommandHandler {
 
     private final ActionRoundRepository actionRoundRepository;
 
@@ -60,9 +61,8 @@ class PlayCardCommandHandler implements PlayCardUseCase {
         this.clock = clock;
     }
 
-    @Override
     @Transactional
-    public Result handle(Command command) {
+    public Result handle(PlayCard command) {
         var round = actionRoundRepository
                 .findByGameIdAndEraNumberAndRoundNumberWithLock(
                         command.gameId(), command.eraNumber(), command.roundNumber())

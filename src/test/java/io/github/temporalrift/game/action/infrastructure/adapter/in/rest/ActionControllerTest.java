@@ -25,13 +25,10 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
 import io.github.temporalrift.game.TestSecurityConfig;
-import io.github.temporalrift.game.action.application.port.in.PassActionRoundUseCase;
-import io.github.temporalrift.game.action.application.port.in.PassParadoxResolutionUseCase;
-import io.github.temporalrift.game.action.application.port.in.PlayCardUseCase;
-import io.github.temporalrift.game.action.application.port.in.PlayParadoxResolutionCardUseCase;
-import io.github.temporalrift.game.action.application.port.in.PlaySpecialActionUseCase;
 import io.github.temporalrift.game.action.application.port.in.RecordActivistDeclarationUseCase;
 import io.github.temporalrift.game.action.application.port.in.SelectHandUseCase;
+import io.github.temporalrift.game.action.application.port.in.SubmitParadoxResolutionUseCase;
+import io.github.temporalrift.game.action.application.port.in.SubmitRoundActionUseCase;
 import io.github.temporalrift.game.action.domain.CardNotInHandException;
 import io.github.temporalrift.game.action.domain.actionround.ActionRoundClosedException;
 import io.github.temporalrift.game.action.domain.actionround.CardNotEligibleForRoundException;
@@ -74,19 +71,10 @@ class ActionControllerTest {
     MockMvc mockMvc;
 
     @MockitoBean
-    PlayCardUseCase playCardUseCase;
+    SubmitRoundActionUseCase submitRoundActionUseCase;
 
     @MockitoBean
-    PlaySpecialActionUseCase playSpecialActionUseCase;
-
-    @MockitoBean
-    PlayParadoxResolutionCardUseCase playParadoxResolutionCardUseCase;
-
-    @MockitoBean
-    PassActionRoundUseCase passActionRoundUseCase;
-
-    @MockitoBean
-    PassParadoxResolutionUseCase passParadoxResolutionUseCase;
+    SubmitParadoxResolutionUseCase submitParadoxResolutionUseCase;
 
     @MockitoBean
     RecordActivistDeclarationUseCase recordActivistDeclarationUseCase;
@@ -146,8 +134,8 @@ class ActionControllerTest {
 
     @Test
     void submitParadoxResolutionCardDispatchesAuthenticatedCommand() throws Exception {
-        given(playParadoxResolutionCardUseCase.handle(any()))
-                .willReturn(new PlayParadoxResolutionCardUseCase.Result(GAME_ID, ERA, PLAYER_ID));
+        given(submitParadoxResolutionUseCase.handle(any()))
+                .willReturn(new SubmitParadoxResolutionUseCase.Result(GAME_ID, ERA, PLAYER_ID));
 
         mockMvc.perform(post("/api/v1/games/{gameId}/eras/{eraNumber}/paradox-resolution/actions", GAME_ID, ERA)
                         .with(auth())
@@ -159,10 +147,10 @@ class ActionControllerTest {
                 .andExpect(jsonPath("$.playerId").value(PLAYER_ID.toString()))
                 .andExpect(jsonPath("$.status").value("SUBMITTED"));
 
-        var captor = ArgumentCaptor.forClass(PlayParadoxResolutionCardUseCase.Command.class);
-        org.mockito.BDDMockito.then(playParadoxResolutionCardUseCase).should().handle(captor.capture());
+        var captor = ArgumentCaptor.forClass(SubmitParadoxResolutionUseCase.PlayCard.class);
+        org.mockito.BDDMockito.then(submitParadoxResolutionUseCase).should().handle(captor.capture());
         assertThat(captor.getValue())
-                .isEqualTo(new PlayParadoxResolutionCardUseCase.Command(
+                .isEqualTo(new SubmitParadoxResolutionUseCase.PlayCard(
                         GAME_ID, ERA, PLAYER_ID, CARD_INSTANCE_ID, TARGET_EVENT_ID, TARGET_OUTCOME_ID));
     }
 
@@ -173,14 +161,14 @@ class ActionControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(paradoxResolutionJson());
         willThrow(new ParadoxResolutionPhaseNotOpenException(GAME_ID, ERA))
-                .given(playParadoxResolutionCardUseCase)
+                .given(submitParadoxResolutionUseCase)
                 .handle(any());
         mockMvc.perform(endpoint)
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("409-06"));
 
         willThrow(new DuplicateParadoxResolutionSubmissionException(PLAYER_ID))
-                .given(playParadoxResolutionCardUseCase)
+                .given(submitParadoxResolutionUseCase)
                 .handle(any());
         mockMvc.perform(post("/api/v1/games/{gameId}/eras/{eraNumber}/paradox-resolution/actions", GAME_ID, ERA)
                         .with(auth())
@@ -191,7 +179,7 @@ class ActionControllerTest {
 
         willThrow(new CardNotEligibleForParadoxResolutionException(
                         io.github.temporalrift.game.shared.domain.model.CardType.COLLIDE))
-                .given(playParadoxResolutionCardUseCase)
+                .given(submitParadoxResolutionUseCase)
                 .handle(any());
         mockMvc.perform(post("/api/v1/games/{gameId}/eras/{eraNumber}/paradox-resolution/actions", GAME_ID, ERA)
                         .with(auth())
@@ -204,8 +192,8 @@ class ActionControllerTest {
     @Test
     @DisplayName("Given an explicit paradox-resolution pass, when POST, then dispatches the pass and spends no card")
     void submitParadoxResolutionPassDispatchesPassCommand() throws Exception {
-        given(passParadoxResolutionUseCase.handle(any()))
-                .willReturn(new PassParadoxResolutionUseCase.Result(GAME_ID, ERA, PLAYER_ID));
+        given(submitParadoxResolutionUseCase.handle(any()))
+                .willReturn(new SubmitParadoxResolutionUseCase.Result(GAME_ID, ERA, PLAYER_ID));
 
         mockMvc.perform(post("/api/v1/games/{gameId}/eras/{eraNumber}/paradox-resolution/actions", GAME_ID, ERA)
                         .with(auth())
@@ -217,17 +205,16 @@ class ActionControllerTest {
                 .andExpect(jsonPath("$.playerId").value(PLAYER_ID.toString()))
                 .andExpect(jsonPath("$.status").value("SUBMITTED"));
 
-        then(passParadoxResolutionUseCase)
+        then(submitParadoxResolutionUseCase)
                 .should()
-                .handle(new PassParadoxResolutionUseCase.Command(GAME_ID, ERA, PLAYER_ID));
-        then(playParadoxResolutionCardUseCase).shouldHaveNoInteractions();
+                .handle(new SubmitParadoxResolutionUseCase.Pass(GAME_ID, ERA, PLAYER_ID));
     }
 
     @Test
     @DisplayName("Given an explicit CARD paradox-resolution submission, when POST, then dispatches the card")
     void submitParadoxResolutionExplicitCardDispatchesCardCommand() throws Exception {
-        given(playParadoxResolutionCardUseCase.handle(any()))
-                .willReturn(new PlayParadoxResolutionCardUseCase.Result(GAME_ID, ERA, PLAYER_ID));
+        given(submitParadoxResolutionUseCase.handle(any()))
+                .willReturn(new SubmitParadoxResolutionUseCase.Result(GAME_ID, ERA, PLAYER_ID));
 
         mockMvc.perform(post("/api/v1/games/{gameId}/eras/{eraNumber}/paradox-resolution/actions", GAME_ID, ERA)
                         .with(auth())
@@ -235,11 +222,10 @@ class ActionControllerTest {
                         .content(paradoxResolutionJson("CARD")))
                 .andExpect(status().isAccepted());
 
-        then(playParadoxResolutionCardUseCase)
+        then(submitParadoxResolutionUseCase)
                 .should()
-                .handle(new PlayParadoxResolutionCardUseCase.Command(
+                .handle(new SubmitParadoxResolutionUseCase.PlayCard(
                         GAME_ID, ERA, PLAYER_ID, CARD_INSTANCE_ID, TARGET_EVENT_ID, TARGET_OUTCOME_ID));
-        then(passParadoxResolutionUseCase).shouldHaveNoInteractions();
     }
 
     @Test
@@ -268,15 +254,14 @@ class ActionControllerTest {
                     .andExpect(status().isBadRequest())
                     .andExpect(jsonPath("$.code").value("400-01"));
         }
-        then(playParadoxResolutionCardUseCase).shouldHaveNoInteractions();
-        then(passParadoxResolutionUseCase).shouldHaveNoInteractions();
+        then(submitParadoxResolutionUseCase).shouldHaveNoInteractions();
     }
 
     @Test
     @DisplayName("Given a player already submitted or passed, when they pass paradox resolution, then 409-07")
     void paradoxResolutionPassAfterSubmissionIsRejected() throws Exception {
         willThrow(new DuplicateParadoxResolutionSubmissionException(PLAYER_ID))
-                .given(passParadoxResolutionUseCase)
+                .given(submitParadoxResolutionUseCase)
                 .handle(any());
 
         mockMvc.perform(post("/api/v1/games/{gameId}/eras/{eraNumber}/paradox-resolution/actions", GAME_ID, ERA)
@@ -290,8 +275,8 @@ class ActionControllerTest {
     @Test
     @DisplayName("Given PASS request, when POST action, then dispatches the pass and reports the early close")
     void submitPass() throws Exception {
-        given(passActionRoundUseCase.handle(any()))
-                .willReturn(new PassActionRoundUseCase.Result(GAME_ID, ERA, ROUND, PLAYER_ID, true));
+        given(submitRoundActionUseCase.handle(any()))
+                .willReturn(new SubmitRoundActionUseCase.Result(GAME_ID, ERA, ROUND, PLAYER_ID, true));
 
         mockMvc.perform(post(
                                 "/api/v1/games/{gameId}/eras/{eraNumber}/rounds/{roundNumber}/actions",
@@ -309,11 +294,9 @@ class ActionControllerTest {
                 .andExpect(jsonPath("$.status").value("SUBMITTED"))
                 .andExpect(jsonPath("$.roundClosed").value(true));
 
-        then(passActionRoundUseCase)
+        then(submitRoundActionUseCase)
                 .should()
-                .handle(new PassActionRoundUseCase.Command(GAME_ID, ERA, ROUND, PLAYER_ID));
-        then(playCardUseCase).shouldHaveNoInteractions();
-        then(playSpecialActionUseCase).shouldHaveNoInteractions();
+                .handle(new SubmitRoundActionUseCase.Pass(GAME_ID, ERA, ROUND, PLAYER_ID));
     }
 
     @Test
@@ -325,14 +308,14 @@ class ActionControllerTest {
                 .content(PASS_JSON);
 
         willThrow(new DuplicateSubmissionException(PLAYER_ID))
-                .given(passActionRoundUseCase)
+                .given(submitRoundActionUseCase)
                 .handle(any());
         mockMvc.perform(endpoint)
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("409-02"));
 
         willThrow(new ActionRoundClosedException())
-                .given(passActionRoundUseCase)
+                .given(submitRoundActionUseCase)
                 .handle(any());
         mockMvc.perform(endpoint)
                 .andExpect(status().isConflict())
@@ -356,8 +339,8 @@ class ActionControllerTest {
     @DisplayName("Given CARD request, when POST action, then dispatches authenticated command and returns 202")
     void submitCard() throws Exception {
         // given
-        given(playCardUseCase.handle(any()))
-                .willReturn(new PlayCardUseCase.Result(GAME_ID, ERA, ROUND, PLAYER_ID, false));
+        given(submitRoundActionUseCase.handle(any()))
+                .willReturn(new SubmitRoundActionUseCase.Result(GAME_ID, ERA, ROUND, PLAYER_ID, false));
 
         // when / then
         mockMvc.perform(post(
@@ -376,8 +359,8 @@ class ActionControllerTest {
                 .andExpect(jsonPath("$.status").value("SUBMITTED"))
                 .andExpect(jsonPath("$.roundClosed").value(false));
 
-        var captor = ArgumentCaptor.forClass(PlayCardUseCase.Command.class);
-        org.mockito.BDDMockito.then(playCardUseCase).should().handle(captor.capture());
+        var captor = ArgumentCaptor.forClass(SubmitRoundActionUseCase.PlayCard.class);
+        org.mockito.BDDMockito.then(submitRoundActionUseCase).should().handle(captor.capture());
         assertThat(captor.getValue().gameId()).isEqualTo(GAME_ID);
         assertThat(captor.getValue().eraNumber()).isEqualTo(ERA);
         assertThat(captor.getValue().roundNumber()).isEqualTo(ROUND);
@@ -393,8 +376,8 @@ class ActionControllerTest {
     @DisplayName("Given SCAN list request, when POST action, then preserves every selected event id")
     void submitScanTargets() throws Exception {
         var secondEventId = UUID.randomUUID();
-        given(playCardUseCase.handle(any()))
-                .willReturn(new PlayCardUseCase.Result(GAME_ID, ERA, ROUND, PLAYER_ID, false));
+        given(submitRoundActionUseCase.handle(any()))
+                .willReturn(new SubmitRoundActionUseCase.Result(GAME_ID, ERA, ROUND, PLAYER_ID, false));
 
         mockMvc.perform(post(
                                 "/api/v1/games/{gameId}/eras/{eraNumber}/rounds/{roundNumber}/actions",
@@ -406,8 +389,8 @@ class ActionControllerTest {
                         .content(scanJson(secondEventId)))
                 .andExpect(status().isAccepted());
 
-        var captor = ArgumentCaptor.forClass(PlayCardUseCase.Command.class);
-        org.mockito.BDDMockito.then(playCardUseCase).should().handle(captor.capture());
+        var captor = ArgumentCaptor.forClass(SubmitRoundActionUseCase.PlayCard.class);
+        org.mockito.BDDMockito.then(submitRoundActionUseCase).should().handle(captor.capture());
         assertThat(captor.getValue().targetEventId()).isNull();
         assertThat(captor.getValue().targetEventIds()).containsExactly(TARGET_EVENT_ID, secondEventId);
         assertThat(captor.getValue().targetPlayerId()).isNull();
@@ -427,15 +410,15 @@ class ActionControllerTest {
                 .andExpect(status().isUnprocessableContent())
                 .andExpect(jsonPath("$.code").value("422-03"));
 
-        org.mockito.BDDMockito.then(playCardUseCase).shouldHaveNoInteractions();
+        org.mockito.BDDMockito.then(submitRoundActionUseCase).shouldHaveNoInteractions();
     }
 
     @Test
     @DisplayName("Given NULLIFY list request, when POST action, then preserves every selected player id")
     void submitNullifyTargets() throws Exception {
         var secondTargetId = UUID.randomUUID();
-        given(playCardUseCase.handle(any()))
-                .willReturn(new PlayCardUseCase.Result(GAME_ID, ERA, ROUND, PLAYER_ID, false));
+        given(submitRoundActionUseCase.handle(any()))
+                .willReturn(new SubmitRoundActionUseCase.Result(GAME_ID, ERA, ROUND, PLAYER_ID, false));
 
         mockMvc.perform(post(
                                 "/api/v1/games/{gameId}/eras/{eraNumber}/rounds/{roundNumber}/actions",
@@ -447,8 +430,8 @@ class ActionControllerTest {
                         .content(nullifyJson(secondTargetId)))
                 .andExpect(status().isAccepted());
 
-        var captor = ArgumentCaptor.forClass(PlayCardUseCase.Command.class);
-        org.mockito.BDDMockito.then(playCardUseCase).should().handle(captor.capture());
+        var captor = ArgumentCaptor.forClass(SubmitRoundActionUseCase.PlayCard.class);
+        org.mockito.BDDMockito.then(submitRoundActionUseCase).should().handle(captor.capture());
         assertThat(captor.getValue().targetEventId()).isNull();
         assertThat(captor.getValue().targetEventIds()).isNull();
         assertThat(captor.getValue().targetPlayerId()).isNull();
@@ -458,8 +441,8 @@ class ActionControllerTest {
     @Test
     @DisplayName("Given DECOY disguise request, when POST action, then passes the disguise and no target")
     void submitDecoyDisguise() throws Exception {
-        given(playCardUseCase.handle(any()))
-                .willReturn(new PlayCardUseCase.Result(GAME_ID, ERA, ROUND, PLAYER_ID, false));
+        given(submitRoundActionUseCase.handle(any()))
+                .willReturn(new SubmitRoundActionUseCase.Result(GAME_ID, ERA, ROUND, PLAYER_ID, false));
 
         mockMvc.perform(post(
                                 "/api/v1/games/{gameId}/eras/{eraNumber}/rounds/{roundNumber}/actions",
@@ -477,8 +460,8 @@ class ActionControllerTest {
                                 """.formatted(CARD_INSTANCE_ID)))
                 .andExpect(status().isAccepted());
 
-        var captor = ArgumentCaptor.forClass(PlayCardUseCase.Command.class);
-        org.mockito.BDDMockito.then(playCardUseCase).should().handle(captor.capture());
+        var captor = ArgumentCaptor.forClass(SubmitRoundActionUseCase.PlayCard.class);
+        org.mockito.BDDMockito.then(submitRoundActionUseCase).should().handle(captor.capture());
         assertThat(captor.getValue().disguiseCategory()).isEqualTo(CardCategory.DISRUPTION);
         assertThat(captor.getValue().targetEventId()).isNull();
         assertThat(captor.getValue().targetPlayerId()).isNull();
@@ -498,15 +481,15 @@ class ActionControllerTest {
                 .andExpect(status().isUnprocessableContent())
                 .andExpect(jsonPath("$.code").value("422-03"));
 
-        org.mockito.BDDMockito.then(playCardUseCase).shouldHaveNoInteractions();
+        org.mockito.BDDMockito.then(submitRoundActionUseCase).shouldHaveNoInteractions();
     }
 
     @Test
     @DisplayName("Given SPECIAL request, when POST action, then maps generated enum and returns 202")
     void submitSpecial() throws Exception {
         // given
-        given(playSpecialActionUseCase.handle(any()))
-                .willReturn(new PlaySpecialActionUseCase.Result(GAME_ID, ERA, ROUND, PLAYER_ID, true));
+        given(submitRoundActionUseCase.handle(any()))
+                .willReturn(new SubmitRoundActionUseCase.Result(GAME_ID, ERA, ROUND, PLAYER_ID, true));
 
         // when / then
         mockMvc.perform(post(
@@ -520,8 +503,8 @@ class ActionControllerTest {
                 .andExpect(status().isAccepted())
                 .andExpect(jsonPath("$.roundClosed").value(true));
 
-        var captor = ArgumentCaptor.forClass(PlaySpecialActionUseCase.Command.class);
-        org.mockito.BDDMockito.then(playSpecialActionUseCase).should().handle(captor.capture());
+        var captor = ArgumentCaptor.forClass(SubmitRoundActionUseCase.PlaySpecial.class);
+        org.mockito.BDDMockito.then(submitRoundActionUseCase).should().handle(captor.capture());
         assertThat(captor.getValue().gameId()).isEqualTo(GAME_ID);
         assertThat(captor.getValue().eraNumber()).isEqualTo(ERA);
         assertThat(captor.getValue().roundNumber()).isEqualTo(ROUND);
@@ -537,7 +520,7 @@ class ActionControllerTest {
     @DisplayName("Given RoundNotFoundException, then returns 404")
     void roundNotFound() throws Exception {
         // given
-        given(playCardUseCase.handle(any())).willThrow(new RoundNotFoundException(GAME_ID, ERA, ROUND));
+        given(submitRoundActionUseCase.handle(any())).willThrow(new RoundNotFoundException(GAME_ID, ERA, ROUND));
 
         // when / then
         mockMvc.perform(post(
@@ -556,7 +539,7 @@ class ActionControllerTest {
     @DisplayName("Given ActionRoundClosedException, then returns 409")
     void actionRoundClosed() throws Exception {
         // given
-        given(playCardUseCase.handle(any())).willThrow(new ActionRoundClosedException());
+        given(submitRoundActionUseCase.handle(any())).willThrow(new ActionRoundClosedException());
 
         // when / then
         mockMvc.perform(post(
@@ -575,7 +558,7 @@ class ActionControllerTest {
     @DisplayName("Given DuplicateSubmissionException, then returns 409")
     void duplicateSubmission() throws Exception {
         // given
-        given(playCardUseCase.handle(any())).willThrow(new DuplicateSubmissionException(PLAYER_ID));
+        given(submitRoundActionUseCase.handle(any())).willThrow(new DuplicateSubmissionException(PLAYER_ID));
 
         // when / then
         mockMvc.perform(post(
@@ -594,7 +577,7 @@ class ActionControllerTest {
     @DisplayName("Given CardNotInHandException, then returns 422")
     void cardNotInHand() throws Exception {
         // given
-        given(playCardUseCase.handle(any())).willThrow(new CardNotInHandException(CARD_INSTANCE_ID));
+        given(submitRoundActionUseCase.handle(any())).willThrow(new CardNotInHandException(CARD_INSTANCE_ID));
 
         // when / then
         mockMvc.perform(post(
@@ -613,7 +596,7 @@ class ActionControllerTest {
     @DisplayName("Given CardNotEligibleForRoundException, then returns 422 with its own code, distinct from 422-10")
     void cardNotEligibleForRound() throws Exception {
         // given
-        given(playCardUseCase.handle(any()))
+        given(submitRoundActionUseCase.handle(any()))
                 .willThrow(new CardNotEligibleForRoundException(CardType.TRACE, ERA, ROUND));
 
         // when / then
@@ -633,7 +616,8 @@ class ActionControllerTest {
     @DisplayName("Given final-era STALL rejection, then returns 422-12")
     void finalEraStallReturnsRoundIneligibilityCode() throws Exception {
         // given
-        given(playCardUseCase.handle(any())).willThrow(new CardNotEligibleForRoundException(CardType.STALL, 5, 1));
+        given(submitRoundActionUseCase.handle(any()))
+                .willThrow(new CardNotEligibleForRoundException(CardType.STALL, 5, 1));
 
         // when / then
         mockMvc.perform(post(
@@ -652,7 +636,7 @@ class ActionControllerTest {
     @DisplayName("Given round-3 OBSCURE rejection, then returns 422-12")
     void roundThreeObscureReturnsRoundIneligibilityCode() throws Exception {
         // given
-        given(playSpecialActionUseCase.handle(any()))
+        given(submitRoundActionUseCase.handle(any()))
                 .willThrow(new SpecialActionNotEligibleForRoundException(SpecialAction.OBSCURE, ERA, 3));
 
         // when / then
@@ -672,7 +656,7 @@ class ActionControllerTest {
     @DisplayName("Given final-era CASCADE rejection, then returns 422-12")
     void finalEraCascadeReturnsRoundIneligibilityCode() throws Exception {
         // given
-        given(playSpecialActionUseCase.handle(any()))
+        given(submitRoundActionUseCase.handle(any()))
                 .willThrow(new SpecialActionNotEligibleForEraException(SpecialAction.CASCADE, 5));
 
         // when / then
@@ -692,7 +676,7 @@ class ActionControllerTest {
     @DisplayName("Given JammedPlayerException, then returns 422")
     void jammedPlayer() throws Exception {
         // given
-        given(playSpecialActionUseCase.handle(any())).willThrow(new JammedPlayerException(PLAYER_ID));
+        given(submitRoundActionUseCase.handle(any())).willThrow(new JammedPlayerException(PLAYER_ID));
 
         // when / then
         mockMvc.perform(post(
@@ -711,7 +695,7 @@ class ActionControllerTest {
     @DisplayName("Given FactionRequiredException, then returns 422")
     void factionRequired() throws Exception {
         // given
-        given(playSpecialActionUseCase.handle(any())).willThrow(new FactionRequiredException(PLAYER_ID));
+        given(submitRoundActionUseCase.handle(any())).willThrow(new FactionRequiredException(PLAYER_ID));
 
         // when / then
         mockMvc.perform(post(
@@ -730,7 +714,7 @@ class ActionControllerTest {
     @DisplayName("Given InvalidActionTargetException, then returns 422")
     void invalidActionTarget() throws Exception {
         // given
-        given(playCardUseCase.handle(any()))
+        given(submitRoundActionUseCase.handle(any()))
                 .willThrow(InvalidActionTargetException.requiresDistinctOutcomes(CardType.SWING));
 
         // when / then
@@ -748,7 +732,8 @@ class ActionControllerTest {
 
     @Test
     void freshTraceTargetExplainsPrecedingRoundRule() throws Exception {
-        given(playCardUseCase.handle(any())).willThrow(InvalidActionTargetException.traceRequiresPrecedingRoundEvent());
+        given(submitRoundActionUseCase.handle(any()))
+                .willThrow(InvalidActionTargetException.traceRequiresPrecedingRoundEvent());
 
         mockMvc.perform(post(
                                 "/api/v1/games/{gameId}/eras/{eraNumber}/rounds/{roundNumber}/actions",
@@ -767,7 +752,7 @@ class ActionControllerTest {
     @Test
     @DisplayName("Given a prior Expose, then submits a 409 conflict")
     void exposeAlreadyRecorded() throws Exception {
-        given(playSpecialActionUseCase.handle(any())).willThrow(new ExposeAlreadyRecordedException());
+        given(submitRoundActionUseCase.handle(any())).willThrow(new ExposeAlreadyRecordedException());
 
         mockMvc.perform(post(
                                 "/api/v1/games/{gameId}/eras/{eraNumber}/rounds/{roundNumber}/actions",
@@ -785,7 +770,7 @@ class ActionControllerTest {
     @DisplayName("Given a budgeted special already used this era, then submits a 409 conflict distinguishable from "
             + "Expose's")
     void specialActionEraBudgetExhausted() throws Exception {
-        given(playSpecialActionUseCase.handle(any()))
+        given(submitRoundActionUseCase.handle(any()))
                 .willThrow(new SpecialActionEraBudgetExhaustedException(PLAYER_ID, SpecialAction.ANNIHILATE, ERA));
 
         mockMvc.perform(post(
@@ -803,7 +788,7 @@ class ActionControllerTest {
     @Test
     @DisplayName("Given Seal game budget exhausted, then submits a 409 conflict without disclosing private state")
     void sealGameBudgetExhausted() throws Exception {
-        given(playSpecialActionUseCase.handle(any()))
+        given(submitRoundActionUseCase.handle(any()))
                 .willThrow(
                         new io.github.temporalrift.game.action.domain.specialactionerausage
                                 .SealGameBudgetExhaustedException(PLAYER_ID, 2));

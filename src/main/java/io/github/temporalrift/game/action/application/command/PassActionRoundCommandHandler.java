@@ -7,7 +7,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import io.github.temporalrift.game.action.application.ActionRoundEventPublication;
-import io.github.temporalrift.game.action.application.port.in.PassActionRoundUseCase;
+import io.github.temporalrift.game.action.application.port.in.SubmitRoundActionUseCase.Pass;
+import io.github.temporalrift.game.action.application.port.in.SubmitRoundActionUseCase.Result;
 import io.github.temporalrift.game.action.domain.actionround.RoundNotFoundException;
 import io.github.temporalrift.game.action.domain.playerstate.PlayerStateNotFoundException;
 import io.github.temporalrift.game.action.domain.port.out.ActionEventPublisher;
@@ -16,7 +17,7 @@ import io.github.temporalrift.game.action.domain.port.out.PlayerStateRepository;
 
 @Service
 @ConditionalOnBean({ActionRoundRepository.class, PlayerStateRepository.class})
-class PassActionRoundCommandHandler implements PassActionRoundUseCase {
+class PassActionRoundCommandHandler {
 
     private final ActionRoundRepository actionRoundRepository;
 
@@ -37,9 +38,8 @@ class PassActionRoundCommandHandler implements PassActionRoundUseCase {
         this.clock = clock;
     }
 
-    @Override
     @Transactional
-    public Result handle(Command command) {
+    public Result handle(Pass command) {
         var round = actionRoundRepository
                 .findByGameIdAndEraNumberAndRoundNumberWithLock(
                         command.gameId(), command.eraNumber(), command.roundNumber())

@@ -11,7 +11,8 @@ import io.github.temporalrift.game.action.application.ActionTargetValidator;
 import io.github.temporalrift.game.action.application.ActivistMomentumEligibility;
 import io.github.temporalrift.game.action.application.GameParticipantValidator;
 import io.github.temporalrift.game.action.application.StalledEventTargetLock;
-import io.github.temporalrift.game.action.application.port.in.PlaySpecialActionUseCase;
+import io.github.temporalrift.game.action.application.port.in.SubmitRoundActionUseCase.PlaySpecial;
+import io.github.temporalrift.game.action.application.port.in.SubmitRoundActionUseCase.Result;
 import io.github.temporalrift.game.action.domain.actionround.ActionFamily;
 import io.github.temporalrift.game.action.domain.actionround.FactionRequiredException;
 import io.github.temporalrift.game.action.domain.actionround.InvalidSpecialActionException;
@@ -40,7 +41,7 @@ import io.github.temporalrift.game.shared.domain.port.out.GameRulesPort;
 
 @Service
 @ConditionalOnBean({ActionRoundRepository.class, PlayerStateRepository.class})
-class PlaySpecialActionCommandHandler implements PlaySpecialActionUseCase {
+class PlaySpecialActionCommandHandler {
 
     private final ActionRoundRepository actionRoundRepository;
 
@@ -92,9 +93,8 @@ class PlaySpecialActionCommandHandler implements PlaySpecialActionUseCase {
         this.clock = clock;
     }
 
-    @Override
     @Transactional
-    public Result handle(Command command) {
+    public Result handle(PlaySpecial command) {
         // THREAD's and REWEAVE's targets are not-yet-resolved outcomes in the current era, validated the same way
         // as every other current-era-targeting special. Whether they are still live is verified downstream by
         // timeline-service's chain saga.
@@ -182,7 +182,7 @@ class PlaySpecialActionCommandHandler implements PlaySpecialActionUseCase {
                 command.gameId(), command.eraNumber(), command.roundNumber(), command.playerId(), allSubmitted);
     }
 
-    private void recordExpose(Command command) {
+    private void recordExpose(PlaySpecial command) {
         var targetPlayerId = command.targetPlayerId();
         var targetAction = actionRoundRepository
                 .findByGameIdAndEraNumberAndRoundNumber(command.gameId(), command.eraNumber(), 1)

@@ -24,7 +24,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 
 import io.github.temporalrift.game.action.application.ActionTargetValidator;
-import io.github.temporalrift.game.action.application.port.in.PlayParadoxResolutionCardUseCase;
+import io.github.temporalrift.game.action.application.port.in.SubmitParadoxResolutionUseCase;
 import io.github.temporalrift.game.action.domain.actionround.UnknownActionTargetException;
 import io.github.temporalrift.game.action.domain.event.ParadoxResolutionCardPlayed;
 import io.github.temporalrift.game.action.domain.paradoxresolutionphase.CardNotEligibleForParadoxResolutionException;
@@ -121,7 +121,7 @@ class PlayParadoxResolutionCardCommandHandlerTest {
 
         var result = handler.handle(command());
 
-        assertThat(result).isEqualTo(new PlayParadoxResolutionCardUseCase.Result(GAME_ID, ERA, PLAYER_ID));
+        assertThat(result).isEqualTo(new SubmitParadoxResolutionUseCase.Result(GAME_ID, ERA, PLAYER_ID));
         assertThat(playerState.hand()).isEmpty();
         assertThat(phase.submittedPlayerIds()).containsExactly(PLAYER_ID);
         then(phaseRepository).should().save(phase);
@@ -197,7 +197,7 @@ class PlayParadoxResolutionCardCommandHandlerTest {
         var playerState = playerStateWithCard(CardType.STABILIZE);
         given(phaseRepository.findByGameIdAndEraNumberWithLock(GAME_ID, ERA)).willReturn(Optional.of(phase));
         var outsidePhaseTarget = UUID.randomUUID();
-        var command = new PlayParadoxResolutionCardUseCase.Command(
+        var command = new SubmitParadoxResolutionUseCase.PlayCard(
                 GAME_ID, ERA, PLAYER_ID, CARD_INSTANCE_ID, outsidePhaseTarget, TARGET_OUTCOME_ID);
 
         assertThatExceptionOfType(ParadoxResolutionTargetNotAffectedException.class)
@@ -210,8 +210,8 @@ class PlayParadoxResolutionCardCommandHandlerTest {
         then(actionEventPublisher).shouldHaveNoInteractions();
     }
 
-    private PlayParadoxResolutionCardUseCase.Command command() {
-        return new PlayParadoxResolutionCardUseCase.Command(
+    private SubmitParadoxResolutionUseCase.PlayCard command() {
+        return new SubmitParadoxResolutionUseCase.PlayCard(
                 GAME_ID, ERA, PLAYER_ID, CARD_INSTANCE_ID, TARGET_EVENT_ID, TARGET_OUTCOME_ID);
     }
 
@@ -229,7 +229,7 @@ class PlayParadoxResolutionCardCommandHandlerTest {
 
         var result = handler.handle(command());
 
-        assertThat(result).isEqualTo(new PlayParadoxResolutionCardUseCase.Result(GAME_ID, ERA, PLAYER_ID));
+        assertThat(result).isEqualTo(new SubmitParadoxResolutionUseCase.Result(GAME_ID, ERA, PLAYER_ID));
         assertThat(offer.status())
                 .isEqualTo(io.github.temporalrift.game.action.domain.reactiveoffer.ReactiveOfferStatus.CONSUMED);
         assertThat(phase.submittedPlayerIds()).containsExactly(PLAYER_ID);
