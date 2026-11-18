@@ -286,6 +286,11 @@ class UpdateScoresCommandHandlerTest {
             public boolean annihilationRequiresConsequence() {
                 return true;
             }
+
+            @Override
+            public boolean erasedOutcomeVoidsBets() {
+                return true;
+            }
         };
         var handler = handler(context, List.of(), scoreRules, savedScores);
 

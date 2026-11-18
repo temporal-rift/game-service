@@ -24,6 +24,12 @@ class ScoringContextActionFactJpaEntity extends GameEraScopedJpaEntity {
     @Column(name = "consumed", nullable = false)
     private boolean consumed;
 
+    @Column(name = "target_event_id")
+    private UUID targetEventId;
+
+    @Column(name = "target_outcome_id")
+    private UUID targetOutcomeId;
+
     protected ScoringContextActionFactJpaEntity() {}
 
     UUID getPlayerId() {
@@ -56,5 +62,21 @@ class ScoringContextActionFactJpaEntity extends GameEraScopedJpaEntity {
 
     void setConsumed(boolean consumed) {
         this.consumed = consumed;
+    }
+
+    UUID getTargetEventId() {
+        return targetEventId;
+    }
+
+    void setTargetEventId(UUID targetEventId) {
+        this.targetEventId = targetEventId;
+    }
+
+    UUID getTargetOutcomeId() {
+        return targetOutcomeId;
+    }
+
+    void setTargetOutcomeId(UUID targetOutcomeId) {
+        this.targetOutcomeId = targetOutcomeId;
     }
 }

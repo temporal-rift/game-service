@@ -688,7 +688,9 @@ class EraScoringContextRepositoryAdapterTest {
                         eq(3),
                         eq(playerId),
                         eq(Faction.ACTIVISTS.name()),
-                        eq(ScoreReason.DECLARED_OUTCOME_WON_WITH_RALLY.name()));
+                        eq(ScoreReason.DECLARED_OUTCOME_WON_WITH_RALLY.name()),
+                        any(),
+                        any());
     }
 
     @Test
@@ -738,7 +740,9 @@ class EraScoringContextRepositoryAdapterTest {
                         eq(2),
                         eq(playerId),
                         eq(Faction.ACTIVISTS.name()),
-                        eq(expected.name()));
+                        eq(expected.name()),
+                        any(),
+                        any());
     }
 
     @Test
@@ -780,7 +784,9 @@ class EraScoringContextRepositoryAdapterTest {
                         eq(2),
                         eq(playerId),
                         eq(Faction.ACTIVISTS.name()),
-                        eq(ScoreReason.DECLARED_OUTCOME_WON_WITH_RALLY.name()));
+                        eq(ScoreReason.DECLARED_OUTCOME_WON_WITH_RALLY.name()),
+                        any(),
+                        any());
     }
 
     @Test
@@ -829,7 +835,9 @@ class EraScoringContextRepositoryAdapterTest {
                         eq(2),
                         eq(playerId),
                         eq(Faction.ACTIVISTS.name()),
-                        eq(ScoreReason.DECLARED_OUTCOME_WON.name()));
+                        eq(ScoreReason.DECLARED_OUTCOME_WON.name()),
+                        any(),
+                        any());
         then(activistDeclarationJpaRepository)
                 .should()
                 .insertIfAbsent(
@@ -883,7 +891,9 @@ class EraScoringContextRepositoryAdapterTest {
                         eq(2),
                         eq(playerId),
                         eq(Faction.REVISIONISTS.name()),
-                        eq(ScoreReason.SECRET_OUTCOME_WON.name()));
+                        eq(ScoreReason.SECRET_OUTCOME_WON.name()),
+                        any(),
+                        any());
     }
 
     @Test
@@ -912,7 +922,9 @@ class EraScoringContextRepositoryAdapterTest {
                         eq(2),
                         eq(playerId),
                         eq(Faction.REVISIONISTS.name()),
-                        eq(ScoreReason.MIMIC_CONTRIBUTED_TO_WIN.name()));
+                        eq(ScoreReason.MIMIC_CONTRIBUTED_TO_WIN.name()),
+                        eq(eventId),
+                        eq(outcomeId));
     }
 
     @Test
@@ -942,7 +954,9 @@ class EraScoringContextRepositoryAdapterTest {
                         eq(2),
                         eq(playerId),
                         eq(Faction.REVISIONISTS.name()),
-                        eq(ScoreReason.SECRET_OUTCOME_MISSED.name()));
+                        eq(ScoreReason.SECRET_OUTCOME_MISSED.name()),
+                        eq(eventId),
+                        eq(targetOutcomeId));
         then(actionFactJpaRepository).shouldHaveNoMoreInteractions();
     }
 

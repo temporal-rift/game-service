@@ -68,6 +68,7 @@
     <include file="db/changelog/scoring/018-create-scoring-context-corrupt-pending-confirmation.xml"/>
     <include file="db/changelog/scoring/019-add-scoring-context-write-and-annihilation-rounds.xml"/>
     <include file="db/changelog/scoring/020-create-scoring-context-stabilize.xml"/>
+    <include file="db/changelog/scoring/021-add-scoring-context-action-fact-target.xml"/>
 
 </databaseChangeLog>
 

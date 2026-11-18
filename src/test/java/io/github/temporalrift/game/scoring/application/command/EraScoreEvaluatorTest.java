@@ -274,6 +274,75 @@ class EraScoreEvaluatorTest {
         assertThat(decisions.get(0).eraNumber()).isEqualTo(ERA);
     }
 
+    @Nested
+    @DisplayName("a bet on an annihilated outcome")
+    class ErasedOutcomeBets {
+
+        final UUID eventId = UUID.randomUUID();
+        final UUID outcomeId = UUID.randomUUID();
+        final UUID eraserId = UUID.randomUUID();
+        final UUID bettorId = UUID.randomUUID();
+
+        @ParameterizedTest
+        @CsvSource({
+            "ACTIVISTS, DECLARED_OUTCOME_MISSED_WITH_RALLY",
+            "ACTIVISTS, DECLARED_OUTCOME_MISSED",
+            "REVISIONISTS, SECRET_OUTCOME_MISSED"
+        })
+        @DisplayName("records no miss while the void rule is on")
+        void missOnErasedOutcomeIsVoid(Faction faction, ScoreReason miss) {
+            var context = contextWith(faction, miss, outcomeId);
+
+            var decisions = new EraScoreEvaluator(ScoreRulesTestValues.rulesWithErasedOutcomeVoidingBets(true))
+                    .evaluate(context, List.of());
+
+            assertThat(decisions).noneMatch(decision -> decision.playerId().equals(bettorId));
+        }
+
+        @Test
+        @DisplayName("records the miss when another outcome of the event was annihilated")
+        void missOnSurvivingOutcomeScores() {
+            var context = contextWith(Faction.ACTIVISTS, ScoreReason.DECLARED_OUTCOME_MISSED, UUID.randomUUID());
+
+            var decisions = new EraScoreEvaluator(ScoreRulesTestValues.rulesWithErasedOutcomeVoidingBets(true))
+                    .evaluate(context, List.of());
+
+            assertThat(decisions)
+                    .filteredOn(decision -> decision.playerId().equals(bettorId))
+                    .extracting(PlayerScoreDecision::reason)
+                    .containsExactly(ScoreReason.DECLARED_OUTCOME_MISSED);
+        }
+
+        @Test
+        @DisplayName("records the miss while the void rule is off")
+        void missScoresWhenRuleOff() {
+            var context = contextWith(Faction.REVISIONISTS, ScoreReason.SECRET_OUTCOME_MISSED, outcomeId);
+
+            var decisions = new EraScoreEvaluator(ScoreRulesTestValues.rulesWithErasedOutcomeVoidingBets(false))
+                    .evaluate(context, List.of());
+
+            assertThat(decisions)
+                    .filteredOn(decision -> decision.playerId().equals(bettorId))
+                    .extracting(PlayerScoreDecision::reason)
+                    .containsExactly(ScoreReason.SECRET_OUTCOME_MISSED);
+        }
+
+        private EraScoringContext contextWith(Faction faction, ScoreReason reason, UUID betOutcomeId) {
+            return new EraScoringContext(
+                    GAME_ID,
+                    ERA,
+                    List.of(new PlayerFaction(bettorId, faction), new PlayerFaction(eraserId, Faction.ERASERS)),
+                    List.of(),
+                    List.of(new ActionScoringFact(bettorId, faction, reason, eventId, betOutcomeId)),
+                    List.of(),
+                    List.of(new AnnihilationFact(eventId, outcomeId, eraserId, 2, true, false)),
+                    List.of(),
+                    List.of(),
+                    List.of(),
+                    Set.of());
+        }
+    }
+
     @Test
     @DisplayName("revisionist receives scoring reason from a declared preference fact")
     void revisionistDeclaredPreferenceFact() {
