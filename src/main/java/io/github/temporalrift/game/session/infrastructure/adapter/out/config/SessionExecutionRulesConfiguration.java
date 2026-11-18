@@ -7,6 +7,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
 
 import io.github.temporalrift.game.session.domain.port.out.SessionGameRulesPort;
+import io.github.temporalrift.game.session.domain.port.out.VictoryTiebreakRulesPort;
 import io.github.temporalrift.game.shared.domain.port.out.ExecutionRules;
 import io.github.temporalrift.game.shared.domain.port.out.ExecutionRulesValidator;
 import io.github.temporalrift.game.shared.infrastructure.config.ExecutionRulesBinding;
@@ -26,6 +27,23 @@ class SessionExecutionRulesConfiguration {
     @Bean
     ExecutionRulesValidator sessionExecutionRulesValidator(Validator validator) {
         return binding(validator).validator();
+    }
+
+    @Bean
+    @Primary
+    VictoryTiebreakRulesPort executionVictoryTiebreakRules(
+            ExecutionRules active, VictoryTiebreakRulesProperties deployment, Validator validator) {
+        return ExecutionRulesBinding.servedFrom(
+                VictoryTiebreakRulesPort.class, active, tiebreakBinding(validator), deployment);
+    }
+
+    @Bean
+    ExecutionRulesValidator victoryTiebreakExecutionRulesValidator(Validator validator) {
+        return tiebreakBinding(validator).validator();
+    }
+
+    private static ExecutionRulesBinding<VictoryTiebreakRulesProperties> tiebreakBinding(Validator validator) {
+        return new ExecutionRulesBinding<>(VictoryTiebreakRulesProperties.class, "game.rules.victory", validator);
     }
 
     private static ExecutionRulesBinding<SessionRulesProperties> binding(Validator validator) {

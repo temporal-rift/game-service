@@ -189,6 +189,7 @@ class PlayerAbandonmentEndingTest {
                 abandonment,
                 rules,
                 objectives,
+                () -> false,
                 new ActionRoundRequests(games, lobbies),
                 clock);
     }

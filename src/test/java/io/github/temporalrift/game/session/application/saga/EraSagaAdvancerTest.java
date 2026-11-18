@@ -133,6 +133,8 @@ class EraSagaAdvancerTest {
                         reconnectStates, lobbyRepository, reconnectTimers, eventPublisher, clock),
                 gameRules,
                 factionObjectives,
+                // Simultaneous qualifiers share in these cases; the tiebreak is covered by NormalVictoryPolicyTest.
+                () -> false,
                 actionRoundRequests,
                 clock);
         lenient()

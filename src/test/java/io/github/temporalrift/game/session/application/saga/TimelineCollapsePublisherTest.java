@@ -30,6 +30,7 @@ import io.github.temporalrift.game.session.domain.lobby.LobbyStatus;
 import io.github.temporalrift.game.session.domain.port.out.FinalScoreQueryPort;
 import io.github.temporalrift.game.session.domain.port.out.LobbyRepository;
 import io.github.temporalrift.game.session.domain.port.out.SessionEventPublisher;
+import io.github.temporalrift.game.session.domain.port.out.SessionFactionObjectivePort;
 import io.github.temporalrift.game.shared.domain.event.GameEnded;
 import io.github.temporalrift.game.shared.domain.messaging.DomainEventEnvelope;
 import io.github.temporalrift.game.shared.domain.model.Faction;
@@ -55,12 +56,21 @@ class TimelineCollapsePublisherTest {
     @Mock
     ApplicationEventPublisher applicationEventPublisher;
 
+    @Mock
+    SessionFactionObjectivePort factionObjectives;
+
     TimelineCollapsePublisher publisher;
 
     @BeforeEach
     void setUp() {
         publisher = new TimelineCollapsePublisher(
-                lobbyRepository, scoreQueryPort, eventPublisher, applicationEventPublisher, Clock.systemUTC());
+                lobbyRepository,
+                scoreQueryPort,
+                eventPublisher,
+                applicationEventPublisher,
+                factionObjectives,
+                () -> false,
+                Clock.systemUTC());
     }
 
     @Test
