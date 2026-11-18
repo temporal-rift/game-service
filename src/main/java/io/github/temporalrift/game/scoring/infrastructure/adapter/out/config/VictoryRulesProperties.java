@@ -16,5 +16,6 @@ public record VictoryRulesProperties(
         // No built-in default: timeline-service completes the chain at this same shared value, so a missing key must
         // fail at startup rather than let the two services disagree.
         @Min(2) int weaverChainLength,
-        @DefaultValue("3") @Min(1) int activistConsecutiveDeclarations)
+        @DefaultValue("3") @Min(1) int activistConsecutiveDeclarations,
+        @DefaultValue("1") @Min(0) int finalEraObjectiveDiscount)
         implements VictoryRulesPort {}
