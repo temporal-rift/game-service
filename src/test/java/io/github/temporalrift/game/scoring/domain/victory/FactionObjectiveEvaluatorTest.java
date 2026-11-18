@@ -101,6 +101,20 @@ class FactionObjectiveEvaluatorTest {
         }
 
         @Test
+        @DisplayName("a player meeting the ordinary threshold in the final era reports the discounted one")
+        void ordinaryQualifierReportsDiscountedThreshold() {
+            var score = score(Faction.REVISIONISTS);
+            score.apply(1, ScoreReason.SECRET_OUTCOME_WON, 3);
+            score.apply(3, ScoreReason.SECRET_OUTCOME_WON, 3);
+            score.apply(5, ScoreReason.SECRET_OUTCOME_WON, 3);
+
+            var progress = FactionObjectiveEvaluator.evaluate(score, 5, true, RULES);
+
+            assertThat(progress.objectiveMet()).isTrue();
+            assertThat(progress.threshold()).isEqualTo(2);
+        }
+
+        @Test
         @DisplayName("before the final era the ordinary threshold applies")
         void noDiscountBeforeFinalEra() {
             var score = score(Faction.REVISIONISTS);

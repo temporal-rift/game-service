@@ -33,11 +33,13 @@ public final class FactionObjectiveEvaluator {
     public static Progress evaluate(PlayerScore score, int eraNumber, boolean finalEra, VictoryRulesPort rules) {
         var ordinary = ordinaryProgress(score, eraNumber, rules);
         int discount = rules.finalEraObjectiveDiscount();
-        if (!finalEra || discount == 0 || ordinary.objectiveMet()) {
+        if (!finalEra || discount == 0) {
             return ordinary;
         }
+        // The final era always reports its discounted threshold; meeting the ordinary one still qualifies.
         int threshold = Math.max(1, ordinary.threshold() - discount);
-        boolean met = ordinary.progressCount() >= threshold && advancedIn(score, eraNumber);
+        boolean met =
+                ordinary.objectiveMet() || (ordinary.progressCount() >= threshold && advancedIn(score, eraNumber));
         return new Progress(ordinary.progressCount(), threshold, met);
     }
 
@@ -68,7 +70,8 @@ public final class FactionObjectiveEvaluator {
             case PROPHETS ->
                 reason == ScoreReason.EVENT_RESOLVED_AS_WRITTEN || reason == ScoreReason.FULFILLMENT_SUCCEEDED;
             case REVISIONISTS -> reason == ScoreReason.SECRET_OUTCOME_WON;
-            case WEAVERS -> reason == ScoreReason.CHAIN_LINK_ADDED;
+            // A completion arrives apart from the link that reached it, so it also counts as advancing.
+            case WEAVERS -> reason == ScoreReason.CHAIN_LINK_ADDED || reason == ScoreReason.CHAIN_COMPLETED;
             case ACTIVISTS -> isActivistSuccess(reason);
         };
     }

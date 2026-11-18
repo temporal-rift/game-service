@@ -3,6 +3,8 @@ package io.github.temporalrift.game.session.application.saga;
 import java.time.Clock;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 import org.springframework.context.ApplicationEventPublisher;
@@ -61,9 +63,13 @@ public class TimelineCollapsePublisher {
                 .currentPlayers();
         var scores = scoreQueryPort.getScores(game.id()).stream()
                 .collect(Collectors.toMap(GameEnded.PlayerScoreResult::playerId, GameEnded.PlayerScoreResult::score));
-        var progressByPlayer = factionObjectives.evaluate(game.id(), eraNumber).stream()
-                .collect(Collectors.toMap(
-                        SessionFactionObjectivePort.ObjectiveProgress::playerId, progress -> progress));
+        boolean scoreTiebreak = tiebreakRules.scoreTiebreak();
+        // Objective progress only separates tied leaders, so the score-only rule never depends on that query.
+        Map<UUID, SessionFactionObjectivePort.ObjectiveProgress> progressByPlayer = scoreTiebreak
+                ? factionObjectives.evaluate(game.id(), eraNumber).stream()
+                        .collect(Collectors.toMap(
+                                SessionFactionObjectivePort.ObjectiveProgress::playerId, progress -> progress))
+                : Map.of();
         var standings = players.stream()
                 .map(player -> {
                     var progress = progressByPlayer.get(player.playerId());
@@ -76,7 +82,7 @@ public class TimelineCollapsePublisher {
                             player.abandoned());
                 })
                 .toList();
-        var winnerIds = SpecialEndingPolicy.collapseWinners(standings, tiebreakRules.scoreTiebreak());
+        var winnerIds = SpecialEndingPolicy.collapseWinners(standings, scoreTiebreak);
         var winners = new ArrayList<TimelineCollapsed.PlayerFactionResult>();
         var losers = new ArrayList<TimelineCollapsed.PlayerFactionResult>();
         for (var standing : standings) {

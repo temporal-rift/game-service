@@ -346,7 +346,7 @@ class EraScoringContextRepositoryAdapter implements EraScoringContextRepository 
             ScoreReason reason,
             UUID targetEventId,
             UUID targetOutcomeId) {
-        actionFactJpaRepository.insertIfAbsent(
+        actionFactJpaRepository.insertIfAbsent(new ActionFactRow(
                 UUID.randomUUID(),
                 gameId,
                 eraNumber,
@@ -354,7 +354,7 @@ class EraScoringContextRepositoryAdapter implements EraScoringContextRepository 
                 faction.name(),
                 reason.name(),
                 targetEventId,
-                targetOutcomeId);
+                targetOutcomeId));
     }
 
     @Override
