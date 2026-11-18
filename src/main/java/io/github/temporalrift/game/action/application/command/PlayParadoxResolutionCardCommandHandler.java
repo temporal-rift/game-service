@@ -8,7 +8,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import io.github.temporalrift.game.action.application.ActionTargetValidator;
-import io.github.temporalrift.game.action.application.port.in.PlayParadoxResolutionCardUseCase;
+import io.github.temporalrift.game.action.application.port.in.SubmitParadoxResolutionUseCase.PlayCard;
+import io.github.temporalrift.game.action.application.port.in.SubmitParadoxResolutionUseCase.Result;
 import io.github.temporalrift.game.action.domain.CardNotInHandException;
 import io.github.temporalrift.game.action.domain.event.ParadoxResolutionCardPlayed;
 import io.github.temporalrift.game.action.domain.paradoxresolutionphase.ParadoxResolutionPhase;
@@ -27,7 +28,7 @@ import io.github.temporalrift.game.shared.domain.model.CardType;
 
 @Service
 @ConditionalOnBean({ParadoxResolutionPhaseRepository.class, PlayerStateRepository.class, ReactiveOfferRepository.class})
-class PlayParadoxResolutionCardCommandHandler implements PlayParadoxResolutionCardUseCase {
+class PlayParadoxResolutionCardCommandHandler {
 
     private final ParadoxResolutionPhaseRepository phaseRepository;
     private final PlayerStateRepository playerStateRepository;
@@ -54,9 +55,8 @@ class PlayParadoxResolutionCardCommandHandler implements PlayParadoxResolutionCa
         this.clock = clock;
     }
 
-    @Override
     @Transactional
-    public Result handle(Command command) {
+    public Result handle(PlayCard command) {
         actionTargetValidator.validate(
                 command.gameId(), command.eraNumber(), command.targetEventId(), command.targetOutcomeId());
         var phase = phaseRepository
@@ -99,7 +99,7 @@ class PlayParadoxResolutionCardCommandHandler implements PlayParadoxResolutionCa
      * only as dealt by the phase, at opening or on adoption, so no offer row is ever created on the
      * submission path.
      */
-    private ResolvedCard resolveCard(Command command, PlayerState playerState) {
+    private ResolvedCard resolveCard(PlayCard command, PlayerState playerState) {
         var offer = reactiveOfferRepository.findByGameIdAndEraNumberAndPlayerIdWithLock(
                 command.gameId(), command.eraNumber(), command.playerId());
         var handCard = playerState.hand().stream()
@@ -115,7 +115,7 @@ class PlayParadoxResolutionCardCommandHandler implements PlayParadoxResolutionCa
 
     private record ResolvedCard(CardType cardType, CardGrade grade, ReactiveOffer offer) {}
 
-    private void publish(Command command, ParadoxResolutionPhase phase, CardType cardType, CardGrade grade) {
+    private void publish(PlayCard command, ParadoxResolutionPhase phase, CardType cardType, CardGrade grade) {
         var payload = new ParadoxResolutionCardPlayed(
                 command.gameId(),
                 command.eraNumber(),

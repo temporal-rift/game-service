@@ -20,7 +20,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import io.github.temporalrift.game.action.application.port.in.PassParadoxResolutionUseCase;
+import io.github.temporalrift.game.action.application.port.in.SubmitParadoxResolutionUseCase;
 import io.github.temporalrift.game.action.domain.event.ParadoxResolutionPassed;
 import io.github.temporalrift.game.action.domain.paradoxresolutionphase.DuplicateParadoxResolutionSubmissionException;
 import io.github.temporalrift.game.action.domain.paradoxresolutionphase.ParadoxResolutionPhase;
@@ -65,7 +65,7 @@ class PassParadoxResolutionCommandHandlerTest {
 
         var result = handler().handle(command());
 
-        assertThat(result).isEqualTo(new PassParadoxResolutionUseCase.Result(GAME_ID, ERA, PLAYER_ID));
+        assertThat(result).isEqualTo(new SubmitParadoxResolutionUseCase.Result(GAME_ID, ERA, PLAYER_ID));
         assertThat(phase.submittedPlayerIds()).containsExactly(PLAYER_ID);
         then(phaseRepository).should().save(phase);
         then(playerStateRepository).should(never()).save(any());
@@ -120,7 +120,7 @@ class PassParadoxResolutionCommandHandlerTest {
         return new ParadoxResolutionPhase(UUID.randomUUID(), GAME_ID, ERA, NOW.plusSeconds(60), Set.of());
     }
 
-    private static PassParadoxResolutionUseCase.Command command() {
-        return new PassParadoxResolutionUseCase.Command(GAME_ID, ERA, PLAYER_ID);
+    private static SubmitParadoxResolutionUseCase.Pass command() {
+        return new SubmitParadoxResolutionUseCase.Pass(GAME_ID, ERA, PLAYER_ID);
     }
 }

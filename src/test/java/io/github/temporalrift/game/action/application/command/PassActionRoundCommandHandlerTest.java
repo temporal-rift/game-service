@@ -23,7 +23,7 @@ import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import io.github.temporalrift.game.action.application.port.in.PassActionRoundUseCase;
+import io.github.temporalrift.game.action.application.port.in.SubmitRoundActionUseCase;
 import io.github.temporalrift.game.action.domain.actionround.ActionRound;
 import io.github.temporalrift.game.action.domain.actionround.ActionRoundClosedException;
 import io.github.temporalrift.game.action.domain.actionround.ActionRoundConfig;
@@ -78,7 +78,7 @@ class PassActionRoundCommandHandlerTest {
         var result = handler.handle(command());
 
         // then
-        assertThat(result).isEqualTo(new PassActionRoundUseCase.Result(GAME_ID, ERA, ROUND, PLAYER_ID, false));
+        assertThat(result).isEqualTo(new SubmitRoundActionUseCase.Result(GAME_ID, ERA, ROUND, PLAYER_ID, false));
         assertThat(round.passedPlayerIds()).containsExactly(PLAYER_ID);
         var pass = new ActionRoundPassed(GAME_ID, ERA, ROUND, PLAYER_ID);
         var inOrder = inOrder(actionRoundRepository, actionEventPublisher);
@@ -216,7 +216,7 @@ class PassActionRoundCommandHandlerTest {
                 .willReturn(Optional.of(round));
     }
 
-    private static PassActionRoundUseCase.Command command() {
-        return new PassActionRoundUseCase.Command(GAME_ID, ERA, ROUND, PLAYER_ID);
+    private static SubmitRoundActionUseCase.Pass command() {
+        return new SubmitRoundActionUseCase.Pass(GAME_ID, ERA, ROUND, PLAYER_ID);
     }
 }

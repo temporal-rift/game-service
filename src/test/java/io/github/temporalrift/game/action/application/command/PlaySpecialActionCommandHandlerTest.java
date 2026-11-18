@@ -32,7 +32,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import io.github.temporalrift.game.action.application.ActionTargetValidator;
 import io.github.temporalrift.game.action.application.ActivistMomentumEligibility;
 import io.github.temporalrift.game.action.application.GameParticipantValidator;
-import io.github.temporalrift.game.action.application.port.in.PlaySpecialActionUseCase;
+import io.github.temporalrift.game.action.application.port.in.SubmitRoundActionUseCase;
 import io.github.temporalrift.game.action.domain.actionround.ActionRound;
 import io.github.temporalrift.game.action.domain.actionround.ActionRoundClosedException;
 import io.github.temporalrift.game.action.domain.actionround.DuplicateSubmissionException;
@@ -124,7 +124,7 @@ class PlaySpecialActionCommandHandlerTest {
             "handle — happy path — saves round, publishes special action, does not save player state, returns result")
     void handleHappyPath() {
         // given
-        var command = new PlaySpecialActionUseCase.Command(
+        var command = new SubmitRoundActionUseCase.PlaySpecial(
                 GAME_ID,
                 ERA,
                 ROUND,
@@ -180,7 +180,7 @@ class PlaySpecialActionCommandHandlerTest {
         // RALLY and MOMENTUM are deliberately absent: the submission contract rejects them
         // unconditionally, so they can never reach the stalled-event lock through this handler.
         var targetEventId = UUID.randomUUID();
-        var command = new PlaySpecialActionUseCase.Command(
+        var command = new SubmitRoundActionUseCase.PlaySpecial(
                 GAME_ID, ERA, 2, PLAYER_ID, specialAction, null, null, targetEventId, UUID.randomUUID(), null);
         given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA, 2))
                 .willReturn(Optional.of(round));
@@ -217,7 +217,7 @@ class PlaySpecialActionCommandHandlerTest {
     @DisplayName("handle — all players submitted — does not close directly and returns roundClosed true")
     void handleAllSubmittedDoesNotCloseDirectly() {
         // given
-        var command = new PlaySpecialActionUseCase.Command(
+        var command = new SubmitRoundActionUseCase.PlaySpecial(
                 GAME_ID,
                 ERA,
                 ROUND,
@@ -255,7 +255,7 @@ class PlaySpecialActionCommandHandlerTest {
         // given
         given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA, ROUND))
                 .willReturn(Optional.empty());
-        var command = new PlaySpecialActionUseCase.Command(
+        var command = new SubmitRoundActionUseCase.PlaySpecial(
                 GAME_ID, ERA, ROUND, PLAYER_ID, SpecialAction.SEAL, null, null, null, null, null);
 
         // when / then
@@ -269,7 +269,7 @@ class PlaySpecialActionCommandHandlerTest {
         given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA, ROUND))
                 .willReturn(Optional.of(round));
         given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.empty());
-        var command = new PlaySpecialActionUseCase.Command(
+        var command = new SubmitRoundActionUseCase.PlaySpecial(
                 GAME_ID, ERA, ROUND, PLAYER_ID, SpecialAction.SEAL, null, null, null, null, null);
 
         // when / then
@@ -280,7 +280,7 @@ class PlaySpecialActionCommandHandlerTest {
     @DisplayName("handle — player faction missing — throws FactionRequiredException")
     void handlePlayerFactionMissing() {
         // given
-        var command = new PlaySpecialActionUseCase.Command(
+        var command = new SubmitRoundActionUseCase.PlaySpecial(
                 GAME_ID, ERA, ROUND, PLAYER_ID, SpecialAction.SEAL, null, null, null, null, null);
         given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA, ROUND))
                 .willReturn(Optional.of(round));
@@ -298,7 +298,7 @@ class PlaySpecialActionCommandHandlerTest {
     @DisplayName("handle — player is jammed — throws JammedPlayerException before submitting")
     void handleJammedPlayer() {
         // given
-        var command = new PlaySpecialActionUseCase.Command(
+        var command = new SubmitRoundActionUseCase.PlaySpecial(
                 GAME_ID, ERA, ROUND, PLAYER_ID, SpecialAction.ANNIHILATE, null, null, null, null, null);
         given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA, ROUND))
                 .willReturn(Optional.of(round));
@@ -316,7 +316,7 @@ class PlaySpecialActionCommandHandlerTest {
             + "submitting")
     void handleFactionDoesNotOwnSpecialAction() {
         // given
-        var command = new PlaySpecialActionUseCase.Command(
+        var command = new SubmitRoundActionUseCase.PlaySpecial(
                 GAME_ID,
                 ERA,
                 ROUND,
@@ -344,7 +344,7 @@ class PlaySpecialActionCommandHandlerTest {
         // given
         var targetEventId = UUID.randomUUID();
         var targetOutcomeId = UUID.randomUUID();
-        var command = new PlaySpecialActionUseCase.Command(
+        var command = new SubmitRoundActionUseCase.PlaySpecial(
                 GAME_ID, ERA, ROUND, PLAYER_ID, SpecialAction.THREAD, null, null, targetEventId, targetOutcomeId, null);
         given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA, ROUND))
                 .willReturn(Optional.of(round));
@@ -380,7 +380,7 @@ class PlaySpecialActionCommandHandlerTest {
             + "submitting")
     void handleThreadMissingTargetRejectsBeforeSubmitting() {
         // given
-        var command = new PlaySpecialActionUseCase.Command(
+        var command = new SubmitRoundActionUseCase.PlaySpecial(
                 GAME_ID, ERA, ROUND, PLAYER_ID, SpecialAction.THREAD, null, null, null, null, null);
         given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA, ROUND))
                 .willReturn(Optional.of(round));
@@ -399,7 +399,7 @@ class PlaySpecialActionCommandHandlerTest {
             "handle — THREAD carrying a source coordinate — throws InvalidActionTargetException before " + "submitting")
     void handleThreadCarryingSourceRejectsBeforeSubmitting() {
         // given
-        var command = new PlaySpecialActionUseCase.Command(
+        var command = new SubmitRoundActionUseCase.PlaySpecial(
                 GAME_ID,
                 ERA,
                 ROUND,
@@ -428,7 +428,7 @@ class PlaySpecialActionCommandHandlerTest {
         // given
         var targetEventId = UUID.randomUUID();
         var targetOutcomeId = UUID.randomUUID();
-        var command = new PlaySpecialActionUseCase.Command(
+        var command = new SubmitRoundActionUseCase.PlaySpecial(
                 GAME_ID,
                 ERA,
                 ROUND,
@@ -473,7 +473,7 @@ class PlaySpecialActionCommandHandlerTest {
             + "submitting")
     void handleReweaveMissingTargetRejectsBeforeSubmitting() {
         // given
-        var command = new PlaySpecialActionUseCase.Command(
+        var command = new SubmitRoundActionUseCase.PlaySpecial(
                 GAME_ID, ERA, ROUND, PLAYER_ID, SpecialAction.REWEAVE, null, null, null, null, null);
         given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA, ROUND))
                 .willReturn(Optional.of(round));
@@ -500,7 +500,7 @@ class PlaySpecialActionCommandHandlerTest {
                 new FactionCase(Faction.REVISIONISTS, SpecialAction.OBSCURE, null, null, null),
                 new FactionCase(Faction.WEAVERS, SpecialAction.TAPESTRY, null, null, null));
         for (var c : cases) {
-            var command = new PlaySpecialActionUseCase.Command(
+            var command = new SubmitRoundActionUseCase.PlaySpecial(
                     GAME_ID, ERA, ROUND, PLAYER_ID, c.special(), null, null, c.event(), c.outcome(), c.player());
             given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA, ROUND))
                     .willReturn(Optional.of(round));
@@ -530,7 +530,7 @@ class PlaySpecialActionCommandHandlerTest {
     @DisplayName("handle — CASCADE in the final era — rejected before any budget or round submission")
     void handleFinalEraCascadeRejectedWithoutSpending() {
         // given
-        var command = new PlaySpecialActionUseCase.Command(
+        var command = new SubmitRoundActionUseCase.PlaySpecial(
                 GAME_ID,
                 5,
                 ROUND,
@@ -560,7 +560,7 @@ class PlaySpecialActionCommandHandlerTest {
     @DisplayName("handle — ANNIHILATE before the earliest round — rejected without spending the era budget")
     void handleAnnihilateBeforeEarliestRoundRejectedWithoutSpending() {
         // given
-        var command = new PlaySpecialActionUseCase.Command(
+        var command = new SubmitRoundActionUseCase.PlaySpecial(
                 GAME_ID,
                 ERA,
                 1,
@@ -593,7 +593,7 @@ class PlaySpecialActionCommandHandlerTest {
     @DisplayName("handle — ANNIHILATE at or after the earliest round — accepted and claims the era budget")
     void handleAnnihilateAtOrAfterEarliestRoundAccepted(int earliestRound, int roundNumber) {
         // given
-        var command = new PlaySpecialActionUseCase.Command(
+        var command = new SubmitRoundActionUseCase.PlaySpecial(
                 GAME_ID,
                 ERA,
                 roundNumber,
@@ -631,7 +631,7 @@ class PlaySpecialActionCommandHandlerTest {
     @DisplayName("handle — a special other than ANNIHILATE before the earliest round — unaffected")
     void handleOtherSpecialBeforeEarliestRoundAccepted() {
         // given
-        var command = new PlaySpecialActionUseCase.Command(
+        var command = new SubmitRoundActionUseCase.PlaySpecial(
                 GAME_ID, ERA, 1, PLAYER_ID, SpecialAction.CORRUPT, null, null, null, null, UUID.randomUUID());
         given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA, 1))
                 .willReturn(Optional.of(round));
@@ -658,7 +658,7 @@ class PlaySpecialActionCommandHandlerTest {
     @DisplayName("handle — REWRITE after the latest round — rejected without claiming the era budget or submitting")
     void handleRewriteAfterLatestRoundRejectedWithoutSpending(int latestRound, int roundNumber) {
         // given
-        var command = new PlaySpecialActionUseCase.Command(
+        var command = new SubmitRoundActionUseCase.PlaySpecial(
                 GAME_ID,
                 ERA,
                 roundNumber,
@@ -691,7 +691,7 @@ class PlaySpecialActionCommandHandlerTest {
     @DisplayName("handle — REWRITE up to the latest round — accepted and claims the era budget")
     void handleRewriteUpToLatestRoundAccepted(int latestRound, int roundNumber) {
         // given
-        var command = new PlaySpecialActionUseCase.Command(
+        var command = new SubmitRoundActionUseCase.PlaySpecial(
                 GAME_ID,
                 ERA,
                 roundNumber,
@@ -729,7 +729,7 @@ class PlaySpecialActionCommandHandlerTest {
     @DisplayName("handle — a second REWRITE in the era — rejected by the era budget and the round is untouched")
     void handleSecondRewriteInEraRejectedByEraBudget() {
         // given
-        var command = new PlaySpecialActionUseCase.Command(
+        var command = new SubmitRoundActionUseCase.PlaySpecial(
                 GAME_ID,
                 ERA,
                 2,
@@ -764,7 +764,7 @@ class PlaySpecialActionCommandHandlerTest {
     @DisplayName("handle — OBSCURE in round 3 — rejected without saving era usage or submitting")
     void handleRoundThreeObscureRejectedWithoutSpending() {
         // given
-        var command = new PlaySpecialActionUseCase.Command(
+        var command = new SubmitRoundActionUseCase.PlaySpecial(
                 GAME_ID, ERA, 3, PLAYER_ID, SpecialAction.OBSCURE, null, null, null, null, null);
         given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA, 3))
                 .willReturn(Optional.of(round));
@@ -787,7 +787,7 @@ class PlaySpecialActionCommandHandlerTest {
         // given
         var targetEventId = UUID.randomUUID();
         var targetOutcomeId = UUID.randomUUID();
-        var command = new PlaySpecialActionUseCase.Command(
+        var command = new SubmitRoundActionUseCase.PlaySpecial(
                 GAME_ID, ERA, ROUND, PLAYER_ID, SpecialAction.MIMIC, null, null, targetEventId, targetOutcomeId, null);
         given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA, ROUND))
                 .willReturn(Optional.of(round));
@@ -817,7 +817,7 @@ class PlaySpecialActionCommandHandlerTest {
     @DisplayName("handle — special action carrying a source coordinate — throws InvalidActionTargetException")
     void handleSpecialCarryingSourceRejectsBeforeSubmitting() {
         // given
-        var command = new PlaySpecialActionUseCase.Command(
+        var command = new SubmitRoundActionUseCase.PlaySpecial(
                 GAME_ID,
                 ERA,
                 ROUND,
@@ -853,7 +853,7 @@ class PlaySpecialActionCommandHandlerTest {
         given(gameRules.sealMaxUsesPerGame()).willReturn(2);
         given(sealGameUsageRepository.countAcceptedSeals(GAME_ID, PLAYER_ID)).willReturn(0);
         willThrow(new ActionRoundClosedException()).given(round).submit(any());
-        var command = new PlaySpecialActionUseCase.Command(
+        var command = new SubmitRoundActionUseCase.PlaySpecial(
                 GAME_ID,
                 ERA,
                 ROUND,
@@ -882,7 +882,7 @@ class PlaySpecialActionCommandHandlerTest {
         given(gameRules.sealMaxUsesPerGame()).willReturn(2);
         given(sealGameUsageRepository.countAcceptedSeals(GAME_ID, PLAYER_ID)).willReturn(0);
         willThrow(new DuplicateSubmissionException(PLAYER_ID)).given(round).submit(any());
-        var command = new PlaySpecialActionUseCase.Command(
+        var command = new SubmitRoundActionUseCase.PlaySpecial(
                 GAME_ID,
                 ERA,
                 ROUND,
@@ -903,7 +903,7 @@ class PlaySpecialActionCommandHandlerTest {
     void handleBuildsSubmissionWithResolvedFaction() {
         // given
         var targetPlayerId = UUID.randomUUID();
-        var command = new PlaySpecialActionUseCase.Command(
+        var command = new SubmitRoundActionUseCase.PlaySpecial(
                 GAME_ID, ERA, ROUND, PLAYER_ID, SpecialAction.CORRUPT, null, null, null, null, targetPlayerId);
         given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA, ROUND))
                 .willReturn(Optional.of(round));
@@ -933,7 +933,7 @@ class PlaySpecialActionCommandHandlerTest {
     void handleCorruptTargetingNonOpponentRejectsBeforeSubmitting() {
         // given
         var targetPlayerId = UUID.randomUUID();
-        var command = new PlaySpecialActionUseCase.Command(
+        var command = new SubmitRoundActionUseCase.PlaySpecial(
                 GAME_ID, ERA, ROUND, PLAYER_ID, SpecialAction.CORRUPT, null, null, null, null, targetPlayerId);
         given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA, ROUND))
                 .willReturn(Optional.of(round));
@@ -954,7 +954,7 @@ class PlaySpecialActionCommandHandlerTest {
     @DisplayName("handle — target does not belong to current game/era — propagates UnknownActionTargetException")
     void handleUnknownActionTargetPropagates() {
         // given
-        var command = new PlaySpecialActionUseCase.Command(
+        var command = new SubmitRoundActionUseCase.PlaySpecial(
                 GAME_ID,
                 ERA,
                 ROUND,
@@ -977,7 +977,7 @@ class PlaySpecialActionCommandHandlerTest {
     @Test
     @DisplayName("handle — Activist Expose outside Round 2 — rejects before submitting")
     void handleActivistExposeOutsideRoundTwoRejectsBeforeSubmitting() {
-        var command = new PlaySpecialActionUseCase.Command(
+        var command = new SubmitRoundActionUseCase.PlaySpecial(
                 GAME_ID, ERA, 1, PLAYER_ID, SpecialAction.EXPOSE, null, null, null, null, UUID.randomUUID());
         given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA, 1))
                 .willReturn(Optional.of(round));
@@ -995,7 +995,7 @@ class PlaySpecialActionCommandHandlerTest {
     @Test
     @DisplayName("handle — Activist Expose missing targetPlayerId — rejected before recordExpose runs")
     void handleActivistExposeWithoutTargetPlayerRejectsBeforeRecordExpose() {
-        var command = new PlaySpecialActionUseCase.Command(
+        var command = new SubmitRoundActionUseCase.PlaySpecial(
                 GAME_ID, 2, 2, PLAYER_ID, SpecialAction.EXPOSE, null, null, null, null, null);
         given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, 2, 2))
                 .willReturn(Optional.of(round));
@@ -1015,7 +1015,7 @@ class PlaySpecialActionCommandHandlerTest {
     @DisplayName("handle — Activist Expose carrying a targetEventId — rejected before recordExpose runs")
     void handleActivistExposeCarryingTargetEventRejectsBeforeRecordExpose() {
         var targetPlayerId = UUID.randomUUID();
-        var command = new PlaySpecialActionUseCase.Command(
+        var command = new SubmitRoundActionUseCase.PlaySpecial(
                 GAME_ID, 2, 2, PLAYER_ID, SpecialAction.EXPOSE, null, null, UUID.randomUUID(), null, targetPlayerId);
         given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, 2, 2))
                 .willReturn(Optional.of(round));
@@ -1038,7 +1038,7 @@ class PlaySpecialActionCommandHandlerTest {
         var targetEventId = UUID.randomUUID();
         var sourceOutcomeId = UUID.randomUUID();
         var targetOutcomeId = UUID.randomUUID();
-        var command = new PlaySpecialActionUseCase.Command(
+        var command = new SubmitRoundActionUseCase.PlaySpecial(
                 GAME_ID, 2, 2, PLAYER_ID, SpecialAction.EXPOSE, null, null, null, null, targetPlayerId);
         var roundOne = mock(ActionRound.class);
         var roundOneCard = new SubmittedAction.CardAction(
@@ -1161,8 +1161,8 @@ class PlaySpecialActionCommandHandlerTest {
         then(round).should(never()).submit(any());
     }
 
-    private PlaySpecialActionUseCase.Command exposeCommand(UUID targetPlayerId) {
-        return new PlaySpecialActionUseCase.Command(
+    private SubmitRoundActionUseCase.PlaySpecial exposeCommand(UUID targetPlayerId) {
+        return new SubmitRoundActionUseCase.PlaySpecial(
                 GAME_ID, 2, 2, PLAYER_ID, SpecialAction.EXPOSE, null, null, null, null, targetPlayerId);
     }
 
@@ -1192,7 +1192,7 @@ class PlaySpecialActionCommandHandlerTest {
     @DisplayName("handle — budgeted special never used this era — claims the budget and submits")
     void handleBudgetedSpecialFirstUseClaimsAndSubmits() {
         // given
-        var command = new PlaySpecialActionUseCase.Command(
+        var command = new SubmitRoundActionUseCase.PlaySpecial(
                 GAME_ID,
                 ERA,
                 ROUND,
@@ -1230,7 +1230,7 @@ class PlaySpecialActionCommandHandlerTest {
     @DisplayName("handle — budgeted special already used this era — throws before submitting and does not re-save")
     void handleBudgetedSpecialSecondUseRejectsBeforeSubmitting() {
         // given
-        var command = new PlaySpecialActionUseCase.Command(
+        var command = new SubmitRoundActionUseCase.PlaySpecial(
                 GAME_ID,
                 ERA,
                 ROUND,
@@ -1263,7 +1263,7 @@ class PlaySpecialActionCommandHandlerTest {
     @DisplayName("handle — different budgeted special used this era — the new special's budget is independent")
     void handleBudgetedSpecialIndependentPerSpecialType() {
         // given
-        var command = new PlaySpecialActionUseCase.Command(
+        var command = new SubmitRoundActionUseCase.PlaySpecial(
                 GAME_ID, ERA, ROUND, PLAYER_ID, SpecialAction.CORRUPT, null, null, null, null, UUID.randomUUID());
         given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA, ROUND))
                 .willReturn(Optional.of(round));
@@ -1296,7 +1296,7 @@ class PlaySpecialActionCommandHandlerTest {
     @DisplayName("handle — special outside the configured budget — never touches the budget repository")
     void handleNonBudgetedSpecialSkipsBudgetRepository() {
         // given
-        var command = new PlaySpecialActionUseCase.Command(
+        var command = new SubmitRoundActionUseCase.PlaySpecial(
                 GAME_ID,
                 ERA,
                 ROUND,
@@ -1332,7 +1332,7 @@ class PlaySpecialActionCommandHandlerTest {
         // given
         var targetEventId = UUID.randomUUID();
         var targetOutcomeId = UUID.randomUUID();
-        var command = new PlaySpecialActionUseCase.Command(
+        var command = new SubmitRoundActionUseCase.PlaySpecial(
                 GAME_ID, ERA, ROUND, PLAYER_ID, SpecialAction.SEAL, null, null, targetEventId, targetOutcomeId, null);
         given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA, ROUND))
                 .willReturn(Optional.of(round));
@@ -1363,7 +1363,7 @@ class PlaySpecialActionCommandHandlerTest {
     @DisplayName("handle — SEAL game budget exhausted — rejects before submitting and saves nothing")
     void handleSealGameBudgetExhaustedRejectsBeforeSubmitting() {
         // given
-        var command = new PlaySpecialActionUseCase.Command(
+        var command = new SubmitRoundActionUseCase.PlaySpecial(
                 GAME_ID,
                 ERA,
                 ROUND,
@@ -1395,7 +1395,7 @@ class PlaySpecialActionCommandHandlerTest {
     @DisplayName("handle — budgeted SEAL rejected by later validation — spends neither budget")
     void handleSealRejectedByLaterValidationSpendsNothing() {
         // given a SEAL missing its target so action.validate() fails after both claims
-        var command = new PlaySpecialActionUseCase.Command(
+        var command = new SubmitRoundActionUseCase.PlaySpecial(
                 GAME_ID, ERA, ROUND, PLAYER_ID, SpecialAction.SEAL, null, null, null, null, null);
         given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA, ROUND))
                 .willReturn(Optional.of(round));

@@ -6,7 +6,8 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import io.github.temporalrift.game.action.application.port.in.PassParadoxResolutionUseCase;
+import io.github.temporalrift.game.action.application.port.in.SubmitParadoxResolutionUseCase.Pass;
+import io.github.temporalrift.game.action.application.port.in.SubmitParadoxResolutionUseCase.Result;
 import io.github.temporalrift.game.action.domain.event.ParadoxResolutionPassed;
 import io.github.temporalrift.game.action.domain.paradoxresolutionphase.ParadoxResolutionPhase;
 import io.github.temporalrift.game.action.domain.paradoxresolutionphase.ParadoxResolutionPhaseNotOpenException;
@@ -24,7 +25,7 @@ import io.github.temporalrift.game.shared.domain.messaging.DomainEventEnvelope;
  */
 @Service
 @ConditionalOnBean({ParadoxResolutionPhaseRepository.class, PlayerStateRepository.class})
-class PassParadoxResolutionCommandHandler implements PassParadoxResolutionUseCase {
+class PassParadoxResolutionCommandHandler {
 
     private final ParadoxResolutionPhaseRepository phaseRepository;
     private final PlayerStateRepository playerStateRepository;
@@ -42,9 +43,8 @@ class PassParadoxResolutionCommandHandler implements PassParadoxResolutionUseCas
         this.clock = clock;
     }
 
-    @Override
     @Transactional
-    public Result handle(Command command) {
+    public Result handle(Pass command) {
         var phase = phaseRepository
                 .findByGameIdAndEraNumberWithLock(command.gameId(), command.eraNumber())
                 .orElseThrow(() -> new ParadoxResolutionPhaseNotOpenException(command.gameId(), command.eraNumber()));

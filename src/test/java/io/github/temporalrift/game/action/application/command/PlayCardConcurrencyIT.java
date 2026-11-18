@@ -20,8 +20,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import io.github.temporalrift.game.GameServiceIntegrationTest;
-import io.github.temporalrift.game.action.application.port.in.PlayCardUseCase;
-import io.github.temporalrift.game.action.application.port.in.PlayParadoxResolutionCardUseCase;
+import io.github.temporalrift.game.action.application.port.in.SubmitParadoxResolutionUseCase;
+import io.github.temporalrift.game.action.application.port.in.SubmitRoundActionUseCase;
 import io.github.temporalrift.game.action.domain.actionround.ActionRound;
 import io.github.temporalrift.game.action.domain.actionround.ActionRoundConfig;
 import io.github.temporalrift.game.action.domain.actionround.SubmittedAction;
@@ -38,7 +38,7 @@ import io.github.temporalrift.game.shared.domain.model.CardType;
  * Concurrency coverage for the simultaneous-submission path. Simultaneous submission is the core game
  * mechanic, so the submit path must not lose updates when two players submit into the same round at once.
  *
- * <p>These tests exercise the real {@link PlayCardUseCase} handler and repositories against a
+ * <p>These tests exercise the real submission use cases and repositories against a
  * Testcontainers Postgres — the pessimistic row lock only exists at the database level, so it cannot be
  * verified with mocks.
  */
@@ -50,10 +50,10 @@ class PlayCardConcurrencyIT {
     private static final int TIMER_SECONDS = 45;
 
     @Autowired
-    PlayCardUseCase playCardUseCase;
+    SubmitRoundActionUseCase submitRoundActionUseCase;
 
     @Autowired
-    PlayParadoxResolutionCardUseCase playParadoxResolutionCardUseCase;
+    SubmitParadoxResolutionUseCase submitParadoxResolutionUseCase;
 
     @Autowired
     ActionRoundRepository actionRoundRepository;
@@ -102,7 +102,7 @@ class PlayCardConcurrencyIT {
                     () -> submitParadoxCard(barrier, gameId, playerId, secondCard, targetEventId, targetOutcomeId));
 
             assertThat(List.of(first.get(30, TimeUnit.SECONDS), second.get(30, TimeUnit.SECONDS)))
-                    .filteredOn(PlayParadoxResolutionCardUseCase.Result.class::isInstance)
+                    .filteredOn(SubmitParadoxResolutionUseCase.Result.class::isInstance)
                     .hasSize(1);
             assertThat(List.of(first.get(), second.get()))
                     .filteredOn(DuplicateParadoxResolutionSubmissionException.class::isInstance)
@@ -145,13 +145,13 @@ class PlayCardConcurrencyIT {
         var barrier = new CyclicBarrier(2);
         var executor = Executors.newFixedThreadPool(2);
         try {
-            Future<PlayCardUseCase.Result> submitA = executor.submit(() -> {
+            Future<SubmitRoundActionUseCase.Result> submitA = executor.submit(() -> {
                 barrier.await();
-                return playCardUseCase.handle(command(gameId, playerA, cardA, targetEventId));
+                return submitRoundActionUseCase.handle(command(gameId, playerA, cardA, targetEventId));
             });
-            Future<PlayCardUseCase.Result> submitB = executor.submit(() -> {
+            Future<SubmitRoundActionUseCase.Result> submitB = executor.submit(() -> {
                 barrier.await();
-                return playCardUseCase.handle(command(gameId, playerB, cardB, targetEventId));
+                return submitRoundActionUseCase.handle(command(gameId, playerB, cardB, targetEventId));
             });
 
             var resultA = submitA.get(30, TimeUnit.SECONDS);
@@ -224,8 +224,9 @@ class PlayCardConcurrencyIT {
         }
     }
 
-    private PlayCardUseCase.Command command(UUID gameId, UUID playerId, UUID cardInstanceId, UUID targetEventId) {
-        return new PlayCardUseCase.Command(
+    private SubmitRoundActionUseCase.PlayCard command(
+            UUID gameId, UUID playerId, UUID cardInstanceId, UUID targetEventId) {
+        return new SubmitRoundActionUseCase.PlayCard(
                 gameId, ERA, ROUND, playerId, cardInstanceId, targetEventId, null, null, null);
     }
 
@@ -245,7 +246,7 @@ class PlayCardConcurrencyIT {
             throws Exception {
         barrier.await();
         try {
-            return playParadoxResolutionCardUseCase.handle(new PlayParadoxResolutionCardUseCase.Command(
+            return submitParadoxResolutionUseCase.handle(new SubmitParadoxResolutionUseCase.PlayCard(
                     gameId, ERA, playerId, cardInstanceId, targetEventId, targetOutcomeId));
         } catch (DuplicateParadoxResolutionSubmissionException ex) {
             return ex;

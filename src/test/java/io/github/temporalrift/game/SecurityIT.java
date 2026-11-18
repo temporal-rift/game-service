@@ -15,13 +15,10 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import io.github.temporalrift.game.action.application.port.in.DeclineDeclarationUseCase;
-import io.github.temporalrift.game.action.application.port.in.PassActionRoundUseCase;
-import io.github.temporalrift.game.action.application.port.in.PassParadoxResolutionUseCase;
-import io.github.temporalrift.game.action.application.port.in.PlayCardUseCase;
-import io.github.temporalrift.game.action.application.port.in.PlayParadoxResolutionCardUseCase;
-import io.github.temporalrift.game.action.application.port.in.PlaySpecialActionUseCase;
 import io.github.temporalrift.game.action.application.port.in.RecordActivistDeclarationUseCase;
 import io.github.temporalrift.game.action.application.port.in.SelectHandUseCase;
+import io.github.temporalrift.game.action.application.port.in.SubmitParadoxResolutionUseCase;
+import io.github.temporalrift.game.action.application.port.in.SubmitRoundActionUseCase;
 import io.github.temporalrift.game.scoring.application.port.in.GetScoresUseCase;
 import io.github.temporalrift.game.scoring.application.port.in.GetScoringHistoryUseCase;
 import io.github.temporalrift.game.session.application.port.in.CreateLobbyUseCase;
@@ -40,19 +37,10 @@ class SecurityIT {
     private MockMvc mockMvc;
 
     @MockitoBean
-    private PlayCardUseCase playCardUseCase;
+    private SubmitRoundActionUseCase submitRoundActionUseCase;
 
     @MockitoBean
-    private PlaySpecialActionUseCase playSpecialActionUseCase;
-
-    @MockitoBean
-    private PlayParadoxResolutionCardUseCase playParadoxResolutionCardUseCase;
-
-    @MockitoBean
-    private PassActionRoundUseCase passActionRoundUseCase;
-
-    @MockitoBean
-    private PassParadoxResolutionUseCase passParadoxResolutionUseCase;
+    private SubmitParadoxResolutionUseCase submitParadoxResolutionUseCase;
 
     @MockitoBean
     private RecordActivistDeclarationUseCase recordActivistDeclarationUseCase;

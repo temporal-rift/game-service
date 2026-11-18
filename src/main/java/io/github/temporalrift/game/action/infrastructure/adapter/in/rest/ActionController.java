@@ -6,13 +6,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
 
 import io.github.temporalrift.game.action.application.port.in.DeclineDeclarationUseCase;
-import io.github.temporalrift.game.action.application.port.in.PassActionRoundUseCase;
-import io.github.temporalrift.game.action.application.port.in.PassParadoxResolutionUseCase;
-import io.github.temporalrift.game.action.application.port.in.PlayCardUseCase;
-import io.github.temporalrift.game.action.application.port.in.PlayParadoxResolutionCardUseCase;
-import io.github.temporalrift.game.action.application.port.in.PlaySpecialActionUseCase;
 import io.github.temporalrift.game.action.application.port.in.RecordActivistDeclarationUseCase;
 import io.github.temporalrift.game.action.application.port.in.SelectHandUseCase;
+import io.github.temporalrift.game.action.application.port.in.SubmitParadoxResolutionUseCase;
+import io.github.temporalrift.game.action.application.port.in.SubmitRoundActionUseCase;
 import io.github.temporalrift.game.action.infrastructure.adapter.in.rest.v1.ActionApi;
 import io.github.temporalrift.game.action.infrastructure.adapter.in.rest.v1.model.ActionSubmissionStatus;
 import io.github.temporalrift.game.action.infrastructure.adapter.in.rest.v1.model.ActionType;
@@ -35,37 +32,25 @@ class ActionController implements ActionApi {
 
     private final DeclineDeclarationUseCase declineDeclarationUseCase;
 
-    private final PlayCardUseCase playCardUseCase;
-
-    private final PlaySpecialActionUseCase playSpecialActionUseCase;
-
-    private final PlayParadoxResolutionCardUseCase playParadoxResolutionCardUseCase;
-
-    private final PassActionRoundUseCase passActionRoundUseCase;
-
-    private final PassParadoxResolutionUseCase passParadoxResolutionUseCase;
-
     private final RecordActivistDeclarationUseCase recordActivistDeclarationUseCase;
 
     private final SelectHandUseCase selectHandUseCase;
 
+    private final SubmitRoundActionUseCase submitRoundActionUseCase;
+
+    private final SubmitParadoxResolutionUseCase submitParadoxResolutionUseCase;
+
     ActionController(
-            PlayCardUseCase playCardUseCase,
-            PlaySpecialActionUseCase playSpecialActionUseCase,
-            PlayParadoxResolutionCardUseCase playParadoxResolutionCardUseCase,
-            PassActionRoundUseCase passActionRoundUseCase,
-            PassParadoxResolutionUseCase passParadoxResolutionUseCase,
+            DeclineDeclarationUseCase declineDeclarationUseCase,
             RecordActivistDeclarationUseCase recordActivistDeclarationUseCase,
             SelectHandUseCase selectHandUseCase,
-            DeclineDeclarationUseCase declineDeclarationUseCase) {
-        this.playCardUseCase = playCardUseCase;
-        this.playSpecialActionUseCase = playSpecialActionUseCase;
-        this.playParadoxResolutionCardUseCase = playParadoxResolutionCardUseCase;
-        this.passActionRoundUseCase = passActionRoundUseCase;
-        this.passParadoxResolutionUseCase = passParadoxResolutionUseCase;
+            SubmitRoundActionUseCase submitRoundActionUseCase,
+            SubmitParadoxResolutionUseCase submitParadoxResolutionUseCase) {
+        this.declineDeclarationUseCase = declineDeclarationUseCase;
         this.recordActivistDeclarationUseCase = recordActivistDeclarationUseCase;
         this.selectHandUseCase = selectHandUseCase;
-        this.declineDeclarationUseCase = declineDeclarationUseCase;
+        this.submitRoundActionUseCase = submitRoundActionUseCase;
+        this.submitParadoxResolutionUseCase = submitParadoxResolutionUseCase;
     }
 
     @Override
@@ -96,44 +81,41 @@ class ActionController implements ActionApi {
         var playerId = CurrentPlayer.id();
         // The contract keeps actionType optional so card clients that omit it stay compatible.
         var actionType = request.getActionType() == null ? ActionType.CARD : request.getActionType();
-        var resultPlayerId = switch (actionType) {
-            case CARD -> submitParadoxResolutionCard(gameId, eraNumber, playerId, request);
-            case PASS -> passParadoxResolution(gameId, eraNumber, playerId, request);
+        SubmitParadoxResolutionUseCase.Command command = switch (actionType) {
+            case CARD -> paradoxResolutionCard(gameId, eraNumber, playerId, request);
+            case PASS -> paradoxResolutionPass(gameId, eraNumber, playerId, request);
             case SPECIAL -> throw InvalidParadoxResolutionRequestException.specialNotEligible();
         };
+        var result = submitParadoxResolutionUseCase.handle(command);
         return ResponseEntity.accepted()
                 .body(new ParadoxResolutionCardResponse(
-                        gameId, eraNumber, resultPlayerId, ActionSubmissionStatus.SUBMITTED));
+                        result.gameId(), result.eraNumber(), result.playerId(), ActionSubmissionStatus.SUBMITTED));
     }
 
-    private UUID submitParadoxResolutionCard(
+    private static SubmitParadoxResolutionUseCase.PlayCard paradoxResolutionCard(
             UUID gameId, int eraNumber, UUID playerId, ParadoxResolutionCardRequest request) {
         if (request.getCardInstanceId() == null
                 || request.getTargetEventId() == null
                 || request.getTargetOutcomeId() == null) {
             throw InvalidParadoxResolutionRequestException.cardRequiresAllFields();
         }
-        return playParadoxResolutionCardUseCase
-                .handle(new PlayParadoxResolutionCardUseCase.Command(
-                        gameId,
-                        eraNumber,
-                        playerId,
-                        request.getCardInstanceId(),
-                        request.getTargetEventId(),
-                        request.getTargetOutcomeId()))
-                .playerId();
+        return new SubmitParadoxResolutionUseCase.PlayCard(
+                gameId,
+                eraNumber,
+                playerId,
+                request.getCardInstanceId(),
+                request.getTargetEventId(),
+                request.getTargetOutcomeId());
     }
 
-    private UUID passParadoxResolution(
+    private static SubmitParadoxResolutionUseCase.Pass paradoxResolutionPass(
             UUID gameId, int eraNumber, UUID playerId, ParadoxResolutionCardRequest request) {
         if (request.getCardInstanceId() != null
                 || request.getTargetEventId() != null
                 || request.getTargetOutcomeId() != null) {
             throw InvalidParadoxResolutionRequestException.passCarriesCardFields();
         }
-        return passParadoxResolutionUseCase
-                .handle(new PassParadoxResolutionUseCase.Command(gameId, eraNumber, playerId))
-                .playerId();
+        return new SubmitParadoxResolutionUseCase.Pass(gameId, eraNumber, playerId);
     }
 
     @Override
@@ -161,12 +143,13 @@ class ActionController implements ActionApi {
     public ResponseEntity<SubmitActionResponse> submitAction(
             UUID gameId, Integer eraNumber, Integer roundNumber, SubmitActionRequest submitActionRequest) {
         var playerId = CurrentPlayer.id();
-        var result = switch (submitActionRequest.getActionType()) {
-            case CARD -> submitCard(gameId, eraNumber, roundNumber, playerId, (CardActionRequest) submitActionRequest);
+        SubmitRoundActionUseCase.Command command = switch (submitActionRequest.getActionType()) {
+            case CARD -> card(gameId, eraNumber, roundNumber, playerId, (CardActionRequest) submitActionRequest);
             case SPECIAL ->
-                submitSpecial(gameId, eraNumber, roundNumber, playerId, (SpecialActionRequest) submitActionRequest);
-            case PASS -> pass(gameId, eraNumber, roundNumber, playerId);
+                special(gameId, eraNumber, roundNumber, playerId, (SpecialActionRequest) submitActionRequest);
+            case PASS -> new SubmitRoundActionUseCase.Pass(gameId, eraNumber, roundNumber, playerId);
         };
+        var result = submitRoundActionUseCase.handle(command);
 
         return ResponseEntity.accepted()
                 .body(new SubmitActionResponse(
@@ -178,9 +161,9 @@ class ActionController implements ActionApi {
                         result.roundClosed()));
     }
 
-    private SubmissionResult submitCard(
+    private static SubmitRoundActionUseCase.PlayCard card(
             UUID gameId, int eraNumber, int roundNumber, UUID playerId, CardActionRequest request) {
-        var result = playCardUseCase.handle(new PlayCardUseCase.Command(
+        return new SubmitRoundActionUseCase.PlayCard(
                 gameId,
                 eraNumber,
                 roundNumber,
@@ -192,14 +175,12 @@ class ActionController implements ActionApi {
                 request.getTargetOutcomeId(),
                 request.getTargetPlayerId(),
                 request.getTargetPlayerIds(),
-                ActionRestMapper.toDomain(request.getDisguiseCategory())));
-        return new SubmissionResult(
-                result.gameId(), result.eraNumber(), result.roundNumber(), result.playerId(), result.roundClosed());
+                ActionRestMapper.toDomain(request.getDisguiseCategory()));
     }
 
-    private SubmissionResult submitSpecial(
+    private static SubmitRoundActionUseCase.PlaySpecial special(
             UUID gameId, int eraNumber, int roundNumber, UUID playerId, SpecialActionRequest request) {
-        var result = playSpecialActionUseCase.handle(new PlaySpecialActionUseCase.Command(
+        return new SubmitRoundActionUseCase.PlaySpecial(
                 gameId,
                 eraNumber,
                 roundNumber,
@@ -209,17 +190,6 @@ class ActionController implements ActionApi {
                 request.getSourceOutcomeId(),
                 request.getTargetEventId(),
                 request.getTargetOutcomeId(),
-                request.getTargetPlayerId()));
-        return new SubmissionResult(
-                result.gameId(), result.eraNumber(), result.roundNumber(), result.playerId(), result.roundClosed());
+                request.getTargetPlayerId());
     }
-
-    private SubmissionResult pass(UUID gameId, int eraNumber, int roundNumber, UUID playerId) {
-        var result = passActionRoundUseCase.handle(
-                new PassActionRoundUseCase.Command(gameId, eraNumber, roundNumber, playerId));
-        return new SubmissionResult(
-                result.gameId(), result.eraNumber(), result.roundNumber(), result.playerId(), result.roundClosed());
-    }
-
-    private record SubmissionResult(UUID gameId, int eraNumber, int roundNumber, UUID playerId, boolean roundClosed) {}
 }
