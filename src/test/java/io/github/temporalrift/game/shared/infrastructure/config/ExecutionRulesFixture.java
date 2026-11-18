@@ -33,7 +33,9 @@ public final class ExecutionRulesFixture {
         rules.put("game.rules.max-players", 5);
         rules.put("game.rules.max-eras", 5);
         rules.put("game.rules.max-cascaded-paradoxes", 3);
-        rules.put("game.rules.events-per-era", 3);
+        rules.put("game.rules.events-per-era.3", 3);
+        rules.put("game.rules.events-per-era.4", 4);
+        rules.put("game.rules.events-per-era.5", 5);
         rules.put("game.rules.cards-per-hand", 5);
         rules.put("game.rules.cards-per-deal", 7);
         rules.put("game.rules.win-score-threshold", 20);

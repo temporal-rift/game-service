@@ -6,6 +6,8 @@ import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException
 
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import jakarta.validation.Validation;
 import org.junit.jupiter.api.DisplayName;
@@ -31,13 +33,40 @@ class SessionRulesPropertiesTest {
 
     private static final ProbabilityBounds PROBABILITY = new ProbabilityBounds(0, 90);
 
+    /** Five events per era for every player count from 2 to 8, the range these fixtures declare. */
+    private static final Map<Integer, Integer> EVENTS_PER_ERA =
+            IntStream.rangeClosed(2, 8).boxed().collect(Collectors.toMap(count -> count, count -> 5));
+
+    @Test
+    @DisplayName("binding events-per-era yields the count of each player count")
+    void bindingEventsPerEra_yieldsCountPerPlayerCount() {
+        var rules = bindValidated(minimalRules());
+
+        assertThat(rules.eventsPerEra(3)).isEqualTo(3);
+        assertThat(rules.eventsPerEra(4)).isEqualTo(4);
+        assertThat(rules.eventsPerEra(5)).isEqualTo(5);
+    }
+
+    @Test
+    @DisplayName("events-per-era without an entry for a supported player count is rejected")
+    void eventsPerEra_missingPlayerCount_isRejected() {
+        var source = new MockPropertySource();
+        minimalRules().getSource().forEach((key, value) -> {
+            if (!key.equals("game.rules.events-per-era.4")) {
+                source.setProperty(key, value);
+            }
+        });
+
+        assertThatExceptionOfType(BindException.class).isThrownBy(() -> bindValidated(source));
+    }
+
     static SessionRulesProperties properties(Map<Integer, Integer> timers) {
         return new SessionRulesProperties(
                 2,
                 8,
                 4,
                 3,
-                5,
+                EVENTS_PER_ERA,
                 7,
                 7,
                 100,
@@ -97,7 +126,7 @@ class SessionRulesPropertiesTest {
                         8,
                         4,
                         3,
-                        5,
+                        EVENTS_PER_ERA,
                         7,
                         5,
                         100,
@@ -125,7 +154,7 @@ class SessionRulesPropertiesTest {
                         8,
                         4,
                         3,
-                        5,
+                        EVENTS_PER_ERA,
                         7,
                         7,
                         100,
@@ -161,7 +190,7 @@ class SessionRulesPropertiesTest {
                                 8,
                                 4,
                                 3,
-                                5,
+                                EVENTS_PER_ERA,
                                 7,
                                 7,
                                 100,
@@ -293,7 +322,9 @@ class SessionRulesPropertiesTest {
                 .withProperty("game.rules.max-players", "5")
                 .withProperty("game.rules.max-eras", "5")
                 .withProperty("game.rules.max-cascaded-paradoxes", "3")
-                .withProperty("game.rules.events-per-era", "3")
+                .withProperty("game.rules.events-per-era.3", "3")
+                .withProperty("game.rules.events-per-era.4", "4")
+                .withProperty("game.rules.events-per-era.5", "5")
                 .withProperty("game.rules.cards-per-hand", "5")
                 .withProperty("game.rules.cards-per-deal", "7")
                 .withProperty("game.rules.win-score-threshold", "20")
@@ -370,7 +401,7 @@ class SessionRulesPropertiesTest {
                         8,
                         4,
                         3,
-                        5,
+                        EVENTS_PER_ERA,
                         7,
                         7,
                         100,

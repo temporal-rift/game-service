@@ -92,7 +92,7 @@ class EraSagaImpl implements EraSaga {
         }
 
         try {
-            var drawnIds = game.startEra(carryOverEvents.size(), gameRules.eventsPerEra());
+            var drawnIds = game.startEra(carryOverEvents.size(), gameRules.eventsPerEra(playerIds.size()));
             var freshDraw = toFreshFutureEvents(eraNumber, drawnIds);
             game.recordDrawnEvents(freshDraw.eventIdToDrawnEvent());
             gameRepository.save(game);
