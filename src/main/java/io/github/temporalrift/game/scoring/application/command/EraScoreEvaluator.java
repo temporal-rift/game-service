@@ -17,6 +17,7 @@ import io.github.temporalrift.game.scoring.domain.context.EraScoringContext;
 import io.github.temporalrift.game.scoring.domain.context.EventOutcomeFact;
 import io.github.temporalrift.game.scoring.domain.event.OutcomeApplied;
 import io.github.temporalrift.game.scoring.domain.playerscore.ScoreReason;
+import io.github.temporalrift.game.scoring.domain.port.out.ParadoxRulesPort;
 import io.github.temporalrift.game.scoring.domain.port.out.ScoreRulesPort;
 import io.github.temporalrift.game.shared.domain.model.Faction;
 
@@ -29,9 +30,11 @@ class EraScoreEvaluator {
             ScoreReason.SECRET_OUTCOME_MISSED);
 
     private final ScoreRulesPort scoreRules;
+    private final ParadoxRulesPort paradoxRules;
 
-    EraScoreEvaluator(ScoreRulesPort scoreRules) {
+    EraScoreEvaluator(ScoreRulesPort scoreRules, ParadoxRulesPort paradoxRules) {
         this.scoreRules = Objects.requireNonNull(scoreRules, "scoreRules must not be null");
+        this.paradoxRules = Objects.requireNonNull(paradoxRules, "paradoxRules must not be null");
     }
 
     List<PlayerScoreDecision> evaluate(EraScoringContext context, List<OutcomeApplied> outcomes) {
@@ -80,6 +83,7 @@ class EraScoreEvaluator {
 
     private List<PlayerScoreDecision> paradoxCascadeDecisions(UUID playerId, EraScoringContext context) {
         var decisions = new ArrayList<PlayerScoreDecision>();
+        boolean contested = paradoxRules.detonateContestsStabilize();
         // Seeded with events already penalized in an earlier era so a still-cascading event is not
         // charged again; within this era, multiple findings on the same event still collapse to one.
         var scoredEvents = new HashSet<>(context.priorCascadePenaltyEventIds());
@@ -88,12 +92,15 @@ class EraScoreEvaluator {
             if (alreadyScored) {
                 continue;
             }
-            int multiplier = fact.detonatedByPlayerIds().isEmpty()
-                            || fact.detonatedByPlayerIds().contains(playerId)
-                    ? 1
-                    : 2;
+            boolean detonated = fact.detonatedByPlayerIds().contains(playerId);
+            // Contested, tearing time costs the detonator more than the table; otherwise a Detonate doubles the
+            // penalty of everyone who did not detonate.
+            int multiplier = contested || fact.detonatedByPlayerIds().isEmpty() || detonated ? 1 : 2;
             decisions.add(new PlayerScoreDecision(
                     playerId, ScoreReason.PARADOX_CASCADE_PENALTY, fact.eraNumber(), multiplier));
+            if (contested && detonated) {
+                decisions.add(new PlayerScoreDecision(playerId, ScoreReason.PARADOX_DETONATED, fact.eraNumber()));
+            }
         }
         return decisions;
     }

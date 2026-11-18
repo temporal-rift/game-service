@@ -27,7 +27,12 @@ public enum ScoreReason {
     EXPOSE_SIGNATURE_REVEALED(Faction.ACTIVISTS),
     PARADOX_CASCADE_PENALTY(null),
     /** A player's Stabilize on an event that did not cascade; charged once per player and event. */
-    PARADOX_STABILIZED(null);
+    PARADOX_STABILIZED(null),
+    /**
+     * A player's Detonate on an event that cascaded while Detonate contests Stabilize; charged once per player and
+     * event, on top of the cascade penalty every player pays.
+     */
+    PARADOX_DETONATED(null);
 
     private final Faction faction;
 

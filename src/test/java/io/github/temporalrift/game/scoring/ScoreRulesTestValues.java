@@ -1,6 +1,7 @@
 package io.github.temporalrift.game.scoring;
 
 import io.github.temporalrift.game.scoring.domain.playerscore.ScoreReason;
+import io.github.temporalrift.game.scoring.domain.port.out.ParadoxRulesPort;
 import io.github.temporalrift.game.scoring.domain.port.out.ScoreRulesPort;
 
 public final class ScoreRulesTestValues {
@@ -58,6 +59,11 @@ public final class ScoreRulesTestValues {
         };
     }
 
+    /** The paradox rules with Detonate contesting Stabilize, or not. */
+    public static ParadoxRulesPort paradoxRules(boolean detonateContestsStabilize) {
+        return () -> detonateContestsStabilize;
+    }
+
     public static int pointsDelta(ScoreReason reason) {
         return switch (reason) {
             case ANNIHILATED_OUTCOME -> 3;
@@ -72,7 +78,7 @@ public final class ScoreRulesTestValues {
             case FULFILLMENT_SUCCEEDED -> 8;
             case EVENT_RESOLVED_DIFFERENTLY_THAN_WRITTEN, PARADOX_CASCADE_PENALTY, DECLARED_OUTCOME_MISSED_WITH_RALLY ->
                 -2;
-            case SECRET_OUTCOME_MISSED, DECLARED_OUTCOME_MISSED, PARADOX_STABILIZED -> -1;
+            case SECRET_OUTCOME_MISSED, DECLARED_OUTCOME_MISSED, PARADOX_STABILIZED, PARADOX_DETONATED -> -1;
             case MIMIC_NEVER_TRACED -> 6;
             case CHAIN_COMPLETED -> 10;
             case CHAIN_BROKEN -> -3;
