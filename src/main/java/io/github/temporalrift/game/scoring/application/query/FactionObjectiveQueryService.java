@@ -11,6 +11,7 @@ import io.github.temporalrift.game.scoring.FactionObjectiveQuery;
 import io.github.temporalrift.game.scoring.domain.port.out.PlayerScoreRepository;
 import io.github.temporalrift.game.scoring.domain.port.out.VictoryRulesPort;
 import io.github.temporalrift.game.scoring.domain.victory.FactionObjectiveEvaluator;
+import io.github.temporalrift.game.shared.domain.port.out.GameRulesPort;
 
 @Service
 @Transactional(readOnly = true)
@@ -18,19 +19,22 @@ public class FactionObjectiveQueryService implements FactionObjectiveQuery {
 
     private final PlayerScoreRepository playerScoreRepository;
     private final VictoryRulesPort victoryRulesPort;
+    private final GameRulesPort gameRules;
 
     public FactionObjectiveQueryService(
-            PlayerScoreRepository playerScoreRepository, VictoryRulesPort victoryRulesPort) {
+            PlayerScoreRepository playerScoreRepository, VictoryRulesPort victoryRulesPort, GameRulesPort gameRules) {
         this.playerScoreRepository = playerScoreRepository;
         this.victoryRulesPort = victoryRulesPort;
+        this.gameRules = gameRules;
     }
 
     @Override
     public List<ObjectiveProgress> evaluate(UUID gameId, int eraNumber) {
         Objects.requireNonNull(gameId, "gameId must not be null");
+        boolean finalEra = eraNumber == gameRules.maxEras();
         return playerScoreRepository.findAllByGameId(gameId).stream()
                 .map(score -> {
-                    var progress = FactionObjectiveEvaluator.evaluate(score, eraNumber, victoryRulesPort);
+                    var progress = FactionObjectiveEvaluator.evaluate(score, eraNumber, finalEra, victoryRulesPort);
                     return new ObjectiveProgress(
                             score.playerId(),
                             score.faction(),

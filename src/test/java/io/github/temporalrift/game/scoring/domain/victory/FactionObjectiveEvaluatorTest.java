@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.util.UUID;
 
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import io.github.temporalrift.game.scoring.domain.playerscore.PlayerScore;
@@ -39,7 +40,79 @@ class FactionObjectiveEvaluatorTest {
         public int activistConsecutiveDeclarations() {
             return 3;
         }
+
+        @Override
+        public int finalEraObjectiveDiscount() {
+            return 1;
+        }
     };
+
+    @Nested
+    @DisplayName("in the final era")
+    class FinalEra {
+
+        @Test
+        @DisplayName("a Revisionist wins with two winning eras, the final era among them")
+        void revisionistAdvancedInFinalEra() {
+            var score = score(Faction.REVISIONISTS);
+            score.apply(2, ScoreReason.SECRET_OUTCOME_WON, 3);
+            score.apply(5, ScoreReason.SECRET_OUTCOME_WON, 3);
+
+            var progress = FactionObjectiveEvaluator.evaluate(score, 5, true, RULES);
+
+            assertThat(progress.objectiveMet()).isTrue();
+            assertThat(progress.threshold()).isEqualTo(2);
+        }
+
+        @Test
+        @DisplayName("progress made only before the final era does not qualify")
+        void progressOnlyBeforeFinalEra() {
+            var score = score(Faction.REVISIONISTS);
+            score.apply(2, ScoreReason.SECRET_OUTCOME_WON, 3);
+            score.apply(3, ScoreReason.SECRET_OUTCOME_WON, 3);
+            score.apply(5, ScoreReason.SECRET_OUTCOME_MISSED, -1);
+
+            assertThat(FactionObjectiveEvaluator.evaluate(score, 5, true, RULES).objectiveMet())
+                    .isFalse();
+        }
+
+        @Test
+        @DisplayName("an Activist streak of two ending in the final era qualifies")
+        void activistStreakEndingInFinalEra() {
+            var score = score(Faction.ACTIVISTS);
+            score.apply(4, ScoreReason.DECLARED_OUTCOME_WON_WITH_RALLY, 6);
+            score.apply(5, ScoreReason.DECLARED_OUTCOME_WON, 5);
+
+            assertThat(FactionObjectiveEvaluator.evaluate(score, 5, true, RULES).objectiveMet())
+                    .isTrue();
+        }
+
+        @Test
+        @DisplayName("a Weaver with two links, the second confirmed in the final era, qualifies")
+        void weaverLinkInFinalEra() {
+            var score = score(Faction.WEAVERS);
+            score.apply(3, ScoreReason.CHAIN_LINK_ADDED, 2);
+            score.apply(5, ScoreReason.CHAIN_LINK_ADDED, 2);
+
+            var progress = FactionObjectiveEvaluator.evaluate(score, 5, true, RULES);
+
+            assertThat(progress.objectiveMet()).isTrue();
+            assertThat(progress.progressCount()).isEqualTo(2);
+        }
+
+        @Test
+        @DisplayName("before the final era the ordinary threshold applies")
+        void noDiscountBeforeFinalEra() {
+            var score = score(Faction.REVISIONISTS);
+            score.apply(3, ScoreReason.SECRET_OUTCOME_WON, 3);
+            score.apply(4, ScoreReason.SECRET_OUTCOME_WON, 3);
+
+            var progress = FactionObjectiveEvaluator.evaluate(score, 4, false, RULES);
+
+            assertThat(progress.objectiveMet()).isFalse();
+            assertThat(progress.threshold()).isEqualTo(3);
+        }
+    }
 
     @Test
     @DisplayName("eraser with four annihilations meets the objective")

@@ -11,4 +11,10 @@ public interface VictoryRulesPort {
     int weaverChainLength();
 
     int activistConsecutiveDeclarations();
+
+    /**
+     * How many steps fewer every faction objective needs in the final era, for a player who advanced it in that era;
+     * 0 keeps the ordinary thresholds.
+     */
+    int finalEraObjectiveDiscount();
 }

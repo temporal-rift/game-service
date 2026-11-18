@@ -7,6 +7,7 @@ import io.github.temporalrift.game.scoring.domain.playerscore.PlayerScore;
 import io.github.temporalrift.game.scoring.domain.playerscore.ScoreEntry;
 import io.github.temporalrift.game.scoring.domain.playerscore.ScoreReason;
 import io.github.temporalrift.game.scoring.domain.port.out.VictoryRulesPort;
+import io.github.temporalrift.game.shared.domain.model.Faction;
 
 /**
  * History-based faction-objective evaluation at an era boundary. Pure domain logic: counts are
@@ -19,7 +20,28 @@ public final class FactionObjectiveEvaluator {
 
     public record Progress(int progressCount, int threshold, boolean objectiveMet) {}
 
+    /** Ordinary evaluation, at an era boundary before the final era. */
     public static Progress evaluate(PlayerScore score, int eraNumber, VictoryRulesPort rules) {
+        return evaluate(score, eraNumber, false, rules);
+    }
+
+    /**
+     * Evaluation at an era boundary. In the final era each objective needs {@code finalEraObjectiveDiscount} fewer
+     * steps (never fewer than one), provided the player advanced the objective in that era itself, so the final era
+     * stays the decisive moment instead of rewarding progress already made.
+     */
+    public static Progress evaluate(PlayerScore score, int eraNumber, boolean finalEra, VictoryRulesPort rules) {
+        var ordinary = ordinaryProgress(score, eraNumber, rules);
+        int discount = rules.finalEraObjectiveDiscount();
+        if (!finalEra || discount == 0 || ordinary.objectiveMet()) {
+            return ordinary;
+        }
+        int threshold = Math.max(1, ordinary.threshold() - discount);
+        boolean met = ordinary.progressCount() >= threshold && advancedIn(score, eraNumber);
+        return new Progress(ordinary.progressCount(), threshold, met);
+    }
+
+    private static Progress ordinaryProgress(PlayerScore score, int eraNumber, VictoryRulesPort rules) {
         Objects.requireNonNull(score, "score must not be null");
         Objects.requireNonNull(rules, "rules must not be null");
         return switch (score.faction()) {
@@ -29,6 +51,25 @@ public final class FactionObjectiveEvaluator {
             case WEAVERS -> weaverProgress(score, rules.weaverChainLength());
             case ACTIVISTS ->
                 progress(activistConsecutiveSuccesses(score, eraNumber), rules.activistConsecutiveDeclarations());
+        };
+    }
+
+    /** Whether the player recorded, in {@code eraNumber}, an entry that advances their faction's objective. */
+    private static boolean advancedIn(PlayerScore score, int eraNumber) {
+        return score.history().stream()
+                .filter(entry -> entry.eraNumber() == eraNumber)
+                .map(ScoreEntry::reason)
+                .anyMatch(reason -> advancesObjective(score.faction(), reason));
+    }
+
+    private static boolean advancesObjective(Faction faction, ScoreReason reason) {
+        return switch (faction) {
+            case ERASERS -> reason == ScoreReason.ANNIHILATED_OUTCOME;
+            case PROPHETS ->
+                reason == ScoreReason.EVENT_RESOLVED_AS_WRITTEN || reason == ScoreReason.FULFILLMENT_SUCCEEDED;
+            case REVISIONISTS -> reason == ScoreReason.SECRET_OUTCOME_WON;
+            case WEAVERS -> reason == ScoreReason.CHAIN_LINK_ADDED;
+            case ACTIVISTS -> isActivistSuccess(reason);
         };
     }
 

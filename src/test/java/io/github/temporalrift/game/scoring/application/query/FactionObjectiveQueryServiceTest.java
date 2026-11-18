@@ -17,6 +17,7 @@ import io.github.temporalrift.game.scoring.domain.playerscore.ScoreReason;
 import io.github.temporalrift.game.scoring.domain.port.out.PlayerScoreRepository;
 import io.github.temporalrift.game.scoring.domain.port.out.VictoryRulesPort;
 import io.github.temporalrift.game.shared.domain.model.Faction;
+import io.github.temporalrift.game.shared.domain.port.out.GameRulesPort;
 
 @ExtendWith(MockitoExtension.class)
 class FactionObjectiveQueryServiceTest {
@@ -26,6 +27,9 @@ class FactionObjectiveQueryServiceTest {
 
     @Mock
     VictoryRulesPort victoryRulesPort;
+
+    @Mock
+    GameRulesPort gameRules;
 
     @Test
     @DisplayName("evaluate maps every player score to its objective progress")
@@ -40,8 +44,9 @@ class FactionObjectiveQueryServiceTest {
         given(playerScoreRepository.findAllByGameId(gameId)).willReturn(List.of(eraser, prophet));
         given(victoryRulesPort.eraserAnnihilations()).willReturn(4);
         given(victoryRulesPort.prophetWrittenResolutions()).willReturn(5);
+        given(gameRules.maxEras()).willReturn(5);
 
-        var service = new FactionObjectiveQueryService(playerScoreRepository, victoryRulesPort);
+        var service = new FactionObjectiveQueryService(playerScoreRepository, victoryRulesPort, gameRules);
 
         var result = service.evaluate(gameId, 4);
 
@@ -54,5 +59,23 @@ class FactionObjectiveQueryServiceTest {
                 .filteredOn(progress -> progress.playerId().equals(prophet.playerId()))
                 .singleElement()
                 .matches(progress -> !progress.objectiveMet());
+    }
+
+    @Test
+    @DisplayName("in the final era the reported threshold carries the discount")
+    void evaluate_finalEraReportsDiscountedThreshold() {
+        var gameId = UUID.randomUUID();
+        var prophet = new PlayerScore(UUID.randomUUID(), gameId, UUID.randomUUID(), Faction.PROPHETS);
+        prophet.apply(2, ScoreReason.EVENT_RESOLVED_AS_WRITTEN, 4);
+        prophet.apply(5, ScoreReason.EVENT_RESOLVED_AS_WRITTEN, 4);
+        given(playerScoreRepository.findAllByGameId(gameId)).willReturn(List.of(prophet));
+        given(victoryRulesPort.prophetWrittenResolutions()).willReturn(3);
+        given(victoryRulesPort.finalEraObjectiveDiscount()).willReturn(1);
+        given(gameRules.maxEras()).willReturn(5);
+
+        var result = new FactionObjectiveQueryService(playerScoreRepository, victoryRulesPort, gameRules)
+                .evaluate(gameId, 5);
+
+        assertThat(result).singleElement().matches(progress -> progress.objectiveMet() && progress.threshold() == 2);
     }
 }
