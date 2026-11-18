@@ -316,7 +316,8 @@ class EraSagaImplTest {
                 cascadedId, new DrawnFutureEvent(cascadedCardId, cascadedOutcomeIds),
                 stalledId, new DrawnFutureEvent(stalledCardId, stalledOutcomeIds)));
         given(gameRepository.findByIdWithLock(GAME_ID)).willReturn(Optional.of(game));
-        given(gameRules.eventsPerEra(anyInt())).willReturn(3);
+        // Keyed to the roster's size, so a saga passing any other count draws nothing and fails the deck assertion.
+        given(gameRules.eventsPerEra(PLAYER_IDS.size())).willReturn(3);
         // drawn IDs come from the deck; carried-over cards are looked up by their catalog cardId
         given(futureEventCatalog.findByEventIds(
                         argThat(ids -> ids != null && !ids.contains(cascadedCardId) && !ids.contains(stalledCardId))))

@@ -735,8 +735,9 @@ class EraScoringContextRepositoryAdapterTest {
         declaration.setEraNumber(2);
         declaration.setPlayerId(playerId);
         declaration.setMode(mode);
+        var declaredOutcomeId = UUID.randomUUID();
         declaration.setTargetEventId(eventId);
-        declaration.setTargetOutcomeId(UUID.randomUUID());
+        declaration.setTargetOutcomeId(declaredOutcomeId);
         given(activistDeclarationJpaRepository.findAllUnresolvedWithLock(gameId, 2))
                 .willReturn(List.of(declaration));
         var barrier = new EraResolutionCompleted(
@@ -753,9 +754,11 @@ class EraScoringContextRepositoryAdapterTest {
         assertThat(adapter.resolveActivistDeclarations(gameId, 2))
                 .containsExactly(new io.github.temporalrift.game.shared.domain.event.ActivistDeclarationResolved(
                         gameId, 2, playerId, false));
+        // The miss keeps the declared event and outcome, in that order, so an erasure of that outcome can void it.
         then(actionFactJpaRepository)
                 .should()
-                .insertIfAbsent(argThat(fact(gameId, 2, playerId, Faction.ACTIVISTS, expected)));
+                .insertIfAbsent(
+                        argThat(fact(gameId, 2, playerId, Faction.ACTIVISTS, expected, eventId, declaredOutcomeId)));
     }
 
     @Test

@@ -320,6 +320,35 @@ class EraScoreEvaluatorTest {
         }
 
         @Test
+        @DisplayName("records the miss when the Annihilate on the bet's own outcome erased nothing")
+        void missOnUnerasedTargetScores() {
+            var context = new EraScoringContext(
+                    GAME_ID,
+                    ERA,
+                    List.of(
+                            new PlayerFaction(bettorId, Faction.ACTIVISTS),
+                            new PlayerFaction(eraserId, Faction.ERASERS)),
+                    List.of(),
+                    List.of(new ActionScoringFact(
+                            bettorId, Faction.ACTIVISTS, ScoreReason.DECLARED_OUTCOME_MISSED, eventId, outcomeId)),
+                    List.of(),
+                    List.of(new AnnihilationFact(eventId, outcomeId, eraserId, 2, false, false)),
+                    List.of(),
+                    List.of(),
+                    List.of(),
+                    Set.of());
+
+            var decisions = new EraScoreEvaluator(
+                            ScoreRulesTestValues.rulesWithErasedOutcomeVoidingBets(true), UNCONTESTED)
+                    .evaluate(context, List.of());
+
+            assertThat(decisions)
+                    .filteredOn(decision -> decision.playerId().equals(bettorId))
+                    .extracting(PlayerScoreDecision::reason)
+                    .containsExactly(ScoreReason.DECLARED_OUTCOME_MISSED);
+        }
+
+        @Test
         @DisplayName("records the miss while the void rule is off")
         void missScoresWhenRuleOff() {
             var context = contextWith(Faction.REVISIONISTS, ScoreReason.SECRET_OUTCOME_MISSED, outcomeId);

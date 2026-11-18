@@ -118,6 +118,8 @@ class EraSagaAdvancerTest {
 
     EraSagaAdvancer advancer;
 
+    boolean scoreTiebreak;
+
     @BeforeEach
     void setUp() {
         advancer = new EraSagaAdvancer(
@@ -133,8 +135,8 @@ class EraSagaAdvancerTest {
                         reconnectStates, lobbyRepository, reconnectTimers, eventPublisher, clock),
                 gameRules,
                 factionObjectives,
-                // Simultaneous qualifiers share in these cases; the tiebreak is covered by NormalVictoryPolicyTest.
-                () -> false,
+                // Off unless a test switches it on, so simultaneous qualifiers share by default here.
+                () -> scoreTiebreak,
                 actionRoundRequests,
                 clock);
         lenient()
@@ -388,6 +390,36 @@ class EraSagaAdvancerTest {
         assertThat(winEvents).extracting(WinConditionMet::winnerId).containsExactlyInAnyOrder(PLAYER_1, PLAYER_2);
         assertThat(winEvents).allMatch(event -> "SCORE_THRESHOLD".equals(event.winType()));
         then(eventPublisher).should(never()).publish(envelopeWithPayload(EraStarted.class));
+    }
+
+    @Test
+    @DisplayName("with the score tiebreak on, only the highest-scoring qualifier wins")
+    void handleScoresUpdated_tiebreakOn_onlyTheHighestQualifierWins() {
+        // given
+        scoreTiebreak = true;
+        var state = new EraSagaState(GAME_ID, 1, EraSagaStatus.WAITING_SCORES, PLAYER_IDS);
+        given(eraSagaRepository.findByGameIdWithLock(GAME_ID)).willReturn(Optional.of(state));
+        given(gameRules.winScoreThreshold()).willReturn(WIN_THRESHOLD);
+        givenNoObjectivesMet(1);
+        var game = Game.reconstitute(GAME_ID, LOBBY_ID, List.of(), 1, 0, GameStatus.IN_PROGRESS);
+        given(gameRepository.findByIdWithLock(GAME_ID)).willReturn(Optional.of(game));
+        var updates = List.of(
+                new ScoresUpdated.ScoreUpdate(PLAYER_1, Faction.PROPHETS, 5, "bonus", 22),
+                new ScoresUpdated.ScoreUpdate(PLAYER_2, Faction.WEAVERS, 3, "bonus", 25));
+        var su = new ScoresUpdated(GAME_ID, 1, updates);
+
+        var captor = ArgumentCaptor.<DomainEventEnvelope>captor();
+
+        // when
+        advancer.handleScoresUpdated(GAME_ID, su);
+
+        // then
+        then(eventPublisher).should(times(1)).publish(captor.capture());
+        assertThat(captor.getAllValues())
+                .extracting(DomainEventEnvelope::payload)
+                .singleElement()
+                .isInstanceOfSatisfying(
+                        WinConditionMet.class, win -> assertThat(win.winnerId()).isEqualTo(PLAYER_2));
     }
 
     @Test

@@ -81,16 +81,21 @@ class ForesightRevealListenerTest {
 
     /** A table of {@code playerCount} players whose eras each hold as many events as players. */
     private void givenTableOf(int playerCount) {
+        givenTableOf(playerCount, playerCount);
+    }
+
+    private void givenTableOf(int playerCount, int eventsPerEra) {
         var lobby = mock(Lobby.class);
         given(lobby.currentPlayers()).willReturn(Collections.nCopies(playerCount, mock(LobbyPlayer.class)));
         given(lobbyRepository.findById(any())).willReturn(Optional.of(lobby));
-        given(gameRules.eventsPerEra(playerCount)).willReturn(playerCount);
+        given(gameRules.eventsPerEra(playerCount)).willReturn(eventsPerEra);
     }
 
     @Test
     void onForesightDeclared_previewsAsManyEventsAsTheTableDraws() {
         givenStandardRules();
-        givenTableOf(5);
+        // Four events for five players, so the preview follows the configured count, not the player count.
+        givenTableOf(5, 4);
         var gameId = UUID.randomUUID();
         var viewer = UUID.randomUUID();
         var deck = deck(8);
@@ -98,13 +103,13 @@ class ForesightRevealListenerTest {
         given(gameRepository.findById(gameId)).willReturn(Optional.of(game));
         given(reveals.findByGameIdAndEraNumberAndPlayerId(gameId, 2, viewer)).willReturn(Optional.empty());
         given(reveals.saveIfAbsent(any())).willReturn(true);
-        given(catalog.findByEventIds(deck.subList(0, 5))).willReturn(definitions(deck.subList(0, 5)));
+        given(catalog.findByEventIds(deck.subList(0, 4))).willReturn(definitions(deck.subList(0, 4)));
 
         listener.onForesightDeclared(new ForesightDeclared(gameId, 2, 1, UUID.randomUUID(), UUID.randomUUID(), viewer));
 
         var reveal = ArgumentCaptor.forClass(ForesightReveal.class);
         then(reveals).should().saveIfAbsent(reveal.capture());
-        assertThat(reveal.getValue().catalogEventIds()).containsExactlyElementsOf(deck.subList(0, 5));
+        assertThat(reveal.getValue().catalogEventIds()).containsExactlyElementsOf(deck.subList(0, 4));
     }
 
     @Test
