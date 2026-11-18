@@ -7,6 +7,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
 
 import io.github.temporalrift.game.scoring.domain.port.out.ForesightRulesPort;
+import io.github.temporalrift.game.scoring.domain.port.out.ParadoxRulesPort;
 import io.github.temporalrift.game.scoring.domain.port.out.ScoreRulesPort;
 import io.github.temporalrift.game.scoring.domain.port.out.VictoryRulesPort;
 import io.github.temporalrift.game.shared.domain.port.out.ExecutionRules;
@@ -40,6 +41,18 @@ class ScoringExecutionRulesConfiguration {
     }
 
     @Bean
+    @Primary
+    ParadoxRulesPort executionParadoxRules(
+            ExecutionRules active, ParadoxRulesProperties deployment, Validator validator) {
+        return ExecutionRulesBinding.servedFrom(ParadoxRulesPort.class, active, paradoxBinding(validator), deployment);
+    }
+
+    @Bean
+    ExecutionRulesValidator paradoxExecutionRulesValidator(Validator validator) {
+        return paradoxBinding(validator).validator();
+    }
+
+    @Bean
     ExecutionRulesValidator foresightExecutionRulesValidator(Validator validator) {
         return foresightBinding(validator).validator();
     }
@@ -56,6 +69,10 @@ class ScoringExecutionRulesConfiguration {
 
     private static ExecutionRulesBinding<ScoreRulesProperties> scoreBinding(Validator validator) {
         return new ExecutionRulesBinding<>(ScoreRulesProperties.class, "game.rules.scoring", validator);
+    }
+
+    private static ExecutionRulesBinding<ParadoxRulesProperties> paradoxBinding(Validator validator) {
+        return new ExecutionRulesBinding<>(ParadoxRulesProperties.class, "game.rules.paradox", validator);
     }
 
     private static ExecutionRulesBinding<ForesightRulesProperties> foresightBinding(Validator validator) {

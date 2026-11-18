@@ -70,7 +70,9 @@ class UpdateScoresCommandHandlerTest {
         var handler = new UpdateScoresCommandHandler(
                 repo,
                 ctxRepo,
-                new EraScoreEvaluator(io.github.temporalrift.game.scoring.ScoreRulesTestValues.rules()),
+                new EraScoreEvaluator(
+                        io.github.temporalrift.game.scoring.ScoreRulesTestValues.rules(),
+                        io.github.temporalrift.game.scoring.ScoreRulesTestValues.paradoxRules(false)),
                 exposures,
                 gameRules,
                 scoreRules(),
@@ -233,7 +235,9 @@ class UpdateScoresCommandHandlerTest {
         var handler = new UpdateScoresCommandHandler(
                 repo,
                 ctxRepo,
-                new EraScoreEvaluator(io.github.temporalrift.game.scoring.ScoreRulesTestValues.rules()),
+                new EraScoreEvaluator(
+                        io.github.temporalrift.game.scoring.ScoreRulesTestValues.rules(),
+                        io.github.temporalrift.game.scoring.ScoreRulesTestValues.paradoxRules(false)),
                 exposures,
                 gameRules,
                 scoreRules(),
@@ -332,7 +336,9 @@ class UpdateScoresCommandHandlerTest {
         var handler = new UpdateScoresCommandHandler(
                 repo,
                 ctxRepo,
-                new EraScoreEvaluator(io.github.temporalrift.game.scoring.ScoreRulesTestValues.rules()),
+                new EraScoreEvaluator(
+                        io.github.temporalrift.game.scoring.ScoreRulesTestValues.rules(),
+                        io.github.temporalrift.game.scoring.ScoreRulesTestValues.paradoxRules(false)),
                 exposures,
                 gameRules,
                 scoreRules(),
@@ -482,7 +488,9 @@ class UpdateScoresCommandHandlerTest {
         return new UpdateScoresCommandHandler(
                 repo,
                 ctxRepo,
-                new EraScoreEvaluator(io.github.temporalrift.game.scoring.ScoreRulesTestValues.rules()),
+                new EraScoreEvaluator(
+                        io.github.temporalrift.game.scoring.ScoreRulesTestValues.rules(),
+                        io.github.temporalrift.game.scoring.ScoreRulesTestValues.paradoxRules(false)),
                 exposures,
                 gameRules,
                 scoreRules,

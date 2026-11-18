@@ -87,6 +87,7 @@ game:
         DECLARED_OUTCOME_MISSED_WITH_RALLY: -2
         DECLARED_OUTCOME_MISSED: -1
         PARADOX_STABILIZED: -1
+        PARADOX_DETONATED: -1
 
 spring:
   application:

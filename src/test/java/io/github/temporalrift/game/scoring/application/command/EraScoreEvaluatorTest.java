@@ -28,6 +28,7 @@ import io.github.temporalrift.game.scoring.domain.context.PlayerFaction;
 import io.github.temporalrift.game.scoring.domain.context.StabilizeFact;
 import io.github.temporalrift.game.scoring.domain.event.OutcomeApplied;
 import io.github.temporalrift.game.scoring.domain.playerscore.ScoreReason;
+import io.github.temporalrift.game.scoring.domain.port.out.ParadoxRulesPort;
 import io.github.temporalrift.game.shared.domain.model.Faction;
 
 @DisplayName("EraScoreEvaluator")
@@ -36,7 +37,10 @@ class EraScoreEvaluatorTest {
     static final UUID GAME_ID = UUID.randomUUID();
     static final int ERA = 1;
 
-    final EraScoreEvaluator evaluator = new EraScoreEvaluator(ScoreRulesTestValues.rules());
+    /** Detonate does not contest Stabilize here, so the cascade tests below keep the doubled-penalty rule. */
+    static final ParadoxRulesPort UNCONTESTED = ScoreRulesTestValues.paradoxRules(false);
+
+    final EraScoreEvaluator evaluator = new EraScoreEvaluator(ScoreRulesTestValues.rules(), UNCONTESTED);
 
     @Test
     @DisplayName("prophet receives EVENT_RESOLVED_AS_WRITTEN when written outcome wins")
@@ -293,7 +297,8 @@ class EraScoreEvaluatorTest {
         void missOnErasedOutcomeIsVoid(Faction faction, ScoreReason miss) {
             var context = contextWith(faction, miss, outcomeId);
 
-            var decisions = new EraScoreEvaluator(ScoreRulesTestValues.rulesWithErasedOutcomeVoidingBets(true))
+            var decisions = new EraScoreEvaluator(
+                            ScoreRulesTestValues.rulesWithErasedOutcomeVoidingBets(true), UNCONTESTED)
                     .evaluate(context, List.of());
 
             assertThat(decisions).noneMatch(decision -> decision.playerId().equals(bettorId));
@@ -304,7 +309,8 @@ class EraScoreEvaluatorTest {
         void missOnSurvivingOutcomeScores() {
             var context = contextWith(Faction.ACTIVISTS, ScoreReason.DECLARED_OUTCOME_MISSED, UUID.randomUUID());
 
-            var decisions = new EraScoreEvaluator(ScoreRulesTestValues.rulesWithErasedOutcomeVoidingBets(true))
+            var decisions = new EraScoreEvaluator(
+                            ScoreRulesTestValues.rulesWithErasedOutcomeVoidingBets(true), UNCONTESTED)
                     .evaluate(context, List.of());
 
             assertThat(decisions)
@@ -318,7 +324,8 @@ class EraScoreEvaluatorTest {
         void missScoresWhenRuleOff() {
             var context = contextWith(Faction.REVISIONISTS, ScoreReason.SECRET_OUTCOME_MISSED, outcomeId);
 
-            var decisions = new EraScoreEvaluator(ScoreRulesTestValues.rulesWithErasedOutcomeVoidingBets(false))
+            var decisions = new EraScoreEvaluator(
+                            ScoreRulesTestValues.rulesWithErasedOutcomeVoidingBets(false), UNCONTESTED)
                     .evaluate(context, List.of());
 
             assertThat(decisions)
@@ -1036,6 +1043,61 @@ class EraScoreEvaluatorTest {
                 .satisfies(decision -> assertThat(decision.multiplier()).isEqualTo(2));
     }
 
+    @Nested
+    @DisplayName("while Detonate contests Stabilize")
+    class ContestedCascade {
+
+        final EraScoreEvaluator contested =
+                new EraScoreEvaluator(ScoreRulesTestValues.rules(), ScoreRulesTestValues.paradoxRules(true));
+
+        @Test
+        @DisplayName("every player pays the base penalty and the detonator also pays PARADOX_DETONATED")
+        void detonatorPaysExtra() {
+            var detonatorId = UUID.randomUUID();
+            var otherId = UUID.randomUUID();
+            var context = cascadeContext(detonatorId, otherId, List.of(detonatorId));
+
+            var decisions = contested.evaluate(context, List.of());
+
+            assertThat(decisions)
+                    .extracting(
+                            PlayerScoreDecision::playerId, PlayerScoreDecision::reason, PlayerScoreDecision::multiplier)
+                    .containsExactlyInAnyOrder(
+                            tuple(detonatorId, ScoreReason.PARADOX_CASCADE_PENALTY, 1),
+                            tuple(detonatorId, ScoreReason.PARADOX_DETONATED, 1),
+                            tuple(otherId, ScoreReason.PARADOX_CASCADE_PENALTY, 1));
+        }
+
+        @Test
+        @DisplayName("a cascade with no detonator charges nobody PARADOX_DETONATED")
+        void noDetonatorNoExtra() {
+            var firstId = UUID.randomUUID();
+            var secondId = UUID.randomUUID();
+            var context = cascadeContext(firstId, secondId, List.of());
+
+            var decisions = contested.evaluate(context, List.of());
+
+            assertThat(decisions)
+                    .extracting(PlayerScoreDecision::reason, PlayerScoreDecision::multiplier)
+                    .containsOnly(tuple(ScoreReason.PARADOX_CASCADE_PENALTY, 1));
+        }
+
+        private EraScoringContext cascadeContext(UUID firstId, UUID secondId, List<UUID> detonators) {
+            return new EraScoringContext(
+                    GAME_ID,
+                    ERA,
+                    List.of(new PlayerFaction(firstId, Faction.ERASERS), new PlayerFaction(secondId, Faction.WEAVERS)),
+                    List.of(),
+                    List.of(),
+                    List.of(),
+                    List.of(),
+                    List.of(),
+                    List.of(),
+                    List.of(new ParadoxCascadeScoringFact(UUID.randomUUID(), UUID.randomUUID(), detonators, ERA)),
+                    Set.of());
+        }
+    }
+
     @Test
     @DisplayName("a single DETONATE costs the detonator the base penalty and doubles it for everyone else")
     void singleDetonateCostsBaseAndDoublesOthers() {
@@ -1306,7 +1368,7 @@ class EraScoreEvaluatorTest {
         @Test
         @DisplayName("rule switched off — scoring is as before: +3 and -2")
         void ruleOffScoresAsBefore() {
-            var unshielded = new EraScoreEvaluator(ScoreRulesTestValues.rules(false));
+            var unshielded = new EraScoreEvaluator(ScoreRulesTestValues.rules(false), UNCONTESTED);
             var context = context(new EventOutcomeFact(eventId, o2, o1, 2), annihilation(o1, 2, true), List.of());
 
             assertThat(unshielded.evaluate(context, won(o2)))
@@ -1428,7 +1490,7 @@ class EraScoreEvaluatorTest {
         @Test
         @DisplayName("rule switched off — an empty list still scores, as before")
         void ruleOffScoresAsBefore() {
-            var withoutConsequence = new EraScoreEvaluator(ScoreRulesTestValues.rules(true, false));
+            var withoutConsequence = new EraScoreEvaluator(ScoreRulesTestValues.rules(true, false), UNCONTESTED);
             var context = context(annihilation(eventId, third));
 
             assertThat(withoutConsequence.evaluate(context, List.of(outcome(eventId, List.of()))))
@@ -1439,7 +1501,7 @@ class EraScoreEvaluatorTest {
         @Test
         @DisplayName("rule switched off — an erasure on an event without an applied outcome still scores, as before")
         void ruleOffIgnoresMissingOutcome() {
-            var withoutConsequence = new EraScoreEvaluator(ScoreRulesTestValues.rules(true, false));
+            var withoutConsequence = new EraScoreEvaluator(ScoreRulesTestValues.rules(true, false), UNCONTESTED);
             var context = context(annihilation(eventId, third));
 
             assertThat(withoutConsequence.evaluate(context, List.of()))
