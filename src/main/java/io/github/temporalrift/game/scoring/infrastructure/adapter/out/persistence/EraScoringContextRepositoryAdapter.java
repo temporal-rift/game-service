@@ -1,5 +1,6 @@
 package io.github.temporalrift.game.scoring.infrastructure.adapter.out.persistence;
 
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -25,10 +26,12 @@ import io.github.temporalrift.game.scoring.domain.context.FulfillmentDeclaration
 import io.github.temporalrift.game.scoring.domain.context.ParadoxCascadeScoringFact;
 import io.github.temporalrift.game.scoring.domain.context.PendingEraScoringCompletion;
 import io.github.temporalrift.game.scoring.domain.context.PlayerFaction;
+import io.github.temporalrift.game.scoring.domain.context.StabilizeFact;
 import io.github.temporalrift.game.scoring.domain.event.AnnihilationResolved;
 import io.github.temporalrift.game.scoring.domain.event.EraResolutionCompleted;
 import io.github.temporalrift.game.scoring.domain.playerscore.ScoreReason;
 import io.github.temporalrift.game.scoring.domain.port.out.EraScoringContextRepository;
+import io.github.temporalrift.game.scoring.domain.port.out.ForesightRulesPort;
 import io.github.temporalrift.game.shared.domain.event.ActivistDeclarationRecorded;
 import io.github.temporalrift.game.shared.domain.event.ActivistDeclarationResolved;
 import io.github.temporalrift.game.shared.domain.event.EraActionFactsFinalized;
@@ -52,6 +55,8 @@ class EraScoringContextRepositoryAdapter implements EraScoringContextRepository 
     private final ScoringContextRevisionistActionJpaRepository revisionistActionJpaRepository;
     private final ScoringTimelineResolutionBarrierJpaRepository resolutionBarrierJpaRepository;
     private final ScoringContextFulfillmentDeclarationJpaRepository fulfillmentDeclarationJpaRepository;
+    private final ScoringContextStabilizeJpaRepository stabilizeJpaRepository;
+    private final ForesightRulesPort foresightRules;
     private final ScoringContextCorruptCorrelationJpaRepository corruptCorrelationJpaRepository;
     private final ScoringContextCorruptPendingConfirmationJpaRepository corruptPendingConfirmationJpaRepository;
     private final ScoringContextParadoxCascadeFactJpaRepository paradoxCascadeFactJpaRepository;
@@ -73,6 +78,8 @@ class EraScoringContextRepositoryAdapter implements EraScoringContextRepository 
             ScoringContextCorruptCorrelationJpaRepository corruptCorrelationJpaRepository,
             ScoringContextCorruptPendingConfirmationJpaRepository corruptPendingConfirmationJpaRepository,
             ScoringContextParadoxCascadeFactJpaRepository paradoxCascadeFactJpaRepository,
+            ScoringContextStabilizeJpaRepository stabilizeJpaRepository,
+            ForesightRulesPort foresightRules,
             ObjectMapper objectMapper) {
         this.playerJpaRepository = playerJpaRepository;
         this.eraOutcomeExpectationJpaRepository = eraOutcomeExpectationJpaRepository;
@@ -89,6 +96,8 @@ class EraScoringContextRepositoryAdapter implements EraScoringContextRepository 
         this.corruptCorrelationJpaRepository = corruptCorrelationJpaRepository;
         this.corruptPendingConfirmationJpaRepository = corruptPendingConfirmationJpaRepository;
         this.paradoxCascadeFactJpaRepository = paradoxCascadeFactJpaRepository;
+        this.stabilizeJpaRepository = stabilizeJpaRepository;
+        this.foresightRules = foresightRules;
         this.objectMapper = objectMapper;
     }
 
@@ -173,6 +182,15 @@ class EraScoringContextRepositoryAdapter implements EraScoringContextRepository 
         unconsumedParadoxCascadeFacts.forEach(entity -> entity.setConsumed(true));
         paradoxCascadeFactJpaRepository.saveAll(unconsumedParadoxCascadeFacts);
 
+        // A Stabilize costs its player only when its event resolved; one on an event that cascaded anyway is free.
+        // Filtered here so the evaluator only ever sees chargeable facts.
+        var resolvedEventIds =
+                terminalEventIds(gameId, eraNumber, EraResolutionCompleted.TerminalState.OUTCOME_APPLIED);
+        var stabilizeFacts = stabilizeJpaRepository.findAllByGameIdAndEraNumber(gameId, eraNumber).stream()
+                .filter(entity -> resolvedEventIds.contains(entity.getTargetEventId()))
+                .map(entity -> new StabilizeFact(entity.getPlayerId(), entity.getTargetEventId()))
+                .toList();
+
         return new EraScoringContext(
                 gameId,
                 eraNumber,
@@ -184,17 +202,22 @@ class EraScoringContextRepositoryAdapter implements EraScoringContextRepository 
                 fulfillmentDeclarations,
                 corruptCorrelations,
                 paradoxCascadeFacts,
-                priorCascadePenaltyEventIds);
+                priorCascadePenaltyEventIds,
+                stabilizeFacts);
     }
 
     private Set<UUID> stalledTerminalEventIds(UUID gameId, int eraNumber) {
+        return terminalEventIds(gameId, eraNumber, EraResolutionCompleted.TerminalState.STALLED);
+    }
+
+    private Set<UUID> terminalEventIds(UUID gameId, int eraNumber, EraResolutionCompleted.TerminalState state) {
         return resolutionBarrierJpaRepository
                 .findByGameIdAndEraNumber(gameId, eraNumber)
                 .map(ScoringTimelineResolutionBarrierJpaEntity::payload)
                 .map(EraResolutionCompleted::terminalResolutions)
                 .orElse(List.of())
                 .stream()
-                .filter(resolution -> resolution.terminalState() == EraResolutionCompleted.TerminalState.STALLED)
+                .filter(resolution -> resolution.terminalState() == state)
                 .map(EraResolutionCompleted.TerminalResolution::eventId)
                 .collect(Collectors.toUnmodifiableSet());
     }
@@ -211,13 +234,33 @@ class EraScoringContextRepositoryAdapter implements EraScoringContextRepository 
                                 ScoringTimelineOutcomeInboxJpaEntity::getEventId,
                                 ScoringTimelineOutcomeInboxJpaEntity::getWinningOutcomeId));
 
+        var keptWritings = keptWritingEventIds(writtenEvents);
         return writtenEvents.stream()
-                .map(written -> new EventOutcomeFact(
-                        written.getEventId(),
-                        winningOutcomesByEvent.get(written.getEventId()),
-                        written.getWrittenOutcomeId(),
-                        written.getWrittenRoundNumber()))
+                .map(written -> keptWritings.contains(written.getEventId())
+                        ? new EventOutcomeFact(
+                                written.getEventId(),
+                                winningOutcomesByEvent.get(written.getEventId()),
+                                written.getWrittenOutcomeId(),
+                                written.getWrittenRoundNumber())
+                        : new EventOutcomeFact(
+                                written.getEventId(), winningOutcomesByEvent.get(written.getEventId()), null, null))
                 .toList();
+    }
+
+    /**
+     * Only the Prophet's earliest writings of the era, up to the shared cap, are writings at all; timeline-service
+     * applies the same cap. Applied here, by write round, so the result does not depend on the order the facts
+     * arrived in. A writing whose round is unknown sorts last.
+     */
+    private Set<UUID> keptWritingEventIds(List<ScoringContextEventOutcomeJpaEntity> events) {
+        return events.stream()
+                .filter(event -> event.getWrittenOutcomeId() != null)
+                .sorted(Comparator.comparing(
+                        ScoringContextEventOutcomeJpaEntity::getWrittenRoundNumber,
+                        Comparator.nullsLast(Comparator.naturalOrder())))
+                .limit(foresightRules.writingsPerEra())
+                .map(ScoringContextEventOutcomeJpaEntity::getEventId)
+                .collect(Collectors.toUnmodifiableSet());
     }
 
     @Override
@@ -381,10 +424,16 @@ class EraScoringContextRepositoryAdapter implements EraScoringContextRepository 
             ScoringContextActivistDeclarationJpaEntity declaration, ScoringTimelineOutcomeInboxJpaEntity outcome) {
         var succeeded = outcome != null && declaration.getTargetOutcomeId().equals(outcome.getWinningOutcomeId());
         declaration.setResolutionSucceeded(succeeded);
-        if (succeeded) {
-            var reason = declaration.getMode().equals("RALLY")
-                    ? ScoreReason.DECLARED_OUTCOME_WON_WITH_RALLY
-                    : ScoreReason.DECLARED_OUTCOME_WON;
+        // A recorded declaration was never cancelled (a Nullified one is not recorded). It wins or, when its event
+        // resolved with another outcome, misses; a cascaded or stalled event resolved no outcome and scores neither.
+        if (outcome != null) {
+            boolean rally = declaration.getMode().equals("RALLY");
+            ScoreReason reason;
+            if (succeeded) {
+                reason = rally ? ScoreReason.DECLARED_OUTCOME_WON_WITH_RALLY : ScoreReason.DECLARED_OUTCOME_WON;
+            } else {
+                reason = rally ? ScoreReason.DECLARED_OUTCOME_MISSED_WITH_RALLY : ScoreReason.DECLARED_OUTCOME_MISSED;
+            }
             insertActionFact(
                     declaration.getGameId(),
                     declaration.getEraNumber(),
@@ -487,6 +536,12 @@ class EraScoringContextRepositoryAdapter implements EraScoringContextRepository 
     public void recordFulfillmentDeclaration(UUID gameId, int eraNumber, UUID playerId, UUID targetEventId) {
         fulfillmentDeclarationJpaRepository.insertIfAbsent(
                 UUID.randomUUID(), gameId, eraNumber, playerId, targetEventId);
+    }
+
+    @Override
+    @Transactional
+    public void recordStabilize(UUID gameId, int eraNumber, UUID playerId, UUID targetEventId) {
+        stabilizeJpaRepository.insertIfAbsent(UUID.randomUUID(), gameId, eraNumber, playerId, targetEventId);
     }
 
     /**

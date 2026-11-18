@@ -67,6 +67,7 @@
     <include file="db/changelog/scoring/017-create-scoring-context-paradox-cascade-fact.xml"/>
     <include file="db/changelog/scoring/018-create-scoring-context-corrupt-pending-confirmation.xml"/>
     <include file="db/changelog/scoring/019-add-scoring-context-write-and-annihilation-rounds.xml"/>
+    <include file="db/changelog/scoring/020-create-scoring-context-stabilize.xml"/>
 
 </databaseChangeLog>
 

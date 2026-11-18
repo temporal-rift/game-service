@@ -33,7 +33,10 @@ public final class SpecialEndingPolicy {
         return highestScorers(standings);
     }
 
-    /** Qualifying Prophets and Weavers win; when none qualifies, the highest-scoring contenders win. */
+    /**
+     * With faction claims on, qualifying Prophets and Weavers win; when claims are off or none qualifies, the
+     * highest-scoring contenders win.
+     */
     public static Set<UUID> stabilizationWinners(List<Standing> standings, StabilizationThresholds thresholds) {
         Objects.requireNonNull(thresholds, "thresholds must not be null");
         var qualifiers = Objects.requireNonNull(standings, "standings must not be null").stream()
@@ -44,7 +47,7 @@ public final class SpecialEndingPolicy {
     }
 
     public static boolean qualifiesForStabilization(Standing standing, StabilizationThresholds thresholds) {
-        if (standing.forfeited()) {
+        if (!thresholds.factionClaims() || standing.forfeited()) {
             return false;
         }
         return switch (standing.faction()) {

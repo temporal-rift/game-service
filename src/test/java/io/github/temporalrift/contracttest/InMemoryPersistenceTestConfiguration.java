@@ -14,6 +14,7 @@ import tools.jackson.databind.ObjectMapper;
 import io.github.temporalrift.game.action.infrastructure.adapter.out.persistence.ActionInMemoryRepositories;
 import io.github.temporalrift.game.action.infrastructure.adapter.out.persistence.ActionPersistenceAdapters;
 import io.github.temporalrift.game.scoring.application.query.PlayerScoreQueryService;
+import io.github.temporalrift.game.scoring.infrastructure.adapter.out.config.ForesightRulesProperties;
 import io.github.temporalrift.game.scoring.infrastructure.adapter.out.config.ScoreRulesProperties;
 import io.github.temporalrift.game.scoring.infrastructure.adapter.out.persistence.ScoringInMemoryRepositories;
 import io.github.temporalrift.game.scoring.infrastructure.adapter.out.persistence.ScoringPersistenceAdapters;
@@ -28,7 +29,7 @@ import io.github.temporalrift.game.simulation.infrastructure.adapter.out.persist
 /** The persistence adapters over the in-memory store; outside the application package so its scan skips it. */
 @Configuration(proxyBeanMethods = false)
 @EnableTransactionManagement
-@EnableConfigurationProperties(ScoreRulesProperties.class)
+@EnableConfigurationProperties({ScoreRulesProperties.class, ForesightRulesProperties.class})
 @Import({
     InMemoryInfrastructure.class,
     SimulationInMemoryAdapters.class,

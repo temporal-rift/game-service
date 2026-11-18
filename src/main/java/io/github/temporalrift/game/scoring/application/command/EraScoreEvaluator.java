@@ -50,6 +50,11 @@ class EraScoreEvaluator {
         for (var player : context.players()) {
             decisions.addAll(paradoxCascadeDecisions(player.playerId(), context));
         }
+        // Each Stabilize on an event that resolved costs its player once; the context holds only such plays.
+        for (var stabilize : context.stabilizeFacts()) {
+            decisions.add(
+                    new PlayerScoreDecision(stabilize.playerId(), ScoreReason.PARADOX_STABILIZED, context.eraNumber()));
+        }
 
         decisions.sort(Comparator.comparing(PlayerScoreDecision::playerId)
                 .thenComparing(d -> d.reason().name()));

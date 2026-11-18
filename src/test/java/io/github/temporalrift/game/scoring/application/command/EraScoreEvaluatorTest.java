@@ -25,6 +25,7 @@ import io.github.temporalrift.game.scoring.domain.context.EventOutcomeFact;
 import io.github.temporalrift.game.scoring.domain.context.FulfillmentDeclarationFact;
 import io.github.temporalrift.game.scoring.domain.context.ParadoxCascadeScoringFact;
 import io.github.temporalrift.game.scoring.domain.context.PlayerFaction;
+import io.github.temporalrift.game.scoring.domain.context.StabilizeFact;
 import io.github.temporalrift.game.scoring.domain.event.OutcomeApplied;
 import io.github.temporalrift.game.scoring.domain.playerscore.ScoreReason;
 import io.github.temporalrift.game.shared.domain.model.Faction;
@@ -819,6 +820,34 @@ class EraScoreEvaluatorTest {
         var decisions = evaluator.evaluate(context, List.of());
 
         assertThat(decisions).isEmpty();
+    }
+
+    @Test
+    @DisplayName("each chargeable Stabilize costs its player once, whatever the faction")
+    void stabilizeCostsItsPlayer() {
+        var activistId = UUID.randomUUID();
+        var eraserId = UUID.randomUUID();
+        var context = new EraScoringContext(
+                GAME_ID,
+                ERA,
+                List.of(new PlayerFaction(activistId, Faction.ACTIVISTS), new PlayerFaction(eraserId, Faction.ERASERS)),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                Set.of(),
+                List.of(new StabilizeFact(activistId, UUID.randomUUID())));
+
+        var decisions = evaluator.evaluate(context, List.of());
+
+        assertThat(decisions).singleElement().satisfies(decision -> {
+            assertThat(decision.playerId()).isEqualTo(activistId);
+            assertThat(decision.reason()).isEqualTo(ScoreReason.PARADOX_STABILIZED);
+            assertThat(decision.eraNumber()).isEqualTo(ERA);
+        });
     }
 
     @Test

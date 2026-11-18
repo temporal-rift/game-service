@@ -51,7 +51,7 @@ class SessionRulesPropertiesTest {
                         CardCategory.DISRUPTION, 25,
                         CardCategory.PARADOX, 15),
                 Map.of(CardGrade.I, 60, CardGrade.II, 30, CardGrade.III, 10),
-                new SessionRulesProperties.Stabilization(3, 2),
+                new SessionRulesProperties.Stabilization(3, 2, false),
                 Set.of(SpecialAction.ANNIHILATE, SpecialAction.SEAL, SpecialAction.CORRUPT, SpecialAction.MIMIC),
                 2,
                 2,
@@ -107,7 +107,7 @@ class SessionRulesPropertiesTest {
                         Map.of(3, 30),
                         Map.of(CardCategory.PARADOX, 1),
                         Map.of(CardGrade.I, 1),
-                        new SessionRulesProperties.Stabilization(3, 2),
+                        new SessionRulesProperties.Stabilization(3, 2, false),
                         Set.of(SpecialAction.ANNIHILATE),
                         2,
                         2,
@@ -135,7 +135,7 @@ class SessionRulesPropertiesTest {
                         Map.of(3, 30),
                         Map.of(CardCategory.PARADOX, 1),
                         Map.of(CardGrade.I, 1),
-                        new SessionRulesProperties.Stabilization(3, 2),
+                        new SessionRulesProperties.Stabilization(3, 2, false),
                         Set.of(SpecialAction.ANNIHILATE),
                         2,
                         2,
@@ -171,7 +171,7 @@ class SessionRulesPropertiesTest {
                                 null,
                                 Map.of(CardCategory.PARADOX, 1),
                                 Map.of(CardGrade.I, 1),
-                                new SessionRulesProperties.Stabilization(3, 2),
+                                new SessionRulesProperties.Stabilization(3, 2, false),
                                 Set.of(SpecialAction.ANNIHILATE),
                                 2,
                                 2,
@@ -209,7 +209,7 @@ class SessionRulesPropertiesTest {
         var bound = binder.bind("game.rules", SessionRulesProperties.class).orElseThrow(IllegalStateException::new);
 
         assertThat(bound.sealMaxUsesPerGame()).isEqualTo(2);
-        assertThat(bound.stabilizationThresholds()).isEqualTo(new StabilizationThresholds(3, 2));
+        assertThat(bound.stabilizationThresholds()).isEqualTo(new StabilizationThresholds(3, 2, false));
     }
 
     @Test
@@ -270,7 +270,21 @@ class SessionRulesPropertiesTest {
 
         var bound = binder.bind("game.rules", SessionRulesProperties.class).orElseThrow(IllegalStateException::new);
 
-        assertThat(bound.stabilizationThresholds()).isEqualTo(new StabilizationThresholds(4, 1));
+        assertThat(bound.stabilizationThresholds()).isEqualTo(new StabilizationThresholds(4, 1, false));
+    }
+
+    @Test
+    @DisplayName("faction stabilization claims are off unless configured on")
+    void factionClaims_offByDefault_onWhenConfigured() {
+        var binder = new Binder(ConfigurationPropertySources.from(minimalRules()));
+        var unset = binder.bind("game.rules", SessionRulesProperties.class).orElseThrow(IllegalStateException::new);
+        var on = new Binder(ConfigurationPropertySources.from(
+                        minimalRules().withProperty("game.rules.stabilization.faction-claims", "true")))
+                .bind("game.rules", SessionRulesProperties.class)
+                .orElseThrow(IllegalStateException::new);
+
+        assertThat(unset.stabilizationThresholds().factionClaims()).isFalse();
+        assertThat(on.stabilizationThresholds().factionClaims()).isTrue();
     }
 
     private static MockPropertySource minimalRules() {
@@ -366,7 +380,7 @@ class SessionRulesPropertiesTest {
                         Map.of(3, 0),
                         Map.of(CardCategory.PARADOX, 1),
                         Map.of(CardGrade.I, 1),
-                        new SessionRulesProperties.Stabilization(3, 2),
+                        new SessionRulesProperties.Stabilization(3, 2, false),
                         Set.of(SpecialAction.ANNIHILATE),
                         2,
                         2,

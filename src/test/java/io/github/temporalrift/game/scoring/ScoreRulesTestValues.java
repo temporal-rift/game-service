@@ -53,8 +53,9 @@ public final class ScoreRulesTestValues {
             case DECLARED_OUTCOME_WON -> 5;
             case DECLARED_OUTCOME_WON_WITH_RALLY -> 6;
             case FULFILLMENT_SUCCEEDED -> 8;
-            case EVENT_RESOLVED_DIFFERENTLY_THAN_WRITTEN, PARADOX_CASCADE_PENALTY -> -2;
-            case SECRET_OUTCOME_MISSED -> -1;
+            case EVENT_RESOLVED_DIFFERENTLY_THAN_WRITTEN, PARADOX_CASCADE_PENALTY, DECLARED_OUTCOME_MISSED_WITH_RALLY ->
+                -2;
+            case SECRET_OUTCOME_MISSED, DECLARED_OUTCOME_MISSED, PARADOX_STABILIZED -> -1;
             case MIMIC_NEVER_TRACED -> 6;
             case CHAIN_COMPLETED -> 10;
             case CHAIN_BROKEN -> -3;

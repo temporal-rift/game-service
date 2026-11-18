@@ -10,6 +10,7 @@ import org.springframework.context.annotation.Import;
 
 import io.github.temporalrift.game.action.infrastructure.adapter.out.persistence.ActionPersistenceAdapters;
 import io.github.temporalrift.game.scoring.application.query.PlayerScoreQueryService;
+import io.github.temporalrift.game.scoring.infrastructure.adapter.out.config.ForesightRulesProperties;
 import io.github.temporalrift.game.scoring.infrastructure.adapter.out.config.ScoreRulesProperties;
 import io.github.temporalrift.game.scoring.infrastructure.adapter.out.persistence.ScoringPersistenceAdapters;
 import io.github.temporalrift.game.session.domain.port.out.SessionEventPublisher;
@@ -23,7 +24,7 @@ import io.github.temporalrift.game.simulation.infrastructure.adapter.out.persist
  * boot. Register new persistence adapters in their module's adapters configuration rather than in a test.
  */
 @TestConfiguration(proxyBeanMethods = false)
-@EnableConfigurationProperties(ScoreRulesProperties.class)
+@EnableConfigurationProperties({ScoreRulesProperties.class, ForesightRulesProperties.class})
 @Import({
     PostgresTestcontainersConfiguration.class,
     JacksonAutoConfiguration.class,

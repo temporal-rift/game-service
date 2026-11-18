@@ -35,6 +35,7 @@ import io.github.temporalrift.game.scoring.domain.event.AnnihilationResolved;
 import io.github.temporalrift.game.scoring.domain.event.EraResolutionCompleted;
 import io.github.temporalrift.game.scoring.domain.event.OutcomeApplied;
 import io.github.temporalrift.game.scoring.domain.playerscore.ScoreReason;
+import io.github.temporalrift.game.scoring.domain.port.out.ForesightRulesPort;
 import io.github.temporalrift.game.shared.domain.event.ActivistDeclarationRecorded;
 import io.github.temporalrift.game.shared.domain.event.EraActionFactsFinalized;
 import io.github.temporalrift.game.shared.domain.model.Faction;
@@ -89,10 +90,119 @@ class EraScoringContextRepositoryAdapterTest {
     ScoringContextParadoxCascadeFactJpaRepository paradoxCascadeFactJpaRepository;
 
     @Mock
+    ScoringContextStabilizeJpaRepository stabilizeJpaRepository;
+
+    @Mock
+    ForesightRulesPort foresightRules;
+
+    @Mock
     ObjectMapper objectMapper;
 
     @InjectMocks
     EraScoringContextRepositoryAdapter adapter;
+
+    @org.junit.jupiter.api.BeforeEach
+    void allowEveryWritingUnlessATestCapsThem() {
+        org.mockito.Mockito.lenient().when(foresightRules.writingsPerEra()).thenReturn(3);
+    }
+
+    @Test
+    void getRequired_keepsOnlyTheEarliestWritingsUpToTheCap() {
+        var gameId = UUID.randomUUID();
+        var playerEntity = new ScoringContextPlayerJpaEntity();
+        playerEntity.setId(UUID.randomUUID());
+        playerEntity.setGameId(gameId);
+        playerEntity.setPlayerId(UUID.randomUUID());
+        playerEntity.setFaction(Faction.PROPHETS.name());
+        given(playerJpaRepository.findAllByGameId(gameId)).willReturn(List.of(playerEntity));
+        given(foresightRules.writingsPerEra()).willReturn(1);
+        var first = written(gameId, UUID.randomUUID(), UUID.randomUUID(), 1);
+        var second = written(gameId, UUID.randomUUID(), UUID.randomUUID(), 2);
+        // Delivered out of order: the round, not arrival, decides which writing counts.
+        given(eventOutcomeJpaRepository.findAllByGameIdAndEraNumber(gameId, 2)).willReturn(List.of(second, first));
+        given(outcomeInboxJpaRepository.findAllByGameIdAndEraNumberOrderByEventIdAsc(gameId, 2))
+                .willReturn(List.of());
+        given(paradoxCascadeFactJpaRepository.findDistinctConsumedAffectedEventIds(gameId))
+                .willReturn(List.of());
+
+        var context = adapter.getRequired(gameId, 2);
+
+        assertThat(context.eventOutcomes())
+                .containsExactlyInAnyOrder(
+                        new EventOutcomeFact(first.getEventId(), null, first.getWrittenOutcomeId(), 1),
+                        new EventOutcomeFact(second.getEventId(), null, null, null));
+    }
+
+    private static ScoringContextEventOutcomeJpaEntity written(
+            UUID gameId, UUID eventId, UUID outcomeId, int roundNumber) {
+        var entity = new ScoringContextEventOutcomeJpaEntity();
+        entity.setId(UUID.randomUUID());
+        entity.setGameId(gameId);
+        entity.setEraNumber(2);
+        entity.setEventId(eventId);
+        entity.setWrittenOutcomeId(outcomeId);
+        entity.setWrittenRoundNumber(roundNumber);
+        return entity;
+    }
+
+    @Test
+    void getRequired_keepsOnlyStabilizesOnEventsThatResolved() {
+        var gameId = UUID.randomUUID();
+        var playerId = UUID.randomUUID();
+        var playerEntity = new ScoringContextPlayerJpaEntity();
+        playerEntity.setId(UUID.randomUUID());
+        playerEntity.setGameId(gameId);
+        playerEntity.setPlayerId(playerId);
+        playerEntity.setFaction(Faction.ERASERS.name());
+        given(playerJpaRepository.findAllByGameId(gameId)).willReturn(List.of(playerEntity));
+        var resolvedEvent = UUID.randomUUID();
+        var cascadedEvent = UUID.randomUUID();
+        var barrier = new EraResolutionCompleted(
+                gameId,
+                2,
+                List.of(
+                        new EraResolutionCompleted.TerminalResolution(
+                                resolvedEvent,
+                                0,
+                                EraResolutionCompleted.TerminalState.OUTCOME_APPLIED,
+                                UUID.randomUUID()),
+                        new EraResolutionCompleted.TerminalResolution(
+                                cascadedEvent, 1, EraResolutionCompleted.TerminalState.CASCADED, null)));
+        given(resolutionBarrierJpaRepository.findByGameIdAndEraNumber(gameId, 2))
+                .willReturn(Optional.of(ScoringTimelineResolutionBarrierJpaEntity.fromDomain(barrier)));
+        given(stabilizeJpaRepository.findAllByGameIdAndEraNumber(gameId, 2))
+                .willReturn(List.of(
+                        stabilize(gameId, playerId, resolvedEvent), stabilize(gameId, playerId, cascadedEvent)));
+
+        var context = adapter.getRequired(gameId, 2);
+
+        assertThat(context.stabilizeFacts())
+                .containsExactly(
+                        new io.github.temporalrift.game.scoring.domain.context.StabilizeFact(playerId, resolvedEvent));
+    }
+
+    @Test
+    void recordStabilize_delegatesToIdempotentInsert() {
+        var gameId = UUID.randomUUID();
+        var playerId = UUID.randomUUID();
+        var eventId = UUID.randomUUID();
+
+        adapter.recordStabilize(gameId, 3, playerId, eventId);
+
+        then(stabilizeJpaRepository)
+                .should()
+                .insertIfAbsent(any(UUID.class), eq(gameId), eq(3), eq(playerId), eq(eventId));
+    }
+
+    private static ScoringContextStabilizeJpaEntity stabilize(UUID gameId, UUID playerId, UUID eventId) {
+        var entity = new ScoringContextStabilizeJpaEntity();
+        entity.setId(UUID.randomUUID());
+        entity.setGameId(gameId);
+        entity.setEraNumber(2);
+        entity.setPlayerId(playerId);
+        entity.setTargetEventId(eventId);
+        return entity;
+    }
 
     @Test
     void getRequired_assemblesPlayersAndUnconsumedChainFacts() {
@@ -579,6 +689,56 @@ class EraScoringContextRepositoryAdapterTest {
                         eq(playerId),
                         eq(Faction.ACTIVISTS.name()),
                         eq(ScoreReason.DECLARED_OUTCOME_WON_WITH_RALLY.name()));
+    }
+
+    @Test
+    void resolveActivistDeclarations_appliedLosingRallyRecordsTheRallyMiss() {
+        assertMissRecorded("RALLY", ScoreReason.DECLARED_OUTCOME_MISSED_WITH_RALLY);
+    }
+
+    @Test
+    void resolveActivistDeclarations_appliedLosingMomentumRecordsTheMomentumMiss() {
+        assertMissRecorded("MOMENTUM", ScoreReason.DECLARED_OUTCOME_MISSED);
+    }
+
+    private void assertMissRecorded(String mode, ScoreReason expected) {
+        var gameId = UUID.randomUUID();
+        var playerId = UUID.randomUUID();
+        var eventId = UUID.randomUUID();
+        var winningOutcomeId = UUID.randomUUID();
+        var declaration = new ScoringContextActivistDeclarationJpaEntity();
+        declaration.setId(UUID.randomUUID());
+        declaration.setGameId(gameId);
+        declaration.setEraNumber(2);
+        declaration.setPlayerId(playerId);
+        declaration.setMode(mode);
+        declaration.setTargetEventId(eventId);
+        declaration.setTargetOutcomeId(UUID.randomUUID());
+        given(activistDeclarationJpaRepository.findAllUnresolvedWithLock(gameId, 2))
+                .willReturn(List.of(declaration));
+        var barrier = new EraResolutionCompleted(
+                gameId,
+                2,
+                List.of(new EraResolutionCompleted.TerminalResolution(
+                        eventId, 0, EraResolutionCompleted.TerminalState.OUTCOME_APPLIED, winningOutcomeId)));
+        given(resolutionBarrierJpaRepository.findByGameIdAndEraNumber(gameId, 2))
+                .willReturn(Optional.of(ScoringTimelineResolutionBarrierJpaEntity.fromDomain(barrier)));
+        given(outcomeInboxJpaRepository.findByGameIdAndEraNumberAndEventId(gameId, 2, eventId))
+                .willReturn(Optional.of(ScoringTimelineOutcomeInboxJpaEntity.fromDomain(
+                        new OutcomeApplied(gameId, 2, eventId, winningOutcomeId, List.of(), List.of()))));
+
+        assertThat(adapter.resolveActivistDeclarations(gameId, 2))
+                .containsExactly(new io.github.temporalrift.game.shared.domain.event.ActivistDeclarationResolved(
+                        gameId, 2, playerId, false));
+        then(actionFactJpaRepository)
+                .should()
+                .insertIfAbsent(
+                        any(UUID.class),
+                        eq(gameId),
+                        eq(2),
+                        eq(playerId),
+                        eq(Faction.ACTIVISTS.name()),
+                        eq(expected.name()));
     }
 
     @Test

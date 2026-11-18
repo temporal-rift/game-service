@@ -45,6 +45,7 @@ game:
     stabilization:
       prophet-written-resolutions: 3
       weaver-active-chain-links: 2
+      faction-claims: false
     once-era-budgeted-specials:
       - ANNIHILATE
       - SEAL
@@ -61,9 +62,9 @@ game:
       ceiling: 90
     victory:
       eraser-annihilations: 4
-      prophet-written-resolutions: 4
+      prophet-written-resolutions: 3
       revisionist-successful-eras: 3
-      weaver-chain-length: 3
+      weaver-chain-length: 4
       activist-consecutive-declarations: 3
     scoring:
       score-deltas:
@@ -83,6 +84,9 @@ game:
         DECLARED_OUTCOME_WON: 5
         EXPOSE_SIGNATURE_REVEALED: 2
         PARADOX_CASCADE_PENALTY: -2
+        DECLARED_OUTCOME_MISSED_WITH_RALLY: -2
+        DECLARED_OUTCOME_MISSED: -1
+        PARADOX_STABILIZED: -1
 
 spring:
   application:

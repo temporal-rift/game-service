@@ -6,6 +6,7 @@ import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.context.event.EventListener;
 import org.springframework.modulith.events.ApplicationModuleListener;
 import org.springframework.stereotype.Component;
 
@@ -18,6 +19,7 @@ import io.github.temporalrift.game.shared.domain.event.EraActionFactsFinalized;
 import io.github.temporalrift.game.shared.domain.event.EventsDrawn;
 import io.github.temporalrift.game.shared.domain.event.FactionAssigned;
 import io.github.temporalrift.game.shared.domain.event.ForesightDeclared;
+import io.github.temporalrift.game.shared.domain.event.StabilizePlayed;
 import io.github.temporalrift.game.shared.domain.model.Faction;
 
 @Component
@@ -62,6 +64,15 @@ class ScoringContextProjectionEventListener {
     void onEventsDrawn(EventsDrawn event) {
         contextRepository.upsertExpectedOutcomeCount(
                 event.gameId(), event.eraNumber(), event.events().size());
+    }
+
+    /**
+     * Synchronous, in the submitting transaction: the submission reaches timeline-service only through the outbox
+     * after that transaction commits, so the Stabilize is recorded before the era can resolve and be scored.
+     */
+    @EventListener
+    void onStabilizePlayed(StabilizePlayed event) {
+        contextRepository.recordStabilize(event.gameId(), event.eraNumber(), event.playerId(), event.targetEventId());
     }
 
     @ApplicationModuleListener

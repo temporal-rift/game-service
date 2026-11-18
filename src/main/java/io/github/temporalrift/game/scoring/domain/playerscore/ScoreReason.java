@@ -17,11 +17,17 @@ public enum ScoreReason {
     CHAIN_BROKEN(Faction.WEAVERS),
     DECLARED_OUTCOME_WON_WITH_RALLY(Faction.ACTIVISTS),
     DECLARED_OUTCOME_WON(Faction.ACTIVISTS),
+    /** A recorded Rally-mode declaration whose event resolved with another outcome. */
+    DECLARED_OUTCOME_MISSED_WITH_RALLY(Faction.ACTIVISTS),
+    /** A recorded Momentum-mode declaration whose event resolved with another outcome. */
+    DECLARED_OUTCOME_MISSED(Faction.ACTIVISTS),
     /** Retained for score history recorded under the earlier Expose rule. */
     @Deprecated
     EXPOSE_CHANGED_PLAYER_BEHAVIOR(Faction.ACTIVISTS),
     EXPOSE_SIGNATURE_REVEALED(Faction.ACTIVISTS),
-    PARADOX_CASCADE_PENALTY(null);
+    PARADOX_CASCADE_PENALTY(null),
+    /** A player's Stabilize on an event that did not cascade; charged once per player and event. */
+    PARADOX_STABILIZED(null);
 
     private final Faction faction;
 
