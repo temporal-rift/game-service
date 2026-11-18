@@ -4,6 +4,11 @@ import io.github.temporalrift.game.shared.domain.model.Faction;
 
 public enum ScoreReason {
     ANNIHILATED_OUTCOME(Faction.ERASERS),
+    /**
+     * A creditable, unshielded Annihilate that did not change its event's winner; recorded only while erasures need
+     * a consequence, and never a step toward the Eraser objective.
+     */
+    ANNIHILATION_WASTED(Faction.ERASERS),
     CORRUPTED_OPPONENT_CARD(Faction.ERASERS),
     EVENT_RESOLVED_AS_WRITTEN(Faction.PROPHETS),
     FULFILLMENT_SUCCEEDED(Faction.PROPHETS),

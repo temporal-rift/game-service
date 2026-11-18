@@ -1460,21 +1460,23 @@ class EraScoreEvaluatorTest {
         }
 
         @Test
-        @DisplayName("the outcome lists no erasure — nothing")
+        @DisplayName("the outcome lists no erasure — a wasted erasure, no credit")
         void emptyListScoresNothing() {
             var context = context(annihilation(eventId, third));
 
             assertThat(evaluator.evaluate(context, List.of(outcome(eventId, List.of()))))
-                    .isEmpty();
+                    .extracting(PlayerScoreDecision::reason)
+                    .containsExactly(ScoreReason.ANNIHILATION_WASTED);
         }
 
         @Test
-        @DisplayName("the outcome lists another outcome's erasure — nothing")
+        @DisplayName("the outcome lists another outcome's erasure — a wasted erasure, no credit")
         void otherListedErasureScoresNothing() {
             var context = context(annihilation(eventId, third));
 
             assertThat(evaluator.evaluate(context, List.of(outcome(eventId, List.of(UUID.randomUUID())))))
-                    .isEmpty();
+                    .extracting(PlayerScoreDecision::reason)
+                    .containsExactly(ScoreReason.ANNIHILATION_WASTED);
         }
 
         @Test
@@ -1510,7 +1512,7 @@ class EraScoreEvaluatorTest {
         }
 
         @Test
-        @DisplayName("two erasures on different events, only one listed — exactly one credit")
+        @DisplayName("two erasures on different events, only one listed — exactly one credit and one wasted")
         void onlyTheListedOfTwoErasuresScores() {
             var otherEventId = UUID.randomUUID();
             var otherErased = UUID.randomUUID();
@@ -1521,7 +1523,7 @@ class EraScoreEvaluatorTest {
 
             assertThat(decisions)
                     .extracting(PlayerScoreDecision::reason)
-                    .containsExactly(ScoreReason.ANNIHILATED_OUTCOME);
+                    .containsExactlyInAnyOrder(ScoreReason.ANNIHILATED_OUTCOME, ScoreReason.ANNIHILATION_WASTED);
         }
 
         @Test
@@ -1533,15 +1535,39 @@ class EraScoreEvaluatorTest {
             var decisions = evaluator.evaluate(
                     context, List.of(outcome(eventId, List.of()), outcome(otherEventId, List.of(third))));
 
-            assertThat(decisions).isEmpty();
+            assertThat(decisions)
+                    .extracting(PlayerScoreDecision::reason)
+                    .containsExactly(ScoreReason.ANNIHILATION_WASTED);
         }
 
         @Test
-        @DisplayName("the event has no applied outcome (cascaded) — nothing")
+        @DisplayName("the event has no applied outcome (cascaded) — a wasted erasure, no credit")
         void eventWithoutOutcomeScoresNothing() {
             var context = context(annihilation(eventId, third));
 
-            assertThat(evaluator.evaluate(context, List.of())).isEmpty();
+            assertThat(evaluator.evaluate(context, List.of()))
+                    .extracting(PlayerScoreDecision::reason)
+                    .containsExactly(ScoreReason.ANNIHILATION_WASTED);
+        }
+
+        @Test
+        @DisplayName("a shielded erasure is not wasted")
+        void shieldedErasureIsNotWasted() {
+            var context = new EraScoringContext(
+                    GAME_ID,
+                    ERA,
+                    List.of(new PlayerFaction(eraserId, Faction.ERASERS)),
+                    List.of(new EventOutcomeFact(eventId, UUID.randomUUID(), third, 1)),
+                    List.of(),
+                    List.of(),
+                    List.of(annihilation(eventId, third)),
+                    List.of(),
+                    List.of(),
+                    List.of(),
+                    Set.of());
+
+            assertThat(evaluator.evaluate(context, List.of(outcome(eventId, List.of()))))
+                    .isEmpty();
         }
 
         @Test
