@@ -22,11 +22,56 @@ class SpecialEndingPolicyTest {
     private static final StabilizationThresholds NO_CLAIMS = new StabilizationThresholds(3, 2, false);
 
     private static Standing standing(Faction faction, int score, int objectiveProgress) {
-        return new Standing(UUID.randomUUID(), faction, score, objectiveProgress, false);
+        return new Standing(UUID.randomUUID(), faction, score, objectiveProgress, 3, false);
     }
 
     private static Standing forfeited(Faction faction, int score, int objectiveProgress) {
-        return new Standing(UUID.randomUUID(), faction, score, objectiveProgress, true);
+        return new Standing(UUID.randomUUID(), faction, score, objectiveProgress, 3, true);
+    }
+
+    @Nested
+    @DisplayName("with the score tiebreak on")
+    class ScoreTiebreak {
+
+        @Test
+        @DisplayName("a tied highest score at stabilization goes to the most objective progress")
+        void stabilizationTieGoesToProgress() {
+            var ahead = new Standing(UUID.randomUUID(), Faction.PROPHETS, 12, 2, 3, false);
+            var behind = new Standing(UUID.randomUUID(), Faction.ERASERS, 12, 1, 4, false);
+
+            assertThat(SpecialEndingPolicy.stabilizationWinners(List.of(ahead, behind), NO_CLAIMS, true))
+                    .containsExactly(ahead.playerId());
+        }
+
+        @Test
+        @DisplayName("progress is compared as a fraction of each threshold")
+        void progressComparedAsFraction() {
+            var twoOfFour = new Standing(UUID.randomUUID(), Faction.ERASERS, 9, 2, 4, false);
+            var twoOfThree = new Standing(UUID.randomUUID(), Faction.REVISIONISTS, 9, 2, 3, false);
+
+            assertThat(SpecialEndingPolicy.collapseWinners(List.of(twoOfFour, twoOfThree), true))
+                    .containsExactly(twoOfThree.playerId());
+        }
+
+        @Test
+        @DisplayName("equal score and equal progress still share")
+        void fullTieShares() {
+            var first = new Standing(UUID.randomUUID(), Faction.PROPHETS, 10, 1, 3, false);
+            var second = new Standing(UUID.randomUUID(), Faction.WEAVERS, 10, 1, 3, false);
+
+            assertThat(SpecialEndingPolicy.collapseWinners(List.of(first, second), true))
+                    .containsExactlyInAnyOrder(first.playerId(), second.playerId());
+        }
+
+        @Test
+        @DisplayName("with the tiebreak off a tied highest score shares")
+        void tiebreakOffShares() {
+            var ahead = new Standing(UUID.randomUUID(), Faction.PROPHETS, 12, 2, 3, false);
+            var behind = new Standing(UUID.randomUUID(), Faction.ERASERS, 12, 1, 4, false);
+
+            assertThat(SpecialEndingPolicy.stabilizationWinners(List.of(ahead, behind), NO_CLAIMS, false))
+                    .containsExactlyInAnyOrder(ahead.playerId(), behind.playerId());
+        }
     }
 
     @Nested
@@ -38,7 +83,7 @@ class SpecialEndingPolicyTest {
             var prophet = standing(Faction.PROPHETS, 8, 3);
             var activist = standing(Faction.ACTIVISTS, 12, 2);
 
-            var winners = SpecialEndingPolicy.stabilizationWinners(List.of(prophet, activist), NO_CLAIMS);
+            var winners = SpecialEndingPolicy.stabilizationWinners(List.of(prophet, activist), NO_CLAIMS, false);
 
             assertThat(winners).containsExactly(activist.playerId());
             assertThat(SpecialEndingPolicy.qualifiesForStabilization(prophet, NO_CLAIMS))
@@ -51,7 +96,7 @@ class SpecialEndingPolicyTest {
             var weaver = standing(Faction.WEAVERS, 9, 3);
             var eraser = standing(Faction.ERASERS, 11, 2);
 
-            var winners = SpecialEndingPolicy.stabilizationWinners(List.of(weaver, eraser), NO_CLAIMS);
+            var winners = SpecialEndingPolicy.stabilizationWinners(List.of(weaver, eraser), NO_CLAIMS, false);
 
             assertThat(winners).containsExactly(eraser.playerId());
         }
@@ -63,7 +108,8 @@ class SpecialEndingPolicyTest {
             var activist = standing(Faction.ACTIVISTS, 12, 2);
             var eraser = standing(Faction.ERASERS, 7, 1);
 
-            var winners = SpecialEndingPolicy.stabilizationWinners(List.of(prophet, activist, eraser), NO_CLAIMS);
+            var winners =
+                    SpecialEndingPolicy.stabilizationWinners(List.of(prophet, activist, eraser), NO_CLAIMS, false);
 
             assertThat(winners).containsExactlyInAnyOrder(prophet.playerId(), activist.playerId());
         }
@@ -75,7 +121,8 @@ class SpecialEndingPolicyTest {
             var eraser = standing(Faction.ERASERS, 18, 4);
             var activist = standing(Faction.ACTIVISTS, 12, 2);
 
-            var winners = SpecialEndingPolicy.stabilizationWinners(List.of(prophet, eraser, activist), THRESHOLDS);
+            var winners =
+                    SpecialEndingPolicy.stabilizationWinners(List.of(prophet, eraser, activist), THRESHOLDS, false);
 
             assertThat(winners).containsExactly(prophet.playerId());
         }
@@ -87,7 +134,8 @@ class SpecialEndingPolicyTest {
             var eraser = standing(Faction.ERASERS, 18, 4);
             var revisionist = standing(Faction.REVISIONISTS, 12, 1);
 
-            var winners = SpecialEndingPolicy.stabilizationWinners(List.of(prophet, eraser, revisionist), THRESHOLDS);
+            var winners =
+                    SpecialEndingPolicy.stabilizationWinners(List.of(prophet, eraser, revisionist), THRESHOLDS, false);
 
             assertThat(winners).containsExactly(eraser.playerId());
         }
@@ -99,7 +147,8 @@ class SpecialEndingPolicyTest {
             var revisionist = standing(Faction.REVISIONISTS, 15, 2);
             var activist = standing(Faction.ACTIVISTS, 11, 2);
 
-            var winners = SpecialEndingPolicy.stabilizationWinners(List.of(eraser, revisionist, activist), THRESHOLDS);
+            var winners =
+                    SpecialEndingPolicy.stabilizationWinners(List.of(eraser, revisionist, activist), THRESHOLDS, false);
 
             assertThat(winners).containsExactly(revisionist.playerId());
         }
@@ -112,8 +161,8 @@ class SpecialEndingPolicyTest {
             var eraser = standing(Faction.ERASERS, 16, 3);
             var activist = standing(Faction.ACTIVISTS, 12, 0);
 
-            var winners =
-                    SpecialEndingPolicy.stabilizationWinners(List.of(weaver, prophet, eraser, activist), THRESHOLDS);
+            var winners = SpecialEndingPolicy.stabilizationWinners(
+                    List.of(weaver, prophet, eraser, activist), THRESHOLDS, false);
 
             assertThat(winners).containsExactly(weaver.playerId());
         }
@@ -127,7 +176,7 @@ class SpecialEndingPolicyTest {
             var activist = standing(Faction.ACTIVISTS, 12, 0);
 
             var winners = SpecialEndingPolicy.stabilizationWinners(
-                    List.of(weaver, revisionist, eraser, activist), THRESHOLDS);
+                    List.of(weaver, revisionist, eraser, activist), THRESHOLDS, false);
 
             assertThat(winners).containsExactly(eraser.playerId());
         }
@@ -142,7 +191,7 @@ class SpecialEndingPolicyTest {
             var activist = standing(Faction.ACTIVISTS, 12, 2);
 
             var winners = SpecialEndingPolicy.stabilizationWinners(
-                    List.of(prophet, weaver, eraser, revisionist, activist), THRESHOLDS);
+                    List.of(prophet, weaver, eraser, revisionist, activist), THRESHOLDS, false);
 
             assertThat(winners).containsExactlyInAnyOrder(prophet.playerId(), weaver.playerId());
         }
@@ -157,7 +206,7 @@ class SpecialEndingPolicyTest {
             var activist = standing(Faction.ACTIVISTS, 12, 2);
 
             var winners = SpecialEndingPolicy.stabilizationWinners(
-                    List.of(prophet, weaver, eraser, revisionist, activist), THRESHOLDS);
+                    List.of(prophet, weaver, eraser, revisionist, activist), THRESHOLDS, false);
 
             assertThat(winners).containsExactlyInAnyOrder(prophet.playerId(), eraser.playerId());
         }
@@ -178,7 +227,8 @@ class SpecialEndingPolicyTest {
             var eraser = standing(Faction.ERASERS, 18, 4);
             var activist = standing(Faction.ACTIVISTS, 12, 2);
 
-            var winners = SpecialEndingPolicy.stabilizationWinners(List.of(prophet, eraser, activist), THRESHOLDS);
+            var winners =
+                    SpecialEndingPolicy.stabilizationWinners(List.of(prophet, eraser, activist), THRESHOLDS, false);
 
             assertThat(winners).containsExactly(eraser.playerId());
             assertThat(SpecialEndingPolicy.qualifiesForStabilization(prophet, THRESHOLDS))
@@ -192,7 +242,8 @@ class SpecialEndingPolicyTest {
             var revisionist = standing(Faction.REVISIONISTS, 12, 0);
             var activist = standing(Faction.ACTIVISTS, 11, 0);
 
-            var winners = SpecialEndingPolicy.stabilizationWinners(List.of(eraser, revisionist, activist), THRESHOLDS);
+            var winners =
+                    SpecialEndingPolicy.stabilizationWinners(List.of(eraser, revisionist, activist), THRESHOLDS, false);
 
             assertThat(winners).containsExactly(revisionist.playerId());
         }
@@ -208,7 +259,7 @@ class SpecialEndingPolicyTest {
             var prophet = standing(Faction.PROPHETS, 11, 4);
             var weaver = standing(Faction.WEAVERS, 9, 2);
 
-            assertThat(SpecialEndingPolicy.collapseWinners(List.of(activist, prophet, weaver)))
+            assertThat(SpecialEndingPolicy.collapseWinners(List.of(activist, prophet, weaver), false))
                     .containsExactly(prophet.playerId());
         }
 
@@ -220,7 +271,7 @@ class SpecialEndingPolicyTest {
             var eraser = standing(Faction.ERASERS, 7, 2);
             var revisionist = standing(Faction.REVISIONISTS, 5, 1);
 
-            assertThat(SpecialEndingPolicy.collapseWinners(List.of(prophet, weaver, eraser, revisionist)))
+            assertThat(SpecialEndingPolicy.collapseWinners(List.of(prophet, weaver, eraser, revisionist), false))
                     .containsExactly(eraser.playerId());
         }
 
@@ -233,7 +284,8 @@ class SpecialEndingPolicyTest {
             var revisionist = standing(Faction.REVISIONISTS, -3, 0);
             var activist = standing(Faction.ACTIVISTS, -6, 0);
 
-            assertThat(SpecialEndingPolicy.collapseWinners(List.of(prophet, weaver, eraser, revisionist, activist)))
+            assertThat(SpecialEndingPolicy.collapseWinners(
+                            List.of(prophet, weaver, eraser, revisionist, activist), false))
                     .containsExactlyInAnyOrder(prophet.playerId(), eraser.playerId());
         }
 
@@ -244,7 +296,7 @@ class SpecialEndingPolicyTest {
             var second = standing(Faction.PROPHETS, 14, 0);
             var third = standing(Faction.ACTIVISTS, 9, 0);
 
-            var winners = SpecialEndingPolicy.collapseWinners(List.of(leader, second, third));
+            var winners = SpecialEndingPolicy.collapseWinners(List.of(leader, second, third), false);
 
             assertThat(winners).containsExactly(second.playerId());
         }

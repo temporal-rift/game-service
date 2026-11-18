@@ -14,6 +14,7 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import io.github.temporalrift.game.session.domain.ending.NormalVictoryPolicy;
 import io.github.temporalrift.game.session.domain.ending.SpecialEndingPolicy;
 import io.github.temporalrift.game.session.domain.event.EraEnded;
 import io.github.temporalrift.game.session.domain.event.EraFailed;
@@ -34,6 +35,7 @@ import io.github.temporalrift.game.session.domain.port.out.LobbyRepository;
 import io.github.temporalrift.game.session.domain.port.out.SessionEventPublisher;
 import io.github.temporalrift.game.session.domain.port.out.SessionFactionObjectivePort;
 import io.github.temporalrift.game.session.domain.port.out.SessionGameRulesPort;
+import io.github.temporalrift.game.session.domain.port.out.VictoryTiebreakRulesPort;
 import io.github.temporalrift.game.session.domain.saga.EraSagaState;
 import io.github.temporalrift.game.session.domain.saga.EraSagaStatus;
 import io.github.temporalrift.game.shared.application.SagaHandoffPublisher;
@@ -60,6 +62,7 @@ class EraSagaAdvancer {
     private final PlayerAbandonmentProcessor abandonmentProcessor;
     private final SessionGameRulesPort gameRules;
     private final SessionFactionObjectivePort factionObjectives;
+    private final VictoryTiebreakRulesPort tiebreakRules;
     private final ActionRoundRequests actionRoundRequests;
     private final Clock clock;
 
@@ -75,6 +78,7 @@ class EraSagaAdvancer {
             PlayerAbandonmentProcessor abandonmentProcessor,
             SessionGameRulesPort gameRules,
             SessionFactionObjectivePort factionObjectives,
+            VictoryTiebreakRulesPort tiebreakRules,
             ActionRoundRequests actionRoundRequests,
             Clock clock) {
         this.eraSagaRepository = eraSagaRepository;
@@ -89,6 +93,7 @@ class EraSagaAdvancer {
         this.abandonmentProcessor = abandonmentProcessor;
         this.gameRules = gameRules;
         this.factionObjectives = factionObjectives;
+        this.tiebreakRules = tiebreakRules;
         this.actionRoundRequests = actionRoundRequests;
         this.clock = clock;
     }
@@ -308,7 +313,7 @@ class EraSagaAdvancer {
             }
         }
         qualifiers.sort(Comparator.comparing(Qualifier::playerId));
-        return qualifiers;
+        return NormalVictoryPolicy.winners(qualifiers, Qualifier::newTotal, tiebreakRules.scoreTiebreak());
     }
 
     private void publishEvent(UUID gameId, Object payload) {
@@ -321,20 +326,24 @@ class EraSagaAdvancer {
     }
 
     private TimelineStabilized buildTimelineStabilized(UUID gameId, ScoresUpdated su, Lobby lobby) {
-        var progressByPlayer = new HashMap<UUID, Integer>();
+        var progressByPlayer = new HashMap<UUID, SessionFactionObjectivePort.ObjectiveProgress>();
         for (var progress : factionObjectives.evaluate(gameId, su.eraNumber())) {
-            progressByPlayer.put(progress.playerId(), progress.progressCount());
+            progressByPlayer.put(progress.playerId(), progress);
         }
         var standings = su.updates().stream()
-                .map(update -> new SpecialEndingPolicy.Standing(
-                        update.playerId(),
-                        update.faction(),
-                        update.newTotal(),
-                        progressByPlayer.getOrDefault(update.playerId(), 0),
-                        lobby.isAbandoned(update.playerId())))
+                .map(update -> {
+                    var progress = progressByPlayer.get(update.playerId());
+                    return new SpecialEndingPolicy.Standing(
+                            update.playerId(),
+                            update.faction(),
+                            update.newTotal(),
+                            progress == null ? 0 : progress.progressCount(),
+                            progress == null ? 0 : progress.threshold(),
+                            lobby.isAbandoned(update.playerId()));
+                })
                 .toList();
         var thresholds = gameRules.stabilizationThresholds();
-        var winnerIds = SpecialEndingPolicy.stabilizationWinners(standings, thresholds);
+        var winnerIds = SpecialEndingPolicy.stabilizationWinners(standings, thresholds, tiebreakRules.scoreTiebreak());
         var winners = new ArrayList<TimelineStabilized.PlayerFactionResult>();
         var losers = new ArrayList<TimelineStabilized.PlayerFactionResult>();
         for (var standing : standings) {
