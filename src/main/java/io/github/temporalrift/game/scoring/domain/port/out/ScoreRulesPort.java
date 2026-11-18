@@ -23,4 +23,10 @@ public interface ScoreRulesPort {
      * reports that the erasure changed the winner.
      */
     boolean annihilationRequiresConsequence();
+
+    /**
+     * Whether an Activist declaration or a Revisionist Rewrite whose named outcome was annihilated in the era resolves
+     * void: no win and no miss, as a stalled bet.
+     */
+    boolean erasedOutcomeVoidsBets();
 }

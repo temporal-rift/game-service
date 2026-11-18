@@ -19,7 +19,8 @@ public record ScoreRulesProperties(
         @NotNull Map<ScoreReason, Integer> scoreDeltas,
         @DefaultValue("true") boolean writtenOutcomeShieldsAnnihilation,
         @DefaultValue("true") boolean exposeRequiresDeclaredEvent,
-        @DefaultValue("true") boolean annihilationRequiresConsequence)
+        @DefaultValue("true") boolean annihilationRequiresConsequence,
+        @DefaultValue("true") boolean erasedOutcomeVoidsBets)
         implements ScoreRulesPort {
 
     /** Applied when served rules predate {@code SECRET_OUTCOME_MISSED}, so such a deployment still starts. */

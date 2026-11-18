@@ -18,6 +18,18 @@ public final class ScoreRulesTestValues {
 
     public static ScoreRulesPort rules(
             boolean writtenOutcomeShieldsAnnihilation, boolean annihilationRequiresConsequence) {
+        return rules(writtenOutcomeShieldsAnnihilation, annihilationRequiresConsequence, true);
+    }
+
+    /** The default rules with the erased-outcome void rule set as given. */
+    public static ScoreRulesPort rulesWithErasedOutcomeVoidingBets(boolean erasedOutcomeVoidsBets) {
+        return rules(true, true, erasedOutcomeVoidsBets);
+    }
+
+    public static ScoreRulesPort rules(
+            boolean writtenOutcomeShieldsAnnihilation,
+            boolean annihilationRequiresConsequence,
+            boolean erasedOutcomeVoidsBets) {
         return new ScoreRulesPort() {
             @Override
             public int pointsDelta(ScoreReason reason) {
@@ -37,6 +49,11 @@ public final class ScoreRulesTestValues {
             @Override
             public boolean annihilationRequiresConsequence() {
                 return annihilationRequiresConsequence;
+            }
+
+            @Override
+            public boolean erasedOutcomeVoidsBets() {
+                return erasedOutcomeVoidsBets;
             }
         };
     }

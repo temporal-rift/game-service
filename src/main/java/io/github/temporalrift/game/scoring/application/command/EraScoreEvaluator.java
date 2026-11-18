@@ -11,6 +11,7 @@ import java.util.UUID;
 
 import org.springframework.stereotype.Component;
 
+import io.github.temporalrift.game.scoring.domain.context.ActionScoringFact;
 import io.github.temporalrift.game.scoring.domain.context.AnnihilationFact;
 import io.github.temporalrift.game.scoring.domain.context.EraScoringContext;
 import io.github.temporalrift.game.scoring.domain.context.EventOutcomeFact;
@@ -21,6 +22,11 @@ import io.github.temporalrift.game.shared.domain.model.Faction;
 
 @Component
 class EraScoreEvaluator {
+
+    private static final Set<ScoreReason> VOIDABLE_MISSES = Set.of(
+            ScoreReason.DECLARED_OUTCOME_MISSED,
+            ScoreReason.DECLARED_OUTCOME_MISSED_WITH_RALLY,
+            ScoreReason.SECRET_OUTCOME_MISSED);
 
     private final ScoreRulesPort scoreRules;
 
@@ -159,10 +165,21 @@ class EraScoreEvaluator {
 
     // Decisions come only from recorded action facts, so a player with no fact in the era scores nothing.
     private List<PlayerScoreDecision> actionDecisions(UUID playerId, EraScoringContext context) {
+        boolean erasureVoidsBets = scoreRules.erasedOutcomeVoidsBets();
         return context.actionFacts().stream()
                 .filter(fact -> fact.playerId().equals(playerId))
+                .filter(fact -> !(erasureVoidsBets && isVoidedMiss(fact, context)))
                 .map(fact -> new PlayerScoreDecision(playerId, fact.reason(), context.eraNumber()))
                 .toList();
+    }
+
+    /**
+     * A miss whose bet named an outcome annihilated this era is void, as a stalled bet: nobody can be wrong about an
+     * outcome that no longer exists. A win on such an outcome cannot occur, so only misses are dropped.
+     */
+    private static boolean isVoidedMiss(ActionScoringFact fact, EraScoringContext context) {
+        return VOIDABLE_MISSES.contains(fact.reason())
+                && context.annihilationFacts().stream().anyMatch(fact::betOn);
     }
 
     private Optional<EventOutcomeFact> findEventFact(EraScoringContext context, UUID eventId) {

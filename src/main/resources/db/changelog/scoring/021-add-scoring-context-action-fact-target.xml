@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+            https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.29.xsd">
+
+    <!--
+        The event and outcome a declaration or Rewrite named, so era scoring can void a bet whose outcome was
+        annihilated in the same era. Nullable: facts with no bet behind them, and rows recorded before these
+        columns existed, have no target and are never voided.
+    -->
+    <changeSet id="scoring-021-add-scoring-context-action-fact-target" author="game-service">
+        <addColumn tableName="scoring_context_action_fact">
+            <column name="target_event_id" type="UUID"/>
+            <column name="target_outcome_id" type="UUID"/>
+        </addColumn>
+    </changeSet>
+</databaseChangeLog>

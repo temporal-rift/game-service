@@ -130,7 +130,9 @@ class EraScoringContextRepositoryAdapter implements EraScoringContextRepository 
                 .map(entity -> new ActionScoringFact(
                         entity.getPlayerId(),
                         Faction.valueOf(entity.getFaction()),
-                        ScoreReason.valueOf(entity.getReason())))
+                        ScoreReason.valueOf(entity.getReason()),
+                        entity.getTargetEventId(),
+                        entity.getTargetOutcomeId()))
                 .toList();
         unconsumedActionFacts.forEach(entity -> entity.setConsumed(true));
         actionFactJpaRepository.saveAll(unconsumedActionFacts);
@@ -333,12 +335,26 @@ class EraScoringContextRepositoryAdapter implements EraScoringContextRepository 
     @Override
     @Transactional
     public void recordActionFact(UUID gameId, int eraNumber, UUID playerId, Faction faction, ScoreReason reason) {
-        insertActionFact(gameId, eraNumber, playerId, faction, reason);
+        insertActionFact(gameId, eraNumber, playerId, faction, reason, null, null);
     }
 
-    private void insertActionFact(UUID gameId, int eraNumber, UUID playerId, Faction faction, ScoreReason reason) {
+    private void insertActionFact(
+            UUID gameId,
+            int eraNumber,
+            UUID playerId,
+            Faction faction,
+            ScoreReason reason,
+            UUID targetEventId,
+            UUID targetOutcomeId) {
         actionFactJpaRepository.insertIfAbsent(
-                UUID.randomUUID(), gameId, eraNumber, playerId, faction.name(), reason.name());
+                UUID.randomUUID(),
+                gameId,
+                eraNumber,
+                playerId,
+                faction.name(),
+                reason.name(),
+                targetEventId,
+                targetOutcomeId);
     }
 
     @Override
@@ -439,7 +455,9 @@ class EraScoringContextRepositoryAdapter implements EraScoringContextRepository 
                     declaration.getEraNumber(),
                     declaration.getPlayerId(),
                     Faction.ACTIVISTS,
-                    reason);
+                    reason,
+                    declaration.getTargetEventId(),
+                    declaration.getTargetOutcomeId());
         }
         return new ActivistDeclarationResolved(
                 declaration.getGameId(), declaration.getEraNumber(), declaration.getPlayerId(), succeeded);
@@ -509,7 +527,9 @@ class EraScoringContextRepositoryAdapter implements EraScoringContextRepository 
                                     action.getEraNumber(),
                                     action.getPlayerId(),
                                     Faction.REVISIONISTS,
-                                    reason));
+                                    reason,
+                                    action.getTargetEventId(),
+                                    action.getTargetOutcomeId()));
                 });
     }
 
