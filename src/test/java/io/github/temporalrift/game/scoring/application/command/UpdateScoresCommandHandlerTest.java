@@ -488,9 +488,9 @@ class UpdateScoresCommandHandlerTest {
         return new UpdateScoresCommandHandler(
                 repo,
                 ctxRepo,
+                // One rules instance for both, so a test's rule choice reaches the evaluator too.
                 new EraScoreEvaluator(
-                        io.github.temporalrift.game.scoring.ScoreRulesTestValues.rules(),
-                        io.github.temporalrift.game.scoring.ScoreRulesTestValues.paradoxRules(false)),
+                        scoreRules, io.github.temporalrift.game.scoring.ScoreRulesTestValues.paradoxRules(false)),
                 exposures,
                 gameRules,
                 scoreRules,

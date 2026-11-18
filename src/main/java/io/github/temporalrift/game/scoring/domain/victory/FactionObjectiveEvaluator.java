@@ -33,14 +33,13 @@ public final class FactionObjectiveEvaluator {
     public static Progress evaluate(PlayerScore score, int eraNumber, boolean finalEra, VictoryRulesPort rules) {
         var ordinary = ordinaryProgress(score, eraNumber, rules);
         int discount = rules.finalEraObjectiveDiscount();
-        if (!finalEra || discount == 0) {
+        // The discount belongs only to a player who advanced in the final era; reporting it to anyone else would
+        // overstate their progress, including in a special ending's tiebreak.
+        if (!finalEra || discount == 0 || !advancedIn(score, eraNumber)) {
             return ordinary;
         }
-        // The final era always reports its discounted threshold; meeting the ordinary one still qualifies.
         int threshold = Math.max(1, ordinary.threshold() - discount);
-        boolean met =
-                ordinary.objectiveMet() || (ordinary.progressCount() >= threshold && advancedIn(score, eraNumber));
-        return new Progress(ordinary.progressCount(), threshold, met);
+        return new Progress(ordinary.progressCount(), threshold, ordinary.progressCount() >= threshold);
     }
 
     private static Progress ordinaryProgress(PlayerScore score, int eraNumber, VictoryRulesPort rules) {

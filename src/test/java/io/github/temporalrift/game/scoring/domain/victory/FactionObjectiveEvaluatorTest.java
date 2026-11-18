@@ -72,8 +72,11 @@ class FactionObjectiveEvaluatorTest {
             score.apply(3, ScoreReason.SECRET_OUTCOME_WON, 3);
             score.apply(5, ScoreReason.SECRET_OUTCOME_MISSED, -1);
 
-            assertThat(FactionObjectiveEvaluator.evaluate(score, 5, true, RULES).objectiveMet())
-                    .isFalse();
+            var progress = FactionObjectiveEvaluator.evaluate(score, 5, true, RULES);
+
+            assertThat(progress.objectiveMet()).isFalse();
+            // Without final-era advancement the ordinary threshold is reported, so 2 of 3 is not overstated as 2 of 2.
+            assertThat(progress.threshold()).isEqualTo(3);
         }
 
         @Test

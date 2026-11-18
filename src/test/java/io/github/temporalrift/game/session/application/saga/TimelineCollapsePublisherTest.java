@@ -115,6 +115,36 @@ class TimelineCollapsePublisherTest {
     }
 
     @Test
+    @DisplayName("with the score tiebreak on, tied leaders are separated by the collapse era's objective progress")
+    void publishCollapse_tiebreakOn_mostProgressWins() {
+        var tiebreakPublisher = new TimelineCollapsePublisher(
+                lobbyRepository,
+                scoreQueryPort,
+                eventPublisher,
+                applicationEventPublisher,
+                factionObjectives,
+                () -> true,
+                Clock.systemUTC());
+        var game = Game.reconstitute(GAME_ID, LOBBY_ID, List.of(), 3, 3, GameStatus.IN_PROGRESS);
+        given(lobbyRepository.findById(LOBBY_ID)).willReturn(Optional.of(startedLobby()));
+        given(scoreQueryPort.getScores(GAME_ID)).willReturn(scores(-2, 5, 5));
+        given(factionObjectives.evaluate(GAME_ID, 3))
+                .willReturn(List.of(
+                        new SessionFactionObjectivePort.ObjectiveProgress(PLAYER_2, Faction.ACTIVISTS, 1, 4, false),
+                        new SessionFactionObjectivePort.ObjectiveProgress(
+                                PLAYER_3, Faction.REVISIONISTS, 2, 5, false)));
+        var captor = ArgumentCaptor.<DomainEventEnvelope>captor();
+
+        tiebreakPublisher.publishCollapse(game, 3);
+
+        then(eventPublisher).should().publish(captor.capture());
+        var collapsed = (TimelineCollapsed) captor.getValue().payload();
+        assertThat(collapsed.winners())
+                .extracting(TimelineCollapsed.PlayerFactionResult::playerId)
+                .containsExactly(PLAYER_3);
+    }
+
+    @Test
     @DisplayName("an abandoned leader loses collapse to the highest-scoring remaining player")
     void publishCollapse_abandonedLeaderLoses() {
         var game = Game.reconstitute(GAME_ID, LOBBY_ID, List.of(), 2, 3, GameStatus.IN_PROGRESS);
