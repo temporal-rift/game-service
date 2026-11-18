@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
@@ -21,6 +22,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.ArgumentMatcher;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -43,6 +45,32 @@ import io.github.temporalrift.game.shared.domain.model.SpecialAction;
 
 @ExtendWith(MockitoExtension.class)
 class EraScoringContextRepositoryAdapterTest {
+
+    /** An action fact row for the player's reason in the era, whatever bet targets it carries. */
+    private static ArgumentMatcher<ActionFactRow> fact(
+            UUID gameId, int eraNumber, UUID playerId, Faction faction, ScoreReason reason) {
+        return row -> row.id() != null
+                && row.gameId().equals(gameId)
+                && row.eraNumber() == eraNumber
+                && row.playerId().equals(playerId)
+                && row.faction().equals(faction.name())
+                && row.reason().equals(reason.name());
+    }
+
+    /** An action fact row that also names the given bet's event and outcome. */
+    private static ArgumentMatcher<ActionFactRow> fact(
+            UUID gameId,
+            int eraNumber,
+            UUID playerId,
+            Faction faction,
+            ScoreReason reason,
+            UUID targetEventId,
+            UUID targetOutcomeId) {
+        var base = fact(gameId, eraNumber, playerId, faction, reason);
+        return row -> base.matches(row)
+                && targetEventId.equals(row.targetEventId())
+                && targetOutcomeId.equals(row.targetOutcomeId());
+    }
 
     @Mock
     ScoringContextPlayerJpaRepository playerJpaRepository;
@@ -682,15 +710,8 @@ class EraScoringContextRepositoryAdapterTest {
         assertThat(later.getResolutionSucceeded()).isTrue();
         then(actionFactJpaRepository)
                 .should(times(1))
-                .insertIfAbsent(
-                        any(UUID.class),
-                        eq(gameId),
-                        eq(3),
-                        eq(playerId),
-                        eq(Faction.ACTIVISTS.name()),
-                        eq(ScoreReason.DECLARED_OUTCOME_WON_WITH_RALLY.name()),
-                        any(),
-                        any());
+                .insertIfAbsent(argThat(
+                        fact(gameId, 3, playerId, Faction.ACTIVISTS, ScoreReason.DECLARED_OUTCOME_WON_WITH_RALLY)));
     }
 
     @Test
@@ -734,15 +755,7 @@ class EraScoringContextRepositoryAdapterTest {
                         gameId, 2, playerId, false));
         then(actionFactJpaRepository)
                 .should()
-                .insertIfAbsent(
-                        any(UUID.class),
-                        eq(gameId),
-                        eq(2),
-                        eq(playerId),
-                        eq(Faction.ACTIVISTS.name()),
-                        eq(expected.name()),
-                        any(),
-                        any());
+                .insertIfAbsent(argThat(fact(gameId, 2, playerId, Faction.ACTIVISTS, expected)));
     }
 
     @Test
@@ -778,15 +791,8 @@ class EraScoringContextRepositoryAdapterTest {
         assertThat(declaration.getResolutionSucceeded()).isTrue();
         then(actionFactJpaRepository)
                 .should()
-                .insertIfAbsent(
-                        any(UUID.class),
-                        eq(gameId),
-                        eq(2),
-                        eq(playerId),
-                        eq(Faction.ACTIVISTS.name()),
-                        eq(ScoreReason.DECLARED_OUTCOME_WON_WITH_RALLY.name()),
-                        any(),
-                        any());
+                .insertIfAbsent(argThat(
+                        fact(gameId, 2, playerId, Faction.ACTIVISTS, ScoreReason.DECLARED_OUTCOME_WON_WITH_RALLY)));
     }
 
     @Test
@@ -830,14 +836,7 @@ class EraScoringContextRepositoryAdapterTest {
         then(actionFactJpaRepository)
                 .should()
                 .insertIfAbsent(
-                        any(UUID.class),
-                        eq(gameId),
-                        eq(2),
-                        eq(playerId),
-                        eq(Faction.ACTIVISTS.name()),
-                        eq(ScoreReason.DECLARED_OUTCOME_WON.name()),
-                        any(),
-                        any());
+                        argThat(fact(gameId, 2, playerId, Faction.ACTIVISTS, ScoreReason.DECLARED_OUTCOME_WON)));
         then(activistDeclarationJpaRepository)
                 .should()
                 .insertIfAbsent(
@@ -886,14 +885,7 @@ class EraScoringContextRepositoryAdapterTest {
         then(actionFactJpaRepository)
                 .should()
                 .insertIfAbsent(
-                        any(UUID.class),
-                        eq(gameId),
-                        eq(2),
-                        eq(playerId),
-                        eq(Faction.REVISIONISTS.name()),
-                        eq(ScoreReason.SECRET_OUTCOME_WON.name()),
-                        any(),
-                        any());
+                        argThat(fact(gameId, 2, playerId, Faction.REVISIONISTS, ScoreReason.SECRET_OUTCOME_WON)));
     }
 
     @Test
@@ -916,15 +908,14 @@ class EraScoringContextRepositoryAdapterTest {
         assertThat(action.getResolved()).isTrue();
         then(actionFactJpaRepository)
                 .should()
-                .insertIfAbsent(
-                        any(UUID.class),
-                        eq(gameId),
-                        eq(2),
-                        eq(playerId),
-                        eq(Faction.REVISIONISTS.name()),
-                        eq(ScoreReason.MIMIC_CONTRIBUTED_TO_WIN.name()),
-                        eq(eventId),
-                        eq(outcomeId));
+                .insertIfAbsent(argThat(fact(
+                        gameId,
+                        2,
+                        playerId,
+                        Faction.REVISIONISTS,
+                        ScoreReason.MIMIC_CONTRIBUTED_TO_WIN,
+                        eventId,
+                        outcomeId)));
     }
 
     @Test
@@ -948,15 +939,14 @@ class EraScoringContextRepositoryAdapterTest {
         assertThat(action.getResolved()).isTrue();
         then(actionFactJpaRepository)
                 .should()
-                .insertIfAbsent(
-                        any(UUID.class),
-                        eq(gameId),
-                        eq(2),
-                        eq(playerId),
-                        eq(Faction.REVISIONISTS.name()),
-                        eq(ScoreReason.SECRET_OUTCOME_MISSED.name()),
-                        eq(eventId),
-                        eq(targetOutcomeId));
+                .insertIfAbsent(argThat(fact(
+                        gameId,
+                        2,
+                        playerId,
+                        Faction.REVISIONISTS,
+                        ScoreReason.SECRET_OUTCOME_MISSED,
+                        eventId,
+                        targetOutcomeId)));
         then(actionFactJpaRepository).shouldHaveNoMoreInteractions();
     }
 

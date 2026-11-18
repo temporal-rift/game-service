@@ -28,25 +28,17 @@ class InMemoryScoringContextActionFactJpaRepository
     }
 
     @Override
-    public int insertIfAbsent(
-            UUID id,
-            UUID gameId,
-            int eraNumber,
-            UUID playerId,
-            String faction,
-            String reason,
-            UUID targetEventId,
-            UUID targetOutcomeId) {
+    public int insertIfAbsent(ActionFactRow row) {
         var fact = new ScoringContextActionFactJpaEntity();
-        fact.setId(id);
-        fact.setGameId(gameId);
-        fact.setEraNumber(eraNumber);
-        fact.setPlayerId(playerId);
-        fact.setFaction(faction);
-        fact.setReason(reason);
+        fact.setId(row.id());
+        fact.setGameId(row.gameId());
+        fact.setEraNumber(row.eraNumber());
+        fact.setPlayerId(row.playerId());
+        fact.setFaction(row.faction());
+        fact.setReason(row.reason());
         fact.setConsumed(false);
-        fact.setTargetEventId(targetEventId);
-        fact.setTargetOutcomeId(targetOutcomeId);
+        fact.setTargetEventId(row.targetEventId());
+        fact.setTargetOutcomeId(row.targetOutcomeId());
         return insertRowIfAbsent(fact) ? 1 : 0;
     }
 

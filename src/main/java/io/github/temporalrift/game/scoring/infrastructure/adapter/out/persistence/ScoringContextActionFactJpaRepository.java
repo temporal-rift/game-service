@@ -17,19 +17,12 @@ interface ScoringContextActionFactJpaRepository extends JpaRepository<ScoringCon
                     INSERT INTO scoring_context_action_fact
                         (id, game_id, era_number, player_id, faction, reason, consumed, target_event_id,
                          target_outcome_id)
-                    VALUES (:id, :gameId, :eraNumber, :playerId, :faction, :reason, false, :targetEventId,
-                            :targetOutcomeId)
+                    VALUES (:#{#row.id()}, :#{#row.gameId()}, :#{#row.eraNumber()}, :#{#row.playerId()},
+                            :#{#row.faction()}, :#{#row.reason()}, false, :#{#row.targetEventId()},
+                            :#{#row.targetOutcomeId()})
                     ON CONFLICT (game_id, era_number, player_id, reason) DO NOTHING
                     """, nativeQuery = true)
-    int insertIfAbsent(
-            @Param("id") UUID id,
-            @Param("gameId") UUID gameId,
-            @Param("eraNumber") int eraNumber,
-            @Param("playerId") UUID playerId,
-            @Param("faction") String faction,
-            @Param("reason") String reason,
-            @Param("targetEventId") UUID targetEventId,
-            @Param("targetOutcomeId") UUID targetOutcomeId);
+    int insertIfAbsent(@Param("row") ActionFactRow row);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""

@@ -60,6 +60,18 @@ class ScoreRulesPropertiesTest {
     }
 
     @Test
+    void servedRulesPredatingThePackageReasonsUseTheirDefaults() {
+        var scoreDeltas = completeScoreDeltas();
+        scoreDeltas.remove(ScoreReason.PARADOX_DETONATED);
+        scoreDeltas.remove(ScoreReason.ANNIHILATION_WASTED);
+
+        var properties = new ScoreRulesProperties(scoreDeltas, true, true, true, true);
+
+        assertThat(properties.pointsDelta(ScoreReason.PARADOX_DETONATED)).isEqualTo(-1);
+        assertThat(properties.pointsDelta(ScoreReason.ANNIHILATION_WASTED)).isZero();
+    }
+
+    @Test
     void acceptsEarlierExposeKeyDuringConfigRollout() {
         var scoreDeltas = completeScoreDeltas();
         scoreDeltas.remove(ScoreReason.EXPOSE_SIGNATURE_REVEALED);

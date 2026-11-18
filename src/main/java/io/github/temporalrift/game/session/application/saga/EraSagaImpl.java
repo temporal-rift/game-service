@@ -56,6 +56,9 @@ class EraSagaImpl implements EraSaga {
     private final ExecutionEntropy entropy;
     private final Clock clock;
 
+    // The two ExecutionEntropy beans are conditional on opposite values of game.simulation.enabled,
+    // so exactly one exists in any context.
+    @SuppressWarnings("java:S9352")
     EraSagaImpl(
             GameRepository gameRepository,
             FutureEventCatalogPort futureEventCatalog,
