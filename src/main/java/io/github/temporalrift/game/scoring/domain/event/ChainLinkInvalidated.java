@@ -10,7 +10,9 @@ public record ChainLinkInvalidated(UUID gameId, int eraNumber, UUID chainId, UUI
         NO_WINNER,
         CHAIN_CONFLICT_CLEARED,
         ANNIHILATE_ABSORBED,
-        GAME_ENDED
+        GAME_ENDED,
+        /** A cause this version does not know; never a miss. */
+        UNKNOWN
     }
 
     /** Only a link whose event resolved to another winner is a miss; every other clear is not the Weaver's fault. */
