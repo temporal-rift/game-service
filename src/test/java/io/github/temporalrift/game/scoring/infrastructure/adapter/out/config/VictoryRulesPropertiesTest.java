@@ -1,6 +1,7 @@
 package io.github.temporalrift.game.scoring.infrastructure.adapter.out.config;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import jakarta.validation.Validation;
 import org.junit.jupiter.api.DisplayName;
@@ -35,6 +36,39 @@ class VictoryRulesPropertiesTest {
 
         assertThat(properties.prophetWrittenResolutions()).isEqualTo(5);
         assertThat(properties.eraserAnnihilations()).isEqualTo(4);
+    }
+
+    @Test
+    @DisplayName("without table-size overrides every table size uses the base objectives")
+    void noTableSizeOverridesByDefault() {
+        var properties = bind(new MockPropertySource().withProperty(CHAIN_LENGTH, "4"));
+
+        assertThat(properties.eraserAnnihilations(5)).isEqualTo(4);
+        assertThat(properties.activistRequiresConsecutiveEras(5)).isTrue();
+    }
+
+    @Test
+    @DisplayName("configured table-size overrides apply only to the listed player counts")
+    void tableSizeOverrides() {
+        var properties = bind(new MockPropertySource()
+                .withProperty(CHAIN_LENGTH, "4")
+                .withProperty("game.rules.victory.eraser-annihilations-by-player-count[5]", "3")
+                .withProperty("game.rules.victory.activist-non-consecutive-player-counts[0]", "5"));
+
+        assertThat(properties.eraserAnnihilations(5)).isEqualTo(3);
+        assertThat(properties.eraserAnnihilations(4)).isEqualTo(4);
+        assertThat(properties.activistRequiresConsecutiveEras(5)).isFalse();
+        assertThat(properties.activistRequiresConsecutiveEras(4)).isTrue();
+    }
+
+    @Test
+    @DisplayName("an Eraser override below one step is rejected")
+    void eraserOverrideBelowOneIsRejected() {
+        var source = new MockPropertySource()
+                .withProperty(CHAIN_LENGTH, "4")
+                .withProperty("game.rules.victory.eraser-annihilations-by-player-count[5]", "0");
+
+        assertThatThrownBy(() -> bind(source)).hasStackTraceContaining("must be at least 1");
     }
 
     @Test

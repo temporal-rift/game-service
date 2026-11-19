@@ -20,6 +20,8 @@ public enum ScoreReason {
     CHAIN_LINK_ADDED(Faction.WEAVERS),
     CHAIN_COMPLETED(Faction.WEAVERS),
     CHAIN_BROKEN(Faction.WEAVERS),
+    /** A Thread whose event resolved with another winner; never a step toward the objective and never a break. */
+    CHAIN_LINK_MISSED(Faction.WEAVERS),
     DECLARED_OUTCOME_WON_WITH_RALLY(Faction.ACTIVISTS),
     DECLARED_OUTCOME_WON(Faction.ACTIVISTS),
     /** A recorded Rally-mode declaration whose event resolved with another outcome. */

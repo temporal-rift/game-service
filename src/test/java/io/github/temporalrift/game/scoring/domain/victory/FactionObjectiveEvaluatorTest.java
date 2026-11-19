@@ -17,8 +17,13 @@ class FactionObjectiveEvaluatorTest {
 
     static final VictoryRulesPort RULES = new VictoryRulesPort() {
         @Override
-        public int eraserAnnihilations() {
-            return 4;
+        public int eraserAnnihilations(int playerCount) {
+            return playerCount == 5 ? 3 : 4;
+        }
+
+        @Override
+        public boolean activistRequiresConsecutiveEras(int playerCount) {
+            return playerCount != 5;
         }
 
         @Override
@@ -58,7 +63,7 @@ class FactionObjectiveEvaluatorTest {
             score.apply(2, ScoreReason.SECRET_OUTCOME_WON, 3);
             score.apply(5, ScoreReason.SECRET_OUTCOME_WON, 3);
 
-            var progress = FactionObjectiveEvaluator.evaluate(score, 5, true, RULES);
+            var progress = FactionObjectiveEvaluator.evaluate(score, 5, true, 4, RULES);
 
             assertThat(progress.objectiveMet()).isTrue();
             assertThat(progress.threshold()).isEqualTo(2);
@@ -72,7 +77,7 @@ class FactionObjectiveEvaluatorTest {
             score.apply(3, ScoreReason.SECRET_OUTCOME_WON, 3);
             score.apply(5, ScoreReason.SECRET_OUTCOME_MISSED, -1);
 
-            var progress = FactionObjectiveEvaluator.evaluate(score, 5, true, RULES);
+            var progress = FactionObjectiveEvaluator.evaluate(score, 5, true, 4, RULES);
 
             assertThat(progress.objectiveMet()).isFalse();
             // Without final-era advancement the ordinary threshold is reported, so 2 of 3 is not overstated as 2 of 2.
@@ -86,7 +91,8 @@ class FactionObjectiveEvaluatorTest {
             score.apply(4, ScoreReason.DECLARED_OUTCOME_WON_WITH_RALLY, 6);
             score.apply(5, ScoreReason.DECLARED_OUTCOME_WON, 5);
 
-            assertThat(FactionObjectiveEvaluator.evaluate(score, 5, true, RULES).objectiveMet())
+            assertThat(FactionObjectiveEvaluator.evaluate(score, 5, true, 4, RULES)
+                            .objectiveMet())
                     .isTrue();
         }
 
@@ -97,7 +103,7 @@ class FactionObjectiveEvaluatorTest {
             score.apply(3, ScoreReason.CHAIN_LINK_ADDED, 2);
             score.apply(5, ScoreReason.CHAIN_LINK_ADDED, 2);
 
-            var progress = FactionObjectiveEvaluator.evaluate(score, 5, true, RULES);
+            var progress = FactionObjectiveEvaluator.evaluate(score, 5, true, 4, RULES);
 
             assertThat(progress.objectiveMet()).isTrue();
             assertThat(progress.progressCount()).isEqualTo(2);
@@ -111,7 +117,7 @@ class FactionObjectiveEvaluatorTest {
             score.apply(3, ScoreReason.SECRET_OUTCOME_WON, 3);
             score.apply(5, ScoreReason.SECRET_OUTCOME_WON, 3);
 
-            var progress = FactionObjectiveEvaluator.evaluate(score, 5, true, RULES);
+            var progress = FactionObjectiveEvaluator.evaluate(score, 5, true, 4, RULES);
 
             assertThat(progress.objectiveMet()).isTrue();
             assertThat(progress.threshold()).isEqualTo(2);
@@ -124,7 +130,7 @@ class FactionObjectiveEvaluatorTest {
             score.apply(3, ScoreReason.SECRET_OUTCOME_WON, 3);
             score.apply(4, ScoreReason.SECRET_OUTCOME_WON, 3);
 
-            var progress = FactionObjectiveEvaluator.evaluate(score, 4, false, RULES);
+            var progress = FactionObjectiveEvaluator.evaluate(score, 4, false, 4, RULES);
 
             assertThat(progress.objectiveMet()).isFalse();
             assertThat(progress.threshold()).isEqualTo(3);
@@ -139,11 +145,55 @@ class FactionObjectiveEvaluatorTest {
             score.apply(era, ScoreReason.ANNIHILATED_OUTCOME, 3);
         }
 
-        var progress = FactionObjectiveEvaluator.evaluate(score, 4, RULES);
+        var progress = FactionObjectiveEvaluator.evaluate(score, 4, 4, RULES);
 
         assertThat(progress.objectiveMet()).isTrue();
         assertThat(progress.progressCount()).isEqualTo(4);
         assertThat(progress.threshold()).isEqualTo(4);
+    }
+
+    @Test
+    @DisplayName("at five players an eraser needs only three annihilations")
+    void eraser_fivePlayers_threeAnnihilationsMeetTheObjective() {
+        var score = score(Faction.ERASERS);
+        for (int era = 1; era <= 3; era++) {
+            score.apply(era, ScoreReason.ANNIHILATED_OUTCOME, 3);
+        }
+
+        assertThat(FactionObjectiveEvaluator.evaluate(score, 3, 5, RULES).objectiveMet())
+                .isTrue();
+        assertThat(FactionObjectiveEvaluator.evaluate(score, 3, 4, RULES).objectiveMet())
+                .isFalse();
+    }
+
+    @Test
+    @DisplayName("at five players an activist's successful eras need not be consecutive")
+    void activist_fivePlayers_nonConsecutiveSuccessesMeetTheObjective() {
+        var score = score(Faction.ACTIVISTS);
+        score.apply(1, ScoreReason.DECLARED_OUTCOME_WON, 3);
+        score.apply(3, ScoreReason.DECLARED_OUTCOME_WON_WITH_RALLY, 4);
+        score.apply(4, ScoreReason.DECLARED_OUTCOME_WON, 3);
+
+        var fivePlayers = FactionObjectiveEvaluator.evaluate(score, 4, 5, RULES);
+        var fourPlayers = FactionObjectiveEvaluator.evaluate(score, 4, 4, RULES);
+
+        assertThat(fivePlayers.objectiveMet()).isTrue();
+        assertThat(fivePlayers.progressCount()).isEqualTo(3);
+        assertThat(fourPlayers.objectiveMet()).isFalse();
+        assertThat(fourPlayers.progressCount()).isEqualTo(2);
+    }
+
+    @Test
+    @DisplayName("a missed Thread is not a step toward the Weaver objective")
+    void weaver_missedLink_doesNotAdvanceTheChain() {
+        var score = score(Faction.WEAVERS);
+        score.apply(1, ScoreReason.CHAIN_LINK_ADDED, 2);
+        score.apply(2, ScoreReason.CHAIN_LINK_MISSED, -1);
+
+        var progress = FactionObjectiveEvaluator.evaluate(score, 2, 4, RULES);
+
+        assertThat(progress.progressCount()).isEqualTo(1);
+        assertThat(progress.objectiveMet()).isFalse();
     }
 
     @Test
@@ -154,7 +204,7 @@ class FactionObjectiveEvaluatorTest {
             score.apply(era, ScoreReason.ANNIHILATED_OUTCOME, 3);
         }
 
-        assertThat(FactionObjectiveEvaluator.evaluate(score, 3, RULES).objectiveMet())
+        assertThat(FactionObjectiveEvaluator.evaluate(score, 3, 4, RULES).objectiveMet())
                 .isFalse();
     }
 
@@ -169,7 +219,7 @@ class FactionObjectiveEvaluatorTest {
         score.apply(3, ScoreReason.EVENT_RESOLVED_DIFFERENTLY_THAN_WRITTEN, -2);
         score.apply(4, ScoreReason.FULFILLMENT_SUCCEEDED, 8);
 
-        var progress = FactionObjectiveEvaluator.evaluate(score, 4, RULES);
+        var progress = FactionObjectiveEvaluator.evaluate(score, 4, 4, RULES);
 
         assertThat(progress.progressCount()).isEqualTo(5);
         assertThat(progress.objectiveMet()).isTrue();
@@ -184,7 +234,7 @@ class FactionObjectiveEvaluatorTest {
         score.apply(2, ScoreReason.EVENT_RESOLVED_AS_WRITTEN, 4);
         score.apply(3, ScoreReason.EVENT_RESOLVED_AS_WRITTEN, 4);
 
-        var progress = FactionObjectiveEvaluator.evaluate(score, 3, RULES);
+        var progress = FactionObjectiveEvaluator.evaluate(score, 3, 4, RULES);
 
         assertThat(progress.objectiveMet()).isTrue();
         assertThat(progress.progressCount()).isEqualTo(4);
@@ -200,7 +250,7 @@ class FactionObjectiveEvaluatorTest {
         score.apply(2, ScoreReason.FULFILLMENT_SUCCEEDED, 8);
         score.apply(3, ScoreReason.FULFILLMENT_SUCCEEDED, 8);
 
-        var progress = FactionObjectiveEvaluator.evaluate(score, 3, RULES);
+        var progress = FactionObjectiveEvaluator.evaluate(score, 3, 4, RULES);
 
         assertThat(progress.objectiveMet()).isFalse();
         assertThat(progress.progressCount()).isEqualTo(3);
@@ -215,7 +265,7 @@ class FactionObjectiveEvaluatorTest {
         score.apply(2, ScoreReason.MIMIC_CONTRIBUTED_TO_WIN, 2);
         score.apply(3, ScoreReason.SECRET_OUTCOME_WON, 4);
 
-        var progress = FactionObjectiveEvaluator.evaluate(score, 3, RULES);
+        var progress = FactionObjectiveEvaluator.evaluate(score, 3, 4, RULES);
 
         assertThat(progress.progressCount()).isEqualTo(3);
         assertThat(progress.objectiveMet()).isTrue();
@@ -226,7 +276,7 @@ class FactionObjectiveEvaluatorTest {
     void revisionist_noDeclaration_noProgress() {
         var score = score(Faction.REVISIONISTS);
 
-        var progress = FactionObjectiveEvaluator.evaluate(score, 1, RULES);
+        var progress = FactionObjectiveEvaluator.evaluate(score, 1, 4, RULES);
 
         assertThat(progress.progressCount()).isZero();
         assertThat(progress.objectiveMet()).isFalse();
@@ -239,7 +289,7 @@ class FactionObjectiveEvaluatorTest {
         score.apply(1, ScoreReason.MIMIC_CONTRIBUTED_TO_WIN, 2);
         score.apply(2, ScoreReason.MIMIC_CONTRIBUTED_TO_WIN, 2);
 
-        var progress = FactionObjectiveEvaluator.evaluate(score, 2, RULES);
+        var progress = FactionObjectiveEvaluator.evaluate(score, 2, 4, RULES);
 
         assertThat(progress.progressCount()).isZero();
         assertThat(progress.objectiveMet()).isFalse();
@@ -252,7 +302,7 @@ class FactionObjectiveEvaluatorTest {
         score.apply(1, ScoreReason.SECRET_OUTCOME_WON, 4);
         score.apply(2, ScoreReason.SECRET_OUTCOME_MISSED, -1);
 
-        var progress = FactionObjectiveEvaluator.evaluate(score, 2, RULES);
+        var progress = FactionObjectiveEvaluator.evaluate(score, 2, 4, RULES);
 
         assertThat(progress.progressCount()).isEqualTo(1);
         assertThat(progress.objectiveMet()).isFalse();
@@ -266,7 +316,7 @@ class FactionObjectiveEvaluatorTest {
         score.apply(2, ScoreReason.CHAIN_LINK_ADDED, 2);
         score.apply(3, ScoreReason.CHAIN_COMPLETED, 10);
 
-        var progress = FactionObjectiveEvaluator.evaluate(score, 3, RULES);
+        var progress = FactionObjectiveEvaluator.evaluate(score, 3, 4, RULES);
 
         assertThat(progress.objectiveMet()).isTrue();
         assertThat(progress.progressCount()).isEqualTo(3);
@@ -280,7 +330,7 @@ class FactionObjectiveEvaluatorTest {
         score.apply(1, ScoreReason.CHAIN_LINK_ADDED, 2);
         score.apply(2, ScoreReason.CHAIN_LINK_ADDED, 2);
 
-        var progress = FactionObjectiveEvaluator.evaluate(score, 2, RULES);
+        var progress = FactionObjectiveEvaluator.evaluate(score, 2, 4, RULES);
 
         assertThat(progress.objectiveMet()).isFalse();
         assertThat(progress.progressCount()).isEqualTo(2);
@@ -291,7 +341,7 @@ class FactionObjectiveEvaluatorTest {
     void weaver_noLinks_noProgress() {
         var score = score(Faction.WEAVERS);
 
-        var progress = FactionObjectiveEvaluator.evaluate(score, 1, RULES);
+        var progress = FactionObjectiveEvaluator.evaluate(score, 1, 4, RULES);
 
         assertThat(progress.objectiveMet()).isFalse();
         assertThat(progress.progressCount()).isZero();
@@ -306,7 +356,7 @@ class FactionObjectiveEvaluatorTest {
         score.apply(3, ScoreReason.CHAIN_BROKEN, -3);
         score.apply(4, ScoreReason.CHAIN_LINK_ADDED, 2);
 
-        var progress = FactionObjectiveEvaluator.evaluate(score, 4, RULES);
+        var progress = FactionObjectiveEvaluator.evaluate(score, 4, 4, RULES);
 
         assertThat(progress.objectiveMet()).isFalse();
         assertThat(progress.progressCount()).isEqualTo(1);
@@ -322,7 +372,7 @@ class FactionObjectiveEvaluatorTest {
         score.apply(2, ScoreReason.CHAIN_LINK_ADDED, 2);
         score.apply(5, ScoreReason.CHAIN_LINK_ADDED, 2);
 
-        var progress = FactionObjectiveEvaluator.evaluate(score, 5, RULES);
+        var progress = FactionObjectiveEvaluator.evaluate(score, 5, 4, RULES);
 
         assertThat(progress.progressCount()).isEqualTo(2);
     }
@@ -334,7 +384,7 @@ class FactionObjectiveEvaluatorTest {
         score.apply(1, ScoreReason.CHAIN_LINK_ADDED, 2);
         score.apply(2, ScoreReason.CHAIN_BROKEN, -3);
 
-        var progress = FactionObjectiveEvaluator.evaluate(score, 2, RULES);
+        var progress = FactionObjectiveEvaluator.evaluate(score, 2, 4, RULES);
 
         assertThat(progress.progressCount()).isZero();
     }
@@ -347,7 +397,7 @@ class FactionObjectiveEvaluatorTest {
         score.apply(2, ScoreReason.DECLARED_OUTCOME_WON_WITH_RALLY, 6);
         score.apply(3, ScoreReason.DECLARED_OUTCOME_WON, 5);
 
-        var progress = FactionObjectiveEvaluator.evaluate(score, 3, RULES);
+        var progress = FactionObjectiveEvaluator.evaluate(score, 3, 4, RULES);
 
         assertThat(progress.progressCount()).isEqualTo(3);
         assertThat(progress.objectiveMet()).isTrue();
@@ -361,7 +411,7 @@ class FactionObjectiveEvaluatorTest {
         score.apply(2, ScoreReason.DECLARED_OUTCOME_WON, 5);
         score.apply(3, ScoreReason.DECLARED_OUTCOME_WON, 5);
 
-        var progress = FactionObjectiveEvaluator.evaluate(score, 3, RULES);
+        var progress = FactionObjectiveEvaluator.evaluate(score, 3, 4, RULES);
 
         assertThat(progress.objectiveMet()).isTrue();
         assertThat(score.totalScore()).isEqualTo(16);
@@ -376,7 +426,7 @@ class FactionObjectiveEvaluatorTest {
         score.apply(3, ScoreReason.DECLARED_OUTCOME_WON, 5);
         score.apply(5, ScoreReason.EXPOSE_SIGNATURE_REVEALED, 2);
 
-        assertThat(FactionObjectiveEvaluator.evaluate(score, 5, RULES).objectiveMet())
+        assertThat(FactionObjectiveEvaluator.evaluate(score, 5, 4, RULES).objectiveMet())
                 .isFalse();
     }
 
@@ -388,7 +438,7 @@ class FactionObjectiveEvaluatorTest {
         score.apply(2, ScoreReason.DECLARED_OUTCOME_WON, 5);
         score.apply(3, ScoreReason.DECLARED_OUTCOME_WON_WITH_RALLY, 6);
 
-        assertThat(FactionObjectiveEvaluator.evaluate(score, 3, RULES).objectiveMet())
+        assertThat(FactionObjectiveEvaluator.evaluate(score, 3, 4, RULES).objectiveMet())
                 .isTrue();
     }
 
@@ -398,13 +448,13 @@ class FactionObjectiveEvaluatorTest {
         score.apply(1, ScoreReason.DECLARED_OUTCOME_WON_WITH_RALLY, 6);
         score.apply(2, ScoreReason.DECLARED_OUTCOME_WON, 5);
 
-        assertThat(FactionObjectiveEvaluator.evaluate(score, 3, RULES).progressCount())
+        assertThat(FactionObjectiveEvaluator.evaluate(score, 3, 4, RULES).progressCount())
                 .isZero();
 
         score.apply(4, ScoreReason.DECLARED_OUTCOME_WON_WITH_RALLY, 6);
-        assertThat(FactionObjectiveEvaluator.evaluate(score, 4, RULES).progressCount())
+        assertThat(FactionObjectiveEvaluator.evaluate(score, 4, 4, RULES).progressCount())
                 .isEqualTo(1);
-        assertThat(FactionObjectiveEvaluator.evaluate(score, 5, RULES).progressCount())
+        assertThat(FactionObjectiveEvaluator.evaluate(score, 5, 4, RULES).progressCount())
                 .isZero();
     }
 

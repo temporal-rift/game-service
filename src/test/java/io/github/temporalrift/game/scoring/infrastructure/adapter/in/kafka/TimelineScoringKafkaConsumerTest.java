@@ -16,6 +16,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
@@ -354,6 +356,51 @@ class TimelineScoringKafkaConsumerTest {
         consumer.handle(message);
 
         then(contextRepository).should().recordChainFact(GAME_ID, playerId, chainId, ScoreReason.CHAIN_BROKEN, 3);
+    }
+
+    @Test
+    @DisplayName("ChainLinkInvalidated — a link whose event resolved differently records a miss for its Weaver")
+    void handle_chainLinkInvalidated_resolvedDifferently_recordsMiss() {
+        var playerId = UUID.randomUUID();
+        var chainId = UUID.randomUUID();
+        var message = message("ChainLinkInvalidated", json(invalidated(chainId, playerId, "RESOLVED_DIFFERENTLY")));
+        givenClaim(message, true);
+
+        consumer.handle(message);
+
+        then(contextRepository).should().recordChainFact(GAME_ID, playerId, chainId, ScoreReason.CHAIN_LINK_MISSED, 3);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"NO_WINNER", "CHAIN_CONFLICT_CLEARED", "ANNIHILATE_ABSORBED", "GAME_ENDED"})
+    @DisplayName("ChainLinkInvalidated — a clear that is not a miss scores nothing")
+    void handle_chainLinkInvalidated_otherCauses_recordNothing(String cause) {
+        var message = message("ChainLinkInvalidated", json(invalidated(UUID.randomUUID(), UUID.randomUUID(), cause)));
+        givenClaim(message, true);
+
+        consumer.handle(message);
+
+        then(contextRepository).shouldHaveNoInteractions();
+    }
+
+    private static Map<String, Object> invalidated(UUID chainId, UUID playerId, String cause) {
+        return Map.of(
+                "gameId",
+                GAME_ID,
+                "eraNumber",
+                3,
+                "chainId",
+                chainId,
+                "playerId",
+                playerId,
+                "invalidatedEventId",
+                UUID.randomUUID(),
+                "invalidatedOutcomeId",
+                UUID.randomUUID(),
+                "chainLength",
+                1,
+                "cause",
+                cause);
     }
 
     @Test
