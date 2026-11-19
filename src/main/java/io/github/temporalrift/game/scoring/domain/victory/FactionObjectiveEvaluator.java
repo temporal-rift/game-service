@@ -2,6 +2,7 @@ package io.github.temporalrift.game.scoring.domain.victory;
 
 import java.util.HashSet;
 import java.util.Objects;
+import java.util.Set;
 
 import io.github.temporalrift.game.scoring.domain.playerscore.PlayerScore;
 import io.github.temporalrift.game.scoring.domain.playerscore.ScoreEntry;
@@ -21,8 +22,8 @@ public final class FactionObjectiveEvaluator {
     public record Progress(int progressCount, int threshold, boolean objectiveMet) {}
 
     /** Ordinary evaluation, at an era boundary before the final era. */
-    public static Progress evaluate(PlayerScore score, int eraNumber, VictoryRulesPort rules) {
-        return evaluate(score, eraNumber, false, rules);
+    public static Progress evaluate(PlayerScore score, int eraNumber, int playerCount, VictoryRulesPort rules) {
+        return evaluate(score, eraNumber, false, playerCount, rules);
     }
 
     /**
@@ -30,8 +31,9 @@ public final class FactionObjectiveEvaluator {
      * steps (never fewer than one), provided the player advanced the objective in that era itself, so the final era
      * stays the decisive moment instead of rewarding progress already made.
      */
-    public static Progress evaluate(PlayerScore score, int eraNumber, boolean finalEra, VictoryRulesPort rules) {
-        var ordinary = ordinaryProgress(score, eraNumber, rules);
+    public static Progress evaluate(
+            PlayerScore score, int eraNumber, boolean finalEra, int playerCount, VictoryRulesPort rules) {
+        var ordinary = ordinaryProgress(score, eraNumber, playerCount, rules);
         int discount = rules.finalEraObjectiveDiscount();
         // The discount belongs only to a player who advanced in the final era; reporting it to anyone else would
         // overstate their progress, including in a special ending's tiebreak.
@@ -42,16 +44,21 @@ public final class FactionObjectiveEvaluator {
         return new Progress(ordinary.progressCount(), threshold, ordinary.progressCount() >= threshold);
     }
 
-    private static Progress ordinaryProgress(PlayerScore score, int eraNumber, VictoryRulesPort rules) {
+    private static Progress ordinaryProgress(
+            PlayerScore score, int eraNumber, int playerCount, VictoryRulesPort rules) {
         Objects.requireNonNull(score, "score must not be null");
         Objects.requireNonNull(rules, "rules must not be null");
         return switch (score.faction()) {
-            case ERASERS -> progress(eraserAnnihilations(score), rules.eraserAnnihilations());
+            case ERASERS -> progress(eraserAnnihilations(score), rules.eraserAnnihilations(playerCount));
             case PROPHETS -> progress(prophetWrittenResolutions(score), rules.prophetWrittenResolutions());
             case REVISIONISTS -> progress(revisionistSuccessfulEras(score), rules.revisionistSuccessfulEras());
             case WEAVERS -> weaverProgress(score, rules.weaverChainLength());
             case ACTIVISTS ->
-                progress(activistConsecutiveSuccesses(score, eraNumber), rules.activistConsecutiveDeclarations());
+                progress(
+                        rules.activistRequiresConsecutiveEras(playerCount)
+                                ? activistConsecutiveSuccesses(score, eraNumber)
+                                : activistSuccessfulEras(score),
+                        rules.activistConsecutiveDeclarations());
         };
     }
 
@@ -135,13 +142,23 @@ public final class FactionObjectiveEvaluator {
         return reason == ScoreReason.DECLARED_OUTCOME_WON || reason == ScoreReason.DECLARED_OUTCOME_WON_WITH_RALLY;
     }
 
-    private static int activistConsecutiveSuccesses(PlayerScore score, int eraNumber) {
+    private static Set<Integer> activistSuccessEras(PlayerScore score) {
         var successEras = new HashSet<Integer>();
         for (var entry : score.history()) {
             if (isActivistSuccess(entry.reason())) {
                 successEras.add(entry.eraNumber());
             }
         }
+        return successEras;
+    }
+
+    // Where the table size drops the consecutive rule, any successful era counts toward the objective.
+    private static int activistSuccessfulEras(PlayerScore score) {
+        return activistSuccessEras(score).size();
+    }
+
+    private static int activistConsecutiveSuccesses(PlayerScore score, int eraNumber) {
+        var successEras = activistSuccessEras(score);
         int streak = 0;
         for (int era = eraNumber; successEras.contains(era); era--) {
             streak++;

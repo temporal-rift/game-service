@@ -41,6 +41,9 @@ public record ScoreRulesProperties(
     /** Applied when served rules predate {@code ANNIHILATION_WASTED}: the reserve dial ships off. */
     static final int DEFAULT_ANNIHILATION_WASTED_DELTA = 0;
 
+    /** Applied when served rules predate {@code CHAIN_LINK_MISSED}. */
+    static final int DEFAULT_CHAIN_LINK_MISSED_DELTA = -1;
+
     public ScoreRulesProperties {
         Objects.requireNonNull(scoreDeltas, "game.rules.scoring.score-deltas must not be null");
         var normalized = new EnumMap<ScoreReason, Integer>(ScoreReason.class);
@@ -62,6 +65,7 @@ public record ScoreRulesProperties(
         normalized.putIfAbsent(ScoreReason.PARADOX_STABILIZED, DEFAULT_PARADOX_STABILIZED_DELTA);
         normalized.putIfAbsent(ScoreReason.PARADOX_DETONATED, DEFAULT_PARADOX_DETONATED_DELTA);
         normalized.putIfAbsent(ScoreReason.ANNIHILATION_WASTED, DEFAULT_ANNIHILATION_WASTED_DELTA);
+        normalized.putIfAbsent(ScoreReason.CHAIN_LINK_MISSED, DEFAULT_CHAIN_LINK_MISSED_DELTA);
         requireAllReasons(normalized);
         scoreDeltas = Map.copyOf(normalized);
     }

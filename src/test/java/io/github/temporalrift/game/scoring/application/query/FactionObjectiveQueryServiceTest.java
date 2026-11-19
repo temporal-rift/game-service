@@ -42,7 +42,7 @@ class FactionObjectiveQueryServiceTest {
         var prophet = new PlayerScore(UUID.randomUUID(), gameId, UUID.randomUUID(), Faction.PROPHETS);
         prophet.apply(1, ScoreReason.EVENT_RESOLVED_AS_WRITTEN, 4);
         given(playerScoreRepository.findAllByGameId(gameId)).willReturn(List.of(eraser, prophet));
-        given(victoryRulesPort.eraserAnnihilations()).willReturn(4);
+        given(victoryRulesPort.eraserAnnihilations(2)).willReturn(4);
         given(victoryRulesPort.prophetWrittenResolutions()).willReturn(5);
         given(gameRules.maxEras()).willReturn(5);
 

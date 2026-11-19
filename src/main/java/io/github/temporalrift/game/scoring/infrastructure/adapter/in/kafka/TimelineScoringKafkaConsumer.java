@@ -4,6 +4,7 @@ import static io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelCon
 import static io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.CHAIN_BROKEN_EVENT_TYPE;
 import static io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.CHAIN_COMPLETED_EVENT_TYPE;
 import static io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.CHAIN_LINK_ADDED_EVENT_TYPE;
+import static io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.CHAIN_LINK_INVALIDATED_EVENT_TYPE;
 import static io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.CORRUPT_INVERSION_CONFIRMED_EVENT_TYPE;
 import static io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.ERA_RESOLUTION_COMPLETED_EVENT_TYPE;
 import static io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.OUTCOME_APPLIED_EVENT_TYPE;
@@ -25,6 +26,7 @@ import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.A
 import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.ChainBrokenPayload;
 import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.ChainCompletedPayload;
 import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.ChainLinkAddedPayload;
+import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.ChainLinkInvalidatedPayload;
 import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.CorruptInversionConfirmedPayload;
 import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.EraResolutionCompletedPayload;
 import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.OutcomeAppliedPayload;
@@ -49,6 +51,7 @@ class TimelineScoringKafkaConsumer {
             CHAIN_LINK_ADDED_EVENT_TYPE,
             CHAIN_COMPLETED_EVENT_TYPE,
             CHAIN_BROKEN_EVENT_TYPE,
+            CHAIN_LINK_INVALIDATED_EVENT_TYPE,
             ERA_RESOLUTION_COMPLETED_EVENT_TYPE,
             PARADOX_CASCADED_EVENT_TYPE,
             CORRUPT_INVERSION_CONFIRMED_EVENT_TYPE,
@@ -110,6 +113,7 @@ class TimelineScoringKafkaConsumer {
             case CHAIN_LINK_ADDED_EVENT_TYPE -> handleChainLinkAdded(message);
             case CHAIN_COMPLETED_EVENT_TYPE -> handleChainCompleted(message);
             case CHAIN_BROKEN_EVENT_TYPE -> handleChainBroken(message);
+            case CHAIN_LINK_INVALIDATED_EVENT_TYPE -> handleChainLinkInvalidated(message);
             case ERA_RESOLUTION_COMPLETED_EVENT_TYPE -> handleEraResolutionCompleted(message);
             case PARADOX_CASCADED_EVENT_TYPE -> handleParadoxCascaded(message);
             case CORRUPT_INVERSION_CONFIRMED_EVENT_TYPE -> handleCorruptInversionConfirmed(message);
@@ -144,6 +148,18 @@ class TimelineScoringKafkaConsumer {
         var event = wireMapper.fromWire(read(message, ChainBrokenPayload.class));
         contextRepository.recordChainFact(
                 event.gameId(), event.playerId(), event.chainId(), ScoreReason.CHAIN_BROKEN, event.eraNumber());
+    }
+
+    private void handleChainLinkInvalidated(Message<Object> message) {
+        var event = wireMapper.fromWire(read(message, ChainLinkInvalidatedPayload.class));
+        if (event.isMiss()) {
+            contextRepository.recordChainFact(
+                    event.gameId(),
+                    event.playerId(),
+                    event.chainId(),
+                    ScoreReason.CHAIN_LINK_MISSED,
+                    event.eraNumber());
+        }
     }
 
     private void handleParadoxCascaded(Message<Object> message) {

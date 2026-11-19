@@ -32,9 +32,12 @@ public class FactionObjectiveQueryService implements FactionObjectiveQuery {
     public List<ObjectiveProgress> evaluate(UUID gameId, int eraNumber) {
         Objects.requireNonNull(gameId, "gameId must not be null");
         boolean finalEra = eraNumber == gameRules.maxEras();
-        return playerScoreRepository.findAllByGameId(gameId).stream()
+        var scores = playerScoreRepository.findAllByGameId(gameId);
+        int playerCount = scores.size();
+        return scores.stream()
                 .map(score -> {
-                    var progress = FactionObjectiveEvaluator.evaluate(score, eraNumber, finalEra, victoryRulesPort);
+                    var progress = FactionObjectiveEvaluator.evaluate(
+                            score, eraNumber, finalEra, playerCount, victoryRulesPort);
                     return new ObjectiveProgress(
                             score.playerId(),
                             score.faction(),
