@@ -53,7 +53,7 @@ class VictoryRulesPropertiesTest {
         var properties = bind(new MockPropertySource()
                 .withProperty(CHAIN_LENGTH, "4")
                 .withProperty("game.rules.victory.eraser-annihilations-by-player-count[5]", "3")
-                .withProperty("game.rules.victory.activist-non-consecutive-player-counts[0]", "5"));
+                .withProperty("game.rules.victory.activist-consecutive-eras-by-player-count[5]", "false"));
 
         assertThat(properties.eraserAnnihilations(5)).isEqualTo(3);
         assertThat(properties.eraserAnnihilations(4)).isEqualTo(4);
