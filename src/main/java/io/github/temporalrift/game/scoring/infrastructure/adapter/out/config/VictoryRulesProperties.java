@@ -1,6 +1,5 @@
 package io.github.temporalrift.game.scoring.infrastructure.adapter.out.config;
 
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
@@ -24,8 +23,8 @@ public record VictoryRulesProperties(
         @DefaultValue("1") @Min(0) int finalEraObjectiveDiscount,
         // Table sizes whose Eraser objective differs from eraserAnnihilations, keyed by player count.
         @DefaultValue Map<Integer, Integer> eraserAnnihilationsByPlayerCount,
-        // Table sizes at which the Activist's successful eras need not be consecutive.
-        @DefaultValue List<Integer> activistNonConsecutivePlayerCounts)
+        // Whether the Activist's successful eras must be consecutive, for the table sizes that differ from the rule.
+        @DefaultValue Map<Integer, Boolean> activistConsecutiveErasByPlayerCount)
         implements VictoryRulesPort {
 
     public VictoryRulesProperties {
@@ -36,7 +35,7 @@ public record VictoryRulesProperties(
                         + playerCount + "] must be at least 1");
             }
         });
-        activistNonConsecutivePlayerCounts = List.copyOf(Objects.requireNonNull(activistNonConsecutivePlayerCounts));
+        activistConsecutiveErasByPlayerCount = Map.copyOf(Objects.requireNonNull(activistConsecutiveErasByPlayerCount));
     }
 
     @Override
@@ -46,6 +45,6 @@ public record VictoryRulesProperties(
 
     @Override
     public boolean activistRequiresConsecutiveEras(int playerCount) {
-        return !activistNonConsecutivePlayerCounts.contains(playerCount);
+        return activistConsecutiveErasByPlayerCount.getOrDefault(playerCount, true);
     }
 }
