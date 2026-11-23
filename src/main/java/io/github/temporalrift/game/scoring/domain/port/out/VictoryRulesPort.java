@@ -5,9 +5,11 @@ public interface VictoryRulesPort {
     /** Consequential leading annihilations an Eraser needs at a table of {@code playerCount} players. */
     int eraserAnnihilations(int playerCount);
 
-    int prophetWrittenResolutions();
+    /** Events a Prophet needs resolved as written at a table of {@code playerCount} players. */
+    int prophetWrittenResolutions(int playerCount);
 
-    int revisionistSuccessfulEras();
+    /** Winning eras a Revisionist needs at a table of {@code playerCount} players. */
+    int revisionistSuccessfulEras(int playerCount);
 
     int weaverChainLength();
 

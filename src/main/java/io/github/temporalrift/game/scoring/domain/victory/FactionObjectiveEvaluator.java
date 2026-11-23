@@ -50,8 +50,9 @@ public final class FactionObjectiveEvaluator {
         Objects.requireNonNull(rules, "rules must not be null");
         return switch (score.faction()) {
             case ERASERS -> progress(eraserAnnihilations(score), rules.eraserAnnihilations(playerCount));
-            case PROPHETS -> progress(prophetWrittenResolutions(score), rules.prophetWrittenResolutions());
-            case REVISIONISTS -> progress(revisionistSuccessfulEras(score), rules.revisionistSuccessfulEras());
+            case PROPHETS -> progress(prophetWrittenResolutions(score), rules.prophetWrittenResolutions(playerCount));
+            case REVISIONISTS ->
+                progress(revisionistSuccessfulEras(score), rules.revisionistSuccessfulEras(playerCount));
             case WEAVERS -> weaverProgress(score, rules.weaverChainLength());
             case ACTIVISTS ->
                 progress(
