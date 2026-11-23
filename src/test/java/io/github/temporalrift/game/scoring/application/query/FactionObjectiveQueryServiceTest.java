@@ -43,7 +43,7 @@ class FactionObjectiveQueryServiceTest {
         prophet.apply(1, ScoreReason.EVENT_RESOLVED_AS_WRITTEN, 4);
         given(playerScoreRepository.findAllByGameId(gameId)).willReturn(List.of(eraser, prophet));
         given(victoryRulesPort.eraserAnnihilations(2)).willReturn(4);
-        given(victoryRulesPort.prophetWrittenResolutions()).willReturn(5);
+        given(victoryRulesPort.prophetWrittenResolutions(2)).willReturn(5);
         given(gameRules.maxEras()).willReturn(5);
 
         var service = new FactionObjectiveQueryService(playerScoreRepository, victoryRulesPort, gameRules);
@@ -69,7 +69,7 @@ class FactionObjectiveQueryServiceTest {
         prophet.apply(2, ScoreReason.EVENT_RESOLVED_AS_WRITTEN, 4);
         prophet.apply(5, ScoreReason.EVENT_RESOLVED_AS_WRITTEN, 4);
         given(playerScoreRepository.findAllByGameId(gameId)).willReturn(List.of(prophet));
-        given(victoryRulesPort.prophetWrittenResolutions()).willReturn(3);
+        given(victoryRulesPort.prophetWrittenResolutions(1)).willReturn(3);
         given(victoryRulesPort.finalEraObjectiveDiscount()).willReturn(1);
         given(gameRules.maxEras()).willReturn(5);
 

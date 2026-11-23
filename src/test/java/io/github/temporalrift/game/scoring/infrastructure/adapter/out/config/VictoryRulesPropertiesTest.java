@@ -48,6 +48,30 @@ class VictoryRulesPropertiesTest {
     }
 
     @Test
+    @DisplayName("Prophet and Revisionist objectives can differ for a listed table size only")
+    void prophetAndRevisionistTableSizeOverrides() {
+        var properties = bind(new MockPropertySource()
+                .withProperty(CHAIN_LENGTH, "4")
+                .withProperty("game.rules.victory.prophet-written-resolutions-by-player-count[5]", "2")
+                .withProperty("game.rules.victory.revisionist-successful-eras-by-player-count[5]", "2"));
+
+        assertThat(properties.prophetWrittenResolutions(5)).isEqualTo(2);
+        assertThat(properties.revisionistSuccessfulEras(5)).isEqualTo(2);
+        assertThat(properties.prophetWrittenResolutions(4)).isEqualTo(3);
+        assertThat(properties.revisionistSuccessfulEras(4)).isEqualTo(3);
+    }
+
+    @Test
+    @DisplayName("a table-size objective below one is rejected")
+    void tableSizeObjectiveBelowOneRejected() {
+        var source = new MockPropertySource()
+                .withProperty(CHAIN_LENGTH, "4")
+                .withProperty("game.rules.victory.prophet-written-resolutions-by-player-count[5]", "0");
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> bind(source)).isInstanceOf(Exception.class);
+    }
+
+    @Test
     @DisplayName("configured table-size overrides apply only to the listed player counts")
     void tableSizeOverrides() {
         var properties = bind(new MockPropertySource()

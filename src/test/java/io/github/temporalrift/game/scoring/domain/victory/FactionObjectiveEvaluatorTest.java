@@ -27,12 +27,12 @@ class FactionObjectiveEvaluatorTest {
         }
 
         @Override
-        public int prophetWrittenResolutions() {
+        public int prophetWrittenResolutions(int playerCount) {
             return 4;
         }
 
         @Override
-        public int revisionistSuccessfulEras() {
+        public int revisionistSuccessfulEras(int playerCount) {
             return 3;
         }
 

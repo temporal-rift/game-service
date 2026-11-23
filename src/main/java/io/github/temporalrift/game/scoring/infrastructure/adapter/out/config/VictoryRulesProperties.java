@@ -24,10 +24,19 @@ public record VictoryRulesProperties(
         // Table sizes whose Eraser objective differs from eraserAnnihilations, keyed by player count.
         @DefaultValue Map<Integer, Integer> eraserAnnihilationsByPlayerCount,
         // Whether the Activist's successful eras must be consecutive, for the table sizes that differ from the rule.
-        @DefaultValue Map<Integer, Boolean> activistConsecutiveErasByPlayerCount)
+        @DefaultValue Map<Integer, Boolean> activistConsecutiveErasByPlayerCount,
+        // Table sizes whose Prophet and Revisionist objectives differ from the values above, keyed by player count.
+        @DefaultValue Map<Integer, Integer> prophetWrittenResolutionsByPlayerCount,
+        @DefaultValue Map<Integer, Integer> revisionistSuccessfulErasByPlayerCount)
         implements VictoryRulesPort {
 
     public VictoryRulesProperties {
+        prophetWrittenResolutionsByPlayerCount = requireSteps(
+                "game.rules.victory.prophet-written-resolutions-by-player-count",
+                prophetWrittenResolutionsByPlayerCount);
+        revisionistSuccessfulErasByPlayerCount = requireSteps(
+                "game.rules.victory.revisionist-successful-eras-by-player-count",
+                revisionistSuccessfulErasByPlayerCount);
         eraserAnnihilationsByPlayerCount = Map.copyOf(Objects.requireNonNull(eraserAnnihilationsByPlayerCount));
         eraserAnnihilationsByPlayerCount.forEach((playerCount, steps) -> {
             if (steps == null || steps < 1) {
@@ -41,6 +50,26 @@ public record VictoryRulesProperties(
     @Override
     public int eraserAnnihilations(int playerCount) {
         return eraserAnnihilationsByPlayerCount.getOrDefault(playerCount, eraserAnnihilations);
+    }
+
+    @Override
+    public int prophetWrittenResolutions(int playerCount) {
+        return prophetWrittenResolutionsByPlayerCount.getOrDefault(playerCount, prophetWrittenResolutions);
+    }
+
+    @Override
+    public int revisionistSuccessfulEras(int playerCount) {
+        return revisionistSuccessfulErasByPlayerCount.getOrDefault(playerCount, revisionistSuccessfulEras);
+    }
+
+    private static Map<Integer, Integer> requireSteps(String property, Map<Integer, Integer> byPlayerCount) {
+        Objects.requireNonNull(byPlayerCount);
+        byPlayerCount.forEach((playerCount, steps) -> {
+            if (steps == null || steps < 1) {
+                throw new IllegalArgumentException(property + "[" + playerCount + "] must be at least 1");
+            }
+        });
+        return Map.copyOf(byPlayerCount);
     }
 
     @Override
