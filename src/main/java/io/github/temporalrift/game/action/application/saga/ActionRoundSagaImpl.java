@@ -247,14 +247,15 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
             ActionRound round, UUID gameId, int eraNumber, int roundNumber, List<UUID> skippedPlayerIds) {
         // Summary publication is intentionally separate from aggregate domain events because it is a
         // projection-style public view of the round, not part of the aggregate's invariant changes.
-        var summaries = new ArrayList<ActionSummary>();
-        for (var action : round.submittedActions()) {
-            summaries.add(
-                    new ActionSummary(action.playerId(), action.publicCategory().orElse(null), action.family(), false));
-        }
-        for (var skippedId : skippedPlayerIds) {
-            summaries.add(new ActionSummary(skippedId, null, null, true));
-        }
+        var summaries = java.util.stream.Stream.concat(
+                        round.submittedActions().stream()
+                                .map(action -> new ActionSummary(
+                                        action.playerId(),
+                                        action.publicCategory().orElse(null),
+                                        action.family(),
+                                        false)),
+                        skippedPlayerIds.stream().map(skippedId -> new ActionSummary(skippedId, null, null, true)))
+                .toList();
         actionEventPublisher.publish(DomainEventEnvelope.create(
                 round.id(),
                 ActionRound.AGGREGATE_TYPE,
