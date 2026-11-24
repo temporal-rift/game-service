@@ -398,15 +398,15 @@ public sealed interface SubmittedAction permits SubmittedAction.CardAction, Subm
         }
 
         /**
-         * Rejects an Annihilate submitted before its configured earliest round or a Rewrite submitted after its
-         * configured latest round. Command handlers call this ahead of any budget claim so a rejected submission
-         * spends nothing.
+         * Rejects an Annihilate submitted before its configured earliest round or a faction bet (Thread, Reweave,
+         * Rewrite, Fulfillment) submitted after the configured faction-bet window. Command handlers call this ahead
+         * of any budget claim so a rejected submission spends nothing.
          */
         public void validateRoundWindow(int eraNumber, int roundNumber, SpecialActionRoundWindows roundWindows) {
             if (SpecialActionRoundRules.annihilateBeforeEarliestRound(
                             specialAction, roundNumber, roundWindows.annihilateEarliestRound())
-                    || SpecialActionRoundRules.rewriteAfterLatestRound(
-                            specialAction, roundNumber, roundWindows.rewriteLatestRound())) {
+                    || SpecialActionRoundRules.factionBetAfterLatestRound(
+                            specialAction, roundNumber, roundWindows.factionBetLatestRound())) {
                 throw new SpecialActionNotEligibleForRoundException(specialAction, eraNumber, roundNumber);
             }
         }

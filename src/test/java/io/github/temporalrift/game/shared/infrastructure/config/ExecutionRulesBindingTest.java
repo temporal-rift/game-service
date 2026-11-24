@@ -113,23 +113,24 @@ class ExecutionRulesBindingTest {
 
     @ParameterizedTest
     @ValueSource(ints = {1, 2, 3})
-    @DisplayName("a rewrite-latest-round within 1 to 3 binds to the value the context carries")
-    void bind_rewriteLatestRoundInRange_yieldsTheValue(int round) {
-        var rules = session.bind(bindable(ExecutionRulesFixture.rulesWith("game.rules.rewrite-latest-round", round)));
+    @DisplayName("a faction-bet-latest-round within 1 to 3 binds to the value the context carries")
+    void bind_factionBetLatestRoundInRange_yieldsTheValue(int round) {
+        var rules =
+                session.bind(bindable(ExecutionRulesFixture.rulesWith("game.rules.faction-bet-latest-round", round)));
 
-        assertThat(rules.rewriteLatestRound()).isEqualTo(round);
+        assertThat(rules.factionBetLatestRound()).isEqualTo(round);
     }
 
     @ParameterizedTest
     @ValueSource(ints = {0, 4})
-    @DisplayName("a rewrite-latest-round outside 1 to 3 is rejected by its key")
-    void bind_rewriteLatestRoundOutOfRange_namesTheKey(int round) {
-        var properties = bindable(ExecutionRulesFixture.rulesWith("game.rules.rewrite-latest-round", round));
+    @DisplayName("a faction-bet-latest-round outside 1 to 3 is rejected by its key")
+    void bind_factionBetLatestRoundOutOfRange_namesTheKey(int round) {
+        var properties = bindable(ExecutionRulesFixture.rulesWith("game.rules.faction-bet-latest-round", round));
 
         assertThatThrownBy(() -> session.bind(properties))
                 .isInstanceOf(InvalidExecutionRulesException.class)
                 .extracting(failure -> ((InvalidExecutionRulesException) failure).key())
-                .isEqualTo("game.rules.rewrite-latest-round");
+                .isEqualTo("game.rules.faction-bet-latest-round");
     }
 
     @Test

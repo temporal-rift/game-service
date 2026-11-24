@@ -551,7 +551,7 @@ class UpdateScoresCommandHandlerTest {
         }
 
         @Override
-        public int rewriteLatestRound() {
+        public int factionBetLatestRound() {
             throw new UnsupportedOperationException("not used by UpdateScoresCommandHandler");
         }
 

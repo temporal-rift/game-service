@@ -155,6 +155,30 @@ class SpecialActionAvailabilityPolicyTest {
     }
 
     @Test
+    @DisplayName("Thread, Reweave and Fulfillment are unavailable after the faction-bet window; Foresight stays")
+    void otherFactionBetsAfterWindow() {
+        assertThat(reasons(SpecialActionAvailabilityPolicy.evaluate(Faction.WEAVERS, rules(1, 2), fresh())))
+                .isEmpty();
+        assertThat(reasons(SpecialActionAvailabilityPolicy.evaluate(Faction.WEAVERS, rules(1, 3), fresh())))
+                .containsEntry(SpecialAction.THREAD, SpecialActionUnavailableReason.NOT_ELIGIBLE_THIS_ROUND)
+                .containsEntry(SpecialAction.REWEAVE, SpecialActionUnavailableReason.NOT_ELIGIBLE_THIS_ROUND);
+        assertThat(reasons(SpecialActionAvailabilityPolicy.evaluate(Faction.PROPHETS, rules(1, 3), fresh())))
+                .containsOnly(
+                        Map.entry(SpecialAction.FULFILLMENT, SpecialActionUnavailableReason.NOT_ELIGIBLE_THIS_ROUND));
+    }
+
+    @Test
+    @DisplayName("a faction-bet window of 3 keeps every faction bet available in Round 3")
+    void factionBetsInRoundThreeWhenWindowIsThree() {
+        var windows = new SpecialActionRoundWindows(2, 3);
+
+        assertThat(reasons(SpecialActionAvailabilityPolicy.evaluate(Faction.WEAVERS, rules(1, 3, windows), fresh())))
+                .isEmpty();
+        assertThat(reasons(SpecialActionAvailabilityPolicy.evaluate(Faction.PROPHETS, rules(1, 3, windows), fresh())))
+                .isEmpty();
+    }
+
+    @Test
     @DisplayName("a latest Rewrite round of 3 keeps Rewrite available in Round 3")
     void rewriteInRoundThreeWhenLatestRoundIsThree() {
         var result = SpecialActionAvailabilityPolicy.evaluate(

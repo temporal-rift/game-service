@@ -61,7 +61,7 @@ public final class ExecutionRulesFixture {
                 List.of("ANNIHILATE", "SEAL", "CORRUPT", "MIMIC", "REWEAVE", "REWRITE"));
         rules.put("game.rules.seal-max-uses-per-game", 2);
         rules.put("game.rules.annihilate-earliest-round", 2);
-        rules.put("game.rules.rewrite-latest-round", 2);
+        rules.put("game.rules.faction-bet-latest-round", 2);
         rules.put("game.rules.hand-deal-forced-types", List.of());
         rules.put("game.rules.probability.floor", 0);
         rules.put("game.rules.probability.ceiling", 90);

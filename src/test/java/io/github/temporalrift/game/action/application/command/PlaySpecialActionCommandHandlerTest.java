@@ -350,6 +350,7 @@ class PlaySpecialActionCommandHandlerTest {
                 .willReturn(Optional.of(round));
         given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(playerState));
         given(playerState.faction()).willReturn(Faction.WEAVERS);
+        org.mockito.Mockito.lenient().when(gameRules.factionBetLatestRound()).thenReturn(2);
         given(playerState.isJammed()).willReturn(false);
         given(gameRules.onceEraBudgetedSpecials()).willReturn(Set.of());
         given(round.submit(any())).willReturn(false);
@@ -386,6 +387,7 @@ class PlaySpecialActionCommandHandlerTest {
                 .willReturn(Optional.of(round));
         given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(playerState));
         given(playerState.faction()).willReturn(Faction.WEAVERS);
+        org.mockito.Mockito.lenient().when(gameRules.factionBetLatestRound()).thenReturn(2);
         given(playerState.isJammed()).willReturn(false);
         given(gameRules.onceEraBudgetedSpecials()).willReturn(Set.of());
 
@@ -414,6 +416,7 @@ class PlaySpecialActionCommandHandlerTest {
                 .willReturn(Optional.of(round));
         given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(playerState));
         given(playerState.faction()).willReturn(Faction.WEAVERS);
+        org.mockito.Mockito.lenient().when(gameRules.factionBetLatestRound()).thenReturn(2);
         given(playerState.isJammed()).willReturn(false);
         given(gameRules.onceEraBudgetedSpecials()).willReturn(Set.of());
 
@@ -443,6 +446,7 @@ class PlaySpecialActionCommandHandlerTest {
                 .willReturn(Optional.of(round));
         given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(playerState));
         given(playerState.faction()).willReturn(Faction.WEAVERS);
+        org.mockito.Mockito.lenient().when(gameRules.factionBetLatestRound()).thenReturn(2);
         given(playerState.isJammed()).willReturn(false);
         given(gameRules.onceEraBudgetedSpecials()).willReturn(Set.of());
         given(round.submit(any())).willReturn(false);
@@ -479,6 +483,7 @@ class PlaySpecialActionCommandHandlerTest {
                 .willReturn(Optional.of(round));
         given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(playerState));
         given(playerState.faction()).willReturn(Faction.WEAVERS);
+        org.mockito.Mockito.lenient().when(gameRules.factionBetLatestRound()).thenReturn(2);
         given(playerState.isJammed()).willReturn(false);
         given(gameRules.onceEraBudgetedSpecials()).willReturn(Set.of());
 
@@ -510,7 +515,7 @@ class PlaySpecialActionCommandHandlerTest {
             given(playerState.isJammed()).willReturn(false);
             given(gameRules.onceEraBudgetedSpecials()).willReturn(Set.of());
             given(gameRules.maxEras()).willReturn(5);
-            given(gameRules.rewriteLatestRound()).willReturn(2);
+            given(gameRules.factionBetLatestRound()).willReturn(2);
             given(round.submit(any())).willReturn(false);
             given(round.id()).willReturn(UUID.randomUUID());
             given(round.gameId()).willReturn(GAME_ID);
@@ -675,7 +680,7 @@ class PlaySpecialActionCommandHandlerTest {
         given(playerState.faction()).willReturn(Faction.REVISIONISTS);
         given(playerState.isJammed()).willReturn(false);
         given(gameRules.maxEras()).willReturn(5);
-        given(gameRules.rewriteLatestRound()).willReturn(latestRound);
+        given(gameRules.factionBetLatestRound()).willReturn(latestRound);
 
         // when / then
         assertThatExceptionOfType(SpecialActionNotEligibleForRoundException.class)
@@ -684,6 +689,110 @@ class PlaySpecialActionCommandHandlerTest {
         then(round).should(never()).submit(any());
         then(actionRoundRepository).should(never()).save(any());
         then(actionEventPublisher).shouldHaveNoInteractions();
+    }
+
+    @ParameterizedTest
+    @CsvSource({"THREAD,WEAVERS", "REWEAVE,WEAVERS", "FULFILLMENT,PROPHETS"})
+    @DisplayName("handle — a faction bet after the window — rejected without claiming the era budget or submitting")
+    void handleFactionBetAfterWindowRejectedWithoutSpending(SpecialAction special, Faction faction) {
+        // given
+        var command = new SubmitRoundActionUseCase.PlaySpecial(
+                GAME_ID,
+                ERA,
+                3,
+                PLAYER_ID,
+                special,
+                null,
+                null,
+                UUID.randomUUID(),
+                special == SpecialAction.FULFILLMENT ? null : UUID.randomUUID(),
+                null);
+        given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA, 3))
+                .willReturn(Optional.of(round));
+        given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(playerState));
+        given(playerState.faction()).willReturn(faction);
+        given(playerState.isJammed()).willReturn(false);
+        given(gameRules.maxEras()).willReturn(5);
+        given(gameRules.factionBetLatestRound()).willReturn(2);
+
+        // when / then
+        assertThatExceptionOfType(SpecialActionNotEligibleForRoundException.class)
+                .isThrownBy(() -> handler.handle(command));
+        then(specialActionEraUsageRepository).shouldHaveNoInteractions();
+        then(round).should(never()).submit(any());
+        then(actionRoundRepository).should(never()).save(any());
+        then(actionEventPublisher).shouldHaveNoInteractions();
+    }
+
+    @Test
+    @DisplayName("handle — FORESIGHT after the window — accepted, the writing decision belongs to timeline-service")
+    void handleForesightAfterWindowAccepted() {
+        // given
+        var command = new SubmitRoundActionUseCase.PlaySpecial(
+                GAME_ID,
+                ERA,
+                3,
+                PLAYER_ID,
+                SpecialAction.FORESIGHT,
+                null,
+                null,
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                null);
+        given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA, 3))
+                .willReturn(Optional.of(round));
+        given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(playerState));
+        given(playerState.faction()).willReturn(Faction.PROPHETS);
+        given(playerState.isJammed()).willReturn(false);
+        given(gameRules.maxEras()).willReturn(5);
+        given(gameRules.factionBetLatestRound()).willReturn(2);
+        given(gameRules.onceEraBudgetedSpecials()).willReturn(Set.of());
+        given(round.submit(any())).willReturn(false);
+        given(round.id()).willReturn(UUID.randomUUID());
+        given(round.gameId()).willReturn(GAME_ID);
+        given(round.pullEvents()).willReturn(List.of(specialActionPlayedEvent()));
+
+        // when
+        handler.handle(command);
+
+        // then
+        then(round).should().submit(any());
+    }
+
+    @Test
+    @DisplayName("handle — THREAD in round 3 with a window of 3 — accepted")
+    void handleThreadInRoundThreeWithWiderWindowAccepted() {
+        // given
+        var command = new SubmitRoundActionUseCase.PlaySpecial(
+                GAME_ID,
+                ERA,
+                3,
+                PLAYER_ID,
+                SpecialAction.THREAD,
+                null,
+                null,
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                null);
+        given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(GAME_ID, ERA, 3))
+                .willReturn(Optional.of(round));
+        given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(playerState));
+        given(playerState.faction()).willReturn(Faction.WEAVERS);
+        org.mockito.Mockito.lenient().when(gameRules.factionBetLatestRound()).thenReturn(2);
+        given(playerState.isJammed()).willReturn(false);
+        given(gameRules.maxEras()).willReturn(5);
+        given(gameRules.factionBetLatestRound()).willReturn(3);
+        given(gameRules.onceEraBudgetedSpecials()).willReturn(Set.of());
+        given(round.submit(any())).willReturn(false);
+        given(round.id()).willReturn(UUID.randomUUID());
+        given(round.gameId()).willReturn(GAME_ID);
+        given(round.pullEvents()).willReturn(List.of(specialActionPlayedEvent()));
+
+        // when
+        handler.handle(command);
+
+        // then
+        then(round).should().submit(any());
     }
 
     @ParameterizedTest
@@ -708,7 +817,7 @@ class PlaySpecialActionCommandHandlerTest {
         given(playerState.faction()).willReturn(Faction.REVISIONISTS);
         given(playerState.isJammed()).willReturn(false);
         given(gameRules.maxEras()).willReturn(5);
-        given(gameRules.rewriteLatestRound()).willReturn(latestRound);
+        given(gameRules.factionBetLatestRound()).willReturn(latestRound);
         given(gameRules.onceEraBudgetedSpecials()).willReturn(EnumSet.of(SpecialAction.REWRITE));
         given(specialActionEraUsageRepository.findByGameIdAndEraNumberAndPlayerId(GAME_ID, ERA, PLAYER_ID))
                 .willReturn(Optional.empty());
@@ -746,7 +855,7 @@ class PlaySpecialActionCommandHandlerTest {
         given(playerState.faction()).willReturn(Faction.REVISIONISTS);
         given(playerState.isJammed()).willReturn(false);
         given(gameRules.maxEras()).willReturn(5);
-        given(gameRules.rewriteLatestRound()).willReturn(2);
+        given(gameRules.factionBetLatestRound()).willReturn(2);
         given(gameRules.onceEraBudgetedSpecials()).willReturn(EnumSet.of(SpecialAction.REWRITE));
         given(specialActionEraUsageRepository.findByGameIdAndEraNumberAndPlayerId(GAME_ID, ERA, PLAYER_ID))
                 .willReturn(Optional.of(SpecialActionEraUsage.reconstitute(

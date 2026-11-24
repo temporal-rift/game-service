@@ -40,17 +40,28 @@ public final class SpecialActionRoundRules {
         return specialAction == SpecialAction.ANNIHILATE && roundNumber < annihilateEarliestRound;
     }
 
-    public static boolean rewriteAfterLatestRound(
-            SpecialAction specialAction, int roundNumber, int rewriteLatestRound) {
-        return specialAction == SpecialAction.REWRITE && roundNumber > rewriteLatestRound;
+    /** The faction bets that close with the faction-bet window; Foresight is deliberately not one of them. */
+    public static boolean factionBet(SpecialAction specialAction) {
+        return switch (specialAction) {
+            case THREAD, REWEAVE, REWRITE, FULFILLMENT -> true;
+            default -> false;
+        };
     }
 
-    /** Whether the special's round rules (Obscure, Expose, Annihilate, Rewrite) make it unplayable in this round. */
+    public static boolean factionBetAfterLatestRound(
+            SpecialAction specialAction, int roundNumber, int factionBetLatestRound) {
+        return factionBet(specialAction) && roundNumber > factionBetLatestRound;
+    }
+
+    /**
+     * Whether the special's round rules (Obscure, Expose, Annihilate and the faction bets) make it unplayable in this
+     * round.
+     */
     public static boolean ineligibleThisRound(
             SpecialAction specialAction, int roundNumber, SpecialActionRoundWindows windows) {
         return obscureInFinalRound(specialAction, roundNumber)
                 || exposeOutsideItsRound(specialAction, roundNumber)
                 || annihilateBeforeEarliestRound(specialAction, roundNumber, windows.annihilateEarliestRound())
-                || rewriteAfterLatestRound(specialAction, roundNumber, windows.rewriteLatestRound());
+                || factionBetAfterLatestRound(specialAction, roundNumber, windows.factionBetLatestRound());
     }
 }
