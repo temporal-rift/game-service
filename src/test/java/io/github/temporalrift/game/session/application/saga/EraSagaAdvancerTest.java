@@ -15,6 +15,7 @@ import static org.mockito.Mockito.verify;
 
 import java.time.Clock;
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -357,7 +358,11 @@ class EraSagaAdvancerTest {
         // then
         then(gameRepository).should().save(argThat(g -> g.status() == GameStatus.ENDED_BY_WIN));
         then(eraSagaRepository).should().save(argThat(s -> s.status() == EraSagaStatus.COMPLETED));
-        then(eventPublisher).should().publish(envelopeWithPayload(WinConditionMet.class));
+        var captor = ArgumentCaptor.<DomainEventEnvelope>captor();
+        then(eventPublisher).should().publish(captor.capture());
+        var winEvent = (WinConditionMet) captor.getValue().payload();
+        assertThat(winEvent.winType()).isEqualTo("SCORE_THRESHOLD");
+        assertThat(winEvent.winConditions()).containsExactly("SCORE_THRESHOLD");
         then(eventPublisher).should(never()).publish(envelopeWithPayload(EraStarted.class));
     }
 
@@ -389,6 +394,7 @@ class EraSagaAdvancerTest {
                 .toList();
         assertThat(winEvents).extracting(WinConditionMet::winnerId).containsExactlyInAnyOrder(PLAYER_1, PLAYER_2);
         assertThat(winEvents).allMatch(event -> "SCORE_THRESHOLD".equals(event.winType()));
+        assertThat(winEvents).allMatch(event -> List.of("SCORE_THRESHOLD").equals(event.winConditions()));
         then(eventPublisher).should(never()).publish(envelopeWithPayload(EraStarted.class));
     }
 
@@ -418,8 +424,11 @@ class EraSagaAdvancerTest {
         assertThat(captor.getAllValues())
                 .extracting(DomainEventEnvelope::payload)
                 .singleElement()
-                .isInstanceOfSatisfying(
-                        WinConditionMet.class, win -> assertThat(win.winnerId()).isEqualTo(PLAYER_2));
+                .isInstanceOfSatisfying(WinConditionMet.class, win -> {
+                    assertThat(win.winnerId()).isEqualTo(PLAYER_2);
+                    assertThat(win.winType()).isEqualTo("SCORE_THRESHOLD");
+                    assertThat(win.winConditions()).containsExactly("SCORE_THRESHOLD");
+                });
     }
 
     @Test
@@ -451,6 +460,134 @@ class EraSagaAdvancerTest {
         assertThat(winEvent.winnerId()).isEqualTo(PLAYER_1);
         assertThat(winEvent.finalScore()).isEqualTo(10);
         assertThat(winEvent.winType()).isEqualTo("FACTION_OBJECTIVE");
+        assertThat(winEvent.winConditions()).containsExactly("FACTION_OBJECTIVE");
+    }
+
+    @Test
+    @DisplayName("double qualifier reports both conditions with score winType")
+    void handleScoresUpdated_doubleQualifier_reportsBothConditions() {
+        // given — Prophet with 3 written resolutions and 24 points at the end of era 4
+        var state = new EraSagaState(GAME_ID, 4, EraSagaStatus.WAITING_SCORES, PLAYER_IDS);
+        given(eraSagaRepository.findByGameIdWithLock(GAME_ID)).willReturn(Optional.of(state));
+        given(gameRules.winScoreThreshold()).willReturn(WIN_THRESHOLD);
+        given(factionObjectives.evaluate(GAME_ID, 4))
+                .willReturn(List.of(
+                        new SessionFactionObjectivePort.ObjectiveProgress(PLAYER_1, Faction.PROPHETS, 3, 3, true),
+                        new SessionFactionObjectivePort.ObjectiveProgress(PLAYER_2, Faction.WEAVERS, 0, 3, false)));
+        var game = Game.reconstitute(GAME_ID, LOBBY_ID, List.of(), 4, 0, GameStatus.IN_PROGRESS);
+        given(gameRepository.findByIdWithLock(GAME_ID)).willReturn(Optional.of(game));
+        var updates = List.of(
+                new ScoresUpdated.ScoreUpdate(PLAYER_1, Faction.PROPHETS, 5, "bonus", 24),
+                new ScoresUpdated.ScoreUpdate(PLAYER_2, Faction.WEAVERS, 1, "bonus", 8));
+        var su = new ScoresUpdated(GAME_ID, 4, updates);
+
+        var captor = ArgumentCaptor.<DomainEventEnvelope>captor();
+
+        // when
+        advancer.handleScoresUpdated(GAME_ID, su);
+
+        // then
+        then(eventPublisher).should().publish(captor.capture());
+        var winEvent = (WinConditionMet) captor.getValue().payload();
+        assertThat(winEvent.winnerId()).isEqualTo(PLAYER_1);
+        assertThat(winEvent.winType()).isEqualTo("SCORE_THRESHOLD");
+        assertThat(winEvent.winConditions()).containsExactly("SCORE_THRESHOLD", "FACTION_OBJECTIVE");
+    }
+
+    @Test
+    @DisplayName("tied double and threshold-only qualifiers keep their own conditions")
+    void handleScoresUpdated_tiebreakOn_tiedWinnersKeepOwnConditions() {
+        // given — same highest total, one meets both conditions, the other only the threshold
+        scoreTiebreak = true;
+        var state = new EraSagaState(GAME_ID, 1, EraSagaStatus.WAITING_SCORES, PLAYER_IDS);
+        given(eraSagaRepository.findByGameIdWithLock(GAME_ID)).willReturn(Optional.of(state));
+        given(gameRules.winScoreThreshold()).willReturn(WIN_THRESHOLD);
+        given(factionObjectives.evaluate(GAME_ID, 1))
+                .willReturn(List.of(
+                        new SessionFactionObjectivePort.ObjectiveProgress(PLAYER_1, Faction.PROPHETS, 3, 3, true),
+                        new SessionFactionObjectivePort.ObjectiveProgress(PLAYER_2, Faction.WEAVERS, 0, 3, false)));
+        var game = Game.reconstitute(GAME_ID, LOBBY_ID, List.of(), 1, 0, GameStatus.IN_PROGRESS);
+        given(gameRepository.findByIdWithLock(GAME_ID)).willReturn(Optional.of(game));
+        var updates = List.of(
+                new ScoresUpdated.ScoreUpdate(PLAYER_1, Faction.PROPHETS, 5, "bonus", 24),
+                new ScoresUpdated.ScoreUpdate(PLAYER_2, Faction.WEAVERS, 3, "bonus", 24));
+        var su = new ScoresUpdated(GAME_ID, 1, updates);
+
+        var captor = ArgumentCaptor.<DomainEventEnvelope>captor();
+
+        // when
+        advancer.handleScoresUpdated(GAME_ID, su);
+
+        // then — only the published winners carry winConditions, each with its own values
+        then(eventPublisher).should(times(2)).publish(captor.capture());
+        var winEvents = captor.getAllValues().stream()
+                .map(DomainEventEnvelope::payload)
+                .map(WinConditionMet.class::cast)
+                .toList();
+        assertThat(winEvents).extracting(WinConditionMet::winnerId).containsExactlyInAnyOrder(PLAYER_1, PLAYER_2);
+        assertThat(winEvents).allMatch(event -> "SCORE_THRESHOLD".equals(event.winType()));
+        var byWinner = new HashMap<UUID, WinConditionMet>();
+        for (var win : winEvents) {
+            byWinner.put(win.winnerId(), win);
+        }
+        assertThat(byWinner.get(PLAYER_1).winConditions()).containsExactly("SCORE_THRESHOLD", "FACTION_OBJECTIVE");
+        assertThat(byWinner.get(PLAYER_2).winConditions()).containsExactly("SCORE_THRESHOLD");
+    }
+
+    @Test
+    @DisplayName("Activist meeting its objective with 18 points reports objective alone")
+    void handleScoresUpdated_activistObjectiveWith18_reportsObjectiveAlone() {
+        // given
+        var state = new EraSagaState(GAME_ID, 1, EraSagaStatus.WAITING_SCORES, PLAYER_IDS);
+        given(eraSagaRepository.findByGameIdWithLock(GAME_ID)).willReturn(Optional.of(state));
+        given(gameRules.winScoreThreshold()).willReturn(WIN_THRESHOLD);
+        given(factionObjectives.evaluate(GAME_ID, 1))
+                .willReturn(List.of(
+                        new SessionFactionObjectivePort.ObjectiveProgress(PLAYER_1, Faction.ACTIVISTS, 3, 3, true),
+                        new SessionFactionObjectivePort.ObjectiveProgress(PLAYER_2, Faction.WEAVERS, 0, 3, false)));
+        var game = Game.reconstitute(GAME_ID, LOBBY_ID, List.of(), 1, 0, GameStatus.IN_PROGRESS);
+        given(gameRepository.findByIdWithLock(GAME_ID)).willReturn(Optional.of(game));
+        var updates = List.of(
+                new ScoresUpdated.ScoreUpdate(PLAYER_1, Faction.ACTIVISTS, 3, "bonus", 18),
+                new ScoresUpdated.ScoreUpdate(PLAYER_2, Faction.WEAVERS, 1, "bonus", 8));
+        var su = new ScoresUpdated(GAME_ID, 1, updates);
+
+        var captor = ArgumentCaptor.<DomainEventEnvelope>captor();
+
+        // when
+        advancer.handleScoresUpdated(GAME_ID, su);
+
+        // then
+        then(eventPublisher).should().publish(captor.capture());
+        var winEvent = (WinConditionMet) captor.getValue().payload();
+        assertThat(winEvent.winnerId()).isEqualTo(PLAYER_1);
+        assertThat(winEvent.winType()).isEqualTo("FACTION_OBJECTIVE");
+        assertThat(winEvent.winConditions()).containsExactly("FACTION_OBJECTIVE");
+    }
+
+    @Test
+    @DisplayName("player with 21 points and no objective reports threshold alone")
+    void handleScoresUpdated_threshold21WithoutObjective_reportsThresholdAlone() {
+        // given
+        var state = new EraSagaState(GAME_ID, 1, EraSagaStatus.WAITING_SCORES, PLAYER_IDS);
+        given(eraSagaRepository.findByGameIdWithLock(GAME_ID)).willReturn(Optional.of(state));
+        given(gameRules.winScoreThreshold()).willReturn(WIN_THRESHOLD);
+        givenNoObjectivesMet(1);
+        var game = Game.reconstitute(GAME_ID, LOBBY_ID, List.of(), 1, 0, GameStatus.IN_PROGRESS);
+        given(gameRepository.findByIdWithLock(GAME_ID)).willReturn(Optional.of(game));
+        var updates = List.of(new ScoresUpdated.ScoreUpdate(PLAYER_1, Faction.PROPHETS, 5, "bonus", 21));
+        var su = new ScoresUpdated(GAME_ID, 1, updates);
+
+        var captor = ArgumentCaptor.<DomainEventEnvelope>captor();
+
+        // when
+        advancer.handleScoresUpdated(GAME_ID, su);
+
+        // then
+        then(eventPublisher).should().publish(captor.capture());
+        var winEvent = (WinConditionMet) captor.getValue().payload();
+        assertThat(winEvent.winType()).isEqualTo("SCORE_THRESHOLD");
+        assertThat(winEvent.winConditions()).containsExactly("SCORE_THRESHOLD");
     }
 
     @Test
@@ -1216,7 +1353,7 @@ class EraSagaAdvancerTest {
         // then
         assertThat(game.status()).isEqualTo(GameStatus.ENDED_BY_WIN);
         then(eraSagaRepository).should().save(argThat(s -> s.status() == EraSagaStatus.COMPLETED));
-        var expected = new WinConditionMet(GAME_ID, PLAYER_2, Faction.WEAVERS.name(), 9, "LAST_PLAYER_STANDING");
+        var expected = new WinConditionMet(GAME_ID, PLAYER_2, Faction.WEAVERS.name(), 9, "LAST_PLAYER_STANDING", null);
         then(eventPublisher).should().publish(argThat(envelope -> expected.equals(envelope.payload())));
         then(applicationEventPublisher).should().publishEvent(expected);
         then(eventPublisher).should(never()).publish(envelopeWithPayload(EraStarted.class));
@@ -1242,7 +1379,9 @@ class EraSagaAdvancerTest {
 
         // then
         then(eventPublisher).should().publish(captor.capture());
-        assertThat(((WinConditionMet) captor.getValue().payload()).winType()).isEqualTo("SCORE_THRESHOLD");
+        var win = (WinConditionMet) captor.getValue().payload();
+        assertThat(win.winType()).isEqualTo("SCORE_THRESHOLD");
+        assertThat(win.winConditions()).containsExactly("SCORE_THRESHOLD");
     }
 
     @Test

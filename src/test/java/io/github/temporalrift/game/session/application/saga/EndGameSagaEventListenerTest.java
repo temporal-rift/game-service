@@ -28,7 +28,7 @@ class EndGameSagaEventListenerTest {
         var gameId = UUID.randomUUID();
         var winnerId = UUID.randomUUID();
 
-        listener.onWinConditionMet(new WinConditionMet(gameId, winnerId, "ERASERS", 42, "SCORE"));
+        listener.onWinConditionMet(new WinConditionMet(gameId, winnerId, "ERASERS", 42, "SCORE", null));
 
         then(endGameSaga).should().start(gameId, EndGameTrigger.WIN_CONDITION_MET, winnerId);
     }

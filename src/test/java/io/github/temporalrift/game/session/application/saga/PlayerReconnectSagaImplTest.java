@@ -276,7 +276,7 @@ class PlayerReconnectSagaImplTest {
         assertThat(game.status()).isEqualTo(GameStatus.ENDED_BY_WIN);
         then(gameRepository).should().save(game);
         then(eraSagaRepository).should().save(eraSaga.withStatus(EraSagaStatus.COMPLETED));
-        var expected = new WinConditionMet(GAME_ID, OTHER_1, Faction.WEAVERS.name(), 7, "LAST_PLAYER_STANDING");
+        var expected = new WinConditionMet(GAME_ID, OTHER_1, Faction.WEAVERS.name(), 7, "LAST_PLAYER_STANDING", null);
         then(eventPublisher).should().publish(argThat(envelope -> expected.equals(envelope.payload())));
         then(applicationEventPublisher).should().publishEvent(expected);
     }
@@ -317,7 +317,7 @@ class PlayerReconnectSagaImplTest {
         saga.handleTimerExpiry(SAGA_ID);
 
         // then
-        var expected = new WinConditionMet(GAME_ID, OTHER_2, Faction.ERASERS.name(), 0, "LAST_PLAYER_STANDING");
+        var expected = new WinConditionMet(GAME_ID, OTHER_2, Faction.ERASERS.name(), 0, "LAST_PLAYER_STANDING", null);
         then(applicationEventPublisher).should().publishEvent(expected);
     }
 
