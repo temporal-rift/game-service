@@ -307,23 +307,27 @@ class EraSagaAdvancer {
             boolean thresholdMet = update.newTotal() >= gameRules.winScoreThreshold();
             boolean objectiveMet = Boolean.TRUE.equals(metByPlayer.get(update.playerId()));
             if (thresholdMet || objectiveMet) {
-                var winConditions = new ArrayList<String>();
-                if (thresholdMet) {
-                    winConditions.add("SCORE_THRESHOLD");
-                }
-                if (objectiveMet) {
-                    winConditions.add("FACTION_OBJECTIVE");
-                }
                 qualifiers.add(new Qualifier(
                         update.playerId(),
                         update.faction(),
                         update.newTotal(),
                         thresholdMet ? "SCORE_THRESHOLD" : "FACTION_OBJECTIVE",
-                        List.copyOf(winConditions)));
+                        winConditionsFor(thresholdMet, objectiveMet)));
             }
         }
         qualifiers.sort(Comparator.comparing(Qualifier::playerId));
         return NormalVictoryPolicy.winners(qualifiers, Qualifier::newTotal, tiebreakRules.scoreTiebreak());
+    }
+
+    private static List<String> winConditionsFor(boolean thresholdMet, boolean objectiveMet) {
+        var winConditions = new ArrayList<String>();
+        if (thresholdMet) {
+            winConditions.add("SCORE_THRESHOLD");
+        }
+        if (objectiveMet) {
+            winConditions.add("FACTION_OBJECTIVE");
+        }
+        return List.copyOf(winConditions);
     }
 
     private void publishEvent(UUID gameId, Object payload) {

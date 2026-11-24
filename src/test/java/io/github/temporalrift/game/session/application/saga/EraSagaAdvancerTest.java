@@ -1,6 +1,7 @@
 package io.github.temporalrift.game.session.application.saga;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.tuple;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.argThat;
@@ -15,7 +16,6 @@ import static org.mockito.Mockito.verify;
 
 import java.time.Clock;
 import java.time.Instant;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -392,9 +392,11 @@ class EraSagaAdvancerTest {
                 .map(DomainEventEnvelope::payload)
                 .map(WinConditionMet.class::cast)
                 .toList();
-        assertThat(winEvents).extracting(WinConditionMet::winnerId).containsExactlyInAnyOrder(PLAYER_1, PLAYER_2);
-        assertThat(winEvents).allMatch(event -> "SCORE_THRESHOLD".equals(event.winType()));
-        assertThat(winEvents).allMatch(event -> List.of("SCORE_THRESHOLD").equals(event.winConditions()));
+        assertThat(winEvents)
+                .extracting(WinConditionMet::winnerId, WinConditionMet::winType, WinConditionMet::winConditions)
+                .containsExactlyInAnyOrder(
+                        tuple(PLAYER_1, "SCORE_THRESHOLD", List.of("SCORE_THRESHOLD")),
+                        tuple(PLAYER_2, "SCORE_THRESHOLD", List.of("SCORE_THRESHOLD")));
         then(eventPublisher).should(never()).publish(envelopeWithPayload(EraStarted.class));
     }
 
@@ -524,14 +526,11 @@ class EraSagaAdvancerTest {
                 .map(DomainEventEnvelope::payload)
                 .map(WinConditionMet.class::cast)
                 .toList();
-        assertThat(winEvents).extracting(WinConditionMet::winnerId).containsExactlyInAnyOrder(PLAYER_1, PLAYER_2);
-        assertThat(winEvents).allMatch(event -> "SCORE_THRESHOLD".equals(event.winType()));
-        var byWinner = new HashMap<UUID, WinConditionMet>();
-        for (var win : winEvents) {
-            byWinner.put(win.winnerId(), win);
-        }
-        assertThat(byWinner.get(PLAYER_1).winConditions()).containsExactly("SCORE_THRESHOLD", "FACTION_OBJECTIVE");
-        assertThat(byWinner.get(PLAYER_2).winConditions()).containsExactly("SCORE_THRESHOLD");
+        assertThat(winEvents)
+                .extracting(WinConditionMet::winnerId, WinConditionMet::winType, WinConditionMet::winConditions)
+                .containsExactlyInAnyOrder(
+                        tuple(PLAYER_1, "SCORE_THRESHOLD", List.of("SCORE_THRESHOLD", "FACTION_OBJECTIVE")),
+                        tuple(PLAYER_2, "SCORE_THRESHOLD", List.of("SCORE_THRESHOLD")));
     }
 
     @Test
