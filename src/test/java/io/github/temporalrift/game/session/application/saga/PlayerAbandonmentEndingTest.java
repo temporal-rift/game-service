@@ -225,7 +225,8 @@ class PlayerAbandonmentEndingTest {
 
         assertThat(lobby.contenders()).extracting(LobbyPlayer::playerId).containsExactly(PLAYERS.get(2));
         assertThat(game.status()).isEqualTo(GameStatus.ENDED_BY_WIN);
-        var win = new WinConditionMet(GAME_ID, PLAYERS.get(2), Faction.PROPHETS.name(), 9, "LAST_PLAYER_STANDING");
+        var win =
+                new WinConditionMet(GAME_ID, PLAYERS.get(2), Faction.PROPHETS.name(), 9, "LAST_PLAYER_STANDING", null);
         then(internalEvents).should().publishEvent(win);
         then(events).should(never()).publish(argThat(envelope -> envelope.payload() instanceof GameEndedAbnormally));
         then(events).should(times(2)).publish(argThat(envelope -> envelope.payload() instanceof PlayerAbandoned));
@@ -271,7 +272,8 @@ class PlayerAbandonmentEndingTest {
         fireTimers(false);
         given(rules.winScoreThreshold()).willReturn(20);
         advancer.handleScoresUpdated(GAME_ID, scores(25));
-        var win = new WinConditionMet(GAME_ID, PLAYERS.get(2), Faction.PROPHETS.name(), 25, "SCORE_THRESHOLD");
+        var win = new WinConditionMet(
+                GAME_ID, PLAYERS.get(2), Faction.PROPHETS.name(), 25, "SCORE_THRESHOLD", List.of("SCORE_THRESHOLD"));
         then(internalEvents).should().publishEvent(win);
         assertThat(game.status()).isEqualTo(GameStatus.ENDED_BY_WIN);
     }

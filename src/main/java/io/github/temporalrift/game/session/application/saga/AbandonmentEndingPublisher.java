@@ -46,7 +46,7 @@ public class AbandonmentEndingPublisher {
 
     void publishLastPlayerStanding(Game game, LobbyPlayer winner, int finalScore) {
         var winConditionMet = new WinConditionMet(
-                game.id(), winner.playerId(), winner.faction().name(), finalScore, WIN_TYPE);
+                game.id(), winner.playerId(), winner.faction().name(), finalScore, WIN_TYPE, null);
         sagaHandoffPublisher.publish(
                 eventPublisher::publish,
                 DomainEventEnvelope.create(

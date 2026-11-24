@@ -242,7 +242,8 @@ class EraSagaAdvancer {
                         qualifier.playerId(),
                         qualifier.faction().name(),
                         qualifier.newTotal(),
-                        qualifier.winType());
+                        qualifier.winType(),
+                        qualifier.winConditions());
                 sagaHandoffPublisher.publish(eventPublisher::publish, envelope(gameId, winConditionMet));
             }
             return;
@@ -290,7 +291,8 @@ class EraSagaAdvancer {
                 .orElse(0);
     }
 
-    private record Qualifier(UUID playerId, Faction faction, int newTotal, String winType) {}
+    private record Qualifier(
+            UUID playerId, Faction faction, int newTotal, String winType, List<String> winConditions) {}
 
     private List<Qualifier> findQualifiers(UUID gameId, ScoresUpdated su, Lobby lobby) {
         var metByPlayer = new HashMap<UUID, Boolean>();
@@ -309,11 +311,23 @@ class EraSagaAdvancer {
                         update.playerId(),
                         update.faction(),
                         update.newTotal(),
-                        thresholdMet ? "SCORE_THRESHOLD" : "FACTION_OBJECTIVE"));
+                        thresholdMet ? "SCORE_THRESHOLD" : "FACTION_OBJECTIVE",
+                        winConditionsFor(thresholdMet, objectiveMet)));
             }
         }
         qualifiers.sort(Comparator.comparing(Qualifier::playerId));
         return NormalVictoryPolicy.winners(qualifiers, Qualifier::newTotal, tiebreakRules.scoreTiebreak());
+    }
+
+    private static List<String> winConditionsFor(boolean thresholdMet, boolean objectiveMet) {
+        var winConditions = new ArrayList<String>();
+        if (thresholdMet) {
+            winConditions.add("SCORE_THRESHOLD");
+        }
+        if (objectiveMet) {
+            winConditions.add("FACTION_OBJECTIVE");
+        }
+        return List.copyOf(winConditions);
     }
 
     private void publishEvent(UUID gameId, Object payload) {
