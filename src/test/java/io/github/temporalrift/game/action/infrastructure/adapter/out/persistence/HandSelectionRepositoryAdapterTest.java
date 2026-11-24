@@ -8,7 +8,10 @@ import static org.mockito.Mockito.times;
 
 import java.time.Instant;
 import java.util.Optional;
+import java.util.Random;
 import java.util.UUID;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -53,7 +56,7 @@ class HandSelectionRepositoryAdapterTest {
                 .contains(CardGrade.III.name());
         assertThat(entity.selectedCards).isEmpty();
 
-        adapter.save(selection.selectRandomOnExpiry(Instant.EPOCH, new java.util.Random(4)));
+        adapter.save(selection.selectRandomOnExpiry(Instant.EPOCH, new Random(4)));
         then(jpaRepository).should(times(2)).save(captor.capture());
         var resolved = captor.getAllValues().getLast();
         assertThat(resolved.status).isEqualTo(HandSelectionStatus.SELECTED.name());
@@ -68,7 +71,7 @@ class HandSelectionRepositoryAdapterTest {
                 openSelection.dealtCards().stream()
                         .limit(5)
                         .map(HandDealt.CardInstance::cardInstanceId)
-                        .collect(java.util.stream.Collectors.toSet()),
+                        .collect(Collectors.toSet()),
                 Instant.EPOCH.minusSeconds(1));
         var entity = new HandSelectionJpaEntity();
         entity.id = selection.id();
@@ -114,7 +117,7 @@ class HandSelectionRepositoryAdapterTest {
     }
 
     private static HandSelection selection() {
-        var cards = java.util.stream.IntStream.rangeClosed(1, 7)
+        var cards = IntStream.rangeClosed(1, 7)
                 .mapToObj(slot -> new HandDealt.CardInstance(
                         UUID.randomUUID(), CardType.PUSH, slot == 1 ? CardGrade.III : CardGrade.I, slot))
                 .toList();

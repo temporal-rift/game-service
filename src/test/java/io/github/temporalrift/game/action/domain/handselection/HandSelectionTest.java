@@ -4,8 +4,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.time.Instant;
+import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
+import java.util.random.RandomGenerator;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import org.junit.jupiter.api.Test;
 
@@ -20,7 +24,7 @@ class HandSelectionTest {
         var kept = selection.dealtCards().stream()
                 .limit(5)
                 .map(HandDealt.CardInstance::cardInstanceId)
-                .collect(java.util.stream.Collectors.toSet());
+                .collect(Collectors.toSet());
         var resolved = selection.select(kept, Instant.parse("2026-08-14T00:00:00Z"));
         assertThat(resolved.selectedCards())
                 .extracting(HandDealt.CardInstance::cardInstanceId)
@@ -31,14 +35,14 @@ class HandSelectionTest {
     @Test
     void expiry_canReachEveryUniformFiveCardSubset() {
         var selection = selection(Instant.EPOCH);
-        var subsets = new java.util.HashSet<Set<UUID>>();
+        var subsets = new HashSet<Set<UUID>>();
         for (var firstDiscardIndex = 0; firstDiscardIndex < 7; firstDiscardIndex++) {
             for (var secondDiscardRoll = 0; secondDiscardRoll < 6; secondDiscardRoll++) {
                 var resolved = selection.selectRandomOnExpiry(
                         Instant.EPOCH, new SequenceRandomGenerator(firstDiscardIndex, secondDiscardRoll));
                 subsets.add(resolved.selectedCards().stream()
                         .map(HandDealt.CardInstance::cardInstanceId)
-                        .collect(java.util.stream.Collectors.toSet()));
+                        .collect(Collectors.toSet()));
                 assertThat(resolved.selectionOrigin()).isEqualTo(HandSelected.SelectionOrigin.TIMEOUT_RANDOM);
             }
         }
@@ -67,7 +71,7 @@ class HandSelectionTest {
     }
 
     private static HandSelection selection(Instant expiresAt) {
-        var cards = java.util.stream.IntStream.rangeClosed(1, 7)
+        var cards = IntStream.rangeClosed(1, 7)
                 .mapToObj(slot -> new HandDealt.CardInstance(
                         UUID.randomUUID(),
                         CardType.PUSH,
@@ -77,7 +81,7 @@ class HandSelectionTest {
         return HandSelection.open(new HandDealt(UUID.randomUUID(), 1, UUID.randomUUID(), expiresAt, cards));
     }
 
-    private static final class SequenceRandomGenerator implements java.util.random.RandomGenerator {
+    private static final class SequenceRandomGenerator implements RandomGenerator {
         private final int[] values;
         private int index;
 

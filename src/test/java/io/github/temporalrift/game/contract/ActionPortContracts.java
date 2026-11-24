@@ -8,6 +8,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import org.junit.jupiter.api.Test;
 
@@ -594,7 +596,7 @@ public final class ActionPortContracts {
                     openSelection.dealtCards().stream()
                             .limit(5)
                             .map(HandDealt.CardInstance::cardInstanceId)
-                            .collect(java.util.stream.Collectors.toSet()),
+                            .collect(Collectors.toSet()),
                     Instant.EPOCH);
 
             transactionTemplate()
@@ -615,7 +617,7 @@ public final class ActionPortContracts {
         }
 
         private static HandSelection selection(UUID gameId, UUID playerId) {
-            var cards = java.util.stream.IntStream.rangeClosed(1, 7)
+            var cards = IntStream.rangeClosed(1, 7)
                     .mapToObj(slot -> new HandDealt.CardInstance(UUID.randomUUID(), CardType.PUSH, CardGrade.II, slot))
                     .toList();
             return HandSelection.open(new HandDealt(gameId, 1, playerId, Instant.parse("2026-08-14T00:01:00Z"), cards));

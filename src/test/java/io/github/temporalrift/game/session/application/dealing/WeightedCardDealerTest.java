@@ -4,7 +4,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.BDDMockito.given;
 
 import java.util.EnumMap;
+import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -25,7 +31,7 @@ class WeightedCardDealerTest {
     @Mock
     SessionGameRulesPort gameRules;
 
-    private static final java.util.UUID PLAYER_ID = java.util.UUID.fromString("11111111-1111-1111-1111-111111111111");
+    private static final UUID PLAYER_ID = UUID.fromString("11111111-1111-1111-1111-111111111111");
 
     @Test
     @DisplayName("a category with the only positive weight is selected for every dealt card")
@@ -120,9 +126,8 @@ class WeightedCardDealerTest {
         var dealer = new WeightedCardDealer(gameRules, StubExecutionEntropy.seeded(1234));
 
         var cards = dealer.deal(PLAYER_ID, 1, 10_000);
-        var grades = cards.stream()
-                .collect(java.util.stream.Collectors.groupingBy(
-                        HandDealt.CardInstance::grade, java.util.stream.Collectors.counting()));
+        var grades =
+                cards.stream().collect(Collectors.groupingBy(HandDealt.CardInstance::grade, Collectors.counting()));
 
         assertThat(cards)
                 .allSatisfy(
@@ -136,7 +141,7 @@ class WeightedCardDealerTest {
     @DisplayName("forced types are included in the deal with a still-weighted grade, on top of the normal deal")
     void deal_configuredForcedTypes_includesThemWithRemainingCardsDealtNormally() {
         // given
-        given(gameRules.handDealForcedTypes()).willReturn(java.util.Set.of(CardType.TRACE, CardType.NULLIFY));
+        given(gameRules.handDealForcedTypes()).willReturn(Set.of(CardType.TRACE, CardType.NULLIFY));
         given(gameRules.cardCategoryWeights()).willReturn(weights(CardCategory.PARADOX, 1));
         given(gameRules.cardGradeWeights()).willReturn(weights(CardGrade.I, 1));
         var dealer = new WeightedCardDealer(gameRules, StubExecutionEntropy.seeded(42));
@@ -156,7 +161,7 @@ class WeightedCardDealerTest {
     @DisplayName("forced types take the first slots in a fixed order whatever the configured set's iteration order")
     void deal_forcedTypes_landOnStableSlots() {
         // given
-        var reversed = new java.util.LinkedHashSet<>(java.util.List.of(CardType.NULLIFY, CardType.TRACE));
+        var reversed = new LinkedHashSet<>(List.of(CardType.NULLIFY, CardType.TRACE));
         given(gameRules.handDealForcedTypes()).willReturn(reversed);
         given(gameRules.cardCategoryWeights()).willReturn(weights(CardCategory.PARADOX, 1));
         given(gameRules.cardGradeWeights()).willReturn(weights(CardGrade.I, 1));
@@ -167,9 +172,8 @@ class WeightedCardDealerTest {
 
         // then
         assertThat(cards.stream().limit(2).map(HandDealt.CardInstance::cardType))
-                .containsExactly(java.util.stream.Stream.of(CardType.NULLIFY, CardType.TRACE)
-                        .sorted()
-                        .toArray(CardType[]::new));
+                .containsExactly(
+                        Stream.of(CardType.NULLIFY, CardType.TRACE).sorted().toArray(CardType[]::new));
     }
 
     @Test

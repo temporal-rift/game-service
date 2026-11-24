@@ -20,6 +20,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -177,7 +178,7 @@ class EraSagaAdvancerTest {
     }
 
     private void givenMutableState(EraSagaState initial) {
-        var stored = new java.util.concurrent.atomic.AtomicReference<>(initial);
+        var stored = new AtomicReference<>(initial);
         given(eraSagaRepository.findByGameIdWithLock(GAME_ID)).willAnswer(_ -> Optional.of(stored.get()));
         org.mockito.Mockito.lenient().when(eraSagaRepository.save(any())).thenAnswer(invocation -> {
             var state = invocation.<EraSagaState>getArgument(0);

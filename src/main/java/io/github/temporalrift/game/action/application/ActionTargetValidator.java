@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Component;
 
@@ -66,7 +67,7 @@ public class ActionTargetValidator {
         var definitions = futureEventDefinitionPort.findByGameIdAndEraNumber(gameId, eraNumber);
         var knownEventIds = definitions.stream()
                 .map(FutureEventDefinitionPort.EventDefinition::eventId)
-                .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
+                .collect(Collectors.toCollection(LinkedHashSet::new));
         suppliedTargetEventIds.forEach(eventId -> {
             if (!knownEventIds.contains(eventId)) {
                 throw new UnknownActionTargetException(eventId);

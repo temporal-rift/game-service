@@ -1,5 +1,6 @@
 package io.github.temporalrift.game.session.domain.saga;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -28,7 +29,7 @@ public record EraSagaState(
         if (handSelectedPlayerIds.contains(playerId)) {
             return this;
         }
-        var selected = new java.util.ArrayList<>(handSelectedPlayerIds);
+        var selected = new ArrayList<>(handSelectedPlayerIds);
         selected.add(playerId);
         return new EraSagaState(gameId, eraNumber, status, playerIds, List.copyOf(selected), bandsPublished);
     }

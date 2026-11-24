@@ -6,6 +6,8 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.random.RandomGenerator;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import io.github.temporalrift.game.shared.domain.event.HandDealt;
 import io.github.temporalrift.game.shared.domain.event.HandSelected;
@@ -40,7 +42,7 @@ public record HandSelection(
         if (keptCardInstanceIds.size() != 5
                 || !dealtCards.stream()
                         .map(HandDealt.CardInstance::cardInstanceId)
-                        .collect(java.util.stream.Collectors.toSet())
+                        .collect(Collectors.toSet())
                         .containsAll(keptCardInstanceIds)) {
             throw new InvalidHandSelectionException();
         }
@@ -62,7 +64,7 @@ public record HandSelection(
         }
         var finalSecondDiscardIndex = secondDiscardIndex;
         return resolved(
-                java.util.stream.IntStream.range(0, dealtCards.size())
+                IntStream.range(0, dealtCards.size())
                         .filter(index -> index != firstDiscardIndex && index != finalSecondDiscardIndex)
                         .mapToObj(dealtCards::get)
                         .toList(),

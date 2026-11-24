@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.BDDMockito.given;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.IntStream;
@@ -150,7 +151,7 @@ class SeededExecutionEntropyTest {
                 .isInstanceOf(ExecutionNotConfiguredException.class);
     }
 
-    private static java.util.List<Long> draw(SeededExecutionEntropy entropy, int count) {
+    private static List<Long> draw(SeededExecutionEntropy entropy, int count) {
         var generator = entropy.generator(EntropyPurpose.CARD_DEAL, SEAT_0_ERA_1);
         return IntStream.range(0, count).mapToObj(i -> generator.nextLong()).toList();
     }

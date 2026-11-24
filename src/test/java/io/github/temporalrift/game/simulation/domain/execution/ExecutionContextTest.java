@@ -13,6 +13,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -128,7 +130,7 @@ class ExecutionContextTest {
     @DisplayName("a rules digest must be lowercase SHA-256 hex")
     void rulesDigest_notLowercaseSha256_isRejected() {
         var seats = threeSeats();
-        var upper = RULES_DIGEST.toUpperCase(java.util.Locale.ROOT);
+        var upper = RULES_DIGEST.toUpperCase(Locale.ROOT);
 
         assertThatThrownBy(() -> new ExecutionContext(
                         CASE_KEY, SEED, EntropyVersion.SHA256_V1, MANIFEST_DIGEST, RULES, upper, START, seats))
@@ -138,8 +140,8 @@ class ExecutionContextTest {
     @Test
     @DisplayName("contexts with the same rules written with different number spellings are equal")
     void equality_sameRulesDifferentSpelling_isEqual() {
-        var integral = new EffectiveRules(java.util.Map.of("game.rules.x", 2));
-        var decimal = new EffectiveRules(java.util.Map.of("game.rules.x", 2.0));
+        var integral = new EffectiveRules(Map.of("game.rules.x", 2));
+        var decimal = new EffectiveRules(Map.of("game.rules.x", 2.0));
         var seats = threeSeats();
 
         assertThat(new ExecutionContext(

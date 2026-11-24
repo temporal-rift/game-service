@@ -8,6 +8,9 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -257,20 +260,19 @@ public final class SessionPortContracts {
         default void game_uncommittedSaveIsInvisibleToAnotherTransaction() {
             var repository = port(GameRepository.class);
             var id = UUID.randomUUID();
-            var saved = new java.util.concurrent.CountDownLatch(1);
-            var release = new java.util.concurrent.CountDownLatch(1);
-            var writer = java.util.concurrent.CompletableFuture.runAsync(() -> inNewTransaction(() -> {
+            var saved = new CountDownLatch(1);
+            var release = new CountDownLatch(1);
+            var writer = CompletableFuture.runAsync(() -> inNewTransaction(() -> {
                 repository.save(new Game(id, UUID.randomUUID(), eventIds(15)));
                 saved.countDown();
                 try {
-                    release.await(10, java.util.concurrent.TimeUnit.SECONDS);
+                    release.await(10, TimeUnit.SECONDS);
                 } catch (InterruptedException _) {
                     Thread.currentThread().interrupt();
                 }
             }));
             try {
-                assertThat(saved.await(10, java.util.concurrent.TimeUnit.SECONDS))
-                        .isTrue();
+                assertThat(saved.await(10, TimeUnit.SECONDS)).isTrue();
                 assertThat(inNewTransaction(() -> repository.findById(id))).isEmpty();
             } catch (InterruptedException _) {
                 Thread.currentThread().interrupt();

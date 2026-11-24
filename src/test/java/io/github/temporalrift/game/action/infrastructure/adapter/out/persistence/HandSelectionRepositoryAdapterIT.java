@@ -5,6 +5,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -55,7 +57,7 @@ class HandSelectionRepositoryAdapterIT {
                 openSelection.dealtCards().stream()
                         .limit(5)
                         .map(HandDealt.CardInstance::cardInstanceId)
-                        .collect(java.util.stream.Collectors.toSet()),
+                        .collect(Collectors.toSet()),
                 Instant.EPOCH);
 
         transactionTemplate.executeWithoutResult(_ -> repository.save(selection));
@@ -73,7 +75,7 @@ class HandSelectionRepositoryAdapterIT {
     }
 
     private static HandSelection selection(UUID gameId, UUID playerId) {
-        var cards = java.util.stream.IntStream.rangeClosed(1, 7)
+        var cards = IntStream.rangeClosed(1, 7)
                 .mapToObj(slot -> new HandDealt.CardInstance(UUID.randomUUID(), CardType.PUSH, CardGrade.II, slot))
                 .toList();
         return HandSelection.open(new HandDealt(gameId, 1, playerId, Instant.parse("2026-08-14T00:01:00Z"), cards));

@@ -13,6 +13,7 @@ import static org.mockito.Mockito.times;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -159,11 +160,7 @@ class RecordActivistDeclarationCommandHandlerTest {
                 .willReturn(Optional.of(playerState));
         given(declarationPhaseRepository.findByGameIdAndEraNumberWithLock(GAME_ID, nextEra))
                 .willReturn(Optional.of(new io.github.temporalrift.game.action.domain.declarationphase.DeclarationPhase(
-                        UUID.randomUUID(),
-                        GAME_ID,
-                        nextEra,
-                        CLOCK.instant().plusSeconds(30),
-                        java.util.List.of(PLAYER_ID))));
+                        UUID.randomUUID(), GAME_ID, nextEra, CLOCK.instant().plusSeconds(30), List.of(PLAYER_ID))));
         given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumber(GAME_ID, nextEra, 1))
                 .willReturn(Optional.empty());
         given(playerState.faction()).willReturn(Faction.ACTIVISTS);
@@ -258,7 +255,7 @@ class RecordActivistDeclarationCommandHandlerTest {
         given(declarationPhaseRepository.findByGameIdAndEraNumberWithLock(GAME_ID, ERA_NUMBER))
                 .willReturn(Optional.of(
                         io.github.temporalrift.game.action.domain.declarationphase.DeclarationPhase.reconstitute(
-                                java.util.UUID.randomUUID(),
+                                UUID.randomUUID(),
                                 GAME_ID,
                                 ERA_NUMBER,
                                 CLOCK.instant().minusSeconds(1),
@@ -275,10 +272,6 @@ class RecordActivistDeclarationCommandHandlerTest {
 
     private static io.github.temporalrift.game.action.domain.declarationphase.DeclarationPhase openDeclarationPhase() {
         return new io.github.temporalrift.game.action.domain.declarationphase.DeclarationPhase(
-                java.util.UUID.randomUUID(),
-                GAME_ID,
-                ERA_NUMBER,
-                CLOCK.instant().plusSeconds(60),
-                java.util.List.of(PLAYER_ID));
+                UUID.randomUUID(), GAME_ID, ERA_NUMBER, CLOCK.instant().plusSeconds(60), List.of(PLAYER_ID));
     }
 }

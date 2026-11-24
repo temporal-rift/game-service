@@ -8,6 +8,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -26,7 +27,7 @@ class InMemoryJpaRepositoryTest {
         UUID id = UUID.randomUUID();
         String name;
         List<String> tags = new ArrayList<>();
-        Set<Integer> numbers = new java.util.HashSet<>();
+        Set<Integer> numbers = new HashSet<>();
         Map<String, Instant> times = new HashMap<>();
         UUID[] ids = new UUID[0];
         Row self = this;

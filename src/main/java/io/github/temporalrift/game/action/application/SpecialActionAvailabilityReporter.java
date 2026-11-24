@@ -2,6 +2,7 @@ package io.github.temporalrift.game.action.application;
 
 import java.time.Clock;
 import java.util.Collection;
+import java.util.Set;
 import java.util.UUID;
 
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
@@ -75,7 +76,7 @@ public class SpecialActionAvailabilityReporter {
         var claimed = eraUsageRepository
                 .findByGameIdAndEraNumberAndPlayerId(gameId, eraNumber, playerState.playerId())
                 .map(SpecialActionEraUsage::claimedSpecials)
-                .orElseGet(java.util.Set::of);
+                .orElseGet(Set::of);
         var usage = new PlayerUsage(
                 playerState.isJammed(),
                 claimed,

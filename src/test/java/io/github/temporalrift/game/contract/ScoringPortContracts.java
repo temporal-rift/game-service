@@ -5,6 +5,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.transaction.annotation.Propagation;
@@ -363,12 +365,12 @@ public final class ScoringPortContracts {
             var repository = port(EraScoringContextRepository.class);
             var gameId = UUID.randomUUID();
             var player = UUID.randomUUID();
-            var first = java.util.concurrent.CompletableFuture.runAsync(
+            var first = CompletableFuture.runAsync(
                     () -> inNewTransaction(() -> repository.upsertPlayerFaction(gameId, player, Faction.ERASERS)));
-            var second = java.util.concurrent.CompletableFuture.runAsync(
+            var second = CompletableFuture.runAsync(
                     () -> inNewTransaction(() -> repository.upsertPlayerFaction(gameId, player, Faction.PROPHETS)));
-            first.get(10, java.util.concurrent.TimeUnit.SECONDS);
-            second.get(10, java.util.concurrent.TimeUnit.SECONDS);
+            first.get(10, TimeUnit.SECONDS);
+            second.get(10, TimeUnit.SECONDS);
 
             assertThat(inNewTransaction(() -> repository.getRequired(gameId, 1)).players())
                     .hasSize(1);

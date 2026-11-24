@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -294,7 +295,7 @@ public final class SimulationPortContracts {
             var next = observations.stream()
                     .map(ExecutionProbe.Observation::nextDeadline)
                     .filter(Objects::nonNull)
-                    .min(java.util.Comparator.naturalOrder())
+                    .min(Comparator.naturalOrder())
                     .orElse(null);
             return new ExecutionProbe.Observation(
                     null,

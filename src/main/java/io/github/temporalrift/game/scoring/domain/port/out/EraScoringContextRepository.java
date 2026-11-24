@@ -50,7 +50,7 @@ public interface EraScoringContextRepository {
 
     int requiredAppliedOutcomeCount(UUID gameId, int eraNumber);
 
-    java.util.List<ActivistDeclarationResolved> resolveActivistDeclarations(UUID gameId, int eraNumber);
+    List<ActivistDeclarationResolved> resolveActivistDeclarations(UUID gameId, int eraNumber);
 
     boolean activistDeclarationsResolved(UUID gameId, int eraNumber);
 
