@@ -248,27 +248,27 @@ class SessionRulesPropertiesTest {
     }
 
     @Test
-    @DisplayName("binding without rewrite-latest-round — defaults to round two")
-    void bindingWithoutRewriteLatestRound_defaultsToTwo() {
-        assertThat(bindValidated(minimalRules()).rewriteLatestRound()).isEqualTo(2);
+    @DisplayName("binding without faction-bet-latest-round — defaults to round two")
+    void bindingWithoutFactionBetLatestRound_defaultsToTwo() {
+        assertThat(bindValidated(minimalRules()).factionBetLatestRound()).isEqualTo(2);
     }
 
     @ParameterizedTest
     @ValueSource(strings = {"0", "4", "-1"})
-    @DisplayName("a rewrite-latest-round outside 1 to 3 fails binding")
-    void rewriteLatestRoundOutOfRange_failsBinding(String round) {
-        var source = minimalRules().withProperty("game.rules.rewrite-latest-round", round);
+    @DisplayName("a faction-bet-latest-round outside 1 to 3 fails binding")
+    void factionBetLatestRoundOutOfRange_failsBinding(String round) {
+        var source = minimalRules().withProperty("game.rules.faction-bet-latest-round", round);
 
         assertThatExceptionOfType(BindException.class).isThrownBy(() -> bindValidated(source));
     }
 
     @ParameterizedTest
     @ValueSource(strings = {"1", "3"})
-    @DisplayName("a rewrite-latest-round within 1 to 3 binds")
-    void rewriteLatestRoundInRange_binds(String round) {
-        var source = minimalRules().withProperty("game.rules.rewrite-latest-round", round);
+    @DisplayName("a faction-bet-latest-round within 1 to 3 binds")
+    void factionBetLatestRoundInRange_binds(String round) {
+        var source = minimalRules().withProperty("game.rules.faction-bet-latest-round", round);
 
-        assertThat(bindValidated(source).rewriteLatestRound()).isEqualTo(Integer.parseInt(round));
+        assertThat(bindValidated(source).factionBetLatestRound()).isEqualTo(Integer.parseInt(round));
     }
 
     @ParameterizedTest

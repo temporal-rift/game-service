@@ -141,7 +141,7 @@ class PlaySpecialActionCommandHandler {
                 command.eraNumber(),
                 command.roundNumber(),
                 gameRules.maxEras(),
-                new SpecialActionRoundWindows(gameRules.annihilateEarliestRound(), gameRules.rewriteLatestRound()));
+                new SpecialActionRoundWindows(gameRules.annihilateEarliestRound(), gameRules.factionBetLatestRound()));
         if (SpecialActionRoundRules.exposeOutsideItsRound(command.specialAction(), command.roundNumber())) {
             throw new ExposeUnavailableException();
         }

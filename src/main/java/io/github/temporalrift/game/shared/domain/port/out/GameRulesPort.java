@@ -22,8 +22,11 @@ public interface GameRulesPort {
     /** First action round (1 to 3) of every era in which a submitted Annihilate is accepted. */
     int annihilateEarliestRound();
 
-    /** Last action round (1 to 3) of every era in which a submitted Rewrite is accepted. */
-    int rewriteLatestRound();
+    /**
+     * Last action round (1 to 3) of every era in which a submitted faction bet (Thread, Reweave, Rewrite, Fulfillment)
+     * is accepted.
+     */
+    int factionBetLatestRound();
 
     /** Final era number; Stall promises a next era that does not exist at or beyond this era. */
     int maxEras();

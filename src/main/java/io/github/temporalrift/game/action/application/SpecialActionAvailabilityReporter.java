@@ -60,7 +60,7 @@ public class SpecialActionAvailabilityReporter {
                 eraNumber,
                 roundNumber,
                 gameRules.maxEras(),
-                new SpecialActionRoundWindows(gameRules.annihilateEarliestRound(), gameRules.rewriteLatestRound()),
+                new SpecialActionRoundWindows(gameRules.annihilateEarliestRound(), gameRules.factionBetLatestRound()),
                 gameRules.onceEraBudgetedSpecials(),
                 gameRules.sealMaxUsesPerGame());
         for (var playerState : playerStateRepository.findAllByGameId(gameId)) {
