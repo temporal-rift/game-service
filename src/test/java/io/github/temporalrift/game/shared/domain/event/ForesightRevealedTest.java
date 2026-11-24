@@ -3,6 +3,7 @@ package io.github.temporalrift.game.shared.domain.event;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -12,7 +13,7 @@ class ForesightRevealedTest {
 
     @Test
     void constructor_copiesPreviewEntries() {
-        var entries = new java.util.ArrayList<>(List.of(
+        var entries = new ArrayList<>(List.of(
                 new ForesightRevealed.RevealedEvent(UUID.randomUUID(), "Storm", List.of()),
                 new ForesightRevealed.RevealedEvent(UUID.randomUUID(), "Calm", List.of())));
 

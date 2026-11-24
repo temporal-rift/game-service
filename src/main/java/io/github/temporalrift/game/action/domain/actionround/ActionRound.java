@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Stream;
 
@@ -159,7 +160,7 @@ public class ActionRound extends AggregateRoot {
         submittedActions.stream()
                 .filter(action -> !cancelledPlayerIds.contains(action.playerId()))
                 .map(action -> action.scoringFact(gameId, eraNumber, roundNumber))
-                .flatMap(java.util.Optional::stream)
+                .flatMap(Optional::stream)
                 .forEach(this::registerEvent);
         registerEvent(
                 new ActionRoundClosed(gameId, eraNumber, roundNumber, closedReason, this.submittedActions.size()));

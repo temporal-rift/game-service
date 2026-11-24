@@ -8,8 +8,10 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.Optional;
+import java.util.Random;
 import java.util.UUID;
 import java.util.random.RandomGenerator;
+import java.util.stream.IntStream;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -66,7 +68,7 @@ class HandSelectionTimeoutProcessorTest {
 
     @Test
     void resolve_alreadySelectedSelection_doesNotPublishAgain() {
-        var resolved = selection().selectRandomOnExpiry(Instant.EPOCH, new java.util.Random(1));
+        var resolved = selection().selectRandomOnExpiry(Instant.EPOCH, new Random(1));
         given(repository.findByIdWithLock(resolved.id())).willReturn(Optional.of(resolved));
 
         processor.resolve(resolved.id());
@@ -81,7 +83,7 @@ class HandSelectionTimeoutProcessorTest {
     }
 
     private static HandSelection selection() {
-        var cards = java.util.stream.IntStream.rangeClosed(1, 7)
+        var cards = IntStream.rangeClosed(1, 7)
                 .mapToObj(slot -> new HandDealt.CardInstance(UUID.randomUUID(), CardType.PUSH, CardGrade.I, slot))
                 .toList();
         return HandSelection.open(new HandDealt(UUID.randomUUID(), 1, UUID.randomUUID(), Instant.EPOCH, cards));

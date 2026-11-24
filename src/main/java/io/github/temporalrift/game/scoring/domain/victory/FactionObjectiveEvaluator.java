@@ -1,8 +1,8 @@
 package io.github.temporalrift.game.scoring.domain.victory;
 
-import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import io.github.temporalrift.game.scoring.domain.playerscore.PlayerScore;
 import io.github.temporalrift.game.scoring.domain.playerscore.ScoreEntry;
@@ -124,13 +124,11 @@ public final class FactionObjectiveEvaluator {
 
     // Only eras with a declared preference that won count; an era with no Rewrite contributes nothing.
     private static int revisionistSuccessfulEras(PlayerScore score) {
-        var eras = new HashSet<Integer>();
-        for (var entry : score.history()) {
-            if (entry.reason() == ScoreReason.SECRET_OUTCOME_WON) {
-                eras.add(entry.eraNumber());
-            }
-        }
-        return eras.size();
+        return (int) score.history().stream()
+                .filter(entry -> entry.reason() == ScoreReason.SECRET_OUTCOME_WON)
+                .map(ScoreEntry::eraNumber)
+                .distinct()
+                .count();
     }
 
     private static int weaverCompletions(PlayerScore score) {
@@ -144,13 +142,10 @@ public final class FactionObjectiveEvaluator {
     }
 
     private static Set<Integer> activistSuccessEras(PlayerScore score) {
-        var successEras = new HashSet<Integer>();
-        for (var entry : score.history()) {
-            if (isActivistSuccess(entry.reason())) {
-                successEras.add(entry.eraNumber());
-            }
-        }
-        return successEras;
+        return score.history().stream()
+                .filter(entry -> isActivistSuccess(entry.reason()))
+                .map(ScoreEntry::eraNumber)
+                .collect(Collectors.toSet());
     }
 
     // Where the table size drops the consecutive rule, any successful era counts toward the objective.

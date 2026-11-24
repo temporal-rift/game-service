@@ -1,8 +1,10 @@
 package io.github.temporalrift.game.action.application;
 
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Component;
 
@@ -55,17 +57,14 @@ public class StalledEventTargetLock {
         }
     }
 
-    private static Set<UUID> uncancelledStalls(java.util.List<SubmittedAction> submittedActions) {
+    private static Set<UUID> uncancelledStalls(List<SubmittedAction> submittedActions) {
         // One shared cancellation rule with round resolution, including its legacy scalar-target
         // rows, so admission can never disagree with the resolved round state.
         var cancelledPlayerIds = RoundCancellation.cancelledPlayerIds(submittedActions);
-        var stalled = new HashSet<UUID>();
-        for (var action : submittedActions) {
-            if (isLiveStall(action, cancelledPlayerIds)) {
-                stalled.add(((SubmittedAction.CardAction) action).targetEventId());
-            }
-        }
-        return stalled;
+        return submittedActions.stream()
+                .filter(action -> isLiveStall(action, cancelledPlayerIds))
+                .map(action -> ((SubmittedAction.CardAction) action).targetEventId())
+                .collect(Collectors.toSet());
     }
 
     private static boolean isLiveStall(SubmittedAction action, Set<UUID> cancelledPlayerIds) {

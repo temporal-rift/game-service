@@ -11,7 +11,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -837,9 +840,8 @@ class ActionControllerTest {
 
     @Test
     void selectHand_dispatchesAuthenticatedFiveCardSelection() throws Exception {
-        var keptCards = java.util.stream.IntStream.range(0, 5)
-                .mapToObj(ignored -> UUID.randomUUID())
-                .collect(java.util.stream.Collectors.toSet());
+        var keptCards =
+                IntStream.range(0, 5).mapToObj(ignored -> UUID.randomUUID()).collect(Collectors.toSet());
         given(selectHandUseCase.handle(any())).willReturn(new SelectHandUseCase.Result(GAME_ID, ERA, PLAYER_ID));
 
         mockMvc.perform(post("/api/v1/games/{gameId}/eras/{eraNumber}/hand-selection", GAME_ID, ERA)
@@ -858,9 +860,8 @@ class ActionControllerTest {
     @Test
     void selectHand_rejectsCardsOutsidePendingDeal() throws Exception {
         given(selectHandUseCase.handle(any())).willThrow(new InvalidHandSelectionException());
-        var keptCards = java.util.stream.IntStream.range(0, 5)
-                .mapToObj(ignored -> UUID.randomUUID())
-                .collect(java.util.stream.Collectors.toSet());
+        var keptCards =
+                IntStream.range(0, 5).mapToObj(ignored -> UUID.randomUUID()).collect(Collectors.toSet());
 
         mockMvc.perform(post("/api/v1/games/{gameId}/eras/{eraNumber}/hand-selection", GAME_ID, ERA)
                         .with(auth())
@@ -943,10 +944,9 @@ class ActionControllerTest {
                 """.formatted(actionType, CARD_INSTANCE_ID, TARGET_EVENT_ID, TARGET_OUTCOME_ID);
     }
 
-    private static String handSelectionJson(java.util.Set<UUID> keptCardInstanceIds) {
+    private static String handSelectionJson(Set<UUID> keptCardInstanceIds) {
         return "{\"keptCardInstanceIds\":[%s]}"
-                .formatted(keptCardInstanceIds.stream()
-                        .map(id -> "\"" + id + "\"")
-                        .collect(java.util.stream.Collectors.joining(",")));
+                .formatted(
+                        keptCardInstanceIds.stream().map(id -> "\"" + id + "\"").collect(Collectors.joining(",")));
     }
 }

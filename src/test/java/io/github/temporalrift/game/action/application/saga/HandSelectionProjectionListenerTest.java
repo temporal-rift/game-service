@@ -6,6 +6,7 @@ import static org.mockito.BDDMockito.then;
 
 import java.time.Instant;
 import java.util.UUID;
+import java.util.stream.IntStream;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -55,7 +56,7 @@ class HandSelectionProjectionListenerTest {
     }
 
     private static HandDealt event() {
-        var cards = java.util.stream.IntStream.rangeClosed(1, 7)
+        var cards = IntStream.rangeClosed(1, 7)
                 .mapToObj(slot -> new HandDealt.CardInstance(UUID.randomUUID(), CardType.PUSH, CardGrade.I, slot))
                 .toList();
         return new HandDealt(UUID.randomUUID(), 1, UUID.randomUUID(), Instant.parse("2026-08-14T00:01:00Z"), cards);

@@ -425,8 +425,8 @@ class EraScoringContextRepositoryAdapter implements EraScoringContextRepository 
                                                 .findByGameIdAndEraNumberAndEventId(
                                                         gameId, eraNumber, declaration.getTargetEventId())
                                                 .map(outcome -> resolveDeclaration(declaration, outcome))
-                                        : java.util.Optional.of(resolveDeclaration(declaration, null))))
-                .flatMap(java.util.Optional::stream)
+                                        : Optional.of(resolveDeclaration(declaration, null))))
+                .flatMap(Optional::stream)
                 .toList();
     }
 

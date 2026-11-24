@@ -6,6 +6,7 @@ import static org.mockito.BDDMockito.then;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
 import java.util.UUID;
 import java.util.function.Consumer;
 
@@ -63,7 +64,7 @@ class SagaHandoffPublisherTest {
     void publish_invokesKafkaBeforeInProcess() {
         var envelope = DomainEventEnvelope.create(
                 UUID.randomUUID(), "Game", UUID.randomUUID(), DomainEventEnvelope.SCHEMA_VERSION_V1, "payload", CLOCK);
-        var callOrder = new java.util.ArrayList<String>();
+        var callOrder = new ArrayList<String>();
         Consumer<DomainEventEnvelope<String>> orderedKafkaPublish = e -> callOrder.add("kafka");
         var orderedApplicationEventPublisher = (ApplicationEventPublisher) event -> callOrder.add("internal");
         var publisher = new SagaHandoffPublisher(orderedApplicationEventPublisher);

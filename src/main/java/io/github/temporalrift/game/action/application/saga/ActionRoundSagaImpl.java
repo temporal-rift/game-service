@@ -9,8 +9,11 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -247,14 +250,15 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
             ActionRound round, UUID gameId, int eraNumber, int roundNumber, List<UUID> skippedPlayerIds) {
         // Summary publication is intentionally separate from aggregate domain events because it is a
         // projection-style public view of the round, not part of the aggregate's invariant changes.
-        var summaries = new ArrayList<ActionSummary>();
-        for (var action : round.submittedActions()) {
-            summaries.add(
-                    new ActionSummary(action.playerId(), action.publicCategory().orElse(null), action.family(), false));
-        }
-        for (var skippedId : skippedPlayerIds) {
-            summaries.add(new ActionSummary(skippedId, null, null, true));
-        }
+        var summaries = Stream.concat(
+                        round.submittedActions().stream()
+                                .map(action -> new ActionSummary(
+                                        action.playerId(),
+                                        action.publicCategory().orElse(null),
+                                        action.family(),
+                                        false)),
+                        skippedPlayerIds.stream().map(skippedId -> new ActionSummary(skippedId, null, null, true)))
+                .toList();
         actionEventPublisher.publish(DomainEventEnvelope.create(
                 round.id(),
                 ActionRound.AGGREGATE_TYPE,
@@ -364,7 +368,7 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
         var revealedTargets = new LinkedHashSet<PlayerState>();
         var roundCoordinate = EntropyCoordinate.none().era(eraNumber).round(roundNumber);
         for (var intercept : intercepts) {
-            var target = java.util.Optional.ofNullable(statesByPlayer.get(intercept.targetPlayerId()));
+            var target = Optional.ofNullable(statesByPlayer.get(intercept.targetPlayerId()));
             var revealRandom = entropy.generator(
                     EntropyPurpose.INTERCEPT_REVEAL,
                     roundCoordinate.player(intercept.playerId()).subject(intercept.targetPlayerId()));
@@ -424,7 +428,7 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
                 .filter(card -> card.cardType() == CardType.PUSH
                         || card.cardType() == CardType.SUPPRESS
                         || card.cardType() == CardType.SWING)
-                .collect(java.util.stream.Collectors.toMap(SubmittedAction.CardAction::playerId, card -> card));
+                .collect(Collectors.toMap(SubmittedAction.CardAction::playerId, card -> card));
 
         var correlations = new ArrayList<EraActionFactsFinalized.CorruptCorrelationFact>();
         round.submittedActions().stream()
@@ -455,7 +459,7 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
                 .filter(special ->
                         special.specialAction() == io.github.temporalrift.game.shared.domain.model.SpecialAction.EXPOSE)
                 .map(SubmittedAction.SpecialActionSubmission::playerId)
-                .collect(java.util.stream.Collectors.toSet());
+                .collect(Collectors.toSet());
         var exposedStates = activistEraStateRepository.findExposedByGameIdAndEraNumber(gameId, eraNumber).stream()
                 .filter(state -> liveExposePlayerIds.contains(state.activistPlayerId()))
                 .filter(state -> state.exposedSignature() != null)
@@ -529,7 +533,7 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
         var foresightFacts = new ArrayList<EraActionFactsFinalized.ForesightFact>();
         var mimicFacts = new ArrayList<EraActionFactsFinalized.RevisionistFact>();
         var lockedRewriteFacts = new LinkedHashMap<UUID, EraActionFactsFinalized.RevisionistFact>();
-        var fulfillmentFacts = new java.util.LinkedHashSet<EraActionFactsFinalized.FulfillmentFact>();
+        var fulfillmentFacts = new LinkedHashSet<EraActionFactsFinalized.FulfillmentFact>();
         var exposeFacts = activistEraStateRepository.findExposedByGameIdAndEraNumber(gameId, eraNumber).stream()
                 .filter(state -> !cancelledRoundTwoPlayerIds.contains(state.activistPlayerId()))
                 .filter(state -> state.exposedSignature() != null)
@@ -570,7 +574,7 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
                 foresightFacts,
                 exposeFacts,
                 activistDeclarationFacts,
-                java.util.stream.Stream.concat(lockedRewriteFacts.values().stream(), mimicFacts.stream())
+                Stream.concat(lockedRewriteFacts.values().stream(), mimicFacts.stream())
                         .toList(),
                 List.copyOf(fulfillmentFacts),
                 corruptCorrelationFacts,
@@ -655,7 +659,7 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
         return List.copyOf(traced);
     }
 
-    private static java.util.stream.Stream<SubmittedAction> uncancelledActions(ActionRound round) {
+    private static Stream<SubmittedAction> uncancelledActions(ActionRound round) {
         return RoundActions.live(round).stream();
     }
 

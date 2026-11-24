@@ -1,6 +1,7 @@
 package io.github.temporalrift.game.action.application.command;
 
 import java.time.Clock;
+import java.util.UUID;
 
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.stereotype.Service;
@@ -150,7 +151,7 @@ class PlaySpecialActionCommandHandler {
             // write: eras run sequentially and the era claim below persists the new use on success, so the
             // observed count stays exact and rejected submissions spend nothing anywhere.
             var acceptedSeals = sealGameUsageRepository.countAcceptedSeals(command.gameId(), command.playerId());
-            SealGameUsage.reconstitute(java.util.UUID.randomUUID(), command.gameId(), command.playerId(), acceptedSeals)
+            SealGameUsage.reconstitute(UUID.randomUUID(), command.gameId(), command.playerId(), acceptedSeals)
                     .claim(gameRules.sealMaxUsesPerGame());
         }
         SpecialActionEraUsage usage = null;
@@ -158,7 +159,7 @@ class PlaySpecialActionCommandHandler {
             usage = specialActionEraUsageRepository
                     .findByGameIdAndEraNumberAndPlayerId(command.gameId(), command.eraNumber(), command.playerId())
                     .orElseGet(() -> new SpecialActionEraUsage(
-                            java.util.UUID.randomUUID(), command.gameId(), command.eraNumber(), command.playerId()));
+                            UUID.randomUUID(), command.gameId(), command.eraNumber(), command.playerId()));
             usage.claim(command.specialAction());
         }
         // Structural shape (target fields, self-targeting) must be confirmed before any target-specific
@@ -198,7 +199,7 @@ class PlaySpecialActionCommandHandler {
         var state = activistEraStateRepository
                 .findByGameIdAndEraNumberAndActivistPlayerId(command.gameId(), command.eraNumber(), command.playerId())
                 .orElseGet(() -> new ActivistEraState(
-                        java.util.UUID.randomUUID(),
+                        UUID.randomUUID(),
                         command.gameId(),
                         command.eraNumber(),
                         command.playerId(),

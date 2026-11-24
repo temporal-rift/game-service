@@ -326,7 +326,7 @@ class CardActionPlayWindowTest {
                     cardType,
                     CardGrade.I,
                     null,
-                    java.util.List.of(UUID.randomUUID()),
+                    List.of(UUID.randomUUID()),
                     null,
                     null,
                     null,

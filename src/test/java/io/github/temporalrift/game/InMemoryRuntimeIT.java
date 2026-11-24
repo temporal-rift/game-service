@@ -17,6 +17,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 import javax.sql.DataSource;
 
 import ch.qos.logback.classic.Level;
@@ -474,8 +475,7 @@ class InMemoryRuntimeIT {
                 .toList();
     }
 
-    private static <T> T inTransaction(
-            ConfigurableApplicationContext application, java.util.function.Supplier<T> work) {
+    private static <T> T inTransaction(ConfigurableApplicationContext application, Supplier<T> work) {
         return application.getBean(TransactionTemplate.class).execute(status -> work.get());
     }
 
