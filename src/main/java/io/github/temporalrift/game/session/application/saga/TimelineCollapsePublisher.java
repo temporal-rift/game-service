@@ -18,7 +18,7 @@ import io.github.temporalrift.game.session.domain.port.out.FinalScoreQueryPort;
 import io.github.temporalrift.game.session.domain.port.out.LobbyRepository;
 import io.github.temporalrift.game.session.domain.port.out.SessionEventPublisher;
 import io.github.temporalrift.game.session.domain.port.out.SessionFactionObjectivePort;
-import io.github.temporalrift.game.session.domain.port.out.VictoryTiebreakRulesPort;
+import io.github.temporalrift.game.session.domain.port.out.SessionVictoryRulesPort;
 import io.github.temporalrift.game.shared.application.SagaHandoffPublisher;
 import io.github.temporalrift.game.shared.domain.event.GameEnded;
 import io.github.temporalrift.game.shared.domain.messaging.DomainEventEnvelope;
@@ -35,7 +35,7 @@ public class TimelineCollapsePublisher {
     private final SessionEventPublisher eventPublisher;
     private final SagaHandoffPublisher sagaHandoffPublisher;
     private final SessionFactionObjectivePort factionObjectives;
-    private final VictoryTiebreakRulesPort tiebreakRules;
+    private final SessionVictoryRulesPort victoryRules;
     private final Clock clock;
 
     public TimelineCollapsePublisher(
@@ -44,14 +44,14 @@ public class TimelineCollapsePublisher {
             SessionEventPublisher eventPublisher,
             ApplicationEventPublisher applicationEventPublisher,
             SessionFactionObjectivePort factionObjectives,
-            VictoryTiebreakRulesPort tiebreakRules,
+            SessionVictoryRulesPort victoryRules,
             Clock clock) {
         this.lobbyRepository = lobbyRepository;
         this.scoreQueryPort = scoreQueryPort;
         this.eventPublisher = eventPublisher;
         this.sagaHandoffPublisher = new SagaHandoffPublisher(applicationEventPublisher);
         this.factionObjectives = factionObjectives;
-        this.tiebreakRules = tiebreakRules;
+        this.victoryRules = victoryRules;
         this.clock = clock;
     }
 
@@ -63,7 +63,7 @@ public class TimelineCollapsePublisher {
                 .currentPlayers();
         var scores = scoreQueryPort.getScores(game.id()).stream()
                 .collect(Collectors.toMap(GameEnded.PlayerScoreResult::playerId, GameEnded.PlayerScoreResult::score));
-        boolean scoreTiebreak = tiebreakRules.scoreTiebreak();
+        boolean scoreTiebreak = victoryRules.scoreTiebreak();
         // Objective progress only separates tied leaders, so the score-only rule never depends on that query.
         Map<UUID, SessionFactionObjectivePort.ObjectiveProgress> progressByPlayer = scoreTiebreak
                 ? factionObjectives.evaluate(game.id(), eraNumber).stream()

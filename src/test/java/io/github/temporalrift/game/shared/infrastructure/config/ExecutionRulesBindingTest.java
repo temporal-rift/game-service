@@ -22,6 +22,7 @@ import io.github.temporalrift.game.scoring.infrastructure.adapter.out.config.Sco
 import io.github.temporalrift.game.scoring.infrastructure.adapter.out.config.VictoryRulesProperties;
 import io.github.temporalrift.game.session.domain.port.out.SessionGameRulesPort;
 import io.github.temporalrift.game.session.infrastructure.adapter.out.config.SessionRulesProperties;
+import io.github.temporalrift.game.session.infrastructure.adapter.out.config.SessionVictoryRulesProperties;
 import io.github.temporalrift.game.shared.domain.model.InvalidExecutionRulesException;
 import io.github.temporalrift.game.shared.domain.port.out.ExecutionRules;
 import io.github.temporalrift.game.simulation.domain.execution.EffectiveRules;
@@ -163,6 +164,29 @@ class ExecutionRulesBindingTest {
 
         assertThat(score.pointsDelta(ScoreReason.CHAIN_COMPLETED)).isEqualTo(10);
         assertThat(victory.eraserAnnihilations()).isEqualTo(4);
+    }
+
+    @Test
+    @DisplayName("a context without the normal-victory switch keeps normal victory on")
+    void bind_normalVictoryOmitted_defaultsToOn() {
+        var properties = bindable(ExecutionRulesFixture.rules());
+
+        var victory = new ExecutionRulesBinding<>(SessionVictoryRulesProperties.class, "game.rules.victory", validator)
+                .bind(properties);
+
+        assertThat(victory.normalVictory()).isTrue();
+    }
+
+    @Test
+    @DisplayName("a context carrying normal-victory false turns normal victory off")
+    void bind_normalVictoryOff_isHonoured() {
+        var properties = bindable(ExecutionRulesFixture.rulesWith("game.rules.victory.normal-victory", false));
+
+        var victory = new ExecutionRulesBinding<>(SessionVictoryRulesProperties.class, "game.rules.victory", validator)
+                .bind(properties);
+
+        assertThat(victory.normalVictory()).isFalse();
+        assertThat(victory.scoreTiebreak()).isTrue();
     }
 
     @Test

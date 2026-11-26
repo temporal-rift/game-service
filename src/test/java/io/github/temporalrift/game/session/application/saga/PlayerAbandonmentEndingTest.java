@@ -50,6 +50,7 @@ import io.github.temporalrift.game.session.domain.port.out.PlayerReconnectSagaRe
 import io.github.temporalrift.game.session.domain.port.out.SessionEventPublisher;
 import io.github.temporalrift.game.session.domain.port.out.SessionFactionObjectivePort;
 import io.github.temporalrift.game.session.domain.port.out.SessionGameRulesPort;
+import io.github.temporalrift.game.session.domain.port.out.SessionVictoryRulesPort;
 import io.github.temporalrift.game.session.domain.saga.EraSagaState;
 import io.github.temporalrift.game.session.domain.saga.EraSagaStatus;
 import io.github.temporalrift.game.session.domain.saga.PlayerReconnectSagaState;
@@ -189,7 +190,17 @@ class PlayerAbandonmentEndingTest {
                 abandonment,
                 rules,
                 objectives,
-                () -> false,
+                new SessionVictoryRulesPort() {
+                    @Override
+                    public boolean scoreTiebreak() {
+                        return false;
+                    }
+
+                    @Override
+                    public boolean normalVictory() {
+                        return true;
+                    }
+                },
                 new ActionRoundRequests(games, lobbies),
                 clock);
     }

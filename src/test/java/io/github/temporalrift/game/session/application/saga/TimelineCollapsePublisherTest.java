@@ -31,6 +31,7 @@ import io.github.temporalrift.game.session.domain.port.out.FinalScoreQueryPort;
 import io.github.temporalrift.game.session.domain.port.out.LobbyRepository;
 import io.github.temporalrift.game.session.domain.port.out.SessionEventPublisher;
 import io.github.temporalrift.game.session.domain.port.out.SessionFactionObjectivePort;
+import io.github.temporalrift.game.session.domain.port.out.SessionVictoryRulesPort;
 import io.github.temporalrift.game.shared.domain.event.GameEnded;
 import io.github.temporalrift.game.shared.domain.messaging.DomainEventEnvelope;
 import io.github.temporalrift.game.shared.domain.model.Faction;
@@ -69,8 +70,22 @@ class TimelineCollapsePublisherTest {
                 eventPublisher,
                 applicationEventPublisher,
                 factionObjectives,
-                () -> false,
+                victoryRules(false),
                 Clock.systemUTC());
+    }
+
+    private static SessionVictoryRulesPort victoryRules(boolean scoreTiebreak) {
+        return new SessionVictoryRulesPort() {
+            @Override
+            public boolean scoreTiebreak() {
+                return scoreTiebreak;
+            }
+
+            @Override
+            public boolean normalVictory() {
+                return true;
+            }
+        };
     }
 
     @Test
@@ -123,7 +138,7 @@ class TimelineCollapsePublisherTest {
                 eventPublisher,
                 applicationEventPublisher,
                 factionObjectives,
-                () -> true,
+                victoryRules(true),
                 Clock.systemUTC());
         var game = Game.reconstitute(GAME_ID, LOBBY_ID, List.of(), 3, 3, GameStatus.IN_PROGRESS);
         given(lobbyRepository.findById(LOBBY_ID)).willReturn(Optional.of(startedLobby()));

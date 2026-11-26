@@ -35,7 +35,7 @@ import io.github.temporalrift.game.session.domain.port.out.LobbyRepository;
 import io.github.temporalrift.game.session.domain.port.out.SessionEventPublisher;
 import io.github.temporalrift.game.session.domain.port.out.SessionFactionObjectivePort;
 import io.github.temporalrift.game.session.domain.port.out.SessionGameRulesPort;
-import io.github.temporalrift.game.session.domain.port.out.VictoryTiebreakRulesPort;
+import io.github.temporalrift.game.session.domain.port.out.SessionVictoryRulesPort;
 import io.github.temporalrift.game.session.domain.saga.EraSagaState;
 import io.github.temporalrift.game.session.domain.saga.EraSagaStatus;
 import io.github.temporalrift.game.shared.application.SagaHandoffPublisher;
@@ -62,7 +62,7 @@ class EraSagaAdvancer {
     private final PlayerAbandonmentProcessor abandonmentProcessor;
     private final SessionGameRulesPort gameRules;
     private final SessionFactionObjectivePort factionObjectives;
-    private final VictoryTiebreakRulesPort tiebreakRules;
+    private final SessionVictoryRulesPort victoryRules;
     private final ActionRoundRequests actionRoundRequests;
     private final Clock clock;
 
@@ -78,7 +78,7 @@ class EraSagaAdvancer {
             PlayerAbandonmentProcessor abandonmentProcessor,
             SessionGameRulesPort gameRules,
             SessionFactionObjectivePort factionObjectives,
-            VictoryTiebreakRulesPort tiebreakRules,
+            SessionVictoryRulesPort victoryRules,
             ActionRoundRequests actionRoundRequests,
             Clock clock) {
         this.eraSagaRepository = eraSagaRepository;
@@ -93,7 +93,7 @@ class EraSagaAdvancer {
         this.abandonmentProcessor = abandonmentProcessor;
         this.gameRules = gameRules;
         this.factionObjectives = factionObjectives;
-        this.tiebreakRules = tiebreakRules;
+        this.victoryRules = victoryRules;
         this.actionRoundRequests = actionRoundRequests;
         this.clock = clock;
     }
@@ -295,6 +295,9 @@ class EraSagaAdvancer {
             UUID playerId, Faction faction, int newTotal, String winType, List<String> winConditions) {}
 
     private List<Qualifier> findQualifiers(UUID gameId, ScoresUpdated su, Lobby lobby) {
+        if (!victoryRules.normalVictory()) {
+            return List.of();
+        }
         var metByPlayer = new HashMap<UUID, Boolean>();
         for (var progress : factionObjectives.evaluate(gameId, su.eraNumber())) {
             metByPlayer.put(progress.playerId(), progress.objectiveMet());
@@ -316,7 +319,7 @@ class EraSagaAdvancer {
             }
         }
         qualifiers.sort(Comparator.comparing(Qualifier::playerId));
-        return NormalVictoryPolicy.winners(qualifiers, Qualifier::newTotal, tiebreakRules.scoreTiebreak());
+        return NormalVictoryPolicy.winners(qualifiers, Qualifier::newTotal, victoryRules.scoreTiebreak());
     }
 
     private static List<String> winConditionsFor(boolean thresholdMet, boolean objectiveMet) {
@@ -357,7 +360,7 @@ class EraSagaAdvancer {
                 })
                 .toList();
         var thresholds = gameRules.stabilizationThresholds();
-        var winnerIds = SpecialEndingPolicy.stabilizationWinners(standings, thresholds, tiebreakRules.scoreTiebreak());
+        var winnerIds = SpecialEndingPolicy.stabilizationWinners(standings, thresholds, victoryRules.scoreTiebreak());
         var winners = new ArrayList<TimelineStabilized.PlayerFactionResult>();
         var losers = new ArrayList<TimelineStabilized.PlayerFactionResult>();
         for (var standing : standings) {
