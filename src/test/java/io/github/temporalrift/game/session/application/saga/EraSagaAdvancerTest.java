@@ -57,6 +57,7 @@ import io.github.temporalrift.game.session.domain.port.out.LobbyRepository;
 import io.github.temporalrift.game.session.domain.port.out.SessionEventPublisher;
 import io.github.temporalrift.game.session.domain.port.out.SessionFactionObjectivePort;
 import io.github.temporalrift.game.session.domain.port.out.SessionGameRulesPort;
+import io.github.temporalrift.game.session.domain.port.out.SessionVictoryRulesPort;
 import io.github.temporalrift.game.session.domain.saga.EraSagaState;
 import io.github.temporalrift.game.session.domain.saga.EraSagaStatus;
 import io.github.temporalrift.game.shared.domain.event.ActionRoundClosed;
@@ -122,6 +123,8 @@ class EraSagaAdvancerTest {
 
     boolean scoreTiebreak;
 
+    boolean normalVictory = true;
+
     @BeforeEach
     void setUp() {
         advancer = new EraSagaAdvancer(
@@ -138,7 +141,17 @@ class EraSagaAdvancerTest {
                 gameRules,
                 factionObjectives,
                 // Off unless a test switches it on, so simultaneous qualifiers share by default here.
-                () -> scoreTiebreak,
+                new SessionVictoryRulesPort() {
+                    @Override
+                    public boolean scoreTiebreak() {
+                        return scoreTiebreak;
+                    }
+
+                    @Override
+                    public boolean normalVictory() {
+                        return normalVictory;
+                    }
+                },
                 actionRoundRequests,
                 clock);
         lenient()
@@ -588,6 +601,116 @@ class EraSagaAdvancerTest {
         var winEvent = (WinConditionMet) captor.getValue().payload();
         assertThat(winEvent.winType()).isEqualTo("SCORE_THRESHOLD");
         assertThat(winEvent.winConditions()).containsExactly("SCORE_THRESHOLD");
+    }
+
+    // ─── normal victory switched off ─────────────────────────────────────────
+
+    private static Game gameAtEra(int eraNumber) {
+        return Game.reconstitute(GAME_ID, LOBBY_ID, List.of(), eraNumber, 0, GameStatus.IN_PROGRESS);
+    }
+
+    @Test
+    @DisplayName("switch off — a score at the threshold does not end the game, the next era starts")
+    void handleScoresUpdated_normalVictoryOff_thresholdDoesNotEndTheGame() {
+        // given
+        normalVictory = false;
+        var state = new EraSagaState(GAME_ID, 3, EraSagaStatus.WAITING_SCORES, PLAYER_IDS);
+        given(eraSagaRepository.findByGameIdWithLock(GAME_ID)).willReturn(Optional.of(state));
+        given(gameRules.maxEras()).willReturn(MAX_ERAS);
+        var game = gameAtEra(3);
+        given(gameRepository.findByIdWithLock(GAME_ID)).willReturn(Optional.of(game));
+        var updates =
+                List.of(new ScoresUpdated.ScoreUpdate(PLAYER_1, Faction.PROPHETS, 5, "round-bonus", WIN_THRESHOLD));
+
+        // when
+        advancer.handleScoresUpdated(GAME_ID, new ScoresUpdated(GAME_ID, 3, updates));
+
+        // then
+        assertThat(game.status()).isEqualTo(GameStatus.IN_PROGRESS);
+        then(eventPublisher).should(never()).publish(envelopeWithPayload(WinConditionMet.class));
+        then(eventPublisher).should().publish(envelopeWithPayload(EraEnded.class));
+        then(eventPublisher).should().publish(envelopeWithPayload(EraStarted.class));
+    }
+
+    @Test
+    @DisplayName("switch off — a met faction objective does not end the game, the next era starts")
+    void handleScoresUpdated_normalVictoryOff_objectiveDoesNotEndTheGame() {
+        // given
+        normalVictory = false;
+        var state = new EraSagaState(GAME_ID, 3, EraSagaStatus.WAITING_SCORES, PLAYER_IDS);
+        given(eraSagaRepository.findByGameIdWithLock(GAME_ID)).willReturn(Optional.of(state));
+        given(gameRules.maxEras()).willReturn(MAX_ERAS);
+        var game = gameAtEra(3);
+        given(gameRepository.findByIdWithLock(GAME_ID)).willReturn(Optional.of(game));
+        var updates = List.of(
+                new ScoresUpdated.ScoreUpdate(PLAYER_1, Faction.ERASERS, 3, "bonus", 10),
+                new ScoresUpdated.ScoreUpdate(PLAYER_2, Faction.WEAVERS, 1, "bonus", 8));
+
+        // when
+        advancer.handleScoresUpdated(GAME_ID, new ScoresUpdated(GAME_ID, 3, updates));
+
+        // then
+        assertThat(game.status()).isEqualTo(GameStatus.IN_PROGRESS);
+        then(eventPublisher).should(never()).publish(envelopeWithPayload(WinConditionMet.class));
+        then(eventPublisher).should().publish(envelopeWithPayload(EraStarted.class));
+    }
+
+    @Test
+    @DisplayName("switch off — the final era ends through stabilization even when a seat is past the threshold")
+    void handleScoresUpdated_normalVictoryOff_finalEraEndsByStabilization() {
+        // given
+        normalVictory = false;
+        var state = new EraSagaState(GAME_ID, MAX_ERAS, EraSagaStatus.WAITING_SCORES, PLAYER_IDS);
+        given(eraSagaRepository.findByGameIdWithLock(GAME_ID)).willReturn(Optional.of(state));
+        given(gameRules.maxEras()).willReturn(MAX_ERAS);
+        given(gameRules.stabilizationThresholds()).willReturn(THRESHOLDS);
+        givenNoObjectivesMet(MAX_ERAS);
+        var game = gameAtEra(MAX_ERAS);
+        given(gameRepository.findByIdWithLock(GAME_ID)).willReturn(Optional.of(game));
+        var updates = List.of(
+                new ScoresUpdated.ScoreUpdate(PLAYER_1, Faction.PROPHETS, 5, "round-bonus", WIN_THRESHOLD + 6),
+                new ScoresUpdated.ScoreUpdate(PLAYER_2, Faction.WEAVERS, 1, "bonus", 8));
+
+        // when
+        advancer.handleScoresUpdated(GAME_ID, new ScoresUpdated(GAME_ID, MAX_ERAS, updates));
+
+        // then
+        assertThat(game.status()).isEqualTo(GameStatus.ENDED_BY_STABILIZATION);
+        then(eventPublisher).should().publish(envelopeWithPayload(TimelineStabilized.class));
+        then(eventPublisher).should(never()).publish(envelopeWithPayload(WinConditionMet.class));
+    }
+
+    @Test
+    @DisplayName("switch off — a collapse in the era still ends the game by collapse")
+    void handleScoresUpdated_normalVictoryOff_collapseStillEndsTheGame() {
+        // given
+        normalVictory = false;
+        var state = new EraSagaState(GAME_ID, 3, EraSagaStatus.WAITING_SCORES, PLAYER_IDS);
+        given(eraSagaRepository.findByGameIdWithLock(GAME_ID)).willReturn(Optional.of(state));
+        var thirdCascadedEvent = UUID.randomUUID();
+        var game = Game.reconstitute(
+                GAME_ID,
+                LOBBY_ID,
+                List.of(),
+                new GameProgress(
+                        3,
+                        Set.of(UUID.randomUUID(), UUID.randomUUID(), thirdCascadedEvent),
+                        true,
+                        List.of(new PendingCarryOverEvent(thirdCascadedEvent, CarryOverState.CASCADED)),
+                        Map.of(),
+                        GameStatus.IN_PROGRESS,
+                        3));
+        given(gameRepository.findByIdWithLock(GAME_ID)).willReturn(Optional.of(game));
+        var updates =
+                List.of(new ScoresUpdated.ScoreUpdate(PLAYER_1, Faction.PROPHETS, 5, "round-bonus", WIN_THRESHOLD));
+
+        // when
+        advancer.handleScoresUpdated(GAME_ID, new ScoresUpdated(GAME_ID, 3, updates));
+
+        // then
+        assertThat(game.status()).isEqualTo(GameStatus.ENDED_BY_COLLAPSE);
+        then(collapsePublisher).should().publishCollapse(game, 3);
+        then(eventPublisher).should(never()).publish(envelopeWithPayload(WinConditionMet.class));
     }
 
     @Test
