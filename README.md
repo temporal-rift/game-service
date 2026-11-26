@@ -132,8 +132,8 @@ Modules communicate only via Spring `ApplicationEvent` — never by direct cross
 
 ## Dependencies
 
-- Parent BOM: `temporal-rift-bom:1.0.14` (Spotless, Checkstyle, OpenAPI generator)
+- Parent BOM: `temporal-rift-bom:2.2.2` (Spotless, Checkstyle, OpenAPI generator)
 - Event contracts (spec-only AsyncAPI modules from `apis`, code-generated at build time):
   `session-event`, `action-event`, `scoring-event`, `timeline-event` — versions pinned as `<*-event.version>` properties in `pom.xml`
 - Operator contract: `simulation-control-api` (spec-only OpenAPI), pinned as `<simulation-control-api.version>`
-- Timeline compatibility: consumes `timeline.events` published under timeline-event 3.0.0 — producer and consumer pin the same contract major.
+- Timeline compatibility: consumes `timeline.events` published under timeline-event 7.6.0 — producer and consumer pin the same contract major.
