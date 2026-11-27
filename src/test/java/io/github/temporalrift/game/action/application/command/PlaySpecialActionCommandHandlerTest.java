@@ -24,14 +24,17 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Mockito;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import io.github.temporalrift.game.action.application.ActionTargetValidator;
 import io.github.temporalrift.game.action.application.ActivistMomentumEligibility;
 import io.github.temporalrift.game.action.application.GameParticipantValidator;
+import io.github.temporalrift.game.action.application.StalledEventTargetLock;
 import io.github.temporalrift.game.action.application.port.in.SubmitRoundActionUseCase;
 import io.github.temporalrift.game.action.domain.actionround.ActionRound;
 import io.github.temporalrift.game.action.domain.actionround.ActionRoundClosedException;
@@ -48,6 +51,7 @@ import io.github.temporalrift.game.action.domain.actionround.UnknownActionTarget
 import io.github.temporalrift.game.action.domain.activisterastate.ActivistEraState;
 import io.github.temporalrift.game.action.domain.activisterastate.ExposeTargetNotEligibleException;
 import io.github.temporalrift.game.action.domain.activisterastate.ExposeUnavailableException;
+import io.github.temporalrift.game.action.domain.activisterastate.ProbabilityInfluenceSignature;
 import io.github.temporalrift.game.action.domain.event.SpecialActionPlayed;
 import io.github.temporalrift.game.action.domain.playerstate.PlayerState;
 import io.github.temporalrift.game.action.domain.playerstate.PlayerStateNotFoundException;
@@ -55,7 +59,9 @@ import io.github.temporalrift.game.action.domain.port.out.ActionEventPublisher;
 import io.github.temporalrift.game.action.domain.port.out.ActionRoundRepository;
 import io.github.temporalrift.game.action.domain.port.out.ActivistEraStateRepository;
 import io.github.temporalrift.game.action.domain.port.out.PlayerStateRepository;
+import io.github.temporalrift.game.action.domain.port.out.SealGameUsageRepository;
 import io.github.temporalrift.game.action.domain.port.out.SpecialActionEraUsageRepository;
+import io.github.temporalrift.game.action.domain.specialactionerausage.SealGameBudgetExhaustedException;
 import io.github.temporalrift.game.action.domain.specialactionerausage.SpecialActionEraBudgetExhaustedException;
 import io.github.temporalrift.game.action.domain.specialactionerausage.SpecialActionEraUsage;
 import io.github.temporalrift.game.shared.domain.model.CardCategory;
@@ -87,7 +93,7 @@ class PlaySpecialActionCommandHandlerTest {
     SpecialActionEraUsageRepository specialActionEraUsageRepository;
 
     @Mock
-    io.github.temporalrift.game.action.domain.port.out.SealGameUsageRepository sealGameUsageRepository;
+    SealGameUsageRepository sealGameUsageRepository;
 
     @Mock
     GameRulesPort gameRules;
@@ -111,7 +117,7 @@ class PlaySpecialActionCommandHandlerTest {
     GameParticipantValidator gameParticipantValidator;
 
     @Mock
-    io.github.temporalrift.game.action.application.StalledEventTargetLock stalledEventTargetLock;
+    StalledEventTargetLock stalledEventTargetLock;
 
     @Spy
     Clock clock = Clock.systemUTC();
@@ -187,13 +193,11 @@ class PlaySpecialActionCommandHandlerTest {
         given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(playerState));
         given(playerState.faction()).willReturn(factionFor(specialAction));
         given(playerState.isJammed()).willReturn(false);
-        willThrow(io.github.temporalrift.game.action.domain.actionround.InvalidActionTargetException.stalledEventTarget(
-                        targetEventId))
+        willThrow(InvalidActionTargetException.stalledEventTarget(targetEventId))
                 .given(stalledEventTargetLock)
                 .requireEventNotStalled(GAME_ID, ERA, 2, targetEventId);
 
-        assertThatExceptionOfType(
-                        io.github.temporalrift.game.action.domain.actionround.InvalidActionTargetException.class)
+        assertThatExceptionOfType(InvalidActionTargetException.class)
                 .isThrownBy(() -> handler.handle(command))
                 .withMessageContaining(targetEventId.toString());
 
@@ -350,7 +354,7 @@ class PlaySpecialActionCommandHandlerTest {
                 .willReturn(Optional.of(round));
         given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(playerState));
         given(playerState.faction()).willReturn(Faction.WEAVERS);
-        org.mockito.Mockito.lenient().when(gameRules.factionBetLatestRound()).thenReturn(2);
+        Mockito.lenient().when(gameRules.factionBetLatestRound()).thenReturn(2);
         given(playerState.isJammed()).willReturn(false);
         given(gameRules.onceEraBudgetedSpecials()).willReturn(Set.of());
         given(round.submit(any())).willReturn(false);
@@ -387,7 +391,7 @@ class PlaySpecialActionCommandHandlerTest {
                 .willReturn(Optional.of(round));
         given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(playerState));
         given(playerState.faction()).willReturn(Faction.WEAVERS);
-        org.mockito.Mockito.lenient().when(gameRules.factionBetLatestRound()).thenReturn(2);
+        Mockito.lenient().when(gameRules.factionBetLatestRound()).thenReturn(2);
         given(playerState.isJammed()).willReturn(false);
         given(gameRules.onceEraBudgetedSpecials()).willReturn(Set.of());
 
@@ -416,7 +420,7 @@ class PlaySpecialActionCommandHandlerTest {
                 .willReturn(Optional.of(round));
         given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(playerState));
         given(playerState.faction()).willReturn(Faction.WEAVERS);
-        org.mockito.Mockito.lenient().when(gameRules.factionBetLatestRound()).thenReturn(2);
+        Mockito.lenient().when(gameRules.factionBetLatestRound()).thenReturn(2);
         given(playerState.isJammed()).willReturn(false);
         given(gameRules.onceEraBudgetedSpecials()).willReturn(Set.of());
 
@@ -446,7 +450,7 @@ class PlaySpecialActionCommandHandlerTest {
                 .willReturn(Optional.of(round));
         given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(playerState));
         given(playerState.faction()).willReturn(Faction.WEAVERS);
-        org.mockito.Mockito.lenient().when(gameRules.factionBetLatestRound()).thenReturn(2);
+        Mockito.lenient().when(gameRules.factionBetLatestRound()).thenReturn(2);
         given(playerState.isJammed()).willReturn(false);
         given(gameRules.onceEraBudgetedSpecials()).willReturn(Set.of());
         given(round.submit(any())).willReturn(false);
@@ -483,7 +487,7 @@ class PlaySpecialActionCommandHandlerTest {
                 .willReturn(Optional.of(round));
         given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(playerState));
         given(playerState.faction()).willReturn(Faction.WEAVERS);
-        org.mockito.Mockito.lenient().when(gameRules.factionBetLatestRound()).thenReturn(2);
+        Mockito.lenient().when(gameRules.factionBetLatestRound()).thenReturn(2);
         given(playerState.isJammed()).willReturn(false);
         given(gameRules.onceEraBudgetedSpecials()).willReturn(Set.of());
 
@@ -527,7 +531,7 @@ class PlaySpecialActionCommandHandlerTest {
                     .should()
                     .submit(eq(new SubmittedAction.SpecialActionSubmission(
                             PLAYER_ID, c.faction(), c.special(), null, null, c.event(), c.outcome(), c.player())));
-            org.mockito.Mockito.reset(round, actionRoundRepository, playerStateRepository, playerState);
+            Mockito.reset(round, actionRoundRepository, playerStateRepository, playerState);
         }
     }
 
@@ -778,7 +782,7 @@ class PlaySpecialActionCommandHandlerTest {
                 .willReturn(Optional.of(round));
         given(playerStateRepository.findByGameIdAndPlayerId(GAME_ID, PLAYER_ID)).willReturn(Optional.of(playerState));
         given(playerState.faction()).willReturn(Faction.WEAVERS);
-        org.mockito.Mockito.lenient().when(gameRules.factionBetLatestRound()).thenReturn(2);
+        Mockito.lenient().when(gameRules.factionBetLatestRound()).thenReturn(2);
         given(playerState.isJammed()).willReturn(false);
         given(gameRules.maxEras()).willReturn(5);
         given(gameRules.factionBetLatestRound()).willReturn(3);
@@ -915,7 +919,7 @@ class PlaySpecialActionCommandHandlerTest {
         handler.handle(command);
 
         // then
-        var captor = org.mockito.ArgumentCaptor.forClass(SpecialActionEraUsage.class);
+        var captor = ArgumentCaptor.forClass(SpecialActionEraUsage.class);
         then(specialActionEraUsageRepository).should().save(captor.capture());
         assertThat(captor.getValue().claimedSpecials()).containsExactly(SpecialAction.MIMIC);
         then(round).should().submit(any());
@@ -1170,11 +1174,11 @@ class PlaySpecialActionCommandHandlerTest {
 
         handler.handle(command);
 
-        var state = org.mockito.ArgumentCaptor.forClass(ActivistEraState.class);
+        var state = ArgumentCaptor.forClass(ActivistEraState.class);
         then(activistEraStateRepository).should().save(state.capture());
         assertThat(state.getValue().exposedPlayerId()).isEqualTo(targetPlayerId);
         assertThat(state.getValue().exposedSignature())
-                .isEqualTo(new io.github.temporalrift.game.action.domain.activisterastate.ProbabilityInfluenceSignature(
+                .isEqualTo(new ProbabilityInfluenceSignature(
                         CardType.PUSH, targetEventId, sourceOutcomeId, targetOutcomeId));
     }
 
@@ -1208,7 +1212,7 @@ class PlaySpecialActionCommandHandlerTest {
 
         handler.handle(exposeCommand(targetPlayerId));
 
-        var state = org.mockito.ArgumentCaptor.forClass(ActivistEraState.class);
+        var state = ArgumentCaptor.forClass(ActivistEraState.class);
         then(activistEraStateRepository).should().save(state.capture());
         assertThat(state.getValue().exposedPlayerId()).isEqualTo(targetPlayerId);
         if (cardType == CardType.AMPLIFY || cardType == CardType.DECOY) {
@@ -1329,7 +1333,7 @@ class PlaySpecialActionCommandHandlerTest {
         handler.handle(command);
 
         // then
-        var captor = org.mockito.ArgumentCaptor.forClass(SpecialActionEraUsage.class);
+        var captor = ArgumentCaptor.forClass(SpecialActionEraUsage.class);
         then(specialActionEraUsageRepository).should().save(captor.capture());
         assertThat(captor.getValue().claimedSpecials()).containsExactly(SpecialAction.ANNIHILATE);
         then(round).should().submit(any());
@@ -1394,7 +1398,7 @@ class PlaySpecialActionCommandHandlerTest {
         handler.handle(command);
 
         // then
-        var captor = org.mockito.ArgumentCaptor.forClass(SpecialActionEraUsage.class);
+        var captor = ArgumentCaptor.forClass(SpecialActionEraUsage.class);
         then(specialActionEraUsageRepository).should().save(captor.capture());
         assertThat(captor.getValue().claimedSpecials())
                 .containsExactlyInAnyOrder(SpecialAction.ANNIHILATE, SpecialAction.CORRUPT);
@@ -1462,7 +1466,7 @@ class PlaySpecialActionCommandHandlerTest {
         handler.handle(command);
 
         // then
-        var eraCaptor = org.mockito.ArgumentCaptor.forClass(SpecialActionEraUsage.class);
+        var eraCaptor = ArgumentCaptor.forClass(SpecialActionEraUsage.class);
         then(specialActionEraUsageRepository).should().save(eraCaptor.capture());
         assertThat(eraCaptor.getValue().claimedSpecials()).containsExactly(SpecialAction.SEAL);
         then(round).should().submit(any());
@@ -1492,10 +1496,7 @@ class PlaySpecialActionCommandHandlerTest {
         given(sealGameUsageRepository.countAcceptedSeals(GAME_ID, PLAYER_ID)).willReturn(2);
 
         // when / then
-        assertThatExceptionOfType(
-                        io.github.temporalrift.game.action.domain.specialactionerausage.SealGameBudgetExhaustedException
-                                .class)
-                .isThrownBy(() -> handler.handle(command));
+        assertThatExceptionOfType(SealGameBudgetExhaustedException.class).isThrownBy(() -> handler.handle(command));
         then(specialActionEraUsageRepository).shouldHaveNoInteractions();
         then(round).should(never()).submit(any());
     }
@@ -1518,9 +1519,7 @@ class PlaySpecialActionCommandHandlerTest {
         given(sealGameUsageRepository.countAcceptedSeals(GAME_ID, PLAYER_ID)).willReturn(0);
 
         // when / then
-        assertThatExceptionOfType(
-                        io.github.temporalrift.game.action.domain.actionround.InvalidActionTargetException.class)
-                .isThrownBy(() -> handler.handle(command));
+        assertThatExceptionOfType(InvalidActionTargetException.class).isThrownBy(() -> handler.handle(command));
         then(specialActionEraUsageRepository).should(never()).save(any());
         then(round).should(never()).submit(any());
     }

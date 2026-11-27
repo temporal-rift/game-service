@@ -28,6 +28,7 @@ import io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract.Rep
 import io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract.RoundSummaryPublishedPayload;
 import io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract.SpecialActionAvailabilityReportedPayload;
 import io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract.SpecialActionPlayedPayload;
+import io.github.temporalrift.game.action.domain.activisterastate.ProbabilityInfluenceSignature;
 import io.github.temporalrift.game.action.domain.event.ActionRoundPassed;
 import io.github.temporalrift.game.action.domain.event.ActionRoundStarted;
 import io.github.temporalrift.game.action.domain.event.ActionRoundTimerExpired;
@@ -48,6 +49,7 @@ import io.github.temporalrift.game.action.domain.event.RoundSummaryPublished;
 import io.github.temporalrift.game.action.domain.event.SpecialActionAvailabilityReported;
 import io.github.temporalrift.game.action.domain.event.SpecialActionPlayed;
 import io.github.temporalrift.game.shared.domain.event.ActionRoundClosed;
+import io.github.temporalrift.game.shared.domain.model.CardType;
 
 @Mapper(componentModel = "spring")
 interface ActionEventWireMapper {
@@ -60,10 +62,9 @@ interface ActionEventWireMapper {
 
     ExposeSignatureRevealedPayload toWire(ExposeSignatureRevealed event);
 
-    ExposeInfluenceSignature toWire(
-            io.github.temporalrift.game.action.domain.activisterastate.ProbabilityInfluenceSignature signature);
+    ExposeInfluenceSignature toWire(ProbabilityInfluenceSignature signature);
 
-    default InfluenceSignatureType toWire(io.github.temporalrift.game.shared.domain.model.CardType type) {
+    default InfluenceSignatureType toWire(CardType type) {
         return switch (type) {
             case PUSH -> InfluenceSignatureType.PUSH;
             case SUPPRESS -> InfluenceSignatureType.SUPPRESS;

@@ -2,6 +2,7 @@ package io.github.temporalrift.game.session.application.saga;
 
 import static org.springframework.transaction.annotation.Propagation.REQUIRES_NEW;
 
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.modulith.events.ApplicationModuleListener;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -15,12 +16,12 @@ import io.github.temporalrift.game.shared.domain.event.DeclarationPhaseClosed;
 class DeclarationPhaseClosedListener {
 
     private final EraSagaRepository eraSagaRepository;
-    private final org.springframework.context.ApplicationEventPublisher applicationEventPublisher;
+    private final ApplicationEventPublisher applicationEventPublisher;
     private final ActionRoundRequests actionRoundRequests;
 
     DeclarationPhaseClosedListener(
             EraSagaRepository eraSagaRepository,
-            org.springframework.context.ApplicationEventPublisher applicationEventPublisher,
+            ApplicationEventPublisher applicationEventPublisher,
             ActionRoundRequests actionRoundRequests) {
         this.eraSagaRepository = eraSagaRepository;
         this.applicationEventPublisher = applicationEventPublisher;

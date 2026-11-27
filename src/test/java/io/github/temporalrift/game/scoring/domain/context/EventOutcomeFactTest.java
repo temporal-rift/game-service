@@ -11,6 +11,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 
+import io.github.temporalrift.game.shared.domain.model.Faction;
+
 @DisplayName("EventOutcomeFact — written outcome shield")
 class EventOutcomeFactTest {
 
@@ -86,7 +88,7 @@ class EventOutcomeFactTest {
         var context = new EraScoringContext(
                 UUID.randomUUID(),
                 1,
-                List.of(new PlayerFaction(ERASER, io.github.temporalrift.game.shared.domain.model.Faction.ERASERS)),
+                List.of(new PlayerFaction(ERASER, Faction.ERASERS)),
                 List.of(
                         new EventOutcomeFact(EVENT, null, WRITTEN, 1),
                         new EventOutcomeFact(otherEvent, null, UUID.randomUUID(), 1)),

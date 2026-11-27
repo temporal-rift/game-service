@@ -6,6 +6,7 @@ import static org.mockito.Mockito.never;
 
 import java.time.Clock;
 import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -32,7 +33,7 @@ class PlayerReconnectSagaEventListenerTest {
     static final UUID GAME_ID = UUID.randomUUID();
     static final UUID LOBBY_ID = UUID.randomUUID();
     static final UUID PLAYER_ID = UUID.randomUUID();
-    static final Clock TEST_CLOCK = Clock.fixed(Instant.parse("2026-01-01T00:00:00Z"), java.time.ZoneOffset.UTC);
+    static final Clock TEST_CLOCK = Clock.fixed(Instant.parse("2026-01-01T00:00:00Z"), ZoneOffset.UTC);
 
     @Mock
     PlayerReconnectSaga saga;

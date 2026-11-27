@@ -20,6 +20,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
+import org.hamcrest.Matchers;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -157,7 +158,7 @@ class SimulationControlApiTest {
                         .content(contextBody("42", "PROPHETS")))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.code").value("SIMULATION_CONTROL_FORBIDDEN"))
-                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("42"))));
+                .andExpect(content().string(Matchers.not(Matchers.containsString("42"))));
         mockMvc.perform(get(CHECKPOINT_PATH).with(participantToken()))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.code").value("SIMULATION_CONTROL_FORBIDDEN"));
@@ -185,8 +186,8 @@ class SimulationControlApiTest {
                 .andExpect(jsonPath("$.revision").value(0))
                 .andExpect(jsonPath("$.state").value("READY"))
                 .andExpect(jsonPath("$.drained").value(true))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("\"gameId\":null")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("\"nextDeadline\":null")))
+                .andExpect(content().string(Matchers.containsString("\"gameId\":null")))
+                .andExpect(content().string(Matchers.containsString("\"nextDeadline\":null")))
                 .andExpect(jsonPath("$.sourceWatermarks[0].nextOffset").value(7));
 
         var captor = ArgumentCaptor.forClass(ExecutionContext.class);

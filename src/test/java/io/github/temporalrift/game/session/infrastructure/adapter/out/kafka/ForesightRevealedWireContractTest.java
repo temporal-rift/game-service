@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.UUID;
 
 import jakarta.validation.Validation;
+import jakarta.validation.Validator;
 import org.junit.jupiter.api.Test;
 import org.mapstruct.factory.Mappers;
 import tools.jackson.databind.ObjectMapper;
@@ -16,7 +17,7 @@ import io.github.temporalrift.game.shared.domain.event.ForesightRevealed;
 class ForesightRevealedWireContractTest {
 
     private final ObjectMapper objectMapper = new ObjectMapper();
-    private final jakarta.validation.Validator validator =
+    private final Validator validator =
             Validation.buildDefaultValidatorFactory().getValidator();
     private final SessionEventWireMapper mapper = Mappers.getMapper(SessionEventWireMapper.class);
 

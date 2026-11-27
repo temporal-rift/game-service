@@ -6,6 +6,7 @@ import java.util.Objects;
 import java.util.UUID;
 
 import jakarta.persistence.Column;
+import jakarta.persistence.Embeddable;
 import jakarta.persistence.EmbeddedId;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
@@ -35,7 +36,7 @@ class ProcessedEventJpaEntity {
         return processedAt;
     }
 
-    @jakarta.persistence.Embeddable
+    @Embeddable
     static class ProcessedEventKey implements Serializable {
 
         @Column(name = "event_id", nullable = false)

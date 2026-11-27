@@ -25,11 +25,13 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 
 import io.github.temporalrift.game.action.application.ActivistMomentumEligibility;
 import io.github.temporalrift.game.action.domain.activisterastate.ActivistDeclarationMode;
 import io.github.temporalrift.game.action.domain.activisterastate.ActivistEraState;
 import io.github.temporalrift.game.action.domain.declarationphase.DeclarationPhase;
+import io.github.temporalrift.game.action.domain.declarationphase.DeclarationPhaseStatus;
 import io.github.temporalrift.game.action.domain.event.ActionEventPayload;
 import io.github.temporalrift.game.action.domain.event.DeclarationOptionsOffered;
 import io.github.temporalrift.game.action.domain.event.DeclarationWindowOpened;
@@ -38,6 +40,7 @@ import io.github.temporalrift.game.action.domain.port.out.ActionEventPublisher;
 import io.github.temporalrift.game.action.domain.port.out.ActivistEraStateRepository;
 import io.github.temporalrift.game.action.domain.port.out.DeclarationPhaseRepository;
 import io.github.temporalrift.game.action.domain.port.out.PlayerStateRepository;
+import io.github.temporalrift.game.shared.domain.event.DeclarationPhaseClosed;
 import io.github.temporalrift.game.shared.domain.event.HandSelectionCompleted;
 import io.github.temporalrift.game.shared.domain.messaging.DomainEventEnvelope;
 import io.github.temporalrift.game.shared.domain.model.Faction;
@@ -70,7 +73,7 @@ class DeclarationPhaseEventListenerTest {
     GameRulesPort gameRules;
 
     @Mock
-    org.springframework.context.ApplicationEventPublisher events;
+    ApplicationEventPublisher events;
 
     DeclarationPhaseEventListener listener;
 
@@ -172,13 +175,8 @@ class DeclarationPhaseEventListenerTest {
         listener.onHandSelectionCompleted(
                 new HandSelectionCompleted(GAME_ID, ERA, List.of(jammed.playerId(), prophet.playerId())));
         assertThat(publishedEnvelopes(1).getFirst().payload()).isInstanceOf(DeclarationWindowOpened.class);
-        then(repository)
-                .should()
-                .save(argThat(phase -> phase.status()
-                        == io.github.temporalrift.game.action.domain.declarationphase.DeclarationPhaseStatus.CLOSED));
-        then(events)
-                .should()
-                .publishEvent(new io.github.temporalrift.game.shared.domain.event.DeclarationPhaseClosed(GAME_ID, ERA));
+        then(repository).should().save(argThat(phase -> phase.status() == DeclarationPhaseStatus.CLOSED));
+        then(events).should().publishEvent(new DeclarationPhaseClosed(GAME_ID, ERA));
         then(timerScheduler).shouldHaveNoInteractions();
     }
 

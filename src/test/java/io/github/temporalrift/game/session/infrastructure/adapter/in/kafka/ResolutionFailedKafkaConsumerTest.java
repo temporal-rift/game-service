@@ -27,6 +27,7 @@ import org.springframework.messaging.Message;
 import org.springframework.messaging.support.MessageBuilder;
 import tools.jackson.databind.json.JsonMapper;
 
+import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract;
 import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.AdjustedBandsPublishedPayload;
 import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.ResolutionFailedPayload;
 import io.github.temporalrift.game.session.application.saga.ResolutionFailedApplicationEvent;
@@ -88,8 +89,7 @@ class ResolutionFailedKafkaConsumerTest {
     void handle_adjustedBandsPublished_ignored() {
         // when
         consumer.handle(message(
-                io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract
-                        .ADJUSTED_BANDS_PUBLISHED_EVENT_TYPE,
+                GeneratedChannelContract.ADJUSTED_BANDS_PUBLISHED_EVENT_TYPE,
                 1,
                 new AdjustedBandsPublishedPayload(GAME_ID, 2, List.of())));
 

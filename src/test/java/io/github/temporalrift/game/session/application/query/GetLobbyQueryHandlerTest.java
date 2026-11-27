@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.BDDMockito.given;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -47,17 +48,8 @@ class GetLobbyQueryHandlerTest {
         // given
         var players = List.of(
                 new LobbyPlayer(
-                        CALLER,
-                        "Alice",
-                        null,
-                        java.time.Instant.parse("2026-01-01T00:00:00Z"),
-                        ConnectionStatus.CONNECTED),
-                new LobbyPlayer(
-                        OTHER,
-                        "Bob",
-                        null,
-                        java.time.Instant.parse("2026-01-01T00:00:00Z"),
-                        ConnectionStatus.CONNECTED));
+                        CALLER, "Alice", null, Instant.parse("2026-01-01T00:00:00Z"), ConnectionStatus.CONNECTED),
+                new LobbyPlayer(OTHER, "Bob", null, Instant.parse("2026-01-01T00:00:00Z"), ConnectionStatus.CONNECTED));
         given(lobbyRepository.findById(LOBBY_ID)).willReturn(Optional.of(lobby));
         given(lobby.currentPlayers()).willReturn(players);
         given(lobby.id()).willReturn(LOBBY_ID);
@@ -86,18 +78,9 @@ class GetLobbyQueryHandlerTest {
     void handle_nonHostMember_returnsCallerIdentity() {
         // given
         var players = List.of(
+                new LobbyPlayer(OTHER, "Bob", null, Instant.parse("2026-01-01T00:00:00Z"), ConnectionStatus.CONNECTED),
                 new LobbyPlayer(
-                        OTHER,
-                        "Bob",
-                        null,
-                        java.time.Instant.parse("2026-01-01T00:00:00Z"),
-                        ConnectionStatus.CONNECTED),
-                new LobbyPlayer(
-                        CALLER,
-                        "Alice",
-                        null,
-                        java.time.Instant.parse("2026-01-01T00:00:00Z"),
-                        ConnectionStatus.CONNECTED));
+                        CALLER, "Alice", null, Instant.parse("2026-01-01T00:00:00Z"), ConnectionStatus.CONNECTED));
         given(lobbyRepository.findById(LOBBY_ID)).willReturn(Optional.of(lobby));
         given(lobby.currentPlayers()).willReturn(players);
         given(lobby.id()).willReturn(LOBBY_ID);
@@ -132,11 +115,7 @@ class GetLobbyQueryHandlerTest {
         given(lobbyRepository.findById(LOBBY_ID)).willReturn(Optional.of(lobby));
         given(lobby.currentPlayers())
                 .willReturn(List.of(new LobbyPlayer(
-                        OTHER,
-                        "Bob",
-                        null,
-                        java.time.Instant.parse("2026-01-01T00:00:00Z"),
-                        ConnectionStatus.CONNECTED)));
+                        OTHER, "Bob", null, Instant.parse("2026-01-01T00:00:00Z"), ConnectionStatus.CONNECTED)));
         var query = new GetLobbyUseCase.Query(LOBBY_ID, CALLER);
 
         // when / then

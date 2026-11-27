@@ -1,2 +1,4 @@
-@org.springframework.modulith.NamedInterface("application")
+@NamedInterface("application")
 package io.github.temporalrift.game.shared.application;
+
+import org.springframework.modulith.NamedInterface;

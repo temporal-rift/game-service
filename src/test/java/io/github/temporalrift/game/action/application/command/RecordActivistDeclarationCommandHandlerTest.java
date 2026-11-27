@@ -31,10 +31,13 @@ import org.springframework.context.ApplicationEventPublisher;
 import io.github.temporalrift.game.action.application.ActionTargetValidator;
 import io.github.temporalrift.game.action.application.ActivistMomentumEligibility;
 import io.github.temporalrift.game.action.application.port.in.RecordActivistDeclarationUseCase;
+import io.github.temporalrift.game.action.domain.actionround.ActionRound;
 import io.github.temporalrift.game.action.domain.activisterastate.ActivistDeclarationMode;
 import io.github.temporalrift.game.action.domain.activisterastate.ActivistEraState;
 import io.github.temporalrift.game.action.domain.activisterastate.DeclarationWindowClosedException;
 import io.github.temporalrift.game.action.domain.activisterastate.MomentumNotEligibleException;
+import io.github.temporalrift.game.action.domain.declarationphase.DeclarationPhase;
+import io.github.temporalrift.game.action.domain.declarationphase.DeclarationPhaseStatus;
 import io.github.temporalrift.game.action.domain.event.ActivistDeclarationRecorded;
 import io.github.temporalrift.game.action.domain.playerstate.PlayerState;
 import io.github.temporalrift.game.action.domain.port.out.ActionEventPublisher;
@@ -42,7 +45,9 @@ import io.github.temporalrift.game.action.domain.port.out.ActionRoundRepository;
 import io.github.temporalrift.game.action.domain.port.out.ActivistEraStateRepository;
 import io.github.temporalrift.game.action.domain.port.out.DeclarationPhaseRepository;
 import io.github.temporalrift.game.action.domain.port.out.PlayerStateRepository;
+import io.github.temporalrift.game.shared.domain.event.DeclarationPhaseClosed;
 import io.github.temporalrift.game.shared.domain.model.Faction;
+import io.github.temporalrift.game.shared.domain.model.SpecialAction;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("RecordActivistDeclarationCommandHandler")
@@ -138,16 +143,9 @@ class RecordActivistDeclarationCommandHandlerTest {
         then(applicationEventPublisher).should(times(2)).publishEvent(internalEventCaptor.capture());
         assertThat(internalEventCaptor.getAllValues().getFirst())
                 .isEqualTo(new io.github.temporalrift.game.shared.domain.event.ActivistDeclarationRecorded(
-                        GAME_ID,
-                        ERA_NUMBER,
-                        1,
-                        PLAYER_ID,
-                        io.github.temporalrift.game.shared.domain.model.SpecialAction.RALLY,
-                        TARGET_EVENT_ID,
-                        TARGET_OUTCOME_ID));
+                        GAME_ID, ERA_NUMBER, 1, PLAYER_ID, SpecialAction.RALLY, TARGET_EVENT_ID, TARGET_OUTCOME_ID));
         assertThat(internalEventCaptor.getAllValues().getLast())
-                .isEqualTo(new io.github.temporalrift.game.shared.domain.event.DeclarationPhaseClosed(
-                        GAME_ID, ERA_NUMBER));
+                .isEqualTo(new DeclarationPhaseClosed(GAME_ID, ERA_NUMBER));
     }
 
     @Test
@@ -159,7 +157,7 @@ class RecordActivistDeclarationCommandHandlerTest {
         given(playerStateRepository.findByGameIdAndPlayerIdWithLock(GAME_ID, PLAYER_ID))
                 .willReturn(Optional.of(playerState));
         given(declarationPhaseRepository.findByGameIdAndEraNumberWithLock(GAME_ID, nextEra))
-                .willReturn(Optional.of(new io.github.temporalrift.game.action.domain.declarationphase.DeclarationPhase(
+                .willReturn(Optional.of(new DeclarationPhase(
                         UUID.randomUUID(), GAME_ID, nextEra, CLOCK.instant().plusSeconds(30), List.of(PLAYER_ID))));
         given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumber(GAME_ID, nextEra, 1))
                 .willReturn(Optional.empty());
@@ -227,8 +225,8 @@ class RecordActivistDeclarationCommandHandlerTest {
         then(actionEventPublisher).shouldHaveNoInteractions();
     }
 
-    private static io.github.temporalrift.game.action.domain.actionround.ActionRound mockRound() {
-        return mock(io.github.temporalrift.game.action.domain.actionround.ActionRound.class);
+    private static ActionRound mockRound() {
+        return mock(ActionRound.class);
     }
 
     @Test
@@ -253,14 +251,12 @@ class RecordActivistDeclarationCommandHandlerTest {
         given(playerStateRepository.findByGameIdAndPlayerIdWithLock(GAME_ID, PLAYER_ID))
                 .willReturn(Optional.of(playerState));
         given(declarationPhaseRepository.findByGameIdAndEraNumberWithLock(GAME_ID, ERA_NUMBER))
-                .willReturn(Optional.of(
-                        io.github.temporalrift.game.action.domain.declarationphase.DeclarationPhase.reconstitute(
-                                UUID.randomUUID(),
-                                GAME_ID,
-                                ERA_NUMBER,
-                                CLOCK.instant().minusSeconds(1),
-                                io.github.temporalrift.game.action.domain.declarationphase.DeclarationPhaseStatus
-                                        .OPEN)));
+                .willReturn(Optional.of(DeclarationPhase.reconstitute(
+                        UUID.randomUUID(),
+                        GAME_ID,
+                        ERA_NUMBER,
+                        CLOCK.instant().minusSeconds(1),
+                        DeclarationPhaseStatus.OPEN)));
         var command = new RecordActivistDeclarationUseCase.Command(
                 GAME_ID, ERA_NUMBER, PLAYER_ID, ActivistDeclarationMode.RALLY, TARGET_EVENT_ID, TARGET_OUTCOME_ID);
 
@@ -270,8 +266,8 @@ class RecordActivistDeclarationCommandHandlerTest {
         then(actionEventPublisher).shouldHaveNoInteractions();
     }
 
-    private static io.github.temporalrift.game.action.domain.declarationphase.DeclarationPhase openDeclarationPhase() {
-        return new io.github.temporalrift.game.action.domain.declarationphase.DeclarationPhase(
+    private static DeclarationPhase openDeclarationPhase() {
+        return new DeclarationPhase(
                 UUID.randomUUID(), GAME_ID, ERA_NUMBER, CLOCK.instant().plusSeconds(60), List.of(PLAYER_ID));
     }
 }

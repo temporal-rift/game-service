@@ -31,8 +31,11 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
+import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import io.github.temporalrift.game.action.application.SpecialActionAvailabilityReporter;
@@ -49,6 +52,8 @@ import io.github.temporalrift.game.action.domain.event.ActionEventPayload;
 import io.github.temporalrift.game.action.domain.event.ActionRoundPassed;
 import io.github.temporalrift.game.action.domain.event.ActionRoundStarted;
 import io.github.temporalrift.game.action.domain.event.ActionRoundTimerExpired;
+import io.github.temporalrift.game.action.domain.event.ExposeBehaviorChanged;
+import io.github.temporalrift.game.action.domain.event.ExposeSignatureRevealed;
 import io.github.temporalrift.game.action.domain.event.HandCardIntercepted;
 import io.github.temporalrift.game.action.domain.event.InfluenceTraced;
 import io.github.temporalrift.game.action.domain.event.PlayerJammed;
@@ -506,8 +511,8 @@ class ActionRoundSagaImplTest {
             then(actionEventPublisher).should(times(1)).publish(envelopeWithPayload(RoundSummaryPublished.class));
         }
 
-        @org.junit.jupiter.params.ParameterizedTest
-        @org.junit.jupiter.params.provider.ValueSource(strings = {"sealed", "corrupted", "redirected", "carried"})
+        @ParameterizedTest
+        @ValueSource(strings = {"sealed", "corrupted", "redirected", "carried"})
         void roundTwoClose_publishesOnlySummary(String scenario) {
             var era = scenario.equals("carried") ? 2 : ERA_NUMBER;
             var eventId = UUID.randomUUID();
@@ -1200,13 +1205,11 @@ class ActionRoundSagaImplTest {
             var envelopeCaptor = ArgumentCaptor.<DomainEventEnvelope>captor();
             then(actionEventPublisher).should(atLeastOnce()).publish(envelopeCaptor.capture());
             var exposeEnvelope = envelopeCaptor.getAllValues().stream()
-                    .filter(e -> e.payload()
-                            instanceof io.github.temporalrift.game.action.domain.event.ExposeBehaviorChanged)
+                    .filter(e -> e.payload() instanceof ExposeBehaviorChanged)
                     .findFirst()
                     .orElseThrow();
             assertThat(exposeEnvelope.payload())
-                    .isEqualTo(new io.github.temporalrift.game.action.domain.event.ExposeBehaviorChanged(
-                            GAME_ID, ERA_NUMBER, 3, PLAYER_1, PLAYER_2));
+                    .isEqualTo(new ExposeBehaviorChanged(GAME_ID, ERA_NUMBER, 3, PLAYER_1, PLAYER_2));
             assertThat(publishedExposeFacts())
                     .containsExactly(new EraActionFactsFinalized.ExposeFact(PLAYER_1, PLAYER_2, targetEventId));
 
@@ -1247,10 +1250,7 @@ class ActionRoundSagaImplTest {
             saga.handlePlayerSubmitted(GAME_ID, ERA_NUMBER, 3, PLAYER_2);
 
             // then
-            then(actionEventPublisher)
-                    .should(never())
-                    .publish(envelopeWithPayload(
-                            io.github.temporalrift.game.action.domain.event.ExposeBehaviorChanged.class));
+            then(actionEventPublisher).should(never()).publish(envelopeWithPayload(ExposeBehaviorChanged.class));
             assertThat(publishedExposeFacts())
                     .containsExactly(new EraActionFactsFinalized.ExposeFact(PLAYER_1, PLAYER_2, targetEventId));
         }
@@ -1281,10 +1281,7 @@ class ActionRoundSagaImplTest {
 
             saga.handlePlayerSubmitted(GAME_ID, ERA_NUMBER, 3, PLAYER_2);
 
-            then(actionEventPublisher)
-                    .should(never())
-                    .publish(envelopeWithPayload(
-                            io.github.temporalrift.game.action.domain.event.ExposeBehaviorChanged.class));
+            then(actionEventPublisher).should(never()).publish(envelopeWithPayload(ExposeBehaviorChanged.class));
             assertThat(publishedExposeFacts())
                     .containsExactly(new EraActionFactsFinalized.ExposeFact(PLAYER_1, PLAYER_2, targetEventId));
         }
@@ -1314,10 +1311,7 @@ class ActionRoundSagaImplTest {
 
             saga.handleTimerExpiry(sagaId);
 
-            then(actionEventPublisher)
-                    .should(never())
-                    .publish(envelopeWithPayload(
-                            io.github.temporalrift.game.action.domain.event.ExposeBehaviorChanged.class));
+            then(actionEventPublisher).should(never()).publish(envelopeWithPayload(ExposeBehaviorChanged.class));
             assertThat(publishedExposeFacts())
                     .containsExactly(new EraActionFactsFinalized.ExposeFact(PLAYER_1, PLAYER_2, targetEventId));
         }
@@ -1358,10 +1352,7 @@ class ActionRoundSagaImplTest {
 
             saga.handlePlayerSubmitted(GAME_ID, ERA_NUMBER, 3, PLAYER_2);
 
-            then(actionEventPublisher)
-                    .should(never())
-                    .publish(envelopeWithPayload(
-                            io.github.temporalrift.game.action.domain.event.ExposeBehaviorChanged.class));
+            then(actionEventPublisher).should(never()).publish(envelopeWithPayload(ExposeBehaviorChanged.class));
             assertThat(publishedExposeFacts()).isEmpty();
         }
     }
@@ -1842,7 +1833,7 @@ class ActionRoundSagaImplTest {
 
             // when
             var passedPayloads = externalPayloadsOfTimerClose(passedRound);
-            org.mockito.Mockito.clearInvocations(actionEventPublisher);
+            Mockito.clearInvocations(actionEventPublisher);
             var timedOutPayloads = externalPayloadsOfTimerClose(timedOutRound);
 
             // then
@@ -2141,14 +2132,7 @@ class ActionRoundSagaImplTest {
                     new ActionRoundConfig(GAME_ID, ERA_NUMBER, ROUND_NUMBER, TIMER_SECONDS),
                     List.of(PLAYER_1, PLAYER_2));
             round.submit(new SubmittedAction.SpecialActionSubmission(
-                    PLAYER_1,
-                    Faction.REVISIONISTS,
-                    io.github.temporalrift.game.shared.domain.model.SpecialAction.OBSCURE,
-                    null,
-                    null,
-                    null,
-                    null,
-                    null));
+                    PLAYER_1, Faction.REVISIONISTS, SpecialAction.OBSCURE, null, null, null, null, null));
             given(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumberWithLock(
                             GAME_ID, ERA_NUMBER, ROUND_NUMBER))
                     .willReturn(Optional.of(round));
@@ -2954,8 +2938,7 @@ class ActionRoundSagaImplTest {
             activistState.expose(PLAYER_2, null);
             closeExposeRoundTwo(activistState, false);
 
-            assertThat(publishedPayloads(io.github.temporalrift.game.action.domain.event.ExposeSignatureRevealed.class))
-                    .isEmpty();
+            assertThat(publishedPayloads(ExposeSignatureRevealed.class)).isEmpty();
         }
 
         @Test
@@ -2966,8 +2949,7 @@ class ActionRoundSagaImplTest {
                     new ProbabilityInfluenceSignature(CardType.PUSH, UUID.randomUUID(), null, UUID.randomUUID()));
             closeExposeRoundTwo(activistState, true);
 
-            assertThat(publishedPayloads(io.github.temporalrift.game.action.domain.event.ExposeSignatureRevealed.class))
-                    .isEmpty();
+            assertThat(publishedPayloads(ExposeSignatureRevealed.class)).isEmpty();
         }
 
         private void closeExposeRoundTwo(ActivistEraState activistState, boolean cancelled) {

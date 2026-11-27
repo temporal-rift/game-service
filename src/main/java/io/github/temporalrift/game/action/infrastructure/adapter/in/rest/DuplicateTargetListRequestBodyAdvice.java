@@ -2,6 +2,7 @@ package io.github.temporalrift.game.action.infrastructure.adapter.in.rest;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.lang.reflect.Type;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -11,6 +12,7 @@ import java.util.UUID;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.core.MethodParameter;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpInputMessage;
 import org.springframework.http.converter.HttpMessageConverter;
 import org.springframework.web.bind.annotation.ControllerAdvice;
@@ -116,12 +118,12 @@ class DuplicateTargetListRequestBodyAdvice implements RequestBodyAdvice {
     private record CachedHttpInputMessage(HttpInputMessage delegate, byte[] body) implements HttpInputMessage {
 
         @Override
-        public java.io.InputStream getBody() {
+        public InputStream getBody() {
             return new ByteArrayInputStream(body);
         }
 
         @Override
-        public org.springframework.http.HttpHeaders getHeaders() {
+        public HttpHeaders getHeaders() {
             return delegate.getHeaders();
         }
 

@@ -25,6 +25,7 @@ import org.springframework.context.ApplicationEventPublisher;
 
 import io.github.temporalrift.game.action.application.ActionTargetValidator;
 import io.github.temporalrift.game.action.application.port.in.SubmitParadoxResolutionUseCase;
+import io.github.temporalrift.game.action.domain.CardNotInHandException;
 import io.github.temporalrift.game.action.domain.actionround.UnknownActionTargetException;
 import io.github.temporalrift.game.action.domain.event.ParadoxResolutionCardPlayed;
 import io.github.temporalrift.game.action.domain.paradoxresolutionphase.CardNotEligibleForParadoxResolutionException;
@@ -37,6 +38,8 @@ import io.github.temporalrift.game.action.domain.port.out.ActionEventPublisher;
 import io.github.temporalrift.game.action.domain.port.out.ParadoxResolutionPhaseRepository;
 import io.github.temporalrift.game.action.domain.port.out.PlayerStateRepository;
 import io.github.temporalrift.game.action.domain.port.out.ReactiveOfferRepository;
+import io.github.temporalrift.game.action.domain.reactiveoffer.ReactiveOffer;
+import io.github.temporalrift.game.action.domain.reactiveoffer.ReactiveOfferStatus;
 import io.github.temporalrift.game.shared.domain.event.StabilizePlayed;
 import io.github.temporalrift.game.shared.domain.messaging.DomainEventEnvelope;
 import io.github.temporalrift.game.shared.domain.model.CardType;
@@ -219,8 +222,7 @@ class PlayParadoxResolutionCardCommandHandlerTest {
     void acceptsOfferedStabilizeAndConsumesOffer() {
         var phase = openPhase();
         var playerState = new PlayerState(UUID.randomUUID(), GAME_ID, PLAYER_ID);
-        var offer = new io.github.temporalrift.game.action.domain.reactiveoffer.ReactiveOffer(
-                UUID.randomUUID(), GAME_ID, ERA, PLAYER_ID, CARD_INSTANCE_ID, UUID.randomUUID());
+        var offer = new ReactiveOffer(UUID.randomUUID(), GAME_ID, ERA, PLAYER_ID, CARD_INSTANCE_ID, UUID.randomUUID());
         given(phaseRepository.findByGameIdAndEraNumberWithLock(GAME_ID, ERA)).willReturn(Optional.of(phase));
         given(playerStateRepository.findByGameIdAndPlayerIdWithLock(GAME_ID, PLAYER_ID))
                 .willReturn(Optional.of(playerState));
@@ -230,8 +232,7 @@ class PlayParadoxResolutionCardCommandHandlerTest {
         var result = handler.handle(command());
 
         assertThat(result).isEqualTo(new SubmitParadoxResolutionUseCase.Result(GAME_ID, ERA, PLAYER_ID));
-        assertThat(offer.status())
-                .isEqualTo(io.github.temporalrift.game.action.domain.reactiveoffer.ReactiveOfferStatus.CONSUMED);
+        assertThat(offer.status()).isEqualTo(ReactiveOfferStatus.CONSUMED);
         assertThat(phase.submittedPlayerIds()).containsExactly(PLAYER_ID);
         then(reactiveOfferRepository).should().save(offer);
         var envelope = ArgumentCaptor.forClass(DomainEventEnvelope.class);
@@ -251,8 +252,7 @@ class PlayParadoxResolutionCardCommandHandlerTest {
     void acceptsRetainedCardAndExpiresUnusedReactiveOffer() {
         var phase = openPhase();
         var playerState = playerStateWithCard(CardType.PUSH);
-        var offer = new io.github.temporalrift.game.action.domain.reactiveoffer.ReactiveOffer(
-                UUID.randomUUID(), GAME_ID, ERA, PLAYER_ID, UUID.randomUUID(), UUID.randomUUID());
+        var offer = new ReactiveOffer(UUID.randomUUID(), GAME_ID, ERA, PLAYER_ID, UUID.randomUUID(), UUID.randomUUID());
         given(phaseRepository.findByGameIdAndEraNumberWithLock(GAME_ID, ERA)).willReturn(Optional.of(phase));
         given(playerStateRepository.findByGameIdAndPlayerIdWithLock(GAME_ID, PLAYER_ID))
                 .willReturn(Optional.of(playerState));
@@ -261,8 +261,7 @@ class PlayParadoxResolutionCardCommandHandlerTest {
 
         handler.handle(command());
 
-        assertThat(offer.status())
-                .isEqualTo(io.github.temporalrift.game.action.domain.reactiveoffer.ReactiveOfferStatus.EXPIRED);
+        assertThat(offer.status()).isEqualTo(ReactiveOfferStatus.EXPIRED);
         assertThat(playerState.hand()).isEmpty();
         then(reactiveOfferRepository).should().save(offer);
         then(playerStateRepository).should().save(playerState);
@@ -272,18 +271,15 @@ class PlayParadoxResolutionCardCommandHandlerTest {
     void unknownOfferedCardIsRejectedWithoutMutation() {
         var phase = openPhase();
         var playerState = new PlayerState(UUID.randomUUID(), GAME_ID, PLAYER_ID);
-        var offer = new io.github.temporalrift.game.action.domain.reactiveoffer.ReactiveOffer(
-                UUID.randomUUID(), GAME_ID, ERA, PLAYER_ID, UUID.randomUUID(), UUID.randomUUID());
+        var offer = new ReactiveOffer(UUID.randomUUID(), GAME_ID, ERA, PLAYER_ID, UUID.randomUUID(), UUID.randomUUID());
         given(phaseRepository.findByGameIdAndEraNumberWithLock(GAME_ID, ERA)).willReturn(Optional.of(phase));
         given(playerStateRepository.findByGameIdAndPlayerIdWithLock(GAME_ID, PLAYER_ID))
                 .willReturn(Optional.of(playerState));
         given(reactiveOfferRepository.findByGameIdAndEraNumberAndPlayerIdWithLock(GAME_ID, ERA, PLAYER_ID))
                 .willReturn(Optional.of(offer));
 
-        assertThatExceptionOfType(io.github.temporalrift.game.action.domain.CardNotInHandException.class)
-                .isThrownBy(() -> handler.handle(command()));
-        assertThat(offer.status())
-                .isEqualTo(io.github.temporalrift.game.action.domain.reactiveoffer.ReactiveOfferStatus.OFFERED);
+        assertThatExceptionOfType(CardNotInHandException.class).isThrownBy(() -> handler.handle(command()));
+        assertThat(offer.status()).isEqualTo(ReactiveOfferStatus.OFFERED);
         assertThat(phase.submittedPlayerIds()).isEmpty();
         then(phaseRepository).should(never()).save(any());
         then(reactiveOfferRepository).should(never()).save(any());
@@ -300,8 +296,7 @@ class PlayParadoxResolutionCardCommandHandlerTest {
         given(reactiveOfferRepository.findByGameIdAndEraNumberAndPlayerIdWithLock(GAME_ID, ERA, PLAYER_ID))
                 .willReturn(Optional.empty());
 
-        assertThatExceptionOfType(io.github.temporalrift.game.action.domain.CardNotInHandException.class)
-                .isThrownBy(() -> handler.handle(command()));
+        assertThatExceptionOfType(CardNotInHandException.class).isThrownBy(() -> handler.handle(command()));
         assertThat(phase.submittedPlayerIds()).isEmpty();
         then(reactiveOfferRepository).should(never()).createIfAbsent(any());
         then(reactiveOfferRepository).should(never()).save(any());

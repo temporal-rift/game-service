@@ -7,6 +7,7 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.mock;
 
+import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -17,6 +18,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 
+import io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract;
 import io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract.ActionRoundPassedPayload;
 import io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract.ActionRoundStartedPayload;
 import io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract.ActionRoundTimerExpiredPayload;
@@ -55,6 +57,7 @@ import io.github.temporalrift.game.action.domain.event.ParadoxResolutionPassed;
 import io.github.temporalrift.game.action.domain.event.PlayerJammed;
 import io.github.temporalrift.game.action.domain.event.PlayerSkipped;
 import io.github.temporalrift.game.action.domain.event.RoundSummaryPublished;
+import io.github.temporalrift.game.action.domain.event.SpecialActionAvailabilityReported;
 import io.github.temporalrift.game.action.domain.event.SpecialActionPlayed;
 import io.github.temporalrift.game.shared.domain.event.ActionRoundClosed;
 import io.github.temporalrift.game.shared.domain.messaging.DomainEventEnvelope;
@@ -80,8 +83,7 @@ class ActionEventPublisherAdapterTest {
         var adapter = new ActionEventPublisherAdapter(applicationEventPublisher, mapper, outboundEvents);
         var gameId = UUID.randomUUID();
         var payload = new ActionRoundClosed(gameId, 1, 2, "ALL_SUBMITTED", 3);
-        var event = DomainEventEnvelope.create(
-                UUID.randomUUID(), "ActionRound", gameId, 1, payload, java.time.Clock.systemUTC());
+        var event = DomainEventEnvelope.create(UUID.randomUUID(), "ActionRound", gameId, 1, payload, Clock.systemUTC());
 
         adapter.publishRoundClosed(event);
 
@@ -352,11 +354,8 @@ class ActionEventPublisherAdapterTest {
     void publishSpecialActionAvailabilityReported_usesStableMessageType() {
         var adapter = new ActionEventPublisherAdapter(applicationEventPublisher, mapper, outboundEvents);
         var gameId = UUID.randomUUID();
-        var reported = new io.github.temporalrift.game.action.domain.event.SpecialActionAvailabilityReported(
-                gameId, 1, 2, UUID.randomUUID(), List.of());
-        var wire = mock(
-                io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract
-                        .SpecialActionAvailabilityReportedPayload.class);
+        var reported = new SpecialActionAvailabilityReported(gameId, 1, 2, UUID.randomUUID(), List.of());
+        var wire = mock(GeneratedChannelContract.SpecialActionAvailabilityReportedPayload.class);
         var event = envelope(gameId, reported);
         given(mapper.toWire(reported)).willReturn(wire);
 
@@ -376,7 +375,6 @@ class ActionEventPublisherAdapterTest {
     }
 
     private static DomainEventEnvelope<ActionEventPayload> envelope(UUID gameId, ActionEventPayload payload) {
-        return DomainEventEnvelope.create(
-                UUID.randomUUID(), "ActionRound", gameId, 1, payload, java.time.Clock.systemUTC());
+        return DomainEventEnvelope.create(UUID.randomUUID(), "ActionRound", gameId, 1, payload, Clock.systemUTC());
     }
 }

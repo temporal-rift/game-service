@@ -28,6 +28,7 @@ import io.github.temporalrift.game.scoring.domain.playerscore.ScoreEntry;
 import io.github.temporalrift.game.scoring.domain.playerscore.ScoreReason;
 import io.github.temporalrift.game.scoring.domain.port.out.EraScoringContextRepository;
 import io.github.temporalrift.game.scoring.domain.port.out.PlayerScoreRepository;
+import io.github.temporalrift.game.shared.domain.event.ActivistDeclarationRecorded;
 import io.github.temporalrift.game.shared.domain.event.EraActionFactsFinalized;
 import io.github.temporalrift.game.shared.domain.model.Faction;
 import io.github.temporalrift.game.shared.domain.model.SpecialAction;
@@ -152,9 +153,8 @@ class TimelineScoringKafkaConsumerIT {
         var eventId = UUID.randomUUID();
         var winningOutcomeId = UUID.randomUUID();
         contextRepository.upsertPlayerFaction(gameId, playerId, Faction.ACTIVISTS);
-        contextRepository.upsertActivistDeclaration(
-                new io.github.temporalrift.game.shared.domain.event.ActivistDeclarationRecorded(
-                        gameId, eraNumber, 1, playerId, SpecialAction.MOMENTUM, eventId, winningOutcomeId));
+        contextRepository.upsertActivistDeclaration(new ActivistDeclarationRecorded(
+                gameId, eraNumber, 1, playerId, SpecialAction.MOMENTUM, eventId, winningOutcomeId));
         contextRepository.markActionFactsReady(gameId, eraNumber);
 
         consumer.handle(outcomeEnvelope(gameId, eraNumber, eventId, winningOutcomeId));
@@ -506,9 +506,8 @@ class TimelineScoringKafkaConsumerIT {
     private void prepareRallyDeclaration(
             UUID gameId, int eraNumber, UUID playerId, UUID eventId, UUID targetOutcomeId) {
         contextRepository.upsertPlayerFaction(gameId, playerId, Faction.ACTIVISTS);
-        contextRepository.upsertActivistDeclaration(
-                new io.github.temporalrift.game.shared.domain.event.ActivistDeclarationRecorded(
-                        gameId, eraNumber, 1, playerId, SpecialAction.RALLY, eventId, targetOutcomeId));
+        contextRepository.upsertActivistDeclaration(new ActivistDeclarationRecorded(
+                gameId, eraNumber, 1, playerId, SpecialAction.RALLY, eventId, targetOutcomeId));
         contextRepository.markActionFactsReady(gameId, eraNumber);
     }
 

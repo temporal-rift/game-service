@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -49,7 +50,7 @@ class DeclarationPhaseClosedListenerTest {
 
         var captor = ArgumentCaptor.forClass(EraSagaState.class);
         then(eraSagaRepository).should().save(captor.capture());
-        org.assertj.core.api.Assertions.assertThat(captor.getValue().status()).isEqualTo(EraSagaStatus.WAITING_ROUND_1);
+        Assertions.assertThat(captor.getValue().status()).isEqualTo(EraSagaStatus.WAITING_ROUND_1);
         then(applicationEventPublisher).should().publishEvent(opened);
     }
 

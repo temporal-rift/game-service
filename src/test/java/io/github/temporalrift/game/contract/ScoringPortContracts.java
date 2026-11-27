@@ -8,6 +8,7 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
+import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -62,7 +63,7 @@ public final class ScoringPortContracts {
             var repository = port(EraScoringContextRepository.class);
             var gameId = UUID.randomUUID();
 
-            org.assertj.core.api.Assertions.assertThatThrownBy(() -> repository.getRequired(gameId, 1))
+            Assertions.assertThatThrownBy(() -> repository.getRequired(gameId, 1))
                     .isInstanceOf(EraScoringContextNotFoundException.class);
         }
 
@@ -75,7 +76,7 @@ public final class ScoringPortContracts {
             repository.upsertExpectedOutcomeCount(gameId, 1, 5);
 
             assertThat(repository.expectedOutcomeCount(gameId, 1)).isEqualTo(5);
-            org.assertj.core.api.Assertions.assertThatThrownBy(() -> repository.expectedOutcomeCount(gameId, 2))
+            Assertions.assertThatThrownBy(() -> repository.expectedOutcomeCount(gameId, 2))
                     .isInstanceOf(EraScoringContextNotFoundException.class);
         }
 
@@ -349,7 +350,7 @@ public final class ScoringPortContracts {
             var player = UUID.randomUUID();
             inNewTransaction(() -> repository.upsertPlayerFaction(gameId, player, Faction.WEAVERS));
 
-            org.assertj.core.api.Assertions.assertThatThrownBy(() -> inNewTransaction(() -> {
+            Assertions.assertThatThrownBy(() -> inNewTransaction(() -> {
                         repository.recordChainFact(gameId, player, UUID.randomUUID(), ScoreReason.CHAIN_LINK_ADDED, 1);
                         throw new IllegalStateException("boom");
                     }))
@@ -467,7 +468,7 @@ public final class ScoringPortContracts {
             var repository = port(ScoringEraCompletionRepository.class);
             var gameId = UUID.randomUUID();
 
-            org.assertj.core.api.Assertions.assertThatThrownBy(() -> inNewTransaction(() -> {
+            Assertions.assertThatThrownBy(() -> inNewTransaction(() -> {
                         repository.tryMarkScoringComplete(gameId, 1);
                         throw new IllegalStateException("boom");
                     }))

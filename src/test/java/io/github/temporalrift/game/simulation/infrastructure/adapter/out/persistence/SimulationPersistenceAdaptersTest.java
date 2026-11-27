@@ -10,6 +10,8 @@ import java.util.UUID;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentMatchers;
+import org.mockito.BDDMockito;
 import org.springframework.jdbc.core.simple.JdbcClient;
 
 import io.github.temporalrift.game.simulation.domain.execution.ClockAcknowledgement;
@@ -31,7 +33,7 @@ class SimulationPersistenceAdaptersTest {
         assertThat(decisions.find("CARD_DEAL", "era=1", 0)).isEmpty();
         decisions.save("CARD_DEAL", "era=1", 0, 7L);
 
-        verify(jdbc).sql(org.mockito.ArgumentMatchers.contains("INSERT INTO simulation_entropy_decision"));
+        verify(jdbc).sql(ArgumentMatchers.contains("INSERT INTO simulation_entropy_decision"));
     }
 
     @Test
@@ -45,7 +47,7 @@ class SimulationPersistenceAdaptersTest {
         operations.save(new ClockOperation(
                 new ClockAdvance(operationId, 0, instant), new ClockAcknowledgement(operationId, 1, instant)));
 
-        verify(jdbc).sql(org.mockito.ArgumentMatchers.contains("INSERT INTO simulation_clock_operation"));
+        verify(jdbc).sql(ArgumentMatchers.contains("INSERT INTO simulation_clock_operation"));
     }
 
     @Test
@@ -59,19 +61,19 @@ class SimulationPersistenceAdaptersTest {
         assertThat(executions.insertIfAbsent(execution)).isFalse();
         executions.update(execution);
 
-        verify(jdbc).sql(org.mockito.ArgumentMatchers.contains("UPDATE simulation_execution"));
+        verify(jdbc).sql(ArgumentMatchers.contains("UPDATE simulation_execution"));
     }
 
     @Test
     @DisplayName("the outbox probe counts incomplete publications")
     void outbox_countsIncompletePublications() {
-        org.mockito.BDDMockito.given(jdbc.sql(org.mockito.ArgumentMatchers.anyString())
+        BDDMockito.given(jdbc.sql(ArgumentMatchers.anyString())
                         .query(Integer.class)
                         .single())
                 .willReturn(3);
 
         assertThat(new OutboxProbeAdapter(jdbc).pendingPublications()).isEqualTo(3);
 
-        verify(jdbc).sql(org.mockito.ArgumentMatchers.contains("event_publication"));
+        verify(jdbc).sql(ArgumentMatchers.contains("event_publication"));
     }
 }

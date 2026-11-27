@@ -15,6 +15,7 @@ import org.junit.jupiter.api.Test;
 
 import io.github.temporalrift.game.shared.domain.event.HandDealt;
 import io.github.temporalrift.game.shared.domain.event.HandSelected;
+import io.github.temporalrift.game.shared.domain.model.CardGrade;
 import io.github.temporalrift.game.shared.domain.model.CardType;
 
 class HandSelectionTest {
@@ -72,11 +73,7 @@ class HandSelectionTest {
 
     private static HandSelection selection(Instant expiresAt) {
         var cards = IntStream.rangeClosed(1, 7)
-                .mapToObj(slot -> new HandDealt.CardInstance(
-                        UUID.randomUUID(),
-                        CardType.PUSH,
-                        io.github.temporalrift.game.shared.domain.model.CardGrade.I,
-                        slot))
+                .mapToObj(slot -> new HandDealt.CardInstance(UUID.randomUUID(), CardType.PUSH, CardGrade.I, slot))
                 .toList();
         return HandSelection.open(new HandDealt(UUID.randomUUID(), 1, UUID.randomUUID(), expiresAt, cards));
     }

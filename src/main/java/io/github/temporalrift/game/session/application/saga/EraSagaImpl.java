@@ -21,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import io.github.temporalrift.game.session.application.dealing.WeightedCardDealer;
 import io.github.temporalrift.game.session.domain.event.GameEndedAbnormally;
+import io.github.temporalrift.game.session.domain.futureevent.FutureEventDefinition;
 import io.github.temporalrift.game.session.domain.game.DrawnFutureEvent;
 import io.github.temporalrift.game.session.domain.game.Game;
 import io.github.temporalrift.game.session.domain.game.GameNotFoundException;
@@ -184,16 +185,13 @@ class EraSagaImpl implements EraSaga {
      */
     private List<EventsDrawn.FutureEvent> toCarryOverFutureEvents(
             Game game, List<PendingCarryOverEvent> carryOverEvents) {
-        Map<UUID, io.github.temporalrift.game.session.domain.futureevent.FutureEventDefinition> definitionsByCardId =
-                futureEventCatalog
-                        .findByEventIds(carryOverEvents.stream()
-                                .map(carryOverEvent -> game.drawnEvent(carryOverEvent.eventId())
-                                        .cardId())
-                                .toList())
-                        .stream()
-                        .collect(Collectors.toMap(
-                                io.github.temporalrift.game.session.domain.futureevent.FutureEventDefinition::eventId,
-                                Function.identity()));
+        Map<UUID, FutureEventDefinition> definitionsByCardId = futureEventCatalog
+                .findByEventIds(carryOverEvents.stream()
+                        .map(carryOverEvent ->
+                                game.drawnEvent(carryOverEvent.eventId()).cardId())
+                        .toList())
+                .stream()
+                .collect(Collectors.toMap(FutureEventDefinition::eventId, Function.identity()));
         return carryOverEvents.stream()
                 .map(carryOverEvent -> {
                     var drawnEvent = game.drawnEvent(carryOverEvent.eventId());
@@ -207,10 +205,7 @@ class EraSagaImpl implements EraSaga {
     }
 
     private EventsDrawn.FutureEvent toFutureEvent(
-            UUID eventId,
-            List<UUID> outcomeIds,
-            io.github.temporalrift.game.session.domain.futureevent.FutureEventDefinition definition,
-            CarryOverState carryOverState) {
+            UUID eventId, List<UUID> outcomeIds, FutureEventDefinition definition, CarryOverState carryOverState) {
         if (definition == null) {
             throw new IllegalStateException("Missing future event definition for carry-over event " + eventId);
         }

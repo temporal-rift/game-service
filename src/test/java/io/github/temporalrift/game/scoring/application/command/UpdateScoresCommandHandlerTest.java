@@ -2,6 +2,7 @@ package io.github.temporalrift.game.scoring.application.command;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.time.Clock;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -17,13 +18,16 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.context.ApplicationEventPublisher;
 
+import io.github.temporalrift.game.scoring.ScoreRulesTestValues;
 import io.github.temporalrift.game.scoring.domain.context.ActionScoringFact;
 import io.github.temporalrift.game.scoring.domain.context.ChainScoringFact;
 import io.github.temporalrift.game.scoring.domain.context.EraScoringContext;
 import io.github.temporalrift.game.scoring.domain.context.EventOutcomeFact;
 import io.github.temporalrift.game.scoring.domain.context.ParadoxCascadeScoringFact;
+import io.github.temporalrift.game.scoring.domain.context.PendingEraScoringCompletion;
 import io.github.temporalrift.game.scoring.domain.context.PlayerFaction;
 import io.github.temporalrift.game.scoring.domain.event.AnnihilationResolved;
+import io.github.temporalrift.game.scoring.domain.event.EraResolutionCompleted;
 import io.github.temporalrift.game.scoring.domain.playerscore.PlayerScore;
 import io.github.temporalrift.game.scoring.domain.playerscore.ScoreReason;
 import io.github.temporalrift.game.scoring.domain.port.out.EraScoringContextRepository;
@@ -36,6 +40,8 @@ import io.github.temporalrift.game.shared.domain.event.ActivistDeclarationResolv
 import io.github.temporalrift.game.shared.domain.event.EraActionFactsFinalized;
 import io.github.temporalrift.game.shared.domain.event.ScoresUpdated;
 import io.github.temporalrift.game.shared.domain.messaging.DomainEventEnvelope;
+import io.github.temporalrift.game.shared.domain.model.CardCategory;
+import io.github.temporalrift.game.shared.domain.model.CardGrade;
 import io.github.temporalrift.game.shared.domain.model.Faction;
 import io.github.temporalrift.game.shared.domain.model.SpecialAction;
 import io.github.temporalrift.game.shared.domain.port.out.GameRulesPort;
@@ -70,15 +76,13 @@ class UpdateScoresCommandHandlerTest {
         var handler = new UpdateScoresCommandHandler(
                 repo,
                 ctxRepo,
-                new EraScoreEvaluator(
-                        io.github.temporalrift.game.scoring.ScoreRulesTestValues.rules(),
-                        io.github.temporalrift.game.scoring.ScoreRulesTestValues.paradoxRules(false)),
+                new EraScoreEvaluator(ScoreRulesTestValues.rules(), ScoreRulesTestValues.paradoxRules(false)),
                 exposures,
                 gameRules,
                 scoreRules(),
                 scoringPublisher,
                 appPublisher,
-                java.time.Clock.systemUTC());
+                Clock.systemUTC());
         handler.handle(new UpdateEraScoresCommand(GAME_ID, ERA, List.of()));
 
         assertThat(savedScores).hasSize(1);
@@ -235,15 +239,13 @@ class UpdateScoresCommandHandlerTest {
         var handler = new UpdateScoresCommandHandler(
                 repo,
                 ctxRepo,
-                new EraScoreEvaluator(
-                        io.github.temporalrift.game.scoring.ScoreRulesTestValues.rules(),
-                        io.github.temporalrift.game.scoring.ScoreRulesTestValues.paradoxRules(false)),
+                new EraScoreEvaluator(ScoreRulesTestValues.rules(), ScoreRulesTestValues.paradoxRules(false)),
                 exposures,
                 gameRules,
                 scoreRules(),
                 scoringPublisher,
                 appPublisher,
-                java.time.Clock.systemUTC());
+                Clock.systemUTC());
         handler.handle(new UpdateEraScoresCommand(GAME_ID, ERA, List.of()));
 
         var event = (ScoresUpdated) internalEvents.get(0);
@@ -336,15 +338,13 @@ class UpdateScoresCommandHandlerTest {
         var handler = new UpdateScoresCommandHandler(
                 repo,
                 ctxRepo,
-                new EraScoreEvaluator(
-                        io.github.temporalrift.game.scoring.ScoreRulesTestValues.rules(),
-                        io.github.temporalrift.game.scoring.ScoreRulesTestValues.paradoxRules(false)),
+                new EraScoreEvaluator(ScoreRulesTestValues.rules(), ScoreRulesTestValues.paradoxRules(false)),
                 exposures,
                 gameRules,
                 scoreRules(),
                 scoringPublisher,
                 appPublisher,
-                java.time.Clock.systemUTC());
+                Clock.systemUTC());
         handler.handle(new UpdateEraScoresCommand(GAME_ID, scoringPassEra, List.of()));
 
         assertThat(savedScores).hasSize(1);
@@ -489,18 +489,17 @@ class UpdateScoresCommandHandlerTest {
                 repo,
                 ctxRepo,
                 // One rules instance for both, so a test's rule choice reaches the evaluator too.
-                new EraScoreEvaluator(
-                        scoreRules, io.github.temporalrift.game.scoring.ScoreRulesTestValues.paradoxRules(false)),
+                new EraScoreEvaluator(scoreRules, ScoreRulesTestValues.paradoxRules(false)),
                 exposures,
                 gameRules,
                 scoreRules,
                 scoringPublisher,
                 appPublisher,
-                java.time.Clock.systemUTC());
+                Clock.systemUTC());
     }
 
     private ScoreRulesPort scoreRules() {
-        return io.github.temporalrift.game.scoring.ScoreRulesTestValues.rules();
+        return ScoreRulesTestValues.rules();
     }
 
     static class FakeRevisionistExposureRepository implements RevisionistExposureRepository {
@@ -556,12 +555,12 @@ class UpdateScoresCommandHandlerTest {
         }
 
         @Override
-        public Map<io.github.temporalrift.game.shared.domain.model.CardCategory, Integer> cardCategoryWeights() {
+        public Map<CardCategory, Integer> cardCategoryWeights() {
             throw new UnsupportedOperationException("not used by UpdateScoresCommandHandler");
         }
 
         @Override
-        public Map<io.github.temporalrift.game.shared.domain.model.CardGrade, Integer> cardGradeWeights() {
+        public Map<CardGrade, Integer> cardGradeWeights() {
             throw new UnsupportedOperationException("not used by UpdateScoresCommandHandler");
         }
     }
@@ -654,8 +653,7 @@ class UpdateScoresCommandHandlerTest {
         }
 
         @Override
-        public void saveEraResolutionCompleted(
-                io.github.temporalrift.game.scoring.domain.event.EraResolutionCompleted resolution) {
+        public void saveEraResolutionCompleted(EraResolutionCompleted resolution) {
             throw new UnsupportedOperationException("not used by UpdateScoresCommandHandler");
         }
 
@@ -665,8 +663,7 @@ class UpdateScoresCommandHandlerTest {
         }
 
         @Override
-        public List<io.github.temporalrift.game.scoring.domain.context.PendingEraScoringCompletion>
-                findResolvedErasNotYetScored() {
+        public List<PendingEraScoringCompletion> findResolvedErasNotYetScored() {
             throw new UnsupportedOperationException("not used by UpdateScoresCommandHandler");
         }
 

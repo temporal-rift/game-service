@@ -5,6 +5,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.then;
 
+import java.time.Clock;
 import java.util.List;
 import java.util.UUID;
 
@@ -33,8 +34,7 @@ class ScoringEventPublisherAdapterTest {
         var gameId = UUID.randomUUID();
         var payload = new ScoresUpdated(
                 gameId, 1, List.of(new ScoresUpdated.ScoreUpdate(UUID.randomUUID(), Faction.ERASERS, 3, "CHAIN", 12)));
-        var event = DomainEventEnvelope.create(
-                UUID.randomUUID(), "Scoring", gameId, 2, payload, java.time.Clock.systemUTC());
+        var event = DomainEventEnvelope.create(UUID.randomUUID(), "Scoring", gameId, 2, payload, Clock.systemUTC());
 
         adapter.publish(event);
 
@@ -47,7 +47,7 @@ class ScoringEventPublisherAdapterTest {
 
         assertThatIllegalArgumentException()
                 .isThrownBy(() -> adapter.publish(DomainEventEnvelope.create(
-                        UUID.randomUUID(), "Scoring", UUID.randomUUID(), 1, new Object(), java.time.Clock.systemUTC())))
+                        UUID.randomUUID(), "Scoring", UUID.randomUUID(), 1, new Object(), Clock.systemUTC())))
                 .withMessageContaining("Unsupported scoring event payload");
         then(outboundEvents).shouldHaveNoInteractions();
         then(mapper).shouldHaveNoInteractions();

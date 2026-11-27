@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import jakarta.validation.Validation;
+import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.context.properties.bind.Binder;
@@ -68,7 +69,7 @@ class VictoryRulesPropertiesTest {
                 .withProperty(CHAIN_LENGTH, "4")
                 .withProperty("game.rules.victory.prophet-written-resolutions-by-player-count[5]", "0");
 
-        org.assertj.core.api.Assertions.assertThatThrownBy(() -> bind(source)).isInstanceOf(Exception.class);
+        Assertions.assertThatThrownBy(() -> bind(source)).isInstanceOf(Exception.class);
     }
 
     @Test
