@@ -16,6 +16,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import io.github.temporalrift.game.PersistenceIntegrationTest;
 import io.github.temporalrift.game.session.domain.game.Game;
 import io.github.temporalrift.game.session.domain.game.GameStatus;
+import io.github.temporalrift.game.session.domain.game.PendingCarryOverEvent;
 import io.github.temporalrift.game.session.domain.lobby.ConnectionStatus;
 import io.github.temporalrift.game.session.domain.lobby.Lobby;
 import io.github.temporalrift.game.session.domain.lobby.LobbyConfig;
@@ -23,6 +24,7 @@ import io.github.temporalrift.game.session.domain.lobby.LobbyPlayer;
 import io.github.temporalrift.game.session.domain.lobby.LobbyStatus;
 import io.github.temporalrift.game.session.domain.port.out.GameRepository;
 import io.github.temporalrift.game.session.domain.port.out.LobbyRepository;
+import io.github.temporalrift.game.shared.domain.model.CarryOverState;
 import io.github.temporalrift.game.shared.domain.model.Faction;
 
 @PersistenceIntegrationTest
@@ -200,22 +202,15 @@ class SessionPersistenceIT {
         var secondCarryOverEvent = UUID.randomUUID();
         var game = new Game(id, UUID.randomUUID(), new ArrayList<>());
         game.recordPendingCarryOverEvents(List.of(
-                new io.github.temporalrift.game.session.domain.game.PendingCarryOverEvent(
-                        firstCarryOverEvent, io.github.temporalrift.game.shared.domain.model.CarryOverState.STALLED),
-                new io.github.temporalrift.game.session.domain.game.PendingCarryOverEvent(
-                        secondCarryOverEvent,
-                        io.github.temporalrift.game.shared.domain.model.CarryOverState.CASCADED)));
+                new PendingCarryOverEvent(firstCarryOverEvent, CarryOverState.STALLED),
+                new PendingCarryOverEvent(secondCarryOverEvent, CarryOverState.CASCADED)));
         gameRepository.save(game);
 
         var loaded = gameRepository.findById(id).orElseThrow();
 
         assertThat(loaded.pendingCarryOverEvents())
                 .containsExactly(
-                        new io.github.temporalrift.game.session.domain.game.PendingCarryOverEvent(
-                                firstCarryOverEvent,
-                                io.github.temporalrift.game.shared.domain.model.CarryOverState.STALLED),
-                        new io.github.temporalrift.game.session.domain.game.PendingCarryOverEvent(
-                                secondCarryOverEvent,
-                                io.github.temporalrift.game.shared.domain.model.CarryOverState.CASCADED));
+                        new PendingCarryOverEvent(firstCarryOverEvent, CarryOverState.STALLED),
+                        new PendingCarryOverEvent(secondCarryOverEvent, CarryOverState.CASCADED));
     }
 }

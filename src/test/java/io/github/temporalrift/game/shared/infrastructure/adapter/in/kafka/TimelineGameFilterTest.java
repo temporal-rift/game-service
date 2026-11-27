@@ -10,6 +10,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.cloud.stream.binder.kafka.common.BinderHeaderMapper;
 import org.springframework.kafka.support.JsonKafkaHeaderMapper;
+import org.springframework.kafka.support.KafkaHeaderMapper;
 import org.springframework.messaging.MessageHeaders;
 
 class TimelineGameFilterTest {
@@ -19,8 +20,7 @@ class TimelineGameFilterTest {
     private final TimelineGameFilter filter = new TimelineGameFilter(GAME::equals);
 
     /** A record whose headers a producer wrote with the given mapper, as the timeline service's records are. */
-    private static ConsumerRecord<Object, Object> recordOf(
-            String topic, String gameId, org.springframework.kafka.support.KafkaHeaderMapper producer) {
+    private static ConsumerRecord<Object, Object> recordOf(String topic, String gameId, KafkaHeaderMapper producer) {
         var consumed = new ConsumerRecord<Object, Object>(topic, 0, 0L, "key", new byte[0]);
         var headers = new LinkedHashMap<String, Object>();
         if (gameId != null) {

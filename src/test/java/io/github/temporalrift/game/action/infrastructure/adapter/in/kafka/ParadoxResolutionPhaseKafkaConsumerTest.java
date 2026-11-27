@@ -29,6 +29,7 @@ import org.springframework.messaging.Message;
 import org.springframework.messaging.support.MessageBuilder;
 import tools.jackson.databind.json.JsonMapper;
 
+import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract;
 import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.AdjustedBandsPublishedPayload;
 import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.EraResolutionCompletedPayload;
 import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.ParadoxResolutionPhaseStartedPayload;
@@ -353,8 +354,7 @@ class ParadoxResolutionPhaseKafkaConsumerTest {
     @Test
     void renamedBandCorrectionIsSkippedBeforeClaim() {
         consumer.handle(message(
-                io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract
-                        .ADJUSTED_BANDS_PUBLISHED_EVENT_TYPE,
+                GeneratedChannelContract.ADJUSTED_BANDS_PUBLISHED_EVENT_TYPE,
                 1,
                 new AdjustedBandsPublishedPayload(GAME_ID, ERA, List.of())));
 

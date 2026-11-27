@@ -12,6 +12,7 @@ import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 
 import jakarta.validation.Validation;
+import jakarta.validation.Validator;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -29,7 +30,7 @@ import io.github.temporalrift.game.simulation.domain.execution.EffectiveRules;
 
 class ExecutionRulesBindingTest {
 
-    private final jakarta.validation.Validator validator =
+    private final Validator validator =
             Validation.buildDefaultValidatorFactory().getValidator();
 
     private final ExecutionRulesBinding<SessionRulesProperties> session =

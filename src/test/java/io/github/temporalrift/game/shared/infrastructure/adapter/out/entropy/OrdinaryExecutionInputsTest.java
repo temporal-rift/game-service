@@ -2,6 +2,7 @@ package io.github.temporalrift.game.shared.infrastructure.adapter.out.entropy;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.security.SecureRandom;
 import java.util.UUID;
 
 import org.junit.jupiter.api.DisplayName;
@@ -30,7 +31,7 @@ class OrdinaryExecutionInputsTest {
         var first = entropy.generator(EntropyPurpose.CARD_DEAL, EntropyCoordinate.none());
         var second = entropy.generator(EntropyPurpose.EVENT_DECK_SHUFFLE, EntropyCoordinate.none());
 
-        assertThat(first).isSameAs(second).isInstanceOf(java.security.SecureRandom.class);
+        assertThat(first).isSameAs(second).isInstanceOf(SecureRandom.class);
     }
 
     @Test

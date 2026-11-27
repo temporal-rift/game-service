@@ -27,6 +27,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.mockito.ArgumentMatchers;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
@@ -298,8 +299,7 @@ class PlayerAbandonmentEndingTest {
         then(events).shouldHaveNoInteractions();
         then(reconnects)
                 .should(never())
-                .compareAndSetStatus(
-                        any(), any(), org.mockito.ArgumentMatchers.eq(PlayerReconnectSagaStatus.ABANDONED));
+                .compareAndSetStatus(any(), any(), ArgumentMatchers.eq(PlayerReconnectSagaStatus.ABANDONED));
     }
 
     @Test

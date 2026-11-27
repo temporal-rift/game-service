@@ -37,6 +37,7 @@ import io.github.temporalrift.game.session.domain.lobby.LobbyAccessDeniedExcepti
 import io.github.temporalrift.game.session.domain.lobby.LobbyAlreadyStartedException;
 import io.github.temporalrift.game.session.domain.lobby.LobbyFullException;
 import io.github.temporalrift.game.session.domain.lobby.LobbyNotFoundException;
+import io.github.temporalrift.game.session.domain.lobby.LobbyStatus;
 import io.github.temporalrift.game.session.domain.lobby.NotEnoughPlayersException;
 import io.github.temporalrift.game.session.domain.lobby.NotLobbyHostException;
 import io.github.temporalrift.game.session.domain.lobby.PlayerAlreadyInLobbyException;
@@ -188,12 +189,7 @@ class SessionControllerTest {
                 new GetLobbyUseCase.MemberSummary(UUID.randomUUID(), "Bob", false));
         given(getLobbyUseCase.handle(any()))
                 .willReturn(new GetLobbyUseCase.Result(
-                        LOBBY_ID,
-                        GAME_ID,
-                        PLAYER_ID,
-                        PLAYER_ID,
-                        io.github.temporalrift.game.session.domain.lobby.LobbyStatus.WAITING,
-                        members));
+                        LOBBY_ID, GAME_ID, PLAYER_ID, PLAYER_ID, LobbyStatus.WAITING, members));
 
         // when / then
         mockMvc.perform(get("/api/v1/lobbies/{lobbyId}", LOBBY_ID).with(auth()))

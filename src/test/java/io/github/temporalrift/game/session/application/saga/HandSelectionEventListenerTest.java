@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -56,8 +57,7 @@ class HandSelectionEventListenerTest {
 
         var stateCaptor = ArgumentCaptor.forClass(EraSagaState.class);
         then(eraSagaRepository).should().save(stateCaptor.capture());
-        org.assertj.core.api.Assertions.assertThat(stateCaptor.getValue().status())
-                .isEqualTo(EraSagaStatus.WAITING_DECLARATION);
+        Assertions.assertThat(stateCaptor.getValue().status()).isEqualTo(EraSagaStatus.WAITING_DECLARATION);
         then(applicationEventPublisher)
                 .should()
                 .publishEvent(new HandSelectionCompleted(gameId, 1, List.of(playerOne, playerTwo)));

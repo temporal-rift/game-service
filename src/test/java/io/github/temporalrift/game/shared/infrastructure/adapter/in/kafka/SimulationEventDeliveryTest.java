@@ -12,6 +12,7 @@ import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
+import org.assertj.core.groups.Tuple;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.kafka.annotation.KafkaListener;
@@ -92,9 +93,7 @@ class SimulationEventDeliveryTest {
                         SimulationEventDelivery.ConsumerPosition::groupId,
                         SimulationEventDelivery.ConsumerPosition::nextOffset)
                 .containsExactly(
-                        org.assertj.core.groups.Tuple.tuple("group-a", 1L),
-                        org.assertj.core.groups.Tuple.tuple("group-b", 1L),
-                        org.assertj.core.groups.Tuple.tuple("group-failing", 0L));
+                        Tuple.tuple("group-a", 1L), Tuple.tuple("group-b", 1L), Tuple.tuple("group-failing", 0L));
     }
 
     @Test

@@ -9,6 +9,7 @@ import static org.mockito.Mockito.never;
 import java.time.Instant;
 import java.util.UUID;
 
+import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -64,8 +65,8 @@ class PlayerReconnectKafkaConsumerTest {
         // then
         then(applicationEventPublisher).should().publishEvent(captor.capture());
         var event = (PlayerReconnectedApplicationEvent) captor.getValue();
-        org.assertj.core.api.Assertions.assertThat(event.gameId()).isEqualTo(GAME_ID);
-        org.assertj.core.api.Assertions.assertThat(event.playerId()).isEqualTo(PLAYER_ID);
+        Assertions.assertThat(event.gameId()).isEqualTo(GAME_ID);
+        Assertions.assertThat(event.playerId()).isEqualTo(PLAYER_ID);
     }
 
     @Test

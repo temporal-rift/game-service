@@ -14,6 +14,8 @@ import java.util.stream.IntStream;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import io.github.temporalrift.game.shared.domain.model.CarryOverState;
+
 class GameTest {
 
     static final int MAX_ERAS = 5;
@@ -145,10 +147,8 @@ class GameTest {
         var second = UUID.randomUUID();
 
         var carryOvers = List.of(
-                new PendingCarryOverEvent(
-                        first, io.github.temporalrift.game.shared.domain.model.CarryOverState.STALLED),
-                new PendingCarryOverEvent(
-                        second, io.github.temporalrift.game.shared.domain.model.CarryOverState.CASCADED));
+                new PendingCarryOverEvent(first, CarryOverState.STALLED),
+                new PendingCarryOverEvent(second, CarryOverState.CASCADED));
         game.recordPendingCarryOverEvents(carryOvers);
 
         assertThat(game.drainPendingCarryOverEvents()).containsExactlyElementsOf(carryOvers);

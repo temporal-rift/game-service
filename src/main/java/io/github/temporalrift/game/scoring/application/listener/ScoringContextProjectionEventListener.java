@@ -11,6 +11,7 @@ import org.springframework.modulith.events.ApplicationModuleListener;
 import org.springframework.stereotype.Component;
 
 import io.github.temporalrift.game.scoring.application.command.EraScoringCompletionChecker;
+import io.github.temporalrift.game.scoring.domain.playerscore.ScoreReason;
 import io.github.temporalrift.game.scoring.domain.port.out.EraScoringContextRepository;
 import io.github.temporalrift.game.scoring.domain.port.out.RevisionistExposureRepository;
 import io.github.temporalrift.game.scoring.domain.port.out.ScoreRulesPort;
@@ -107,7 +108,7 @@ class ScoringContextProjectionEventListener {
                         event.eraNumber(),
                         fact.activistPlayerId(),
                         Faction.ACTIVISTS,
-                        io.github.temporalrift.game.scoring.domain.playerscore.ScoreReason.EXPOSE_SIGNATURE_REVEALED));
+                        ScoreReason.EXPOSE_SIGNATURE_REVEALED));
         event.activistDeclarationFacts()
                 .forEach(fact -> contextRepository.upsertActivistDeclaration(new ActivistDeclarationRecorded(
                         event.gameId(),

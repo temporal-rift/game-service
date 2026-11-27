@@ -4,6 +4,7 @@ import static org.springframework.transaction.annotation.Propagation.REQUIRES_NE
 
 import java.time.Clock;
 
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.modulith.events.ApplicationModuleListener;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,13 +22,13 @@ import io.github.temporalrift.game.shared.domain.messaging.DomainEventEnvelope;
 class HandSelectionEventListener {
 
     private final EraSagaRepository eraSagaRepository;
-    private final org.springframework.context.ApplicationEventPublisher applicationEventPublisher;
+    private final ApplicationEventPublisher applicationEventPublisher;
     private final SessionEventPublisher eventPublisher;
     private final Clock clock;
 
     HandSelectionEventListener(
             EraSagaRepository eraSagaRepository,
-            org.springframework.context.ApplicationEventPublisher applicationEventPublisher,
+            ApplicationEventPublisher applicationEventPublisher,
             SessionEventPublisher eventPublisher,
             Clock clock) {
         this.eraSagaRepository = eraSagaRepository;

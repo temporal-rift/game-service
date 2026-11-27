@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import io.github.temporalrift.game.session.domain.game.Game;
@@ -46,7 +47,7 @@ class ActionRoundRequestsTest {
         given(gameRepository.findById(gameId)).willReturn(Optional.of(game));
         given(game.lobbyId()).willReturn(lobbyId);
         given(lobbyRepository.findById(lobbyId)).willReturn(Optional.of(lobby));
-        var contender = org.mockito.Mockito.mock(LobbyPlayer.class);
+        var contender = Mockito.mock(LobbyPlayer.class);
         given(contender.playerId()).willReturn(stays);
         given(lobby.contenders()).willReturn(List.of(contender));
 

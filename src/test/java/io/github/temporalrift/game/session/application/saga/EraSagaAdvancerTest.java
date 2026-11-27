@@ -16,6 +16,7 @@ import static org.mockito.Mockito.verify;
 
 import java.time.Clock;
 import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -27,8 +28,11 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
+import org.mockito.Mockito;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
@@ -117,7 +121,7 @@ class EraSagaAdvancerTest {
     ActionRoundRequests actionRoundRequests;
 
     @Spy
-    Clock clock = Clock.fixed(Instant.parse("2026-01-01T00:00:00Z"), java.time.ZoneOffset.UTC);
+    Clock clock = Clock.fixed(Instant.parse("2026-01-01T00:00:00Z"), ZoneOffset.UTC);
 
     EraSagaAdvancer advancer;
 
@@ -176,7 +180,7 @@ class EraSagaAdvancerTest {
                 PLAYER_1,
                 players,
                 LobbyStatus.STARTED,
-                new LobbyConfig("ABCD", 3, 5, Clock.fixed(Instant.EPOCH, java.time.ZoneOffset.UTC)));
+                new LobbyConfig("ABCD", 3, 5, Clock.fixed(Instant.EPOCH, ZoneOffset.UTC)));
         for (var playerId : abandonedPlayerIds) {
             lobby.markPlayerAbandoned(playerId);
         }
@@ -194,7 +198,7 @@ class EraSagaAdvancerTest {
     private void givenMutableState(EraSagaState initial) {
         var stored = new AtomicReference<>(initial);
         given(eraSagaRepository.findByGameIdWithLock(GAME_ID)).willAnswer(_ -> Optional.of(stored.get()));
-        org.mockito.Mockito.lenient().when(eraSagaRepository.save(any())).thenAnswer(invocation -> {
+        Mockito.lenient().when(eraSagaRepository.save(any())).thenAnswer(invocation -> {
             var state = invocation.<EraSagaState>getArgument(0);
             stored.set(state);
             return state;
@@ -237,8 +241,8 @@ class EraSagaAdvancerTest {
         then(applicationEventPublisher).shouldHaveNoInteractions();
     }
 
-    @org.junit.jupiter.params.ParameterizedTest
-    @org.junit.jupiter.params.provider.EnumSource(
+    @ParameterizedTest
+    @EnumSource(
             value = EraSagaStatus.class,
             names = {
                 "RUNNING",

@@ -29,6 +29,7 @@ import io.github.temporalrift.game.action.domain.actionround.ActionRoundParticip
 import io.github.temporalrift.game.action.domain.actionround.CloseOutcome;
 import io.github.temporalrift.game.action.domain.actionround.RoundCancellation;
 import io.github.temporalrift.game.action.domain.actionround.SubmittedAction;
+import io.github.temporalrift.game.action.domain.activisterastate.ActivistEraState;
 import io.github.temporalrift.game.action.domain.activisterastate.ProbabilityInfluenceSignature;
 import io.github.temporalrift.game.action.domain.event.ActionEventPayload;
 import io.github.temporalrift.game.action.domain.event.ActionRoundTimerExpired;
@@ -53,6 +54,7 @@ import io.github.temporalrift.game.shared.domain.model.CardDrawWeights;
 import io.github.temporalrift.game.shared.domain.model.CardType;
 import io.github.temporalrift.game.shared.domain.model.EntropyCoordinate;
 import io.github.temporalrift.game.shared.domain.model.EntropyPurpose;
+import io.github.temporalrift.game.shared.domain.model.Faction;
 import io.github.temporalrift.game.shared.domain.model.IdentityKind;
 import io.github.temporalrift.game.shared.domain.model.SpecialAction;
 import io.github.temporalrift.game.shared.domain.port.out.ExecutionEntropy;
@@ -129,7 +131,7 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
                 ? activistEraStateRepository.findDeclaredByGameIdAndEraNumber(gameId, eraNumber).stream()
                         .<SubmittedAction>map(state -> new SubmittedAction.SpecialActionSubmission(
                                 state.activistPlayerId(),
-                                io.github.temporalrift.game.shared.domain.model.Faction.ACTIVISTS,
+                                Faction.ACTIVISTS,
                                 state.declarationMode().toSpecialAction(),
                                 null,
                                 null,
@@ -435,8 +437,7 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
                 .filter(SubmittedAction.SpecialActionSubmission.class::isInstance)
                 .map(SubmittedAction.SpecialActionSubmission.class::cast)
                 .filter(special -> !cancelledPlayerIds.contains(special.playerId()))
-                .filter(special -> special.specialAction()
-                        == io.github.temporalrift.game.shared.domain.model.SpecialAction.CORRUPT)
+                .filter(special -> special.specialAction() == SpecialAction.CORRUPT)
                 .forEach(corrupt -> {
                     var targetCard = shiftCardsByPlayer.get(corrupt.targetPlayerId());
                     if (targetCard != null) {
@@ -456,8 +457,7 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
         var liveExposePlayerIds = liveActions.stream()
                 .filter(SubmittedAction.SpecialActionSubmission.class::isInstance)
                 .map(SubmittedAction.SpecialActionSubmission.class::cast)
-                .filter(special ->
-                        special.specialAction() == io.github.temporalrift.game.shared.domain.model.SpecialAction.EXPOSE)
+                .filter(special -> special.specialAction() == SpecialAction.EXPOSE)
                 .map(SubmittedAction.SpecialActionSubmission::playerId)
                 .collect(Collectors.toSet());
         var exposedStates = activistEraStateRepository.findExposedByGameIdAndEraNumber(gameId, eraNumber).stream()
@@ -466,7 +466,7 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
                 .toList();
         exposedStates.forEach(state -> actionEventPublisher.publish(DomainEventEnvelope.create(
                 state.id(),
-                io.github.temporalrift.game.action.domain.activisterastate.ActivistEraState.AGGREGATE_TYPE,
+                ActivistEraState.AGGREGATE_TYPE,
                 gameId,
                 DomainEventEnvelope.SCHEMA_VERSION_V1,
                 new ExposeSignatureRevealed(
@@ -500,8 +500,7 @@ class ActionRoundSagaImpl implements ActionRoundSaga {
                         activistEraStateRepository.save(state);
                         DomainEventEnvelope<ActionEventPayload> envelope = DomainEventEnvelope.create(
                                 state.id(),
-                                io.github.temporalrift.game.action.domain.activisterastate.ActivistEraState
-                                        .AGGREGATE_TYPE,
+                                ActivistEraState.AGGREGATE_TYPE,
                                 gameId,
                                 DomainEventEnvelope.SCHEMA_VERSION_V1,
                                 new ExposeBehaviorChanged(

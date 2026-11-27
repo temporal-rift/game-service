@@ -6,6 +6,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
+import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -19,7 +20,7 @@ import io.github.temporalrift.game.action.domain.port.out.DeclarationPhaseReposi
 @PersistenceIntegrationTest
 class DeclarationPhaseRepositoryAdapterIT {
     @Autowired
-    jakarta.persistence.EntityManager entityManager;
+    EntityManager entityManager;
 
     @Autowired
     DeclarationPhaseRepository repository;

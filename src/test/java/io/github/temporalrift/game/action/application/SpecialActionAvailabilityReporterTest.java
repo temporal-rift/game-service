@@ -19,6 +19,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
+import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import io.github.temporalrift.game.action.domain.actionround.SpecialActionUnavailableReason;
@@ -67,11 +68,11 @@ class SpecialActionAvailabilityReporterTest {
                 publisher,
                 gameRules,
                 Clock.fixed(Instant.parse("2026-01-01T00:00:00Z"), ZoneOffset.UTC));
-        org.mockito.Mockito.lenient().when(gameRules.maxEras()).thenReturn(5);
-        org.mockito.Mockito.lenient().when(gameRules.annihilateEarliestRound()).thenReturn(2);
-        org.mockito.Mockito.lenient().when(gameRules.factionBetLatestRound()).thenReturn(2);
-        org.mockito.Mockito.lenient().when(gameRules.sealMaxUsesPerGame()).thenReturn(2);
-        org.mockito.Mockito.lenient()
+        Mockito.lenient().when(gameRules.maxEras()).thenReturn(5);
+        Mockito.lenient().when(gameRules.annihilateEarliestRound()).thenReturn(2);
+        Mockito.lenient().when(gameRules.factionBetLatestRound()).thenReturn(2);
+        Mockito.lenient().when(gameRules.sealMaxUsesPerGame()).thenReturn(2);
+        Mockito.lenient()
                 .when(gameRules.onceEraBudgetedSpecials())
                 .thenReturn(Set.of(SpecialAction.ANNIHILATE, SpecialAction.SEAL));
     }
@@ -87,7 +88,7 @@ class SpecialActionAvailabilityReporterTest {
     @SuppressWarnings("unchecked")
     private List<SpecialActionAvailabilityReported> published() {
         var captor = ArgumentCaptor.forClass(DomainEventEnvelope.class);
-        then(publisher).should(org.mockito.Mockito.atLeast(0)).publish(captor.capture());
+        then(publisher).should(Mockito.atLeast(0)).publish(captor.capture());
         return captor.getAllValues().stream()
                 .map(envelope -> (ActionEventPayload) envelope.payload())
                 .map(SpecialActionAvailabilityReported.class::cast)
@@ -149,7 +150,7 @@ class SpecialActionAvailabilityReporterTest {
         assertThat(published())
                 .extracting(SpecialActionAvailabilityReported::playerId)
                 .containsExactly(active.playerId());
-        then(publisher).should(org.mockito.Mockito.never()).publishInternally(any());
+        then(publisher).should(Mockito.never()).publishInternally(any());
     }
 
     @Test

@@ -12,6 +12,7 @@ import org.mapstruct.factory.Mappers;
 
 import io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract;
 import io.github.temporalrift.game.action.domain.actionround.ActionFamily;
+import io.github.temporalrift.game.action.domain.actionround.SpecialActionUnavailableReason;
 import io.github.temporalrift.game.action.domain.activisterastate.ActivistDeclarationMode;
 import io.github.temporalrift.game.action.domain.event.ActionRoundPassed;
 import io.github.temporalrift.game.action.domain.event.CardPlayed;
@@ -25,6 +26,7 @@ import io.github.temporalrift.game.action.domain.event.ParadoxResolutionCardsOff
 import io.github.temporalrift.game.action.domain.event.ParadoxResolutionPassed;
 import io.github.temporalrift.game.action.domain.event.PlayerJammed;
 import io.github.temporalrift.game.action.domain.event.RoundSummaryPublished;
+import io.github.temporalrift.game.action.domain.event.SpecialActionAvailabilityReported;
 import io.github.temporalrift.game.action.domain.event.SpecialActionPlayed;
 import io.github.temporalrift.game.shared.domain.model.CardCategory;
 import io.github.temporalrift.game.shared.domain.model.CardGrade;
@@ -277,20 +279,17 @@ class ActionEventWireMapperTest {
 
     @Test
     void specialActionAvailabilityReported_mapsViewerAndLeavesReasonOnlyOnUnavailableSpecials() {
-        var domain = new io.github.temporalrift.game.action.domain.event.SpecialActionAvailabilityReported(
+        var domain = new SpecialActionAvailabilityReported(
                 UUID.randomUUID(),
                 2,
                 1,
                 UUID.randomUUID(),
                 List.of(
-                        new io.github.temporalrift.game.action.domain.event.SpecialActionAvailabilityReported
-                                .SpecialAvailability(
+                        new SpecialActionAvailabilityReported.SpecialAvailability(
                                 SpecialAction.ANNIHILATE,
                                 false,
-                                io.github.temporalrift.game.action.domain.actionround.SpecialActionUnavailableReason
-                                        .NOT_ELIGIBLE_THIS_ROUND),
-                        new io.github.temporalrift.game.action.domain.event.SpecialActionAvailabilityReported
-                                .SpecialAvailability(SpecialAction.CORRUPT, true, null)));
+                                SpecialActionUnavailableReason.NOT_ELIGIBLE_THIS_ROUND),
+                        new SpecialActionAvailabilityReported.SpecialAvailability(SpecialAction.CORRUPT, true, null)));
 
         var wire = mapper.toWire(domain);
 
@@ -298,14 +297,10 @@ class ActionEventWireMapperTest {
         assertThat(wire.playerId()).isEqualTo(domain.playerId());
         assertThat(wire.roundNumber()).isEqualTo(1);
         assertThat(wire.specials()).hasSize(2);
-        assertThat(wire.specials().get(0).specialAction())
-                .isEqualTo(
-                        io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract.SpecialAction.ANNIHILATE);
+        assertThat(wire.specials().get(0).specialAction()).isEqualTo(GeneratedChannelContract.SpecialAction.ANNIHILATE);
         assertThat(wire.specials().get(0).available()).isFalse();
         assertThat(wire.specials().get(0).unavailableReason())
-                .isEqualTo(
-                        io.github.temporalrift.asyncapi.actionevents.GeneratedChannelContract
-                                .SpecialActionUnavailableReason.NOT_ELIGIBLE_THIS_ROUND);
+                .isEqualTo(GeneratedChannelContract.SpecialActionUnavailableReason.NOT_ELIGIBLE_THIS_ROUND);
         assertThat(wire.specials().get(1).available()).isTrue();
         assertThat(wire.specials().get(1).unavailableReason()).isNull();
     }

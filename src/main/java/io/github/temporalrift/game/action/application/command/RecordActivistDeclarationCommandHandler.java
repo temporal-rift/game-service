@@ -13,6 +13,7 @@ import io.github.temporalrift.game.action.application.port.in.RecordActivistDecl
 import io.github.temporalrift.game.action.domain.actionround.FactionRequiredException;
 import io.github.temporalrift.game.action.domain.actionround.InvalidSpecialActionException;
 import io.github.temporalrift.game.action.domain.actionround.JammedPlayerException;
+import io.github.temporalrift.game.action.domain.activisterastate.ActivistDeclarationMode;
 import io.github.temporalrift.game.action.domain.activisterastate.ActivistEraState;
 import io.github.temporalrift.game.action.domain.activisterastate.DeclarationWindowClosedException;
 import io.github.temporalrift.game.action.domain.declarationphase.DeclarationDecision;
@@ -140,11 +141,7 @@ class RecordActivistDeclarationCommandHandler implements RecordActivistDeclarati
                         state.targetOutcomeId()));
     }
 
-    private void validateActivist(
-            Faction faction,
-            boolean jammed,
-            UUID playerId,
-            io.github.temporalrift.game.action.domain.activisterastate.ActivistDeclarationMode mode) {
+    private void validateActivist(Faction faction, boolean jammed, UUID playerId, ActivistDeclarationMode mode) {
         if (jammed) {
             throw new JammedPlayerException(playerId);
         }

@@ -10,7 +10,9 @@ import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 
 import java.nio.charset.StandardCharsets;
+import java.time.Clock;
 import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -26,6 +28,7 @@ import org.springframework.messaging.Message;
 import org.springframework.messaging.support.MessageBuilder;
 import tools.jackson.databind.json.JsonMapper;
 
+import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract;
 import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.AdjustedBandsPublishedPayload;
 import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.EraResolutionCompletedPayload;
 import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.EraTerminalResolution;
@@ -35,6 +38,7 @@ import io.github.temporalrift.game.session.application.saga.ResolutionAppliedApp
 import io.github.temporalrift.game.session.application.saga.TimelineCollapsePublisher;
 import io.github.temporalrift.game.session.domain.game.Game;
 import io.github.temporalrift.game.session.domain.game.GameStatus;
+import io.github.temporalrift.game.session.domain.game.PendingCarryOverEvent;
 import io.github.temporalrift.game.session.domain.lobby.ConnectionStatus;
 import io.github.temporalrift.game.session.domain.lobby.Lobby;
 import io.github.temporalrift.game.session.domain.lobby.LobbyConfig;
@@ -45,6 +49,7 @@ import io.github.temporalrift.game.session.domain.port.out.GameRepository;
 import io.github.temporalrift.game.session.domain.port.out.SessionGameRulesPort;
 import io.github.temporalrift.game.session.domain.saga.EraSagaState;
 import io.github.temporalrift.game.session.domain.saga.EraSagaStatus;
+import io.github.temporalrift.game.shared.domain.model.CarryOverState;
 import io.github.temporalrift.game.shared.domain.model.Faction;
 import io.github.temporalrift.game.shared.domain.port.out.ProcessedEventRepository;
 
@@ -112,7 +117,7 @@ class EraResolutionCompletedKafkaConsumerTest {
                 PLAYER_1,
                 players,
                 LobbyStatus.STARTED,
-                new LobbyConfig("ABCD", 3, 5, java.time.Clock.fixed(Instant.EPOCH, java.time.ZoneOffset.UTC)));
+                new LobbyConfig("ABCD", 3, 5, Clock.fixed(Instant.EPOCH, ZoneOffset.UTC)));
     }
 
     @Test
@@ -146,8 +151,7 @@ class EraResolutionCompletedKafkaConsumerTest {
 
         then(gameRepository).should().save(game);
         assertThat(game.pendingCarryOverEvents())
-                .containsExactly(new io.github.temporalrift.game.session.domain.game.PendingCarryOverEvent(
-                        cascadedEventId, io.github.temporalrift.game.shared.domain.model.CarryOverState.CASCADED));
+                .containsExactly(new PendingCarryOverEvent(cascadedEventId, CarryOverState.CASCADED));
         then(collapsePublisher).should(never()).publishCollapse(any(), anyInt());
     }
 
@@ -168,13 +172,9 @@ class EraResolutionCompletedKafkaConsumerTest {
 
         assertThat(game.pendingCarryOverEvents())
                 .containsExactly(
-                        new io.github.temporalrift.game.session.domain.game.PendingCarryOverEvent(
-                                firstStalledId, io.github.temporalrift.game.shared.domain.model.CarryOverState.STALLED),
-                        new io.github.temporalrift.game.session.domain.game.PendingCarryOverEvent(
-                                cascadedId, io.github.temporalrift.game.shared.domain.model.CarryOverState.CASCADED),
-                        new io.github.temporalrift.game.session.domain.game.PendingCarryOverEvent(
-                                secondStalledId,
-                                io.github.temporalrift.game.shared.domain.model.CarryOverState.STALLED));
+                        new PendingCarryOverEvent(firstStalledId, CarryOverState.STALLED),
+                        new PendingCarryOverEvent(cascadedId, CarryOverState.CASCADED),
+                        new PendingCarryOverEvent(secondStalledId, CarryOverState.STALLED));
         assertThat(game.cascadedParadoxCounter()).isEqualTo(2);
         then(collapsePublisher).should(never()).publishCollapse(any(), anyInt());
     }
@@ -192,8 +192,7 @@ class EraResolutionCompletedKafkaConsumerTest {
         consumer.handle(messageFor(resolution));
 
         assertThat(game.pendingCarryOverEvents())
-                .containsExactly(new io.github.temporalrift.game.session.domain.game.PendingCarryOverEvent(
-                        stalledId, io.github.temporalrift.game.shared.domain.model.CarryOverState.STALLED));
+                .containsExactly(new PendingCarryOverEvent(stalledId, CarryOverState.STALLED));
         assertThat(game.cascadedParadoxCounter()).isEqualTo(initialCascadeCount);
         then(collapsePublisher).should(never()).publishCollapse(any(), anyInt());
     }
@@ -374,10 +373,7 @@ class EraResolutionCompletedKafkaConsumerTest {
                 .writeValueAsString(new AdjustedBandsPublishedPayload(GAME_ID, 1, List.of()))
                 .getBytes(StandardCharsets.UTF_8);
         var message = MessageBuilder.withPayload((Object) body)
-                .setHeader(
-                        "eventType",
-                        io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract
-                                .ADJUSTED_BANDS_PUBLISHED_EVENT_TYPE)
+                .setHeader("eventType", GeneratedChannelContract.ADJUSTED_BANDS_PUBLISHED_EVENT_TYPE)
                 .setHeader("eventId", UUID.randomUUID().toString())
                 .setHeader("aggregateId", GAME_ID.toString())
                 .setHeader("aggregateType", "Game")

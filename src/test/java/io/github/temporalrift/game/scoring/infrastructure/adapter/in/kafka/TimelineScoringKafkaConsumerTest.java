@@ -18,6 +18,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.mockito.ArgumentMatchers;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
@@ -26,6 +27,7 @@ import org.springframework.messaging.Message;
 import org.springframework.messaging.support.MessageBuilder;
 import tools.jackson.databind.json.JsonMapper;
 
+import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract;
 import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.AdjustedBandsPublishedPayload;
 import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.ChainBrokenPayload;
 import io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.ChainCompletedPayload;
@@ -99,10 +101,7 @@ class TimelineScoringKafkaConsumerTest {
     @DisplayName("renamed timeline band correction — ignored without claiming")
     void handle_adjustedBandsPublished_ignoredWithoutClaiming() {
         var payload = new AdjustedBandsPublishedPayload(GAME_ID, ERA_NUMBER, List.of());
-        consumer.handle(message(
-                io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract
-                        .ADJUSTED_BANDS_PUBLISHED_EVENT_TYPE,
-                json(payload)));
+        consumer.handle(message(GeneratedChannelContract.ADJUSTED_BANDS_PUBLISHED_EVENT_TYPE, json(payload)));
 
         then(processedEventRepository).should(never()).tryMarkProcessed(any(), any());
         then(outcomeInboxRepository).should(never()).save(any());
@@ -114,10 +113,7 @@ class TimelineScoringKafkaConsumerTest {
     void handle_probabilityStateRevealed_ignoredWithoutClaiming() {
         var payload = new ProbabilityStateRevealedPayload(
                 GAME_ID, ERA_NUMBER, 1, UUID.randomUUID(), UUID.randomUUID(), List.of());
-        consumer.handle(message(
-                io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract
-                        .PROBABILITY_STATE_REVEALED_EVENT_TYPE,
-                json(payload)));
+        consumer.handle(message(GeneratedChannelContract.PROBABILITY_STATE_REVEALED_EVENT_TYPE, json(payload)));
 
         then(processedEventRepository).should(never()).tryMarkProcessed(any(), any());
         then(outcomeInboxRepository).should(never()).save(any());
@@ -461,10 +457,8 @@ class TimelineScoringKafkaConsumerTest {
         var corruptingPlayerId = UUID.randomUUID();
         var targetEventId = UUID.randomUUID();
         var targetOutcomeId = UUID.randomUUID();
-        var payload =
-                new io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract
-                        .CorruptInversionConfirmedPayload(
-                        GAME_ID, ERA_NUMBER, 1, corruptingPlayerId, targetEventId, targetOutcomeId, true);
+        var payload = new GeneratedChannelContract.CorruptInversionConfirmedPayload(
+                GAME_ID, ERA_NUMBER, 1, corruptingPlayerId, targetEventId, targetOutcomeId, true);
         var message = message("CorruptInversionConfirmed", json(payload));
         givenClaim(message, true);
 
@@ -478,10 +472,8 @@ class TimelineScoringKafkaConsumerTest {
     @Test
     @DisplayName("duplicate CorruptInversionConfirmed eventId — claimed as duplicate, no confirmation recorded")
     void handle_duplicateCorruptInversionConfirmed_ignored() {
-        var payload =
-                new io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract
-                        .CorruptInversionConfirmedPayload(
-                        GAME_ID, ERA_NUMBER, 1, UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), false);
+        var payload = new GeneratedChannelContract.CorruptInversionConfirmedPayload(
+                GAME_ID, ERA_NUMBER, 1, UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), false);
         var message = message("CorruptInversionConfirmed", json(payload));
         givenClaim(message, false);
 
@@ -489,8 +481,7 @@ class TimelineScoringKafkaConsumerTest {
 
         then(contextRepository)
                 .should(never())
-                .confirmCorruptInversionForTarget(
-                        any(), anyInt(), any(), any(), org.mockito.ArgumentMatchers.anyBoolean());
+                .confirmCorruptInversionForTarget(any(), anyInt(), any(), any(), ArgumentMatchers.anyBoolean());
     }
 
     @Test
@@ -499,9 +490,8 @@ class TimelineScoringKafkaConsumerTest {
         var playerId = UUID.randomUUID();
         var targetEventId = UUID.randomUUID();
         var targetOutcomeId = UUID.randomUUID();
-        var payload =
-                new io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.AnnihilationResolvedPayload(
-                        GAME_ID, ERA_NUMBER, 2, playerId, targetEventId, targetOutcomeId, true, false);
+        var payload = new GeneratedChannelContract.AnnihilationResolvedPayload(
+                GAME_ID, ERA_NUMBER, 2, playerId, targetEventId, targetOutcomeId, true, false);
         var message = message("AnnihilationResolved", json(payload));
         givenClaim(message, true);
 
@@ -516,9 +506,8 @@ class TimelineScoringKafkaConsumerTest {
     @Test
     @DisplayName("duplicate AnnihilationResolved eventId — claimed as duplicate, nothing recorded")
     void handle_duplicateAnnihilationResolved_ignored() {
-        var payload =
-                new io.github.temporalrift.asyncapi.timelineevents.GeneratedChannelContract.AnnihilationResolvedPayload(
-                        GAME_ID, ERA_NUMBER, 1, UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), true, true);
+        var payload = new GeneratedChannelContract.AnnihilationResolvedPayload(
+                GAME_ID, ERA_NUMBER, 1, UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), true, true);
         var message = message("AnnihilationResolved", json(payload));
         givenClaim(message, false);
 

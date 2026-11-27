@@ -3,7 +3,10 @@ package io.github.temporalrift.game.action.infrastructure.adapter.in.kafka;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 
+import java.time.Clock;
 import java.time.Duration;
+import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -13,17 +16,21 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import io.github.temporalrift.game.GameServiceIntegrationTest;
 import io.github.temporalrift.game.action.application.port.in.DeclineDeclarationUseCase;
 import io.github.temporalrift.game.action.domain.actionround.ActionRound;
 import io.github.temporalrift.game.action.domain.actionround.RoundStatus;
+import io.github.temporalrift.game.action.domain.declarationphase.DeclarationPhase;
+import io.github.temporalrift.game.action.domain.declarationphase.DeclarationPhaseStatus;
 import io.github.temporalrift.game.action.domain.handselection.HandSelection;
 import io.github.temporalrift.game.action.domain.handselection.HandSelectionStatus;
 import io.github.temporalrift.game.action.domain.playerstate.PlayerState;
 import io.github.temporalrift.game.action.domain.port.out.ActionRoundRepository;
 import io.github.temporalrift.game.action.domain.port.out.ActionRoundSagaRepository;
+import io.github.temporalrift.game.action.domain.port.out.DeclarationPhaseRepository;
 import io.github.temporalrift.game.action.domain.port.out.HandSelectionRepository;
 import io.github.temporalrift.game.action.domain.port.out.PlayerStateRepository;
 import io.github.temporalrift.game.action.domain.saga.ActionRoundSagaState;
@@ -83,13 +90,13 @@ class EraStartedToRoundStartIT {
     HandSelectionRepository handSelectionRepository;
 
     @Autowired
-    io.github.temporalrift.game.action.domain.port.out.DeclarationPhaseRepository declarationPhaseRepository;
+    DeclarationPhaseRepository declarationPhaseRepository;
 
     @Autowired
     TransactionTemplate transactionTemplate;
 
     @Autowired
-    org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
+    JdbcTemplate jdbcTemplate;
 
     @Autowired
     DeclineDeclarationUseCase declineDeclaration;
@@ -108,7 +115,7 @@ class EraStartedToRoundStartIT {
             var lobbyId = UUID.randomUUID();
             gameRepository.save(new Game(gameId, lobbyId, futureEventCatalog.allEventIds()));
             // Opening a round resolves the participants who have not abandoned from the game's lobby.
-            var joinedAt = java.time.Instant.parse("2026-01-01T00:00:00Z");
+            var joinedAt = Instant.parse("2026-01-01T00:00:00Z");
             lobbyRepository.save(new Lobby(
                     lobbyId,
                     gameId,
@@ -120,7 +127,7 @@ class EraStartedToRoundStartIT {
                             UUID.randomUUID().toString().substring(0, 8).toUpperCase(),
                             1,
                             5,
-                            java.time.Clock.fixed(joinedAt, java.time.ZoneOffset.UTC))));
+                            Clock.fixed(joinedAt, ZoneOffset.UTC))));
             for (var playerId : playerIds) {
                 var player = new PlayerState(UUID.randomUUID(), gameId, playerId);
                 player.assignFaction(
@@ -154,16 +161,13 @@ class EraStartedToRoundStartIT {
 
         var declarationPhase = awaitDeclarationPhase(gameId, eraNumber);
         if (firstFaction == Faction.ACTIVISTS) {
-            assertThat(declarationPhase.status())
-                    .isEqualTo(io.github.temporalrift.game.action.domain.declarationphase.DeclarationPhaseStatus.OPEN);
+            assertThat(declarationPhase.status()).isEqualTo(DeclarationPhaseStatus.OPEN);
             assertThat(awaitEraSagaState(gameId).status()).isEqualTo(EraSagaStatus.WAITING_DECLARATION);
             assertThat(actionRoundRepository.findByGameIdAndEraNumberAndRoundNumber(gameId, eraNumber, roundNumber))
                     .isEmpty();
             declineDeclaration.handle(new DeclineDeclarationUseCase.Command(gameId, eraNumber, playerIds.getFirst()));
         } else {
-            assertThat(declarationPhase.status())
-                    .isEqualTo(
-                            io.github.temporalrift.game.action.domain.declarationphase.DeclarationPhaseStatus.CLOSED);
+            assertThat(declarationPhase.status()).isEqualTo(DeclarationPhaseStatus.CLOSED);
         }
 
         var actionRound = awaitActionRound(gameId, eraNumber, roundNumber);
@@ -261,8 +265,7 @@ class EraStartedToRoundStartIT {
                 .orElseThrow();
     }
 
-    private io.github.temporalrift.game.action.domain.declarationphase.DeclarationPhase awaitDeclarationPhase(
-            UUID gameId, int eraNumber) {
+    private DeclarationPhase awaitDeclarationPhase(UUID gameId, int eraNumber) {
         return await().atMost(Duration.ofSeconds(10))
                 .until(
                         () -> transactionTemplate.execute(

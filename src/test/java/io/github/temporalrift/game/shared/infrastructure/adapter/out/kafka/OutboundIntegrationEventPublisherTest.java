@@ -16,6 +16,7 @@ import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.Validation;
 import jakarta.validation.ValidatorFactory;
 import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -116,7 +117,7 @@ class OutboundIntegrationEventPublisherTest {
         var payload = new GameStartedPayload(null, UUID.randomUUID(), List.of(), 3, 30, 20);
 
         var envelope = envelope(gameId);
-        var thrown = org.junit.jupiter.api.Assertions.assertThrows(
+        var thrown = Assertions.assertThrows(
                 ConstraintViolationException.class, () -> outboundEvents.publish("GameStarted", payload, envelope));
 
         assertThat(thrown.getMessage()).contains("gameId");

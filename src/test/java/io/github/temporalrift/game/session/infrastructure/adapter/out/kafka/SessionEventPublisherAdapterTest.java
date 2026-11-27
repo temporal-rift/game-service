@@ -7,6 +7,7 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.mock;
 
+import java.time.Clock;
 import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
@@ -523,7 +524,6 @@ class SessionEventPublisherAdapterTest {
     }
 
     private static DomainEventEnvelope<?> envelope(UUID gameId, Object payload) {
-        return DomainEventEnvelope.create(
-                UUID.randomUUID(), "Session", gameId, 1, payload, java.time.Clock.systemUTC());
+        return DomainEventEnvelope.create(UUID.randomUUID(), "Session", gameId, 1, payload, Clock.systemUTC());
     }
 }

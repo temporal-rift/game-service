@@ -11,6 +11,7 @@ import static org.mockito.Mockito.never;
 
 import java.time.Clock;
 import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -58,7 +59,7 @@ class PlayerReconnectSagaImplTest {
     static final UUID SAGA_ID = UUID.randomUUID();
     static final int GRACE_SECONDS = 30;
     static final Instant BASE_INSTANT = Instant.parse("2026-01-01T00:00:00Z");
-    static final Clock TEST_CLOCK = Clock.fixed(BASE_INSTANT, java.time.ZoneOffset.UTC);
+    static final Clock TEST_CLOCK = Clock.fixed(BASE_INSTANT, ZoneOffset.UTC);
 
     @Mock
     LobbyRepository lobbyRepository;

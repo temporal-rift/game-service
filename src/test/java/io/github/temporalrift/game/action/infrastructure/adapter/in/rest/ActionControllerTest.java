@@ -19,6 +19,7 @@ import java.util.stream.IntStream;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.mockito.BDDMockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
@@ -28,6 +29,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
 import io.github.temporalrift.game.TestSecurityConfig;
+import io.github.temporalrift.game.action.application.port.in.DeclineDeclarationUseCase;
 import io.github.temporalrift.game.action.application.port.in.RecordActivistDeclarationUseCase;
 import io.github.temporalrift.game.action.application.port.in.SelectHandUseCase;
 import io.github.temporalrift.game.action.application.port.in.SubmitParadoxResolutionUseCase;
@@ -42,6 +44,7 @@ import io.github.temporalrift.game.action.domain.actionround.JammedPlayerExcepti
 import io.github.temporalrift.game.action.domain.actionround.RoundNotFoundException;
 import io.github.temporalrift.game.action.domain.actionround.SpecialActionNotEligibleForEraException;
 import io.github.temporalrift.game.action.domain.actionround.SpecialActionNotEligibleForRoundException;
+import io.github.temporalrift.game.action.domain.activisterastate.ActivistDeclarationMode;
 import io.github.temporalrift.game.action.domain.activisterastate.ExposeAlreadyRecordedException;
 import io.github.temporalrift.game.action.domain.handselection.InvalidHandSelectionException;
 import io.github.temporalrift.game.action.domain.paradoxresolutionphase.CardNotEligibleForParadoxResolutionException;
@@ -86,7 +89,7 @@ class ActionControllerTest {
     SelectHandUseCase selectHandUseCase;
 
     @MockitoBean
-    io.github.temporalrift.game.action.application.port.in.DeclineDeclarationUseCase declineDeclarationUseCase;
+    DeclineDeclarationUseCase declineDeclarationUseCase;
 
     private RequestPostProcessor auth() {
         return authentication(new PlayerAuthenticationToken(new PlayerPrincipal(PLAYER_ID)));
@@ -102,17 +105,13 @@ class ActionControllerTest {
     @Test
     void declineUsesAuthenticatedIdentityAndAcknowledgesTerminalDecision() throws Exception {
         given(declineDeclarationUseCase.handle(any()))
-                .willReturn(new io.github.temporalrift.game.action.application.port.in.DeclineDeclarationUseCase.Result(
-                        GAME_ID, ERA, PLAYER_ID));
+                .willReturn(new DeclineDeclarationUseCase.Result(GAME_ID, ERA, PLAYER_ID));
         mockMvc.perform(post("/api/v1/games/{gameId}/eras/{eraNumber}/declarations/decline", GAME_ID, ERA)
                         .with(auth()))
                 .andExpect(status().isAccepted())
                 .andExpect(jsonPath("$.playerId").value(PLAYER_ID.toString()))
                 .andExpect(jsonPath("$.status").value("DECLINED"));
-        then(declineDeclarationUseCase)
-                .should()
-                .handle(new io.github.temporalrift.game.action.application.port.in.DeclineDeclarationUseCase.Command(
-                        GAME_ID, ERA, PLAYER_ID));
+        then(declineDeclarationUseCase).should().handle(new DeclineDeclarationUseCase.Command(GAME_ID, ERA, PLAYER_ID));
     }
 
     @Test
@@ -151,7 +150,7 @@ class ActionControllerTest {
                 .andExpect(jsonPath("$.status").value("SUBMITTED"));
 
         var captor = ArgumentCaptor.forClass(SubmitParadoxResolutionUseCase.PlayCard.class);
-        org.mockito.BDDMockito.then(submitParadoxResolutionUseCase).should().handle(captor.capture());
+        BDDMockito.then(submitParadoxResolutionUseCase).should().handle(captor.capture());
         assertThat(captor.getValue())
                 .isEqualTo(new SubmitParadoxResolutionUseCase.PlayCard(
                         GAME_ID, ERA, PLAYER_ID, CARD_INSTANCE_ID, TARGET_EVENT_ID, TARGET_OUTCOME_ID));
@@ -180,8 +179,7 @@ class ActionControllerTest {
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("409-07"));
 
-        willThrow(new CardNotEligibleForParadoxResolutionException(
-                        io.github.temporalrift.game.shared.domain.model.CardType.COLLIDE))
+        willThrow(new CardNotEligibleForParadoxResolutionException(CardType.COLLIDE))
                 .given(submitParadoxResolutionUseCase)
                 .handle(any());
         mockMvc.perform(post("/api/v1/games/{gameId}/eras/{eraNumber}/paradox-resolution/actions", GAME_ID, ERA)
@@ -363,7 +361,7 @@ class ActionControllerTest {
                 .andExpect(jsonPath("$.roundClosed").value(false));
 
         var captor = ArgumentCaptor.forClass(SubmitRoundActionUseCase.PlayCard.class);
-        org.mockito.BDDMockito.then(submitRoundActionUseCase).should().handle(captor.capture());
+        BDDMockito.then(submitRoundActionUseCase).should().handle(captor.capture());
         assertThat(captor.getValue().gameId()).isEqualTo(GAME_ID);
         assertThat(captor.getValue().eraNumber()).isEqualTo(ERA);
         assertThat(captor.getValue().roundNumber()).isEqualTo(ROUND);
@@ -393,7 +391,7 @@ class ActionControllerTest {
                 .andExpect(status().isAccepted());
 
         var captor = ArgumentCaptor.forClass(SubmitRoundActionUseCase.PlayCard.class);
-        org.mockito.BDDMockito.then(submitRoundActionUseCase).should().handle(captor.capture());
+        BDDMockito.then(submitRoundActionUseCase).should().handle(captor.capture());
         assertThat(captor.getValue().targetEventId()).isNull();
         assertThat(captor.getValue().targetEventIds()).containsExactly(TARGET_EVENT_ID, secondEventId);
         assertThat(captor.getValue().targetPlayerId()).isNull();
@@ -413,7 +411,7 @@ class ActionControllerTest {
                 .andExpect(status().isUnprocessableContent())
                 .andExpect(jsonPath("$.code").value("422-03"));
 
-        org.mockito.BDDMockito.then(submitRoundActionUseCase).shouldHaveNoInteractions();
+        BDDMockito.then(submitRoundActionUseCase).shouldHaveNoInteractions();
     }
 
     @Test
@@ -434,7 +432,7 @@ class ActionControllerTest {
                 .andExpect(status().isAccepted());
 
         var captor = ArgumentCaptor.forClass(SubmitRoundActionUseCase.PlayCard.class);
-        org.mockito.BDDMockito.then(submitRoundActionUseCase).should().handle(captor.capture());
+        BDDMockito.then(submitRoundActionUseCase).should().handle(captor.capture());
         assertThat(captor.getValue().targetEventId()).isNull();
         assertThat(captor.getValue().targetEventIds()).isNull();
         assertThat(captor.getValue().targetPlayerId()).isNull();
@@ -464,7 +462,7 @@ class ActionControllerTest {
                 .andExpect(status().isAccepted());
 
         var captor = ArgumentCaptor.forClass(SubmitRoundActionUseCase.PlayCard.class);
-        org.mockito.BDDMockito.then(submitRoundActionUseCase).should().handle(captor.capture());
+        BDDMockito.then(submitRoundActionUseCase).should().handle(captor.capture());
         assertThat(captor.getValue().disguiseCategory()).isEqualTo(CardCategory.DISRUPTION);
         assertThat(captor.getValue().targetEventId()).isNull();
         assertThat(captor.getValue().targetPlayerId()).isNull();
@@ -484,7 +482,7 @@ class ActionControllerTest {
                 .andExpect(status().isUnprocessableContent())
                 .andExpect(jsonPath("$.code").value("422-03"));
 
-        org.mockito.BDDMockito.then(submitRoundActionUseCase).shouldHaveNoInteractions();
+        BDDMockito.then(submitRoundActionUseCase).shouldHaveNoInteractions();
     }
 
     @Test
@@ -507,13 +505,12 @@ class ActionControllerTest {
                 .andExpect(jsonPath("$.roundClosed").value(true));
 
         var captor = ArgumentCaptor.forClass(SubmitRoundActionUseCase.PlaySpecial.class);
-        org.mockito.BDDMockito.then(submitRoundActionUseCase).should().handle(captor.capture());
+        BDDMockito.then(submitRoundActionUseCase).should().handle(captor.capture());
         assertThat(captor.getValue().gameId()).isEqualTo(GAME_ID);
         assertThat(captor.getValue().eraNumber()).isEqualTo(ERA);
         assertThat(captor.getValue().roundNumber()).isEqualTo(ROUND);
         assertThat(captor.getValue().playerId()).isEqualTo(PLAYER_ID);
-        assertThat(captor.getValue().specialAction())
-                .isEqualTo(io.github.temporalrift.game.shared.domain.model.SpecialAction.CORRUPT);
+        assertThat(captor.getValue().specialAction()).isEqualTo(SpecialAction.CORRUPT);
         assertThat(captor.getValue().targetEventId()).isNull();
         assertThat(captor.getValue().targetOutcomeId()).isNull();
         assertThat(captor.getValue().targetPlayerId()).isEqualTo(TARGET_PLAYER_ID);
@@ -813,12 +810,7 @@ class ActionControllerTest {
     void recordActivistDeclaration() throws Exception {
         given(recordActivistDeclarationUseCase.handle(any()))
                 .willReturn(new RecordActivistDeclarationUseCase.Result(
-                        GAME_ID,
-                        ERA,
-                        PLAYER_ID,
-                        io.github.temporalrift.game.action.domain.activisterastate.ActivistDeclarationMode.RALLY,
-                        TARGET_EVENT_ID,
-                        TARGET_OUTCOME_ID));
+                        GAME_ID, ERA, PLAYER_ID, ActivistDeclarationMode.RALLY, TARGET_EVENT_ID, TARGET_OUTCOME_ID));
 
         mockMvc.perform(post("/api/v1/games/{gameId}/eras/{eraNumber}/declarations", GAME_ID, ERA)
                         .with(auth())
@@ -830,12 +822,11 @@ class ActionControllerTest {
                 .andExpect(jsonPath("$.status").value("DECLARED"));
 
         var captor = ArgumentCaptor.forClass(RecordActivistDeclarationUseCase.Command.class);
-        org.mockito.BDDMockito.then(recordActivistDeclarationUseCase).should().handle(captor.capture());
+        BDDMockito.then(recordActivistDeclarationUseCase).should().handle(captor.capture());
         assertThat(captor.getValue().gameId()).isEqualTo(GAME_ID);
         assertThat(captor.getValue().eraNumber()).isEqualTo(ERA);
         assertThat(captor.getValue().playerId()).isEqualTo(PLAYER_ID);
-        assertThat(captor.getValue().mode())
-                .isEqualTo(io.github.temporalrift.game.action.domain.activisterastate.ActivistDeclarationMode.RALLY);
+        assertThat(captor.getValue().mode()).isEqualTo(ActivistDeclarationMode.RALLY);
     }
 
     @Test
@@ -852,7 +843,7 @@ class ActionControllerTest {
                 .andExpect(jsonPath("$.status").value("SELECTED"));
 
         var captor = ArgumentCaptor.forClass(SelectHandUseCase.Command.class);
-        org.mockito.BDDMockito.then(selectHandUseCase).should().handle(captor.capture());
+        BDDMockito.then(selectHandUseCase).should().handle(captor.capture());
         assertThat(captor.getValue().playerId()).isEqualTo(PLAYER_ID);
         assertThat(captor.getValue().keptCardInstanceIds()).isEqualTo(keptCards);
     }

@@ -28,6 +28,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import io.github.temporalrift.game.action.application.ActionTargetValidator;
 import io.github.temporalrift.game.action.application.GameParticipantValidator;
+import io.github.temporalrift.game.action.application.StalledEventTargetLock;
 import io.github.temporalrift.game.action.application.port.in.SubmitRoundActionUseCase;
 import io.github.temporalrift.game.action.domain.CardNotInHandException;
 import io.github.temporalrift.game.action.domain.actionround.ActionRound;
@@ -46,6 +47,7 @@ import io.github.temporalrift.game.action.domain.port.out.ActionRoundRepository;
 import io.github.temporalrift.game.action.domain.port.out.PlayerStateRepository;
 import io.github.temporalrift.game.shared.domain.model.CardGrade;
 import io.github.temporalrift.game.shared.domain.model.CardType;
+import io.github.temporalrift.game.shared.domain.port.out.GameRulesPort;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("PlayCardCommandHandler")
@@ -79,10 +81,10 @@ class PlayCardCommandHandlerTest {
     GameParticipantValidator gameParticipantValidator;
 
     @Mock
-    io.github.temporalrift.game.action.application.StalledEventTargetLock stalledEventTargetLock;
+    StalledEventTargetLock stalledEventTargetLock;
 
     @Mock
-    io.github.temporalrift.game.shared.domain.port.out.GameRulesPort gameRules;
+    GameRulesPort gameRules;
 
     @Spy
     Clock clock = Clock.systemUTC();

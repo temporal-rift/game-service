@@ -15,6 +15,7 @@ import org.junit.jupiter.api.Test;
 
 import io.github.temporalrift.game.action.domain.actionround.ActionRound;
 import io.github.temporalrift.game.action.domain.actionround.ActionRoundConfig;
+import io.github.temporalrift.game.action.domain.actionround.ActionRoundParticipants;
 import io.github.temporalrift.game.action.domain.actionround.RoundStatus;
 import io.github.temporalrift.game.action.domain.actionround.SubmittedAction;
 import io.github.temporalrift.game.action.domain.activisterastate.ActivistDeclarationMode;
@@ -304,8 +305,7 @@ public final class ActionPortContracts {
             var round = new ActionRound(
                     UUID.randomUUID(),
                     new ActionRoundConfig(gameId, 1, 1, 60),
-                    io.github.temporalrift.game.action.domain.actionround.ActionRoundParticipants.pending(
-                            List.of(player1, player2)));
+                    ActionRoundParticipants.pending(List.of(player1, player2)));
             round.submit(new SubmittedAction.SpecialActionSubmission(
                     player1,
                     Faction.REVISIONISTS,

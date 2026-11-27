@@ -10,6 +10,7 @@ import java.util.stream.IntStream;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentMatchers;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -38,9 +39,7 @@ class HandSelectionProjectionListenerTest {
         listener.onHandDealt(event);
 
         then(repository).should().createIfAbsent(any());
-        then(timerScheduler)
-                .should()
-                .scheduleAfterCommit(any(), org.mockito.ArgumentMatchers.eq(event.selectionExpiresAt()));
+        then(timerScheduler).should().scheduleAfterCommit(any(), ArgumentMatchers.eq(event.selectionExpiresAt()));
     }
 
     @Test

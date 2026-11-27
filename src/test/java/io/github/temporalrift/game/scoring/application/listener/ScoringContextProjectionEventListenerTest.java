@@ -144,11 +144,7 @@ class ScoringContextProjectionEventListenerTest {
         then(contextRepository)
                 .should()
                 .recordActionFact(
-                        gameId,
-                        2,
-                        activistPlayerId,
-                        Faction.ACTIVISTS,
-                        io.github.temporalrift.game.scoring.domain.playerscore.ScoreReason.EXPOSE_SIGNATURE_REVEALED);
+                        gameId, 2, activistPlayerId, Faction.ACTIVISTS, ScoreReason.EXPOSE_SIGNATURE_REVEALED);
         then(contextRepository)
                 .should()
                 .upsertActivistDeclaration(new ActivistDeclarationRecorded(
